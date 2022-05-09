@@ -33,24 +33,22 @@ class MicroManager:
         self._interface = precice.Interface(config.get_participant_name(), config.get_config_file_name(), rank, size)
 
         # coupling mesh names and ids
-        self._write_mesh_name = config.get_write_mesh_name()
-        self._write_mesh_id = interface.get_mesh_id(write_mesh_name)
-        self._read_mesh_name = config.get_read_mesh_name()
-        self._read_mesh_id = interface.get_mesh_id(read_mesh_name)
+        self._macro_mesh_name = config.get_macro_mesh_name()
+        self._macro_mesh_id = interface.get_mesh_id(macro_mesh_name)
 
         # Data names and ids of data written to preCICE
         self._write_data_ids = dict()
         self._write_data_names = config.get_write_data_name()
         assert isinstance(self._write_data_names, dict)
         for name in self._write_data_names.keys():
-            self._write_data_ids[name] = self._interface.get_data_id(name, self._write_mesh_id)
+            self._write_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
         # Data names and ids of data read from preCICE
         self._read_data_ids = dict()
         self._read_data_names = config.get_read_data_name()
         assert isinstance(self._read_data_names, dict)
         for name in self._read_data_names.keys():
-            self._read_data_ids[name] = self._interface.get_data_id(name, self._read_mesh_id)
+            self._read_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
         self._macro_bounds = config.get_macro_domain_bounds()
 
@@ -95,7 +93,7 @@ class MicroManager:
         self._dt = min(precice_dt, dt)
 
         # Get macro mesh from preCICE (API function is experimental)
-        mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(write_mesh_id)
+        mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(self._macro_mesh_id)
         nms, _ = mesh_vertex_coords.shape
 
         # Create all micro simulations

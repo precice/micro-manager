@@ -44,7 +44,7 @@ The macro-problem script is coupled to preCICE directly. Check the section [coup
   * `save_checkpoint` saves the state of the micro-problem such that if the implicit time-step does not convergence, then the micro-problem can be reversed to this state.
   * `revert_to_checkpoint` reverts to the state which was saved earlier.
 
-You can find an example of an adapted micro-problem in the [macro-micro-dummy]() example.
+You can find an example of an adapted micro-problem in the [macro-micro-dummy](https://github.com/precice/micro-manager/tree/master/examples/macro-micro-dummy) example.
 
 ### Configuring the micro-manager
 
@@ -53,5 +53,12 @@ The micro-manager is configured using a JSON file. The following quantities need
 * `micro_file_name`: It is the path to the micro-simulation script. The `.py` of the micro-simulation script is not necessary here.
 * `coupling_params`:
   * `participant_name`: Name of the micro-manager as stated in the preCICE configuration.
-* The entities `write_data_name` and `read_data_name` need to be lists which carry names of the data entities as strings.
-* `macro_domain_bounds` has the lower and upper [min and max] limits of the macro-domain. The entires are of the form [xmin, xmax, ymin, ymax].
+  * `config_file_name`: Path to the preCICE XML configuration file.
+  * `macro_mesh_name`: Name of the mesh as stated in the preCICE configuration.
+  * `read_data_name`: A Python dictionary with the names of the data to be read from preCICE as keys and `0` as the corresponding value if the quantity is scalar and `1` as the corresponding value if the data is vector.
+  * `write_data_name`: A Python dictionary with the names of the data to be written to from preCICE as keys and `0` as the corresponding value if the quantity is scalar and `1` as the corresponding value if the data is vector.
+* `simulation_params`:
+  * `macro_domain_bounds`: Minimum and maximum limits of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]`.
+  * `total_time`: Total simulation time.
+  * `timestep`: Initial time step of the simulation.
+  * `t_output`: Time interval at which the micro-manager outputs the data.
