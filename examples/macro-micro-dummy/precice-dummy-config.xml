@@ -1,0 +1,68 @@
+<?xml version="1.0"?>
+
+<precice-configuration>
+
+    <log>
+	<sink type="stream" output="stdout"  filter= "%Severity% > debug" enabled="true" />
+    </log>
+  
+  <solver-interface experimental="true" dimensions="3">
+    
+    <data:scalar name="macro-scalar-data"/>
+    <data:vector name="macro-vector-data"/>
+    <data:scalar name="micro-scalar-data"/>
+    <data:vector name="micro-vector-data"/>
+
+    <mesh name="macro-mesh">
+       <use-data name="macro-scalar-data"/>
+       <use-data name="macro-vector-data"/>
+       <use-data name="micro-scalar-data"/>
+       <use-data name="micro-vector-data"/>
+    </mesh>
+
+    <participant name="Macro-dummy">
+      <use-mesh name="macro-mesh" provide="yes"/>
+      <read-data name="micro-scalar-data" mesh="macro-mesh"/>
+      <read-data name="micro-vector-data" mesh="macro-mesh"/>
+      <write-data name="macro-scalar-data" mesh="macro-mesh"/>
+      <write-data name="macro-vector-data" mesh="macro-mesh"/>
+    </participant>
+
+    <participant name="Micro-Manager">
+      <use-mesh name="macro-mesh" from="Macro-dummy" direct-access="true" safety-factor="0.0"/>
+      <read-data name="macro-scalar-data" mesh="macro-mesh"/>
+      <read-data name="macro-vector-data" mesh="macro-mesh"/>
+      <write-data name="micro-scalar-data" mesh="macro-mesh"/>
+      <write-data name="micro-vector-data" mesh="macro-mesh"/>
+    </participant>
+
+    <m2n:sockets from="Micro-Manager" to="Macro-dummy"/>
+
+    <coupling-scheme:parallel-implicit>
+       <participants first="Macro-dummy" second="Micro-Manager"/>
+       <max-time value="10.0"/>
+       <time-window-size value="1.0"/>
+       <max-iterations value="30"/>
+       <exchange data="micro-scalar-data" mesh="macro-mesh" from="Micro-Manager" to="Macro-dummy" initialize="yes"/>
+       <exchange data="micro-vector-data" mesh="macro-mesh" from="Micro-Manager" to="Macro-dummy" initialize="yes"/>
+       <exchange data="macro-scalar-data" mesh="macro-mesh" from="Macro-dummy" to="Micro-Manager" initialize="yes"/>
+       <exchange data="macro-vector-data" mesh="macro-mesh" from="Macro-dummy" to="Micro-Manager" initialize="yes"/>
+       <relative-convergence-measure limit="1e-5" data="macro-scalar-data" mesh="macro-mesh"/>
+       <relative-convergence-measure limit="1e-5" data="macro-vector-data" mesh="macro-mesh"/>
+       <relative-convergence-measure limit="1e-5" data="micro-scalar-data" mesh="macro-mesh"/>
+       <relative-convergence-measure limit="1e-5" data="micro-vector-data" mesh="macro-mesh"/>
+       <acceleration:IQN-ILS>
+          <data name="micro-scalar-data" mesh="macro-mesh"/>
+          <data name="micro-vector-data" mesh="macro-mesh"/>
+          <data name="macro-scalar-data" mesh="macro-mesh"/>
+          <data name="macro-vector-data" mesh="macro-mesh"/>
+          <preconditioner type="residual-sum"/>
+          <initial-relaxation value="0.9"/>
+          <max-used-iterations value="40"/>
+          <time-windows-reused value="20"/>
+          <filter type="QR2" limit="1e-2"/>
+       </acceleration:IQN-ILS>
+    </coupling-scheme:parallel-implicit>
+
+  </solver-interface>
+</precice-configuration>
