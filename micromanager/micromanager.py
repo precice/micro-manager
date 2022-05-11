@@ -3,7 +3,7 @@ Micro manager to couple a macro code to multiple micro codes
 """
 
 import precice
-from config import Config
+from .config import Config
 from mpi4py import MPI
 from math import sqrt
 import numpy as np
@@ -30,11 +30,11 @@ class MicroManager:
         self._dt = config.get_dt()
         self._t_out = config.get_t_output()
 
-        self._interface = precice.Interface(config.get_participant_name(), config.get_config_file_name(), rank, size)
+        self._interface = precice.Interface(config.get_participant_name(), config.get_config_file_name(),
+                                            self._rank, self._size)
 
         # coupling mesh names and ids
-        self._macro_mesh_name = config.get_macro_mesh_name()
-        self._macro_mesh_id = interface.get_mesh_id(macro_mesh_name)
+        self._macro_mesh_id = self._interface.get_mesh_id(config.get_macro_mesh_name())
 
         # Data names and ids of data written to preCICE
         self._write_data_ids = dict()
@@ -52,22 +52,22 @@ class MicroManager:
 
         self._macro_bounds = config.get_macro_domain_bounds()
 
-        assert len(self._macro_bounds) / 2 == interface.get_dimensions(), "Provided macro mesh bounds are of " \
-                                                                          "incorrect dimension"
+        assert len(self._macro_bounds) / 2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of " \
+                                                                                "incorrect dimension"
 
     def run(self):
         # Domain decomposition
-        size_x = int(sqrt(size))
-        while size % size_x != 0:
+        size_x = int(sqrt(self._size))
+        while self._size % size_x != 0:
             size_x -= 1
 
-        size_y = int(size / size_x)
+        size_y = int(self._size / size_x)
 
-        dx = abs(macro_bounds[0] - macro_bounds[1]) / size_x
-        dy = abs(macro_bounds[2] - macro_bounds[3]) / size_y
+        dx = abs(self._macro_bounds[0] - self._macro_bounds[1]) / size_x
+        dy = abs(self._macro_bounds[2] - self._macro_bounds[3]) / size_y
 
-        local_xmin = dx * (rank % size_x)
-        local_ymin = dy * int(rank / size_x)
+        local_xmin = dx * (self._rank % size_x)
+        local_ymin = dy * int(self._rank / size_x)
 
         mesh_bounds = []
         if self._interface.get_dimensions() == 2:
@@ -76,7 +76,7 @@ class MicroManager:
             # TODO: Domain needs to be decomposed optimally in the Z direction too
             mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy, macro_bounds[4], macro_bounds[5]]
 
-        self._interface.set_mesh_access_region(write_mesh_id, mesh_bounds)
+        self._interface.set_mesh_access_region(self._macro_mesh_id, mesh_bounds)
 
         # Configure data written to preCICE
         write_data = dict()
@@ -142,10 +142,10 @@ class MicroManager:
 
             for name, dims in self._read_data_names.items():
                 if dims == 0:
-                    read_data.update({name: self._interface.read_block_scalar_data(read_data_ids[name],
+                    read_data.update({name: self._interface.read_block_scalar_data(self._read_data_ids[name],
                                                                                    mesh_vertex_ids)})
                 elif dims == 1:
-                    read_data.update({name: self._interface.read_block_vector_data(read_data_ids[name],
+                    read_data.update({name: self._interface.read_block_vector_data(self._read_data_ids[name],
                                                                                    mesh_vertex_ids)})
 
             micro_sims_input = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
@@ -171,7 +171,7 @@ class MicroManager:
                     self._interface.write_block_vector_data(self._write_data_ids[dname], mesh_vertex_ids,
                                                             write_data[dname])
 
-            precice_dt = interface.advance(dt)
+            precice_dt = self._interface.advance(dt)
             self._dt = min(precice_dt, dt)
 
             t += dt

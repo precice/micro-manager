@@ -1,2 +1,6 @@
 # PyCharm
 .idea/
+
+# Building artefacts
+build/
+micromanager.egg-info/
