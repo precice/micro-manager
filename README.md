@@ -12,7 +12,7 @@ It is recommended to install [micro-manager from PyPI]() by running
 pip3 install --user micro-manager
 ```
 
-This should work directly if all the dependencies are installed correctly. If you encounter problems in this, see the dependencies section below.
+If the dependencies are not installed, then `pip` will attempt to install them for you. If you encounter problems in this, see the [dependencies section](https://github.com/precice/micro-manager#required-dependencies) below.
 
 ### Clone this repository and use pip3
 
@@ -48,7 +48,28 @@ You can find an example of an adapted micro-problem in the [macro-micro-dummy](h
 
 ### Configuring the micro-manager
 
-The micro-manager is configured using a JSON file. The following quantities need to be configured:
+The micro-manager is configured using a JSON file. The configuration file for the [macro-micro-dummy](https://github.com/precice/micro-manager/tree/master/examples/macro-micro-dummy) looks like:
+
+```json
+{
+    "micro_file_name": "micro_dummy",
+    "coupling_params": {
+            "participant_name": "Micro-Manager",
+            "config_file_name": "precice-config.xml",
+            "macro_mesh_name": "macro-mesh",
+            "read_data_name": {"macro-scalar-data": 0, "macro-vector-data": 1},
+            "write_data_name": {"micro-scalar-data": 0, "micro-vector-data": 1}
+    },
+    "simulation_params": {
+      "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
+      "total_time": 10.0,
+      "timestep": 1.0,
+      "t_output": 1.0
+    }
+}
+```
+
+The following quantities need to be configured:
 
 * `micro_file_name`: It is the path to the micro-simulation script. The `.py` of the micro-simulation script is not necessary here.
 * `coupling_params`:

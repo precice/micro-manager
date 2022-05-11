@@ -90,7 +90,7 @@ class MicroManager:
 
         # initialize preCICE
         precice_dt = self._interface.initialize()
-        self._dt = min(precice_dt, dt)
+        self._dt = min(precice_dt, self._dt)
 
         # Get macro mesh from preCICE (API function is experimental)
         mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(self._macro_mesh_id)
@@ -151,7 +151,7 @@ class MicroManager:
             micro_sims_input = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
             micro_sims_output = []
             for i in range(nms):
-                micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], dt))
+                micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], self._dt))
 
             # write_data = {k: reduce(iconcat, [dic[k] for dic in micro_sims_output], []) for k in micro_sims_output[0]}
 
@@ -171,10 +171,10 @@ class MicroManager:
                     self._interface.write_block_vector_data(self._write_data_ids[dname], mesh_vertex_ids,
                                                             write_data[dname])
 
-            precice_dt = self._interface.advance(dt)
-            self._dt = min(precice_dt, dt)
+            precice_dt = self._interface.advance(self._dt)
+            self._dt = min(precice_dt, self._dt)
 
-            t += dt
+            t += self._dt
             n += 1
 
             # Read checkpoint if required
