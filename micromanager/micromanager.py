@@ -37,16 +37,14 @@ class MicroManager:
         self._macro_mesh_id = self._interface.get_mesh_id(config.get_macro_mesh_name())
 
         # Data names and ids of data written to preCICE
+        self._write_data_names = config.get_write_data_names()
         self._write_data_ids = dict()
-        self._write_data_names = config.get_write_data_name()
-        assert isinstance(self._write_data_names, dict)
         for name in self._write_data_names.keys():
             self._write_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
         # Data names and ids of data read from preCICE
+        self._read_data_names = config.get_read_data_names()
         self._read_data_ids = dict()
-        self._read_data_names = config.get_read_data_name()
-        assert isinstance(self._read_data_names, dict)
         for name in self._read_data_names.keys():
             self._read_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
@@ -110,11 +108,11 @@ class MicroManager:
                     for data_name, data in micro_sims_output.items():
                         write_data[data_name].append(data)
                 else:
-                    for name, dim in self._write_data_names.items():
-                        if dim == 0:
-                            write_data[name].append(0.0)
-                        elif dim == 1:
+                    for name, isDataVector in self._write_data_names.items():
+                        if isDataVector:
                             write_data[name].append(np.zeros(self._interface.get_dimensions()))
+                        else:
+                            write_data[name].append(0.0)
 
         # Initialize coupling data
         if self._interface.is_action_required(precice.action_write_initial_data()):
@@ -141,12 +139,12 @@ class MicroManager:
                 n_checkpoint = n
                 self._interface.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
 
-            for name, dims in self._read_data_names.items():
-                if dims == 0:
-                    read_data.update({name: self._interface.read_block_scalar_data(self._read_data_ids[name],
-                                                                                   mesh_vertex_ids)})
-                elif dims == 1:
+            for name, isDataVector in self._read_data_names.items():
+                if isDataVector:
                     read_data.update({name: self._interface.read_block_vector_data(self._read_data_ids[name],
+                                                                                   mesh_vertex_ids)})
+                else:
+                    read_data.update({name: self._interface.read_block_scalar_data(self._read_data_ids[name],
                                                                                    mesh_vertex_ids)})
 
             micro_sims_input = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
@@ -164,12 +162,12 @@ class MicroManager:
                 for name, values in dic.items():
                     write_data[name].append(values)
 
-            for dname, dim in self._write_data_names.items():
-                if dim == 0:
-                    self._interface.write_block_scalar_data(self._write_data_ids[dname], mesh_vertex_ids,
-                                                            write_data[dname])
-                elif dim == 1:
+            for dname, isDataVector in self._write_data_names.items():
+                if isDataVector:
                     self._interface.write_block_vector_data(self._write_data_ids[dname], mesh_vertex_ids,
+                                                            write_data[dname])
+                else:
+                    self._interface.write_block_scalar_data(self._write_data_ids[dname], mesh_vertex_ids,
                                                             write_data[dname])
 
             precice_dt = self._interface.advance(self._dt)

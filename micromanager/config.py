@@ -19,8 +19,8 @@ class Config:
         self._participant_name = None
         self._config_file_name = None
         self._macro_mesh_name = None
-        self._read_data_name = None
-        self._write_data_name = None
+        self._read_data_names = None
+        self._write_data_names = None
 
         self._macro_domain_bounds = None
         self._dt = None
@@ -53,8 +53,28 @@ class Config:
         self._config_file_name = os.path.join(folder, data["coupling_params"]["config_file_name"])
         self._participant_name = data["coupling_params"]["participant_name"]
         self._macro_mesh_name = data["coupling_params"]["macro_mesh_name"]
-        self._write_data_name = data["coupling_params"]["write_data_name"]
-        self._read_data_name = data["coupling_params"]["read_data_name"]
+
+        self._write_data_names = data["coupling_params"]["write_data_names"]
+        assert isinstance(self._write_data_names, dict), "Entity write_data_name is not a dictionary"
+
+        for key, value in self._write_data_names.items():
+            if value == "scalar":
+                self._write_data_names[key] = False
+            elif value == "vector":
+                self._write_data_names[key] = True
+            else:
+                raise Exception("Write data dictionary as a value other than 'scalar' or 'vector'")
+
+        self._read_data_names = data["coupling_params"]["read_data_names"]
+        assert isinstance(self._read_data_names, dict), "Entity read_data_name is not a dictionary"
+
+        for key, value in self._read_data_names.items():
+            if value == "scalar":
+                self._read_data_names[key] = False
+            elif value == "vector":
+                self._read_data_names[key] = True
+            else:
+                raise Exception("Read data dictionary as a value other than 'scalar' or 'vector'")
 
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
         self._dt = data["simulation_params"]["timestep"]
@@ -72,11 +92,11 @@ class Config:
     def get_macro_mesh_name(self):
         return self._macro_mesh_name
 
-    def get_read_data_name(self):
-        return self._read_data_name
+    def get_read_data_names(self):
+        return self._read_data_names
 
-    def get_write_data_name(self):
-        return self._write_data_name
+    def get_write_data_names(self):
+        return self._write_data_names
 
     def get_dt(self):
         return self._dt
