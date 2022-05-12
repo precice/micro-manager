@@ -12,7 +12,7 @@ It is recommended to install [micro-manager from PyPI]() by running
 pip3 install --user micro-manager
 ```
 
-If the dependencies are not installed, then `pip` will attempt to install them for you. If you encounter problems in this, see the [dependencies section](https://github.com/precice/micro-manager#required-dependencies) below.
+If the dependencies are not installed, then `pip` will attempt to install them for you. If you encounter problems in the direct installation, see the [dependencies section](https://github.com/precice/micro-manager#required-dependencies) below for links to installation procedures of all dependencies.
 
 ### Clone this repository and use pip3
 
@@ -52,16 +52,16 @@ The micro-manager is configured using a JSON file. The configuration file for th
 
 ```json
 {
-    "micro_file_name": "micro_dummy",
+    "micro_file_name": "micro_problem",
     "coupling_params": {
             "participant_name": "Micro-Manager",
             "config_file_name": "precice-config.xml",
             "macro_mesh_name": "macro-mesh",
-            "read_data_name": {"macro-scalar-data": 0, "macro-vector-data": 1},
-            "write_data_name": {"micro-scalar-data": 0, "micro-vector-data": 1}
+            "read_data_names": {"macro-scalar-data": "scalar", "macro-vector-data": "vector"},
+            "write_data_names": {"micro-scalar-data": "scalar", "micro-vector-data": "vector"}
     },
     "simulation_params": {
-      "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
+      "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
       "total_time": 10.0,
       "timestep": 1.0,
       "t_output": 1.0
@@ -76,8 +76,8 @@ The following quantities need to be configured:
   * `participant_name`: Name of the micro-manager as stated in the preCICE configuration.
   * `config_file_name`: Path to the preCICE XML configuration file.
   * `macro_mesh_name`: Name of the mesh as stated in the preCICE configuration.
-  * `read_data_name`: A Python dictionary with the names of the data to be read from preCICE as keys and `0` as the corresponding value if the quantity is scalar and `1` as the corresponding value if the data is vector.
-  * `write_data_name`: A Python dictionary with the names of the data to be written to from preCICE as keys and `0` as the corresponding value if the quantity is scalar and `1` as the corresponding value if the data is vector.
+  * `read_data_names`: A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"`  as the corresponding value.
+  * `write_data_names`: A Python dictionary with the names of the data to be written to from preCICE as keys and `"scalar"` or `"vector"`  as the corresponding value.
 * `simulation_params`:
   * `macro_domain_bounds`: Minimum and maximum limits of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]`.
   * `total_time`: Total simulation time.
