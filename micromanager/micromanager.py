@@ -74,7 +74,8 @@ class MicroManager:
             mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy]
         elif self._interface.get_dimensions() == 3:
             # TODO: Domain needs to be decomposed optimally in the Z direction too
-            mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy, macro_bounds[4], macro_bounds[5]]
+            mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy, self._macro_bounds[4],
+                           self._macro_bounds[5]]
 
         self._interface.set_mesh_access_region(self._macro_mesh_id, mesh_bounds)
 

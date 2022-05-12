@@ -2,7 +2,7 @@
     "coupling_on": true,
     "coupling_params": {
             "participant_name": "Macro-dummy",
-            "config_file_name": "precice-dummy-config.xml",
+            "config_file_name": "precice-config.xml",
             "read_mesh_name": "macro-mesh",
             "read_data_name": {"micro-scalar-data": 0, "micro-vector-data":  1},
             "write_mesh_name": "macro-mesh",

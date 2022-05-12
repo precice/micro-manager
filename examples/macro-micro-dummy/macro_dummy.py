@@ -10,7 +10,7 @@ def main():
     """
     Dummy macro simulation which is coupled to a set of micro simulations via preCICE and the Micro Manager
     """
-    config = Config("macro-dummy-config.json")
+    config = Config("macro-config.json")
 
     nv = 25
 

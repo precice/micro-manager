@@ -2,11 +2,6 @@
 Micro simulation
 In this script we solve a dummy micro problem to just show the working of the macro-micro coupling
 """
-import math
-
-from nutils import mesh, function, solver, export, sample, cli
-import treelog
-import numpy as np
 
 
 class MicroSimulation:
