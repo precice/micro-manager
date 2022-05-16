@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Micro manager to couple a macro code to multiple micro codes
 """
