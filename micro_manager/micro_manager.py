@@ -13,7 +13,7 @@ from operator import iconcat
 
 
 class MicroManager:
-    def __init__(self, config_filename='micro-manager-config.json'):
+    def __init__(self, config_filename="micro-manager-config.json"):
         """
         Constructor of MicroManager class.
         """
@@ -28,10 +28,7 @@ class MicroManager:
         micro_file_name = config.get_micro_file_name()
         self._micro_problem = getattr(__import__(micro_file_name, fromlist=["MicroSimulation"]), "MicroSimulation")
 
-        self._dt = config.get_dt()
-        self._t_out = config.get_t_output()
-
-        self._interface = precice.Interface(config.get_participant_name(), config.get_config_file_name(),
+        self._interface = precice.Interface("Micro-Manager", config.get_config_file_name(),
                                             self._rank, self._size)
 
         # coupling mesh names and ids
@@ -53,6 +50,8 @@ class MicroManager:
 
         assert len(self._macro_bounds) / 2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of " \
                                                                                 "incorrect dimension"
+
+        self._dt = 0.01  # Default time step value, later set by preCICE
 
     def run(self):
         # Domain decomposition
@@ -89,8 +88,7 @@ class MicroManager:
             read_data[name] = []
 
         # initialize preCICE
-        precice_dt = self._interface.initialize()
-        self._dt = min(precice_dt, self._dt)
+        self._dt = self._interface.initialize()
 
         # Get macro mesh from preCICE (API function is experimental)
         mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(self._macro_mesh_id)
@@ -171,8 +169,7 @@ class MicroManager:
                     self._interface.write_block_scalar_data(self._write_data_ids[dname], mesh_vertex_ids,
                                                             write_data[dname])
 
-            precice_dt = self._interface.advance(self._dt)
-            self._dt = min(precice_dt, self._dt)
+            self._dt = self._interface.advance(self._dt)
 
             t += self._dt
             n += 1

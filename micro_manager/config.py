@@ -16,16 +16,12 @@ class Config:
     def __init__(self, config_filename):
         self._micro_file_name = None
 
-        self._participant_name = None
         self._config_file_name = None
         self._macro_mesh_name = None
         self._read_data_names = None
         self._write_data_names = None
 
         self._macro_domain_bounds = None
-        self._dt = None
-        self._t_total = None
-        self._t_out = None
 
         self.read_json(config_filename)
 
@@ -51,7 +47,6 @@ class Config:
             self._micro_file_name = "No micro file provided"
 
         self._config_file_name = os.path.join(folder, data["coupling_params"]["config_file_name"])
-        self._participant_name = data["coupling_params"]["participant_name"]
         self._macro_mesh_name = data["coupling_params"]["macro_mesh_name"]
 
         self._write_data_names = data["coupling_params"]["write_data_names"]
@@ -77,17 +72,11 @@ class Config:
                 raise Exception("Read data dictionary as a value other than 'scalar' or 'vector'")
 
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
-        self._dt = data["simulation_params"]["timestep"]
-        self._t_total = data["simulation_params"]["total_time"]
-        self._t_out = data["simulation_params"]["t_output"]
 
         read_file.close()
 
     def get_config_file_name(self):
         return self._config_file_name
-
-    def get_participant_name(self):
-        return self._participant_name
 
     def get_macro_mesh_name(self):
         return self._macro_mesh_name
@@ -97,15 +86,6 @@ class Config:
 
     def get_write_data_names(self):
         return self._write_data_names
-
-    def get_dt(self):
-        return self._dt
-
-    def get_total_time(self):
-        return self._t_total
-
-    def get_t_output(self):
-        return self._t_out
 
     def get_macro_domain_bounds(self):
         return self._macro_domain_bounds
