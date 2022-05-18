@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Micro manager to couple a macro code to multiple micro codes
+Micro manager to organize many micro simulations and couple them via preCICE to a macro simulation
 """
 
 import precice
