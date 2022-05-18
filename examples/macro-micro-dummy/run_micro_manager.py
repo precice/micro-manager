@@ -2,7 +2,7 @@
 Script to run the Micro Manager
 """
 
-from micromanager import MicroManager
+from micro_manager import MicroManager
 
 manager = MicroManager("micro-manager-config.json")
 
