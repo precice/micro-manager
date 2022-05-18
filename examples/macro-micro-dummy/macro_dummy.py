@@ -12,7 +12,7 @@ def main():
     """
     config = Config("macro-config.json")
 
-    nv = 25
+    nv = 25 # number of vertices
 
     n = n_checkpoint = 0
     t = t_checkpoint = 0
