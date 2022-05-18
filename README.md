@@ -130,3 +130,5 @@ The following quantities need to be configured:
 ### How to run
 
 TODO
+
+In parallel?
