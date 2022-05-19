@@ -1,6 +1,7 @@
 # PyCharm
 .idea/
+__pycache__
 
 # Building artefacts
 build/
-micromanager.egg-info/
+micro_manager.egg-info/
