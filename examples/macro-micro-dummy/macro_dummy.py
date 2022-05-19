@@ -9,7 +9,7 @@ def main():
     """
     Dummy macro simulation which is coupled to a set of micro simulations via preCICE and the Micro Manager
     """
-    nv = 25 # number of vertices
+    nv = 25  # number of vertices
 
     n = n_checkpoint = 0
     t = t_checkpoint = 0

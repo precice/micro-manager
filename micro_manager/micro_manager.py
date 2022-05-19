@@ -92,23 +92,23 @@ class MicroManager:
 
         # Get macro mesh from preCICE (API function is experimental)
         mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(self._macro_mesh_id)
-        nms, _ = mesh_vertex_coords.shape
+        number_of_micro_simulations, _ = mesh_vertex_coords.shape
 
         # Create all micro simulations
         micro_sims = []
-        for v in range(nms):
+        for v in range(number_of_micro_simulations):
             micro_sims.append(self._micro_problem())
 
         # Initialize all micro simulations
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
-            for v in range(nms):
-                micro_sims_output = micro_sims[v].initialize()
+            for micro_sim in micro_sims:
+                micro_sims_output = micro_sim.initialize()
                 if micro_sims_output is not None:
                     for data_name, data in micro_sims_output.items():
                         write_data[data_name].append(data)
                 else:
-                    for name, isDataVector in self._write_data_names.items():
-                        if isDataVector:
+                    for name, is_data_vector in self._write_data_names.items():
+                        if is_data_vector:
                             write_data[name].append(np.zeros(self._interface.get_dimensions()))
                         else:
                             write_data[name].append(0.0)
@@ -132,14 +132,14 @@ class MicroManager:
         while self._interface.is_coupling_ongoing():
             # Write checkpoint
             if self._interface.is_action_required(precice.action_write_iteration_checkpoint()):
-                for v in range(nms):
-                    micro_sims[v].save_checkpoint()
+                for micro_sim in micro_sims:
+                    micro_sim.save_checkpoint()
                 t_checkpoint = t
                 n_checkpoint = n
                 self._interface.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
 
-            for name, isDataVector in self._read_data_names.items():
-                if isDataVector:
+            for name, is_data_vector in self._read_data_names.items():
+                if is_data_vector:
                     read_data.update({name: self._interface.read_block_vector_data(self._read_data_ids[name],
                                                                                    mesh_vertex_ids)})
                 else:
@@ -161,8 +161,8 @@ class MicroManager:
                 for name, values in dic.items():
                     write_data[name].append(values)
 
-            for dname, isDataVector in self._write_data_names.items():
-                if isDataVector:
+            for dname, is_data_vector in self._write_data_names.items():
+                if is_data_vector:
                     self._interface.write_block_vector_data(self._write_data_ids[dname], mesh_vertex_ids,
                                                             write_data[dname])
                 else:
