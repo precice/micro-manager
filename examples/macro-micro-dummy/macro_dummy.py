@@ -20,10 +20,10 @@ def main():
     # define coupling meshes
     read_mesh_name = write_mesh_name = "macro-mesh"
     read_mesh_id = interface.get_mesh_id(read_mesh_name)
-    read_data_names = {"macro-scalar-data": 0, "macro-vector-data": 1}
+    read_data_names = {"micro-scalar-data": 0, "micro-vector-data": 1}
 
     write_mesh_id = interface.get_mesh_id(write_mesh_name)
-    write_data_names = {"micro-scalar-data": 0, "micro-vector-data": 1}
+    write_data_names = {"macro-scalar-data": 0, "macro-vector-data": 1}
 
     # Coupling mesh
     coords = np.zeros((nv, interface.get_dimensions()))

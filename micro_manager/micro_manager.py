@@ -23,46 +23,23 @@ class MicroManager:
         self._size = comm.Get_size()
 
         print("Provided configuration file: {}".format(config_filename))
-        config = Config(config_filename)
+        self._config = Config(config_filename)
 
-        micro_file_name = config.get_micro_file_name()
+        micro_file_name = self._config.get_micro_file_name()
         self._micro_problem = getattr(__import__(micro_file_name, fromlist=["MicroSimulation"]), "MicroSimulation")
 
-        self._interface = precice.Interface("Micro-Manager", config.get_config_file_name(),
+        self._interface = precice.Interface("Micro-Manager", self._config.get_config_file_name(),
                                             self._rank, self._size)
 
-        # coupling mesh names and ids
-        self._macro_mesh_id = self._interface.get_mesh_id(config.get_macro_mesh_name())
-
-        # Data names and ids of data written to preCICE
-        self._write_data_names = config.get_write_data_names()
-        self._write_data_ids = dict()
-        for name in self._write_data_names.keys():
-            self._write_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
-
-        # Data names and ids of data read from preCICE
-        self._read_data_names = config.get_read_data_names()
-        self._read_data_ids = dict()
-        for name in self._read_data_names.keys():
-            self._read_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
-
-        self._macro_bounds = config.get_macro_domain_bounds()
-
-        assert len(self._macro_bounds) / 2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of " \
-                                                                                "incorrect dimension"
-
-        self._dt = 0.01  # Default time step value, later set by preCICE
-
-    def run(self):
-        # Domain decomposition
+    def _decompose_macro_domain(self, macro_bounds):
         size_x = int(sqrt(self._size))
         while self._size % size_x != 0:
             size_x -= 1
 
         size_y = int(self._size / size_x)
 
-        dx = abs(self._macro_bounds[0] - self._macro_bounds[1]) / size_x
-        dy = abs(self._macro_bounds[2] - self._macro_bounds[3]) / size_y
+        dx = abs(macro_bounds[0] - macro_bounds[1]) / size_x
+        dy = abs(macro_bounds[2] - macro_bounds[3]) / size_y
 
         local_xmin = dx * (self._rank % size_x)
         local_ymin = dy * int(self._rank / size_x)
@@ -72,31 +49,51 @@ class MicroManager:
             mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy]
         elif self._interface.get_dimensions() == 3:
             # TODO: Domain needs to be decomposed optimally in the Z direction too
-            mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy, self._macro_bounds[4],
-                           self._macro_bounds[5]]
+            mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy, macro_bounds[4],
+                           macro_bounds[5]]
 
-        self._interface.set_mesh_access_region(self._macro_mesh_id, mesh_bounds)
+        return mesh_bounds
 
-        # Configure data written to preCICE
+    def run(self):
+
+        macro_mesh_id = self._interface.get_mesh_id(self._config.get_macro_mesh_name())
+
+        # Decompose the macro-domain and set the mesh access region for each partition in preCICE
+        macro_bounds = self._config.get_macro_domain_bounds()
+        assert len(macro_bounds) / 2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of " \
+                                                                          "incorrect dimension"
+        coupling_mesh_bounds = self._decompose_macro_domain(macro_bounds)
+        self._interface.set_mesh_access_region(macro_mesh_id, coupling_mesh_bounds)
+
+        # Data names and ids of data written to preCICE
+        write_data_names = self._config.get_write_data_names()
+        write_data_ids = dict()
+        for name in write_data_names.keys():
+            write_data_ids[name] = self._interface.get_data_id(name, macro_mesh_id)
+
+        # Data names and ids of data read from preCICE
+        read_data_names = self._config.get_read_data_names()
+        read_data_ids = dict()
+        for name in read_data_names.keys():
+            read_data_ids[name] = self._interface.get_data_id(name, macro_mesh_id)
+
         write_data = dict()
-        for name in self._write_data_names.keys():
+        for name in write_data_names.keys():
             write_data[name] = []
 
-        # Configure data read from preCICE
         read_data = dict()
-        for name in self._read_data_names.keys():
+        for name in read_data_names.keys():
             read_data[name] = []
 
         # initialize preCICE
-        self._dt = self._interface.initialize()
+        dt = self._interface.initialize()
 
-        # Get macro mesh from preCICE (API function is experimental)
-        mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(self._macro_mesh_id)
+        mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(macro_mesh_id)
         number_of_micro_simulations, _ = mesh_vertex_coords.shape
 
         # Create all micro simulations
         micro_sims = []
-        for v in range(number_of_micro_simulations):
+        for _ in range(number_of_micro_simulations):
             micro_sims.append(self._micro_problem())
 
         # Initialize all micro simulations
@@ -107,7 +104,7 @@ class MicroManager:
                     for data_name, data in micro_sims_output.items():
                         write_data[data_name].append(data)
                 else:
-                    for name, is_data_vector in self._write_data_names.items():
+                    for name, is_data_vector in write_data_names.items():
                         if is_data_vector:
                             write_data[name].append(np.zeros(self._interface.get_dimensions()))
                         else:
@@ -115,13 +112,11 @@ class MicroManager:
 
         # Initialize coupling data
         if self._interface.is_action_required(precice.action_write_initial_data()):
-            for dname, dim in self._write_data_names.items():
+            for dname, dim in write_data_names.items():
                 if dim == 1:
-                    self._interface.write_block_vector_data(self._write_data_ids[dname], mesh_vertex_ids,
-                                                            write_data[dname])
+                    self._interface.write_block_vector_data(write_data_ids[dname], mesh_vertex_ids, write_data[dname])
                 elif dim == 0:
-                    self._interface.write_block_scalar_data(self._write_data_ids[dname], mesh_vertex_ids,
-                                                            write_data[dname])
+                    self._interface.write_block_scalar_data(write_data_ids[dname], mesh_vertex_ids, write_data[dname])
             self._interface.mark_action_fulfilled(precice.action_write_initial_data())
 
         self._interface.initialize_data()
@@ -138,20 +133,18 @@ class MicroManager:
                 n_checkpoint = n
                 self._interface.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
 
-            for name, is_data_vector in self._read_data_names.items():
+            for name, is_data_vector in read_data_names.items():
                 if is_data_vector:
-                    read_data.update({name: self._interface.read_block_vector_data(self._read_data_ids[name],
+                    read_data.update({name: self._interface.read_block_vector_data(read_data_ids[name],
                                                                                    mesh_vertex_ids)})
                 else:
-                    read_data.update({name: self._interface.read_block_scalar_data(self._read_data_ids[name],
+                    read_data.update({name: self._interface.read_block_scalar_data(read_data_ids[name],
                                                                                    mesh_vertex_ids)})
 
             micro_sims_input = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
             micro_sims_output = []
-            for i in range(nms):
-                micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], self._dt))
-
-            # write_data = {k: reduce(iconcat, [dic[k] for dic in micro_sims_output], []) for k in micro_sims_output[0]}
+            for i in range(number_of_micro_simulations):
+                micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], dt))
 
             write_data = dict()
             for name in micro_sims_output[0]:
@@ -161,23 +154,21 @@ class MicroManager:
                 for name, values in dic.items():
                     write_data[name].append(values)
 
-            for dname, is_data_vector in self._write_data_names.items():
+            for dname, is_data_vector in write_data_names.items():
                 if is_data_vector:
-                    self._interface.write_block_vector_data(self._write_data_ids[dname], mesh_vertex_ids,
-                                                            write_data[dname])
+                    self._interface.write_block_vector_data(write_data_ids[dname], mesh_vertex_ids, write_data[dname])
                 else:
-                    self._interface.write_block_scalar_data(self._write_data_ids[dname], mesh_vertex_ids,
-                                                            write_data[dname])
+                    self._interface.write_block_scalar_data(write_data_ids[dname], mesh_vertex_ids, write_data[dname])
 
-            self._dt = self._interface.advance(self._dt)
+            dt = self._interface.advance(dt)
 
-            t += self._dt
+            t += dt
             n += 1
 
             # Read checkpoint if required
             if self._interface.is_action_required(precice.action_read_iteration_checkpoint()):
-                for v in range(nms):
-                    micro_sims[v].reload_checkpoint()
+                for micro_sim in micro_sims:
+                    micro_sim.reload_checkpoint()
                 n = n_checkpoint
                 t = t_checkpoint
                 self._interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
