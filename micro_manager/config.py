@@ -14,6 +14,14 @@ class Config:
     """
 
     def __init__(self, config_filename):
+        """
+        Constructor of the Config class.
+
+        Parameters
+        ----------
+        config_filename : string
+            Name of the JSON configuration file
+        """
         self._micro_file_name = None
 
         self._config_file_name = None
@@ -28,6 +36,11 @@ class Config:
     def read_json(self, config_filename):
         """
         Reads JSON adapter configuration file and saves the data to the respective instance attributes.
+
+        Parameters
+        ----------
+        config_filename : string
+            Name of the JSON configuration file
         """
         folder = os.path.dirname(os.path.join(os.getcwd(), os.path.dirname(sys.argv[0]), config_filename))
         path = os.path.join(folder, os.path.basename(config_filename))
@@ -76,19 +89,73 @@ class Config:
         read_file.close()
 
     def get_config_file_name(self):
+        """
+        Get the name of the JSON configuration file.
+
+        Returns
+        -------
+        config_file_name : string
+            Name of the JSON configuration file provided to the Config class.
+        """
         return self._config_file_name
 
     def get_macro_mesh_name(self):
+        """
+        Get the name of the macro mesh. This name is expected to be the same as the one defined in the preCICE
+        configuration file.
+
+        Returns
+        -------
+        macro_mesh_name : string
+            Name of the macro mesh as stated in the JSON configuration file.
+
+        """
         return self._macro_mesh_name
 
     def get_read_data_names(self):
+        """
+        Get the user defined dictionary carrying information of the data to be read from preCICE.
+
+        Returns
+        -------
+        read_data_names: dict_like
+            A dictionary containing the names of the data to be read from preCICE as keys and information on whether
+            the data are scalar or vector as values.
+        """
         return self._read_data_names
 
     def get_write_data_names(self):
+        """
+        Get the user defined dictionary carrying information of the data to be written to preCICE.
+
+        Returns
+        -------
+        write_data_names: dict_like
+            A dictionary containing the names of the data to be written to preCICE as keys and information on whether
+            the data are scalar or vector as values.
+        """
         return self._write_data_names
 
     def get_macro_domain_bounds(self):
+        """
+        Get the upper and lower bounds of the macro domain.
+
+        Returns
+        -------
+        macro_domain_bounds : list
+            List containing upper and lower bounds of the macro domain.
+            Format in 2D is [x_min, x_max, y_min, y_max]
+            Format in 2D is [x_min, x_max, y_min, y_max, z_min, z_max]
+        """
         return self._macro_domain_bounds
 
     def get_micro_file_name(self):
+        """
+        Get the path to the Python script of the micro-simulation.
+
+        Returns
+        -------
+        micro_file_name : string
+            String carrying the path to the Python script of the micro-simulation.
+        """
         return self._micro_file_name

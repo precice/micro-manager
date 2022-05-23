@@ -16,6 +16,11 @@ class MicroManager:
     def __init__(self, config_filename="micro-manager-config.json"):
         """
         Constructor of MicroManager class.
+
+        Parameters
+        ----------
+        config_filename : string
+            Name of the JSON configuration file (to be provided by the user)
         """
         # MPI related variables
         comm = MPI.COMM_WORLD
@@ -32,6 +37,22 @@ class MicroManager:
                                             self._rank, self._size)
 
     def _decompose_macro_domain(self, macro_bounds):
+        """
+        Decompose the macro domain equally among all ranks, if the Micro Manager is run in paralle.
+
+        Parameters
+        ----------
+        macro_bounds : list
+            List containing upper and lower bounds of the macro domain.
+            Format in 2D is [x_min, x_max, y_min, y_max]
+            Format in 2D is [x_min, x_max, y_min, y_max, z_min, z_max]
+
+        Returns
+        -------
+        mesh_bounds : list
+            List containing the upper and lower bounds of the domain pertaining to this rank.
+            Format is same as input parameter macro_bounds.
+        """
         size_x = int(sqrt(self._size))
         while self._size % size_x != 0:
             size_x -= 1
@@ -55,6 +76,9 @@ class MicroManager:
         return mesh_bounds
 
     def run(self):
+        """
+        This function is called to start running the Micro Manager. This function has all the preCICE API calls.
+        """
 
         macro_mesh_id = self._interface.get_mesh_id(self._config.get_macro_mesh_name())
 
