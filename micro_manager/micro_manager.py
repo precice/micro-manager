@@ -4,12 +4,44 @@ Micro manager to organize many micro simulations and couple them via preCICE to 
 """
 
 import precice
+
+import micro_manager
 from .config import Config
 from mpi4py import MPI
 from math import sqrt
 import numpy as np
 from functools import reduce
 from operator import iconcat
+import logging
+
+
+def create_micro_problem_class(base_micro_simulation):
+    """
+    Creates a class MicroProblem which inherits from the class of the micro simulation.
+
+    Parameters
+    ----------
+    base_micro_simulation : class
+        The base class from the micro simulation script.
+
+    Returns
+    -------
+    MicroProblem : class
+        Definition of class MicroProblem defined in this function.
+    """
+    class MicroProblem(base_micro_simulation):
+        def __init__(self, micro_sim_id):
+            base_micro_simulation.__init__()
+            self._is_active = False
+            self._id = micro_sim_id
+
+        def activate(self):
+            self._is_active = True
+
+        def deactivate(self):
+            self._is_active = False
+
+    return MicroProblem
 
 
 class MicroManager:
@@ -22,6 +54,9 @@ class MicroManager:
         config_filename : string
             Name of the JSON configuration file (to be provided by the user)
         """
+        logger = logging.getLogger('micro_manager.MicroManager')
+        logger.setLevel(level=logging.DEBUG)
+
         # MPI related variables
         comm = MPI.COMM_WORLD
         self._rank = comm.Get_rank()
@@ -117,8 +152,12 @@ class MicroManager:
 
         # Create all micro simulations
         micro_sims = []
-        for _ in range(number_of_micro_simulations):
-            micro_sims.append(self._micro_problem())
+        for n in range(number_of_micro_simulations):
+            micro_sims.append(create_micro_problem_class(self._micro_problem)(n))
+
+        # Define adaptivity criterion
+        are_similar = np.array((number_of_micro_simulations, number_of_micro_simulations))
+        are_similar_nm1 = np.array((number_of_micro_simulations, number_of_micro_simulations))
 
         # Initialize all micro simulations
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
