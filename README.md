@@ -89,7 +89,7 @@ class MicroSimulation:
 
 
 
-### Configuration
+### Configuring the micro manager
 
 The micro manager is configured at runtime using a JSON file `micro-manager-config.json`. The configuration file for example in `/examples/macro-micro-dummy`:
 
@@ -97,7 +97,6 @@ The micro manager is configured at runtime using a JSON file `micro-manager-conf
 {
     "micro_file": "micro_problem",
     "coupling_params": {
-        "participant": "Micro-Manager",
         "precice_config": "precice-config.xml",
         "macro_mesh": "Macro-Mesh",
         "read_data": {"Macro-Scalar-Data": "scalar", "Macro-Vector-Data": "vector"},
@@ -105,30 +104,42 @@ The micro manager is configured at runtime using a JSON file `micro-manager-conf
     },
     "simulation_params": {
         "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
-        "total_time": 10.0,
-        "timestep": 1.0,
-        "output_interval": 1.0
     }
 }
 ```
 
 The following quantities need to be configured:
 
-* `micro_file`: Path to the micro-simulation script without ending `.py`.
+* `micro_file`: Path to the micro-simulation script. **Do not add the file extension** `.py`.
 * `coupling_params`:
-  * `participant`: Name of the micro manager as stated in the preCICE configuration.
   * `precice_config`: Path to the preCICE XML configuration file.
   * `macro_mesh`: Name of the macro mesh as stated in the preCICE configuration.
   * `read_data`: A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"`  as values.
   * `write_data`: A Python dictionary with the names of the data to be written to preCICE as keys and `"scalar"` or `"vector"`  as values.
 * `simulation_params`:
   * `macro_domain_bounds`: Minimum and maximum limits of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]`.
-  * `total_time`: Total simulation time.
-  * `timestep`: Initial timestep of the simulation.
-  * `output_interval`: Time interval at which the micro-manager outputs data.
   
-### How to run
+### Running the micro manager
 
-TODO
+The micro manager is run by creating a Python script which imports the micro manager package and calls its run function. For example a run script `run-micro-manager.py` would look like:
 
-In parallel?
+```python
+from micro_manager import MicroManager
+
+manager = MicroManager("micro-manager-config.json")
+
+manager.run()
+```
+
+The script is then run:
+
+```bash
+python run-micro-manager.py
+```
+
+The micro manager can also be run in parallel, using the same script as stated above:
+
+```bash
+mpirun -n <number-of-procs> python3 run-micro-manager.py
+```
+
