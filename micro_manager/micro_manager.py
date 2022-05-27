@@ -10,6 +10,42 @@ from math import sqrt
 import numpy as np
 from functools import reduce
 from operator import iconcat
+import hashlib
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(level=logging.INFO)
+# Create file handler which logs messages
+fh = logging.FileHandler('micro-manager.log')
+fh.setLevel(logging.INFO)
+# Create formater and add it to handlers
+formatter = logging.Formatter('%(name)s -  %(levelname)s - %(message)s')
+fh.setFormatter(formatter)
+# add the handlers to the logger
+logger.addHandler(fh)
+
+
+def create_micro_problem_class(base_micro_simulation):
+    """
+    Creates a class MicroProblem which inherits from the class of the micro simulation.
+    Parameters
+    ----------
+    base_micro_simulation : class
+        The base class from the micro simulation script.
+    Returns
+    -------
+    MicroProblem : class
+        Definition of class MicroProblem defined in this function.
+    """
+    class MicroProblem(base_micro_simulation):
+        def __init__(self, micro_sim_id):
+            base_micro_simulation.__init__(self)
+            self._id = micro_sim_id
+
+        def get_id(self):
+            return self._id
+
+    return MicroProblem
 
 
 class MicroManager:
@@ -23,9 +59,11 @@ class MicroManager:
             Name of the JSON configuration file (to be provided by the user)
         """
         # MPI related variables
-        comm = MPI.COMM_WORLD
-        self._rank = comm.Get_rank()
-        self._size = comm.Get_size()
+        self._comm = MPI.COMM_WORLD
+        self._rank = self._comm.Get_rank()
+        self._size = self._comm.Get_size()
+
+        self._is_parallel = self._size > 1
 
         print("Provided configuration file: {}".format(config_filename))
         self._config = Config(config_filename)
@@ -115,15 +153,27 @@ class MicroManager:
         mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(macro_mesh_id)
         number_of_micro_simulations, _ = mesh_vertex_coords.shape
 
+        nms_all_ranks = np.zeros(self._size, dtype=np.int)
+        # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
+        # simulations have been created by previous ranks, so that it can set the correct IDs
+        self._comm.Allgather(np.array(number_of_micro_simulations), nms_all_ranks)
+
         # Create all micro simulations
+        id = 0
+        if self._rank != 0:
+            for i in range(self._rank - 1, -1, -1):
+                id += nms_all_ranks[i]
+
         micro_sims = []
-        for _ in range(number_of_micro_simulations):
-            micro_sims.append(self._micro_problem())
+        for n in range(number_of_micro_simulations):
+            micro_sims.append(create_micro_problem_class(self._micro_problem)(id))
+            id += 1
 
         # Initialize all micro simulations
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
             for micro_sim in micro_sims:
                 micro_sims_output = micro_sim.initialize()
+                logger.info("Micro simulation ({}) initialized.".format(micro_sim.get_id()))
                 if micro_sims_output is not None:
                     for data_name, data in micro_sims_output.items():
                         write_data[data_name].append(data)
@@ -168,6 +218,7 @@ class MicroManager:
             micro_sims_input = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
             micro_sims_output = []
             for i in range(number_of_micro_simulations):
+                logger.info("Solving micro simulation ({})".format(micro_sims[i].get_id()))
                 micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], dt))
 
             write_data = dict()
@@ -189,7 +240,7 @@ class MicroManager:
             t += dt
             n += 1
 
-            # Read checkpoint if required
+            # Revert to checkpoint if required
             if self._interface.is_action_required(precice.action_read_iteration_checkpoint()):
                 for micro_sim in micro_sims:
                     micro_sim.reload_checkpoint()
