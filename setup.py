@@ -1,5 +1,5 @@
 import os
-from setuptools import setup
+from setuptools import setup, find_packages
 import warnings
 
 # from https://stackoverflow.com/a/9079062
@@ -13,7 +13,7 @@ with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='micromanager',
+    name='micro-manager',
     version='v0.0.1',
     description='micro-manager is a package which facilitates two-scale macro-micro coupled simulations using preCICE',
     long_description=long_description,
@@ -22,7 +22,7 @@ setup(
     author='Ishaan Desai',
     author_email='ishaan.desai@uni-stuttgart.de',
     license='LGPL-3.0',
-    packages=['micromanager'],
+    packages=find_packages(exclude=['examples']),
     install_requires=['pyprecice>=2.3.0', 'numpy>=1.13.3', 'mpi4py'],
     test_suite='tests',
     zip_safe=False)

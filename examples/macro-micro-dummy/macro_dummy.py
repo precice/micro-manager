@@ -3,32 +3,27 @@
 
 import numpy as np
 import precice
-from config import Config
 
 
 def main():
     """
     Dummy macro simulation which is coupled to a set of micro simulations via preCICE and the Micro Manager
     """
-    config = Config("macro-config.json")
-
-    nv = 25
+    nv = 25  # number of vertices
 
     n = n_checkpoint = 0
     t = t_checkpoint = 0
-    dt = config.get_dt()
 
     # preCICE setup
-    interface = precice.Interface(config.get_participant_name(), config.get_config_file_name(), 0, 1)
+    interface = precice.Interface("Macro-dummy", "precice-config.xml", 0, 1)
 
     # define coupling meshes
-    read_mesh_name = config.get_read_mesh_name()
+    read_mesh_name = write_mesh_name = "macro-mesh"
     read_mesh_id = interface.get_mesh_id(read_mesh_name)
-    read_data_names = config.get_read_data_name()
+    read_data_names = {"micro-scalar-data": 0, "micro-vector-data": 1}
 
-    write_mesh_name = config.get_write_mesh_name()
     write_mesh_id = interface.get_mesh_id(write_mesh_name)
-    write_data_names = config.get_write_data_name()
+    write_data_names = {"macro-scalar-data": 0, "macro-vector-data": 1}
 
     # Coupling mesh
     coords = np.zeros((nv, interface.get_dimensions()))
@@ -49,8 +44,7 @@ def main():
         write_data_ids[name] = interface.get_data_id(name, write_mesh_id)
 
     # initialize preCICE
-    precice_dt = interface.initialize()
-    dt = min(precice_dt, dt)
+    dt = interface.initialize()
 
     write_scalar_data = np.zeros(nv)
     write_vector_data = np.zeros((nv, interface.get_dimensions()))
@@ -98,8 +92,7 @@ def main():
                 interface.write_block_vector_data(write_data_ids[name], vertex_ids, write_vector_data)
 
         # do the coupling
-        precice_dt = interface.advance(dt)
-        dt = min(precice_dt, dt)
+        dt = interface.advance(dt)
 
         # advance variables
         n += 1
