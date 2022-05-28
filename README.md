@@ -32,7 +32,7 @@ After cloning this repository, step into the project directory `micro-manager` a
 
 ## Using the micro-manager
 
-The micro-manager facilitates two-scale coupling between a macro-scale simulation and many micro-scale simulations. The manager creates and controls a set of micro problems and couples them to one macro simulation using preCICE. 
+The micro-manager facilitates two-scale coupling between a macro-scale simulation and many micro-scale simulations. The manager creates and controls a set of micro problems and couples them to one macro simulation using preCICE.
 
 To this end, an existing micro-simulation script needs to be converted into a Python library with a specific structure so that the micro manager can create and steer the micro simulations. Such a micro-simulation library needs to have a central class to represent one micro simulation. The micro manager then creates many instances of this class, one for each micro simulation, and steers them till the end of the coupled simulation.
 
@@ -49,9 +49,7 @@ The macro-problem script, on the other hand, is coupled to preCICE directly (jus
 
 An example of an adapted micro problem as used in `/examples/macro-micro-dummy`:
 
-
 ```python
-
 class MicroSimulation:
 
     def __init__(self):
@@ -87,9 +85,7 @@ class MicroSimulation:
         self._micro_scalar_data = self._checkpoint
 ```
 
-
-
-### Configuration
+### Configuring the micro manager
 
 The micro manager is configured at runtime using a JSON file `micro-manager-config.json`. The configuration file for example in `/examples/macro-micro-dummy`:
 
@@ -97,7 +93,6 @@ The micro manager is configured at runtime using a JSON file `micro-manager-conf
 {
     "micro_file": "micro_problem",
     "coupling_params": {
-        "participant": "Micro-Manager",
         "precice_config": "precice-config.xml",
         "macro_mesh": "Macro-Mesh",
         "read_data": {"Macro-Scalar-Data": "scalar", "Macro-Vector-Data": "vector"},
@@ -105,30 +100,41 @@ The micro manager is configured at runtime using a JSON file `micro-manager-conf
     },
     "simulation_params": {
         "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
-        "total_time": 10.0,
-        "timestep": 1.0,
-        "output_interval": 1.0
     }
 }
 ```
 
 The following quantities need to be configured:
 
-* `micro_file`: Path to the micro-simulation script without ending `.py`.
+* `micro_file`: Path to the micro-simulation script. **Do not add the file extension** `.py`.
 * `coupling_params`:
-  * `participant`: Name of the micro manager as stated in the preCICE configuration.
   * `precice_config`: Path to the preCICE XML configuration file.
   * `macro_mesh`: Name of the macro mesh as stated in the preCICE configuration.
   * `read_data`: A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"`  as values.
   * `write_data`: A Python dictionary with the names of the data to be written to preCICE as keys and `"scalar"` or `"vector"`  as values.
 * `simulation_params`:
   * `macro_domain_bounds`: Minimum and maximum limits of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]`.
-  * `total_time`: Total simulation time.
-  * `timestep`: Initial timestep of the simulation.
-  * `output_interval`: Time interval at which the micro-manager outputs data.
   
-### How to run
+### Running the micro manager
 
-TODO
+The micro manager is run by creating a Python script which imports the micro manager package and calls its run function. For example a run script `run-micro-manager.py` would look like:
 
-In parallel?
+```python
+from micro_manager import MicroManager
+
+manager = MicroManager("micro-manager-config.json")
+
+manager.run()
+```
+
+The script is then run:
+
+```bash
+python run-micro-manager.py
+```
+
+The micro manager can also be run in parallel, using the same script as stated above:
+
+```bash
+mpirun -n <number-of-procs> python3 run-micro-manager.py
+```
