@@ -7,7 +7,7 @@ import precice
 import micro_manager
 from .config import Config
 from mpi4py import MPI
-from math import sqrt
+from math import sqrt, exp
 import numpy as np
 from functools import reduce
 from operator import iconcat
@@ -42,15 +42,25 @@ def create_micro_problem_class(base_micro_simulation):
     """
     class MicroProblem(base_micro_simulation):
         def __init__(self, micro_sim_id):
-            base_micro_simulation.__init__()
+            base_micro_simulation.__init__(self)
             self._is_active = False
             self._id = micro_sim_id
+            self._id_of_similar_micro_problem = None
 
         def activate(self):
             self._is_active = True
 
         def deactivate(self):
             self._is_active = False
+
+        def is_active(self):
+            return self._is_active
+
+        def is_similar_to(self, sim_id):
+            self._id_of_similar_micro_problem = sim_id
+
+        def copy_data_from(self):
+            return self._id_of_similar_micro_problem
 
     return MicroProblem
 
@@ -69,7 +79,6 @@ class MicroManager:
         self._comm = MPI.COMM_WORLD
         self._rank = self._comm.Get_rank()
         self._size = self._comm.Get_size()
-
         self._is_parallel = self._size > 1
 
         print("Provided configuration file: {}".format(config_filename))
@@ -80,6 +89,15 @@ class MicroManager:
 
         self._interface = precice.Interface("Micro-Manager", self._config.get_config_file_name(),
                                             self._rank, self._size)
+
+        # Adaptivity variables
+        self._d_similarity = dict()
+        self._d_similarity_nm1 = dict()
+
+        # Micro problems related variables
+        self._dt = 0.01  # Set to default, changed later by preCICE
+        self._local_micro_ids = []
+        self._history_lambda = config.get_adaptivity_history_parameter()
 
     def _decompose_macro_domain(self, macro_bounds):
         """
@@ -120,6 +138,23 @@ class MicroManager:
 
         return mesh_bounds
 
+    def _calculate_adaptivity(self, macro_data):
+        """
+        Calculates adaptivity
+        """
+        local_micro_ids = self._local_micro_ids  # Make a local copy for nxn calculation
+        count_i = 0
+        count_j = 1
+        for name, values in macro_data.items():
+            for i in local_micro_ids:
+                for j in local_micro_ids:
+                    self._d_similarity[name][i, j] = exp(-self._history_lambda * self._dt) * \
+                                                     self._d_similarity_nm1[name][i, j] + self._dt * \
+                                                     abs(values[count_j] - values[count_j])
+                    count_j += 1
+                count_i += 1
+                local_micro_ids.remove(i)
+
     def run(self):
         """
         This function is called to start running the Micro Manager. This function has all the preCICE API calls.
@@ -155,14 +190,15 @@ class MicroManager:
             read_data[name] = []
 
         # initialize preCICE
-        dt = self._interface.initialize()
+        self._dt = self._interface.initialize()
 
         mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(macro_mesh_id)
         number_of_micro_simulations, _ = mesh_vertex_coords.shape
 
         # Define adaptivity criterion
-        are_similar = np.array((number_of_micro_simulations, number_of_micro_simulations))
-        are_similar_nm1 = np.array((number_of_micro_simulations, number_of_micro_simulations))
+        for name in read_data_names.keys():
+            self._d_similarity[name] = np.array((number_of_micro_simulations, number_of_micro_simulations))
+            self._d_similarity_nm1[name] = np.zeros((number_of_micro_simulations, number_of_micro_simulations))
 
         nms_all_ranks = np.zeros(self._size, dtype=np.int)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
@@ -170,15 +206,16 @@ class MicroManager:
         self._comm.Allgather(np.array(number_of_micro_simulations), nms_all_ranks)
 
         # Create all micro simulations
-        id = 0
+        sim_id = 0
         if self._rank != 0:
             for i in range(self._rank - 1, -1, -1):
-                id += nms_all_ranks[i]
+                sim_id += nms_all_ranks[i]
 
         micro_sims = []
         for n in range(number_of_micro_simulations):
-            micro_sims.append(create_micro_problem_class(self._micro_problem)(id))
-            id += 1
+            micro_sims.append(create_micro_problem_class(self._micro_problem)(sim_id))
+            self._local_micro_ids.append(sim_id)
+            sim_id += 1
 
         # Initialize all micro simulations
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
@@ -230,7 +267,12 @@ class MicroManager:
             micro_sims_output = []
             for i in range(number_of_micro_simulations):
                 logger.info("Solving micro simulation ({})".format(micro_sims[i].get_id()))
-                micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], dt))
+                if micro_sims[i].is_active():
+                    micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], self._dt))
+                else:
+                    similar_id = micro_sims[i].copy_data_from()
+                    micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], self._dt))
+
 
             write_data = dict()
             for name in micro_sims_output[0]:
@@ -246,9 +288,9 @@ class MicroManager:
                 else:
                     self._interface.write_block_scalar_data(write_data_ids[dname], mesh_vertex_ids, write_data[dname])
 
-            dt = self._interface.advance(dt)
+            self._dt = self._interface.advance(self._dt)
 
-            t += dt
+            t += self._dt
             n += 1
 
             # Revert to checkpoint if required

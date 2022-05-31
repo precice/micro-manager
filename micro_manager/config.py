@@ -30,6 +30,9 @@ class Config:
         self._write_data_names = None
 
         self._macro_domain_bounds = None
+        self._adaptivity_history_parameter = None
+        self._adaptivity_coarsening_tolerance = None
+        self._adaptivity_refining_tolerance = None
 
         self.read_json(config_filename)
 
@@ -85,6 +88,15 @@ class Config:
                 raise Exception("Read data dictionary as a value other than 'scalar' or 'vector'")
 
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
+
+        self._adaptivity_history_parameter = data["simulation_params"]["history_parameter"]
+        assert self._adaptivity_history_parameter >= 0, "History parameter should be >= 0"
+
+        self._adaptivity_refining_tolerance = data["simulation_params"]["refining_tolerance"]
+        assert self._adaptivity_refining_tolerance >= 0, "Refining tolerance should be >= 0"
+
+        self._adaptivity_coarsening_tolerance = data["simulation_params"]["coarsening_tolerance"]
+        assert self._adaptivity_coarsening_tolerance < 1, "Coarsening tolerance should be < 1"
 
         read_file.close()
 
@@ -159,3 +171,36 @@ class Config:
             String carrying the path to the Python script of the micro-simulation.
         """
         return self._micro_file_name
+
+    def get_adaptivity_history_parameter(self):
+        """
+        Get the adaptivity history parameter.
+
+        Returns
+        -------
+        adaptivity_history_parameter : double
+            History parameters used in calculating similarity distance for adaptivity.
+        """
+        return self._adaptivity_history_parameter
+
+    def get_adaptivity_refining_tolerance(self):
+        """
+        Get the adaptivity refining tolerance.
+
+        Returns
+        -------
+        adaptivity_refining_tolerance : double
+            Refining tolerance C_r using in adaptivity.
+        """
+        return self._adaptivity_refining_tolerance
+
+    def get_adaptivity_coarsening_tolerance(self):
+        """
+        Get the adaptivity coarsening tolerance.
+
+        Returns
+        -------
+        adaptivity_coarsening_tolerance : double
+            Coarsening tolerance C_c using in adaptivity.
+        """
+        return self._adaptivity_coarsening_tolerance
