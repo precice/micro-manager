@@ -13,17 +13,6 @@ from operator import iconcat
 import hashlib
 import logging
 
-logger = logging.getLogger(__name__)
-logger.setLevel(level=logging.INFO)
-# Create file handler which logs messages
-fh = logging.FileHandler('micro-manager.log')
-fh.setLevel(logging.INFO)
-# Create formater and add it to handlers
-formatter = logging.Formatter('%(name)s -  %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-# add the handlers to the logger
-logger.addHandler(fh)
-
 
 def create_micro_problem_class(base_micro_simulation):
     """
@@ -62,6 +51,17 @@ class MicroManager:
         self._comm = MPI.COMM_WORLD
         self._rank = self._comm.Get_rank()
         self._size = self._comm.Get_size()
+
+        self._logger = logging.getLogger(__name__)
+        self._logger.setLevel(level=logging.INFO)
+        # Create file handler which logs messages
+        fh = logging.FileHandler('micro-manager.log')
+        fh.setLevel(logging.INFO)
+        # Create formater and add it to handlers
+        formatter = logging.Formatter('[' + str(self._rank) + '] %(name)s -  %(levelname)s - %(message)s')
+        fh.setFormatter(formatter)
+        # add the handlers to the logger
+        self._logger.addHandler(fh)
 
         self._is_parallel = self._size > 1
 
@@ -117,7 +117,6 @@ class MicroManager:
         """
         This function is called to start running the Micro Manager. This function has all the preCICE API calls.
         """
-
         macro_mesh_id = self._interface.get_mesh_id(self._config.get_macro_mesh_name())
 
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
@@ -152,6 +151,7 @@ class MicroManager:
 
         mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(macro_mesh_id)
         number_of_micro_simulations, _ = mesh_vertex_coords.shape
+        self._logger.info("Number of micro simulations = {}".format(number_of_micro_simulations))
 
         nms_all_ranks = np.zeros(self._size, dtype=np.int)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
@@ -159,21 +159,21 @@ class MicroManager:
         self._comm.Allgather(np.array(number_of_micro_simulations), nms_all_ranks)
 
         # Create all micro simulations
-        id = 0
+        sim_id = 0
         if self._rank != 0:
             for i in range(self._rank - 1, -1, -1):
-                id += nms_all_ranks[i]
+                sim_id += nms_all_ranks[i]
 
         micro_sims = []
         for n in range(number_of_micro_simulations):
-            micro_sims.append(create_micro_problem_class(self._micro_problem)(id))
-            id += 1
+            micro_sims.append(create_micro_problem_class(self._micro_problem)(sim_id))
+            sim_id += 1
 
         # Initialize all micro simulations
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
             for micro_sim in micro_sims:
                 micro_sims_output = micro_sim.initialize()
-                logger.info("Micro simulation ({}) initialized.".format(micro_sim.get_id()))
+                self._logger.info("Micro simulation ({}) initialized.".format(micro_sim.get_id()))
                 if micro_sims_output is not None:
                     for data_name, data in micro_sims_output.items():
                         write_data[data_name].append(data)
@@ -218,7 +218,7 @@ class MicroManager:
             micro_sims_input = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
             micro_sims_output = []
             for i in range(number_of_micro_simulations):
-                logger.info("Solving micro simulation ({})".format(micro_sims[i].get_id()))
+                self._logger.info("Solving micro simulation ({})".format(micro_sims[i].get_id()))
                 micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], dt))
 
             write_data = dict()
