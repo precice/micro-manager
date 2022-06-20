@@ -173,7 +173,6 @@ class MicroManager:
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
             for micro_sim in micro_sims:
                 micro_sims_output = micro_sim.initialize()
-                self._logger.info("Micro simulation ({}) initialized.".format(micro_sim.get_id()))
                 if micro_sims_output is not None:
                     for data_name, data in micro_sims_output.items():
                         write_data[data_name].append(data)
@@ -183,6 +182,9 @@ class MicroManager:
                             write_data[name].append(np.zeros(self._interface.get_dimensions()))
                         else:
                             write_data[name].append(0.0)
+
+        self._logger.info("Micro simulations {} - {} initialized.".format(micro_sims[0].get_id(),
+                                                                          micro_sims[-1].get_id()))
 
         # Initialize coupling data
         if self._interface.is_action_required(precice.action_write_initial_data()):
@@ -218,8 +220,10 @@ class MicroManager:
             micro_sims_input = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
             micro_sims_output = []
             for i in range(number_of_micro_simulations):
-                self._logger.info("Solving micro simulation ({})".format(micro_sims[i].get_id()))
                 micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], dt))
+
+            self._logger.info("time = {}. Solved micro simulations {} - {}".format(t, micro_sims[0].get_id(),
+                                                                                   micro_sims[-1].get_id))
 
             write_data = dict()
             for name in micro_sims_output[0]:
