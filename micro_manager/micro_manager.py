@@ -223,7 +223,7 @@ class MicroManager:
                 micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], dt))
 
             self._logger.info("time = {}. Solved micro simulations {} - {}".format(t, micro_sims[0].get_id(),
-                                                                                   micro_sims[-1].get_id))
+                                                                                   micro_sims[-1].get_id()))
 
             write_data = dict()
             for name in micro_sims_output[0]:
