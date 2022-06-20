@@ -111,6 +111,8 @@ class MicroManager:
             mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy, macro_bounds[4],
                            macro_bounds[5]]
 
+        self._logger.info("Bounding box limits are {}".format(mesh_bounds))
+
         return mesh_bounds
 
     def run(self):
