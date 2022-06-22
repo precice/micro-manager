@@ -28,7 +28,7 @@ def create_micro_problem_class(base_micro_simulation):
     """
     class MicroProblem(base_micro_simulation):
         def __init__(self, micro_sim_id):
-            base_micro_simulation.__init__(self)
+            base_micro_simulation.__init__(self, micro_sim_id)
             self._id = micro_sim_id
 
         def get_id(self):
