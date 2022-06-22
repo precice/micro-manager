@@ -162,9 +162,21 @@ class MicroManager:
         # Micro simulation solve time
         micro_solve_time = np.zeros(number_of_micro_simulations)
 
+        nms_all_ranks = np.zeros(self._size, dtype=np.int)
+        # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
+        # simulations have been created by previous ranks, so that it can set the correct IDs
+        self._comm.Allgather(np.array(number_of_micro_simulations), nms_all_ranks)
+
+        # Create all micro simulations
+        sim_id = 0
+        if self._rank != 0:
+            for i in range(self._rank - 1, -1, -1):
+                sim_id += nms_all_ranks[i]
+
         micro_sims = []
         for n in range(number_of_micro_simulations):
-            micro_sims.append(create_micro_problem_class(self._micro_problem)(mesh_vertex_ids[n]))
+            micro_sims.append(create_micro_problem_class(self._micro_problem)(sim_id))
+            sim_id += 1
 
         # Initialize all micro simulations
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
