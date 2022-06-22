@@ -65,6 +65,7 @@ class MicroManager:
         self._logger.addHandler(fh)
 
         self._is_parallel = self._size > 1
+        self._micro__sims_have_output = False
 
         print("Provided configuration file: {}".format(config_filename))
         self._config = Config(config_filename)
@@ -161,21 +162,9 @@ class MicroManager:
         # Micro simulation solve time
         micro_solve_time = np.zeros(number_of_micro_simulations)
 
-        nms_all_ranks = np.zeros(self._size, dtype=np.int)
-        # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
-        # simulations have been created by previous ranks, so that it can set the correct IDs
-        self._comm.Allgather(np.array(number_of_micro_simulations), nms_all_ranks)
-
-        # Create all micro simulations
-        sim_id = 0
-        if self._rank != 0:
-            for i in range(self._rank - 1, -1, -1):
-                sim_id += nms_all_ranks[i]
-
         micro_sims = []
         for n in range(number_of_micro_simulations):
-            micro_sims.append(create_micro_problem_class(self._micro_problem)(sim_id))
-            sim_id += 1
+            micro_sims.append(create_micro_problem_class(self._micro_problem)(mesh_vertex_ids[n]))
 
         # Initialize all micro simulations
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
@@ -194,6 +183,10 @@ class MicroManager:
         self._logger.info("Micro simulations {} - {} initialized.".format(micro_sims[0].get_id(),
                                                                           micro_sims[-1].get_id()))
 
+        micro_sims_have_output = False
+        if hasattr(self._micro_problem, 'output') and callable(getattr(self._micro_problem, 'output')):
+            micro_sims_have_output = True
+
         # Initialize coupling data
         if self._interface.is_action_required(precice.action_write_initial_data()):
             for dname, dim in write_data_names.items():
@@ -209,7 +202,7 @@ class MicroManager:
         t_checkpoint, n_checkpoint = 0, 0
 
         while self._interface.is_coupling_ongoing():
-            # Write checkpoint
+            # Write checkpoints for all micro simulations
             if self._interface.is_action_required(precice.action_write_iteration_checkpoint()):
                 for micro_sim in micro_sims:
                     micro_sim.save_checkpoint()
@@ -258,12 +251,16 @@ class MicroManager:
             t += dt
             n += 1
 
-            # Revert to checkpoint if required
+            # Revert all micro simulations to checkpoints if required
             if self._interface.is_action_required(precice.action_read_iteration_checkpoint()):
                 for micro_sim in micro_sims:
                     micro_sim.reload_checkpoint()
                 n = n_checkpoint
                 t = t_checkpoint
                 self._interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
+            else:  # Time window has converged, now micro output can be generated
+                if micro_sims_have_output:
+                    for micro_sim in micro_sims:
+                        micro_sim.output()
 
         self._interface.finalize()
