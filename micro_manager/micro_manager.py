@@ -136,8 +136,6 @@ class MicroManager:
         for name in write_data_names.keys():
             write_data_ids[name] = self._interface.get_data_id(name, macro_mesh_id)
 
-        sim_time_id = self._interface.get_data_id("sim-time", macro_mesh_id)
-
         # Data names and ids of data read from preCICE
         read_data_names = self._config.get_read_data_names()
         read_data_ids = dict()
@@ -212,6 +210,7 @@ class MicroManager:
 
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
+        n_out = self._config.get_micro_output_n()
 
         while self._interface.is_coupling_ongoing():
             # Write checkpoints for all micro simulations
@@ -255,9 +254,6 @@ class MicroManager:
                 else:
                     self._interface.write_block_scalar_data(write_data_ids[dname], mesh_vertex_ids, write_data[dname])
 
-            # Write micro simulations solve time to preCICE
-            self._interface.write_block_scalar_data(sim_time_id, mesh_vertex_ids, micro_solve_time)
-
             dt = self._interface.advance(dt)
 
             t += dt
@@ -272,7 +268,8 @@ class MicroManager:
                 self._interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
                 if micro_sims_have_output:
-                    for micro_sim in micro_sims:
-                        micro_sim.output()
+                    if n % n_out == 0:
+                        for micro_sim in micro_sims:
+                            micro_sim.output()
 
         self._interface.finalize()

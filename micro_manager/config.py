@@ -26,10 +26,12 @@ class Config:
 
         self._config_file_name = None
         self._macro_mesh_name = None
-        self._read_data_names = None
-        self._write_data_names = None
+        self._read_data_names = dict()
+        self._write_data_names = dict()
 
         self._macro_domain_bounds = None
+        self._micro_output_n = 1
+        self._diagnostics_data_names = dict()
 
         self.read_json(config_filename)
 
@@ -47,23 +49,23 @@ class Config:
         read_file = open(path, "r")
         data = json.load(read_file)
 
-        try:
-            self._micro_file_name = data["micro_file_name"]
-            i = 0
-            micro_filename = list(self._micro_file_name)
-            for c in micro_filename:
-                if c == '/':
-                    micro_filename[i] = '.'
-                i += 1
-            self._micro_file_name = ''.join(micro_filename)
-        except BaseException:
-            self._micro_file_name = "No micro file provided"
+        self._micro_file_name = data["micro_file_name"]
+        i = 0
+        micro_filename = list(self._micro_file_name)
+        for c in micro_filename:
+            if c == '/':
+                micro_filename[i] = '.'
+            i += 1
+        self._micro_file_name = ''.join(micro_filename)
 
         self._config_file_name = os.path.join(folder, data["coupling_params"]["config_file_name"])
         self._macro_mesh_name = data["coupling_params"]["macro_mesh_name"]
 
-        self._write_data_names = data["coupling_params"]["write_data_names"]
-        assert isinstance(self._write_data_names, dict), "Entity write_data_name is not a dictionary"
+        try:
+            self._write_data_names = data["coupling_params"]["write_data_names"]
+            assert isinstance(self._write_data_names, dict), "Entity write_data_name is not a dictionary"
+        except BaseException:
+            print("No write data names provided. Micro manager will only read data from preCICE.")
 
         for key, value in self._write_data_names.items():
             if value == "scalar":
@@ -73,8 +75,11 @@ class Config:
             else:
                 raise Exception("Write data dictionary as a value other than 'scalar' or 'vector'")
 
-        self._read_data_names = data["coupling_params"]["read_data_names"]
-        assert isinstance(self._read_data_names, dict), "Entity read_data_name is not a dictionary"
+        try:
+            self._read_data_names = data["coupling_params"]["read_data_names"]
+            assert isinstance(self._read_data_names, dict), "Entity read_data_name is not a dictionary"
+        except BaseException:
+            print("No read data names provided. Micro manager will only write data to preCICE.")
 
         for key, value in self._read_data_names.items():
             if value == "scalar":
@@ -85,6 +90,18 @@ class Config:
                 raise Exception("Read data dictionary as a value other than 'scalar' or 'vector'")
 
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
+
+        try:
+            self._micro_output_n = data["simulation_params"]["micro_output_n"]
+        except BaseException:
+            print("Output interval of micro simulations not specified, if output is available then it will be called "
+                  "in every time window.")
+
+        try:
+            self._diagnostics_data_names = data["simulation_params"]["diagnostics_data_names"]
+            assert isinstance(self._read_data_names, dict), "diagnostics_data_name is not a dictionary"
+        except BaseException:
+            print("Diagnostics data names were not provided. No diagnostics data to be written to preCICE.")
 
         read_file.close()
 
@@ -134,7 +151,8 @@ class Config:
             A dictionary containing the names of the data to be written to preCICE as keys and information on whether
             the data are scalar or vector as values.
         """
-        return self._write_data_names
+        all_write_data_names = {**self._write_data_names, **self._diagnostics_data_names}
+        return all_write_data_names
 
     def get_macro_domain_bounds(self):
         """
@@ -159,3 +177,14 @@ class Config:
             String carrying the path to the Python script of the micro-simulation.
         """
         return self._micro_file_name
+
+    def get_micro_output_n(self):
+        """
+        Get the micro output frequency
+
+        Returns
+        -------
+        micro_output_n : int
+            Output frequency of micro simulations, so output every N timesteps
+        """
+        return self._micro_output_n
