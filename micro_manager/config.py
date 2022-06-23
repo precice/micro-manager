@@ -65,31 +65,29 @@ class Config:
 
         try:
             self._write_data_names = data["coupling_params"]["write_data_names"]
-            assert isinstance(self._write_data_names, dict), "Entity write_data_name is not a dictionary"
+            assert isinstance(self._write_data_names, dict), "Write data entry is not a dictionary"
+            for key, value in self._write_data_names.items():
+                if value == "scalar":
+                    self._write_data_names[key] = False
+                elif value == "vector":
+                    self._write_data_names[key] = True
+                else:
+                    raise Exception("Write data dictionary as a value other than 'scalar' or 'vector'")
         except BaseException:
             print("No write data names provided. Micro manager will only read data from preCICE.")
 
-        for key, value in self._write_data_names.items():
-            if value == "scalar":
-                self._write_data_names[key] = False
-            elif value == "vector":
-                self._write_data_names[key] = True
-            else:
-                raise Exception("Write data dictionary as a value other than 'scalar' or 'vector'")
-
         try:
             self._read_data_names = data["coupling_params"]["read_data_names"]
-            assert isinstance(self._read_data_names, dict), "Entity read_data_name is not a dictionary"
+            assert isinstance(self._read_data_names, dict), "Read data entry is not a dictionary"
+            for key, value in self._read_data_names.items():
+                if value == "scalar":
+                    self._read_data_names[key] = False
+                elif value == "vector":
+                    self._read_data_names[key] = True
+                else:
+                    raise Exception("Read data dictionary as a value other than 'scalar' or 'vector'")
         except BaseException:
             print("No read data names provided. Micro manager will only write data to preCICE.")
-
-        for key, value in self._read_data_names.items():
-            if value == "scalar":
-                self._read_data_names[key] = False
-            elif value == "vector":
-                self._read_data_names[key] = True
-            else:
-                raise Exception("Read data dictionary as a value other than 'scalar' or 'vector'")
 
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
 
@@ -101,7 +99,14 @@ class Config:
 
         try:
             self._diagnostics_data_names = data["diagnostics"]["data_from_micro_sims"]
-            assert isinstance(self._read_data_names, dict), "data_from_micro_sims is not a dictionary"
+            assert isinstance(self._diagnostics_data_names, dict), "Diagnostics data is not a dictionary"
+            for key, value in self._diagnostics_data_names.items():
+                if value == "scalar":
+                    self._diagnostics_data_names[key] = False
+                elif value == "vector":
+                    self._diagnostics_data_names[key] = True
+                else:
+                    raise Exception("Diagnostics data dictionary as a value other than 'scalar' or 'vector'")
         except BaseException:
             print("No diagnostics data is expected from the micro simulation.")
 
