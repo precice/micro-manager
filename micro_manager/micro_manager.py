@@ -136,6 +136,10 @@ class MicroManager:
         for name in write_data_names.keys():
             write_data_ids[name] = self._interface.get_data_id(name, macro_mesh_id)
 
+        is_micro_solve_time_required = self._config.write_micro_sim_solve_time()
+        if is_micro_solve_time_required:
+            write_data_ids["micro_sim_time"] = self._interface.get_data_id("micro_sim_time", macro_mesh_id)
+
         # Data names and ids of data read from preCICE
         read_data_names = self._config.get_read_data_names()
         read_data_ids = dict()
@@ -208,7 +212,6 @@ class MicroManager:
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
         n_out = self._config.get_micro_output_n()
-        is_micro_solve_time_required = self._config.write_micro_sim_solve_time()
 
         while self._interface.is_coupling_ongoing():
             # Write checkpoints for all micro simulations
