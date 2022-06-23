@@ -157,9 +157,6 @@ class MicroManager:
         number_of_micro_simulations, _ = mesh_vertex_coords.shape
         self._logger.info("Number of micro simulations = {}".format(number_of_micro_simulations))
 
-        # Micro simulation solve time
-        micro_solve_time = np.zeros(number_of_micro_simulations)
-
         nms_all_ranks = np.zeros(self._size, dtype=np.int)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
         # simulations have been created by previous ranks, so that it can set the correct IDs
@@ -211,6 +208,7 @@ class MicroManager:
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
         n_out = self._config.get_micro_output_n()
+        is_micro_solve_time_required = self._config.write_micro_sim_solve_time()
 
         while self._interface.is_coupling_ongoing():
             # Write checkpoints for all micro simulations
@@ -235,7 +233,8 @@ class MicroManager:
                 start_time = time.time()
                 micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], dt))
                 end_time = time.time()
-                micro_solve_time[i] = end_time - start_time
+                if is_micro_solve_time_required:
+                    micro_sims_output[i]["micro-sim-time"] = end_time - start_time
 
             self._logger.info("time = {}. Solved micro simulations {} - {}".format(t, micro_sims[0].get_id(),
                                                                                    micro_sims[-1].get_id()))

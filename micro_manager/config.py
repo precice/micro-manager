@@ -33,6 +33,8 @@ class Config:
         self._micro_output_n = 1
         self._diagnostics_data_names = dict()
 
+        self._output_micro_sim_time = False
+
         self.read_json(config_filename)
 
     def read_json(self, config_filename):
@@ -98,10 +100,16 @@ class Config:
                   "in every time window.")
 
         try:
-            self._diagnostics_data_names = data["simulation_params"]["diagnostics_data_names"]
-            assert isinstance(self._read_data_names, dict), "diagnostics_data_name is not a dictionary"
+            self._diagnostics_data_names = data["diagnostics"]["data_from_micro_sims"]
+            assert isinstance(self._read_data_names, dict), "data_from_micro_sims is not a dictionary"
         except BaseException:
-            print("Diagnostics data names were not provided. No diagnostics data to be written to preCICE.")
+            print("No diagnostics data is expected from the micro simulation.")
+
+        try:
+            if data["diagnostics"]["output_micro_sim_solve_time"] == "True":
+                self._output_micro_sim_time = True
+        except BaseException:
+            print("Micro manager will not attempt to output time for solve() of every micro simulation.")
 
         read_file.close()
 
@@ -188,3 +196,14 @@ class Config:
             Output frequency of micro simulations, so output every N timesteps
         """
         return self._micro_output_n
+
+    def write_micro_sim_solve_time(self):
+        """
+        Depending on user input, micro manager will calculate execution time of solve() step of every micro simulation
+
+        Returns
+        -------
+        output_micro_sim_time : bool
+            True if micro simulation solve time is required.
+        """
+        return self._output_micro_sim_time
