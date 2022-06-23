@@ -254,6 +254,7 @@ class MicroManager:
                 if is_data_vector:
                     self._interface.write_block_vector_data(write_data_ids[dname], mesh_vertex_ids, write_data[dname])
                 else:
+                    print("Scalar write_data: {}".format(write_data))
                     self._interface.write_block_scalar_data(write_data_ids[dname], mesh_vertex_ids, write_data[dname])
 
             dt = self._interface.advance(dt)
