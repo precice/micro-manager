@@ -234,7 +234,7 @@ class MicroManager:
                 micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], dt))
                 end_time = time.time()
                 if is_micro_solve_time_required:
-                    micro_sims_output[i]["micro-sim-time"] = end_time - start_time
+                    micro_sims_output[i]["micro_sim_time"] = end_time - start_time
 
             self._logger.info("time = {}. Solved micro simulations {} - {}".format(t, micro_sims[0].get_id(),
                                                                                    micro_sims[-1].get_id()))
