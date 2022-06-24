@@ -65,7 +65,7 @@ class MicroManager:
         self._logger.addHandler(fh)
 
         self._is_parallel = self._size > 1
-        self._micro__sims_have_output = False
+        self._micro_sims_have_output = False
 
         print("Provided configuration file: {}".format(config_filename))
         self._config = Config(config_filename)
@@ -181,6 +181,7 @@ class MicroManager:
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
             for micro_sim in micro_sims:
                 micro_sims_output = micro_sim.initialize()
+                micro_sims_output["micro_sim_time"] = 0.0
                 if micro_sims_output is not None:
                     for data_name, data in micro_sims_output.items():
                         write_data[data_name].append(data)
@@ -254,7 +255,6 @@ class MicroManager:
                 if is_data_vector:
                     self._interface.write_block_vector_data(write_data_ids[dname], mesh_vertex_ids, write_data[dname])
                 else:
-                    print("Scalar write_data: {}".format(write_data))
                     self._interface.write_block_scalar_data(write_data_ids[dname], mesh_vertex_ids, write_data[dname])
 
             dt = self._interface.advance(dt)
@@ -273,6 +273,6 @@ class MicroManager:
                 if micro_sims_have_output:
                     if n % n_out == 0:
                         for micro_sim in micro_sims:
-                            micro_sim.output()
+                            micro_sim.output(n)
 
         self._interface.finalize()
