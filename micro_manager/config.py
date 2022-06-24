@@ -98,13 +98,13 @@ class Config:
                   "in every time window.")
 
         try:
-            self._diagnostics_data_names = data["diagnostics"]["data_from_micro_sims"]
-            assert isinstance(self._diagnostics_data_names, dict), "Diagnostics data is not a dictionary"
-            for key, value in self._diagnostics_data_names.items():
+            diagnostics_data_names = data["diagnostics"]["data_from_micro_sims"]
+            assert isinstance(diagnostics_data_names, dict), "Diagnostics data is not a dictionary"
+            for key, value in diagnostics_data_names.items():
                 if value == "scalar":
-                    self._diagnostics_data_names[key] = False
+                    self._write_data_names[key] = False
                 elif value == "vector":
-                    self._diagnostics_data_names[key] = True
+                    self._write_data_names[key] = True
                 else:
                     raise Exception("Diagnostics data dictionary as a value other than 'scalar' or 'vector'")
         except BaseException:
@@ -113,6 +113,7 @@ class Config:
         try:
             if data["diagnostics"]["output_micro_sim_solve_time"]:
                 self._output_micro_sim_time = True
+                self._write_data_names["micro_sim_time"] = False
         except BaseException:
             print("Micro manager will not attempt to output time for solve() of every micro simulation.")
 
@@ -164,8 +165,7 @@ class Config:
             A dictionary containing the names of the data to be written to preCICE as keys and information on whether
             the data are scalar or vector as values.
         """
-        all_write_data_names = {**self._write_data_names, **self._diagnostics_data_names}
-        return all_write_data_names
+        return self._write_data_names
 
     def get_macro_domain_bounds(self):
         """
