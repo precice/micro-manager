@@ -111,7 +111,7 @@ class Config:
             print("No diagnostics data is expected from the micro simulation.")
 
         try:
-            if data["diagnostics"]["output_micro_sim_solve_time"] == "True":
+            if data["diagnostics"]["output_micro_sim_solve_time"]:
                 self._output_micro_sim_time = True
         except BaseException:
             print("Micro manager will not attempt to output time for solve() of every micro simulation.")

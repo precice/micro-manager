@@ -137,6 +137,7 @@ class MicroManager:
             write_data_ids[name] = self._interface.get_data_id(name, macro_mesh_id)
 
         is_micro_solve_time_required = self._config.write_micro_sim_solve_time()
+        self._logger.info("is_micro_solve_time_required = {}".format(is_micro_solve_time_required))
         if is_micro_solve_time_required:
             write_data_ids["micro_sim_time"] = self._interface.get_data_id("micro_sim_time", macro_mesh_id)
 
