@@ -19,6 +19,8 @@ setup(
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/precice/micro-manager',
+    entry_points={'console_scripts': [
+        'micro_manager=micro_manager.micro_manager:main']},
     author='Ishaan Desai',
     author_email='ishaan.desai@uni-stuttgart.de',
     license='LGPL-3.0',
