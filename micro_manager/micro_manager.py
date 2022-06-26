@@ -3,6 +3,10 @@
 Micro manager to organize many micro simulations and couple them via preCICE to a macro simulation
 """
 
+import argparse
+import os
+import sys
+sys.path.append(os.getcwd())
 import precice
 from .config import Config
 from mpi4py import MPI
@@ -249,3 +253,21 @@ class MicroManager:
                 self._interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
 
         self._interface.finalize()
+
+
+def main():
+    parser = argparse.ArgumentParser(description='.')
+    parser.add_argument('config_file', type=str,
+                        help='Path to the config file that should be used.')
+
+    args = parser.parse_args()
+    path = args.config_file
+    if not os.path.isabs(path):
+        path = os.getcwd() + "/" + path
+    manager = MicroManager(path)
+
+    manager.run()
+
+
+if __name__ == "__main__":
+    main()
