@@ -179,7 +179,8 @@ class MicroManager:
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
             for micro_sim in micro_sims:
                 micro_sims_output = micro_sim.initialize()
-                micro_sims_output["micro_sim_time"] = 0.0
+                if is_micro_solve_time_required:
+                    micro_sims_output["micro_sim_time"] = 0.0
                 if micro_sims_output is not None:
                     for data_name, data in micro_sims_output.items():
                         write_data[data_name].append(data)
