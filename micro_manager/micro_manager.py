@@ -101,11 +101,11 @@ class MicroManager:
 
         size_y = int(self._size / size_x)
 
-        dx = abs(macro_bounds[0] - macro_bounds[1]) / size_x
-        dy = abs(macro_bounds[2] - macro_bounds[3]) / size_y
+        dx = abs(macro_bounds[1] - macro_bounds[0]) / size_x
+        dy = abs(macro_bounds[3] - macro_bounds[2]) / size_y
 
-        local_xmin = dx * (self._rank % size_x)
-        local_ymin = dy * int(self._rank / size_x)
+        local_xmin = macro_bounds[0] + dx * (self._rank % size_x)
+        local_ymin = macro_bounds[2] + dy * int(self._rank / size_x)
 
         mesh_bounds = []
         if self._interface.get_dimensions() == 2:
