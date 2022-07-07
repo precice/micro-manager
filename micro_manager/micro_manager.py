@@ -223,6 +223,8 @@ class MicroManager:
         t_checkpoint, n_checkpoint = 0, 0
         n_out = self._config.get_micro_output_n()
 
+        first_implicit_iteration = True
+
         while self._interface.is_coupling_ongoing():
             # Write checkpoints for all micro simulations
             if self._interface.is_action_required(precice.action_write_iteration_checkpoint()):
@@ -244,7 +246,7 @@ class MicroManager:
             micro_sims_output = []
             for i in range(number_of_micro_simulations):
                 start_time = time.time()
-                micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], dt))
+                micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], dt, first_implicit_iteration))
                 end_time = time.time()
                 if is_micro_solve_time_required:
                     micro_sims_output[i]["micro_sim_time"] = end_time - start_time
@@ -274,6 +276,7 @@ class MicroManager:
                     micro_sim.reload_checkpoint()
                 n = n_checkpoint
                 t = t_checkpoint
+                first_implicit_iteration = False
                 self._interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
                 self._logger.info("Micro simulations {} - {}: time window t = {} "
@@ -283,6 +286,8 @@ class MicroManager:
                     if n % n_out == 0:
                         for micro_sim in micro_sims:
                             micro_sim.output(n)
+
+                first_implicit_iteration = True
 
         self._interface.finalize()
 
