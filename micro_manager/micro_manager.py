@@ -6,7 +6,6 @@ Micro manager to organize many micro simulations and couple them via preCICE to 
 import argparse
 import os
 import sys
-sys.path.append(os.getcwd())
 import precice
 from .config import Config
 from mpi4py import MPI
@@ -17,6 +16,8 @@ from operator import iconcat
 import hashlib
 import logging
 import time
+
+sys.path.append(os.getcwd())
 
 
 def create_micro_problem_class(base_micro_simulation):
@@ -161,6 +162,11 @@ class MicroManager:
 
         mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(macro_mesh_id)
         number_of_micro_simulations, _ = mesh_vertex_coords.shape
+        assert(number_of_micro_simulations != 0, "Micro manager does not see any macro vertices. This is most likely "
+                                                 "because of an irregular number of processors provided for the "
+                                                 "parallel run, which leads in an irregular domain decomposition. "
+                                                 "Please try to run the micro manager again with a different number "
+                                                 "of processors")
         self._logger.info("Number of micro simulations = {}".format(number_of_micro_simulations))
 
         nms_all_ranks = np.zeros(self._size, dtype=np.int)
@@ -271,7 +277,7 @@ class MicroManager:
                 self._interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
                 self._logger.info("Micro simulations {} - {}: time window t = {} "
-                                  "has converged".format(t, micro_sims[0].get_id(), micro_sims[-1].get_id()))
+                                  "has converged".format(micro_sims[0].get_id(), micro_sims[-1].get_id(), t))
 
                 if micro_sims_have_output:
                     if n % n_out == 0:
