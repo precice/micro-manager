@@ -239,9 +239,6 @@ class MicroManager:
                 if is_micro_solve_time_required:
                     micro_sims_output[i]["micro_sim_time"] = end_time - start_time
 
-            self._logger.info("time = {}. Solved micro simulations {} - {}".format(t, micro_sims[0].get_id(),
-                                                                                   micro_sims[-1].get_id()))
-
             write_data = dict()
             for name in micro_sims_output[0]:
                 write_data[name] = []
@@ -269,6 +266,9 @@ class MicroManager:
                 t = t_checkpoint
                 self._interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
+                self._logger.info("Micro simulations {} - {}: time window t = {} "
+                                  "has converged".format(t, micro_sims[0].get_id(), micro_sims[-1].get_id()))
+
                 if micro_sims_have_output:
                     if n % n_out == 0:
                         for micro_sim in micro_sims:
