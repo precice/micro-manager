@@ -117,7 +117,13 @@ The following quantities need to be configured:
   
 ### Running the micro manager
 
-The micro manager is run by creating a Python script which imports the micro manager package and calls its run function. For example a run script `run-micro-manager.py` would look like:
+The micro manager is run directly from the terminal by providing the configuration file as an input argument in the following way:
+
+```bash
+micro_manager micro-manager-config.json
+```
+
+Alternatively the manager can also be run by creating a Python script which imports the micro manager package and calls its run function. For example a run script `run-micro-manager.py` would look like:
 
 ```python
 from micro_manager import MicroManager

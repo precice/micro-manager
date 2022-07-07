@@ -3,6 +3,10 @@
 Micro manager to organize many micro simulations and couple them via preCICE to a macro simulation
 """
 
+import argparse
+import os
+import sys
+sys.path.append(os.getcwd())
 import precice
 from .config import Config
 from mpi4py import MPI
@@ -99,11 +103,11 @@ class MicroManager:
 
         size_y = int(self._size / size_x)
 
-        dx = abs(macro_bounds[0] - macro_bounds[1]) / size_x
-        dy = abs(macro_bounds[2] - macro_bounds[3]) / size_y
+        dx = abs(macro_bounds[1] - macro_bounds[0]) / size_x
+        dy = abs(macro_bounds[3] - macro_bounds[2]) / size_y
 
-        local_xmin = dx * (self._rank % size_x)
-        local_ymin = dy * int(self._rank / size_x)
+        local_xmin = macro_bounds[0] + dx * (self._rank % size_x)
+        local_ymin = macro_bounds[2] + dy * int(self._rank / size_x)
 
         mesh_bounds = []
         if self._interface.get_dimensions() == 2:
@@ -275,3 +279,21 @@ class MicroManager:
                             micro_sim.output(n)
 
         self._interface.finalize()
+
+
+def main():
+    parser = argparse.ArgumentParser(description='.')
+    parser.add_argument('config_file', type=str,
+                        help='Path to the config file that should be used.')
+
+    args = parser.parse_args()
+    path = args.config_file
+    if not os.path.isabs(path):
+        path = os.getcwd() + "/" + path
+    manager = MicroManager(path)
+
+    manager.run()
+
+
+if __name__ == "__main__":
+    main()
