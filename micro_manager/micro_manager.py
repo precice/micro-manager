@@ -276,7 +276,7 @@ class MicroManager:
                     micro_sim.reload_checkpoint()
                 n = n_checkpoint
                 t = t_checkpoint
-                first_implicit_iteration = False
+                first_implicit_iteration = True
                 self._interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
                 self._logger.info("Micro simulations {} - {}: time window t = {} "
