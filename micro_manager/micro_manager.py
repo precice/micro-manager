@@ -226,18 +226,25 @@ class MicroManager:
                 micro_sims_output.append(micro_sims[i].solve(micro_sims_input[i], dt))
 
             write_data = dict()
-            for name in micro_sims_output[0]:
-                write_data[name] = []
+            if len(micro_sims_output) > 0:
+                for name in micro_sims_output[0]:
+                    write_data[name] = []
 
-            for dic in micro_sims_output:
-                for name, values in dic.items():
-                    write_data[name].append(values)
+                for dic in micro_sims_output:
+                    for name, values in dic.items():
+                        write_data[name].append(values)
 
-            for dname, is_data_vector in write_data_names.items():
-                if is_data_vector:
-                    self._interface.write_block_vector_data(write_data_ids[dname], mesh_vertex_ids, write_data[dname])
-                else:
-                    self._interface.write_block_scalar_data(write_data_ids[dname], mesh_vertex_ids, write_data[dname])
+                for dname, is_data_vector in write_data_names.items():
+                    if is_data_vector:
+                        self._interface.write_block_vector_data(
+                            write_data_ids[dname], mesh_vertex_ids, write_data[dname])
+                    else:
+                        self._interface.write_block_scalar_data(
+                            write_data_ids[dname], mesh_vertex_ids, write_data[dname])
+            else:
+                self._logger.error(
+                    "Running an empty micro manager, is this want you want? (rank: {}, coupling_mesh_bounds: {})".format(
+                        self._rank, coupling_mesh_bounds))
 
             dt = self._interface.advance(dt)
 
