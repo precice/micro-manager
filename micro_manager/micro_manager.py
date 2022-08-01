@@ -144,6 +144,14 @@ class MicroManager:
         return mesh_bounds
 
     def initialize(self):
+        """
+        This function does the following things:
+        - If the Micro Manager has been executed in parallel, it decomposes the domain as equally as possible.
+        - Initializes preCICE.
+        - Get the macro mesh information.
+        - Creates all micro simulation objects and initializes them if the an initialization procedure is available.
+        - Writes initial data to preCICE.
+        """
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
         assert len(
             self._macro_bounds) / 2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of " \
@@ -228,6 +236,15 @@ class MicroManager:
         self._interface.initialize_data()
 
     def read_data_from_precice(self):
+        """
+        Read data from preCICE. Depending on initial definition of whether a data is scalar or vector, the appropriate
+        preCICE API command is called.
+
+        Returns
+        -------
+        list : list
+            List of dicts in which keys are names of data being read and the values are the data from preCICE.
+        """
         read_data = dict()
         for name in self._read_data_names.keys():
             read_data[name] = []
@@ -243,6 +260,14 @@ class MicroManager:
         return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
 
     def write_data_to_precice(self, micro_sims_output):
+        """
+        Write output of micro simulations to preCICE.
+
+        Parameters
+        ----------
+        micro_sims_output : list
+            List of dicts in which keys are names of data and the values are the data to be written to preCICE.
+        """
         write_data = dict()
         if not self._is_rank_empty:
             for name in micro_sims_output[0]:
@@ -267,6 +292,22 @@ class MicroManager:
                     self._interface.write_block_scalar_data(self._write_data_ids[dname], [], np.array([]))
 
     def solve_micro_simulations(self, micro_sims_input):
+        """
+        Solve all micro simulations using the input data and assemble the micro simulations outputs in a list of dicts
+        format.
+
+        Parameters
+        ----------
+        micro_sims_input : list
+            List of dicts in which keys are names of data and the values are the data which are required inputs to
+            solve a micro simulation.
+
+        Returns
+        -------
+        micro_sims_output : list
+            List of dicts in which keys are names of data and the values are the data of the output of the micro
+            simulations.
+        """
         micro_sims_output = []
         for i in range(self._number_of_micro_simulations):
             self._logger.info("Solving micro simulation ({})".format(self._micro_sims[i].get_id()))
@@ -279,6 +320,9 @@ class MicroManager:
         return micro_sims_output
 
     def solve(self):
+        """
+        This function handles the coupling time loop, including checkpointing and output.
+        """
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
 
