@@ -93,12 +93,14 @@ class MicroManager:
             self._read_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
         self._macro_bounds = config.get_macro_domain_bounds()
+        self._is_micro_solve_time_required = config.write_micro_solve_time()
 
         self._number_of_micro_simulations = None
         self._is_rank_empty = False
         self._micro_sims = None
         self._dt = None
         self._mesh_vertex_ids = None
+        self._micro_n_out = config.get_micro_output_n()
 
     def decompose_macro_domain(self, macro_bounds):
         """
@@ -192,9 +194,10 @@ class MicroManager:
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
             for micro_sim in self._micro_sims:
                 micro_sims_output = micro_sim.initialize()
-                if is_micro_solve_time_required:
-                    micro_sims_output["micro_sim_time"] = 0.0
                 if micro_sims_output is not None:
+                    if self._is_micro_solve_time_required:
+                        micro_sims_output["micro_sim_time"] = 0.0
+
                     for data_name, data in micro_sims_output.items():
                         write_data[data_name].append(data)
                 else:
@@ -204,8 +207,8 @@ class MicroManager:
                         else:
                             write_data[name].append(0.0)
 
-        self._logger.info("Micro simulations {} - {} initialized.".format(micro_sims[0].get_id(),
-                                                                          micro_sims[-1].get_id()))
+        self._logger.info("Micro simulations {} - {} initialized.".format(self._micro_sims[0].get_id(),
+                                                                          self._micro_sims[-1].get_id()))
 
         self._micro_sims_have_output = False
         if hasattr(self._micro_problem, 'output') and callable(getattr(self._micro_problem, 'output')):
@@ -267,14 +270,17 @@ class MicroManager:
         micro_sims_output = []
         for i in range(self._number_of_micro_simulations):
             self._logger.info("Solving micro simulation ({})".format(self._micro_sims[i].get_id()))
+            start_time = time.time()
             micro_sims_output.append(self._micro_sims[i].solve(micro_sims_input[i], self._dt))
+            end_time = time.time()
+            if self._is_micro_solve_time_required:
+                micro_sims_output[i]["micro_sim_time"] = end_time - start_time
 
         return micro_sims_output
 
     def solve(self):
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
-        n_out = self._config.get_micro_output_n()
 
         while self._interface.is_coupling_ongoing():
             # Write checkpoints for all micro simulations
@@ -304,11 +310,11 @@ class MicroManager:
                 t = t_checkpoint
                 self._interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
-                self._logger.info("Micro simulations {} - {}: time window t = {} "
-                                  "has converged".format(micro_sims[0].get_id(), micro_sims[-1].get_id(), t))
+                self._logger.info("Micro simulations {} - {}: time window t = {} has converged".format(
+                    self._micro_sims[0].get_id(), self._micro_sims[-1].get_id(), t))
 
                 if self._micro_sims_have_output:
-                    if n % n_out == 0:
+                    if n % self._micro_n_out == 0:
                         for micro_sim in micro_sims:
                             micro_sim.output(n)
 

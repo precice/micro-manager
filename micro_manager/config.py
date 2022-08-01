@@ -108,14 +108,14 @@ class Config:
                 else:
                     raise Exception("Diagnostics data dictionary as a value other than 'scalar' or 'vector'")
         except BaseException:
-            print("No diagnostics data is expected from the micro simulation.")
+            print("No diagnostics data is defined. Micro Manager will not output any diagnostics data.")
 
         try:
             if data["diagnostics"]["output_micro_sim_solve_time"]:
                 self._output_micro_sim_time = True
                 self._write_data_names["micro_sim_time"] = False
         except BaseException:
-            print("Micro manager will not attempt to output time for solve() of every micro simulation.")
+            print("Micro manager will not output time required to solve each micro simulation in each time step.")
 
         read_file.close()
 
@@ -202,7 +202,7 @@ class Config:
         """
         return self._micro_output_n
 
-    def write_micro_sim_solve_time(self):
+    def write_micro_solve_time(self):
         """
         Depending on user input, micro manager will calculate execution time of solve() step of every micro simulation
 
