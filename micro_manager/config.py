@@ -26,10 +26,14 @@ class Config:
 
         self._config_file_name = None
         self._macro_mesh_name = None
-        self._read_data_names = None
-        self._write_data_names = None
+        self._read_data_names = dict()
+        self._write_data_names = dict()
 
         self._macro_domain_bounds = None
+        self._micro_output_n = 1
+        self._diagnostics_data_names = dict()
+
+        self._output_micro_sim_time = False
 
         self.read_json(config_filename)
 
@@ -47,44 +51,71 @@ class Config:
         read_file = open(path, "r")
         data = json.load(read_file)
 
-        try:
-            self._micro_file_name = data["micro_file_name"]
-            i = 0
-            micro_filename = list(self._micro_file_name)
-            for c in micro_filename:
-                if c == '/':
-                    micro_filename[i] = '.'
-                i += 1
-            self._micro_file_name = ''.join(micro_filename)
-        except BaseException:
-            self._micro_file_name = "No micro file provided"
+        self._micro_file_name = data["micro_file_name"]
+        i = 0
+        micro_filename = list(self._micro_file_name)
+        for c in micro_filename:
+            if c == '/':
+                micro_filename[i] = '.'
+            i += 1
+        self._micro_file_name = ''.join(micro_filename)
 
         self._config_file_name = os.path.join(folder, data["coupling_params"]["config_file_name"])
         self._macro_mesh_name = data["coupling_params"]["macro_mesh_name"]
 
-        self._write_data_names = data["coupling_params"]["write_data_names"]
-        assert isinstance(self._write_data_names, dict), "Entity write_data_name is not a dictionary"
+        try:
+            self._write_data_names = data["coupling_params"]["write_data_names"]
+            assert isinstance(self._write_data_names, dict), "Write data entry is not a dictionary"
+            for key, value in self._write_data_names.items():
+                if value == "scalar":
+                    self._write_data_names[key] = False
+                elif value == "vector":
+                    self._write_data_names[key] = True
+                else:
+                    raise Exception("Write data dictionary as a value other than 'scalar' or 'vector'")
+        except BaseException:
+            print("No write data names provided. Micro manager will only read data from preCICE.")
 
-        for key, value in self._write_data_names.items():
-            if value == "scalar":
-                self._write_data_names[key] = False
-            elif value == "vector":
-                self._write_data_names[key] = True
-            else:
-                raise Exception("Write data dictionary as a value other than 'scalar' or 'vector'")
-
-        self._read_data_names = data["coupling_params"]["read_data_names"]
-        assert isinstance(self._read_data_names, dict), "Entity read_data_name is not a dictionary"
-
-        for key, value in self._read_data_names.items():
-            if value == "scalar":
-                self._read_data_names[key] = False
-            elif value == "vector":
-                self._read_data_names[key] = True
-            else:
-                raise Exception("Read data dictionary as a value other than 'scalar' or 'vector'")
+        try:
+            self._read_data_names = data["coupling_params"]["read_data_names"]
+            assert isinstance(self._read_data_names, dict), "Read data entry is not a dictionary"
+            for key, value in self._read_data_names.items():
+                if value == "scalar":
+                    self._read_data_names[key] = False
+                elif value == "vector":
+                    self._read_data_names[key] = True
+                else:
+                    raise Exception("Read data dictionary as a value other than 'scalar' or 'vector'")
+        except BaseException:
+            print("No read data names provided. Micro manager will only write data to preCICE.")
 
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
+
+        try:
+            self._micro_output_n = data["simulation_params"]["micro_output_n"]
+        except BaseException:
+            print("Output interval of micro simulations not specified, if output is available then it will be called "
+                  "in every time window.")
+
+        try:
+            diagnostics_data_names = data["diagnostics"]["data_from_micro_sims"]
+            assert isinstance(diagnostics_data_names, dict), "Diagnostics data is not a dictionary"
+            for key, value in diagnostics_data_names.items():
+                if value == "scalar":
+                    self._write_data_names[key] = False
+                elif value == "vector":
+                    self._write_data_names[key] = True
+                else:
+                    raise Exception("Diagnostics data dictionary as a value other than 'scalar' or 'vector'")
+        except BaseException:
+            print("No diagnostics data is defined. Micro Manager will not output any diagnostics data.")
+
+        try:
+            if data["diagnostics"]["output_micro_sim_solve_time"]:
+                self._output_micro_sim_time = True
+                self._write_data_names["micro_sim_time"] = False
+        except BaseException:
+            print("Micro manager will not output time required to solve each micro simulation in each time step.")
 
         read_file.close()
 
@@ -159,3 +190,25 @@ class Config:
             String carrying the path to the Python script of the micro-simulation.
         """
         return self._micro_file_name
+
+    def get_micro_output_n(self):
+        """
+        Get the micro output frequency
+
+        Returns
+        -------
+        micro_output_n : int
+            Output frequency of micro simulations, so output every N timesteps
+        """
+        return self._micro_output_n
+
+    def write_micro_solve_time(self):
+        """
+        Depending on user input, micro manager will calculate execution time of solve() step of every micro simulation
+
+        Returns
+        -------
+        output_micro_sim_time : bool
+            True if micro simulation solve time is required.
+        """
+        return self._output_micro_sim_time
