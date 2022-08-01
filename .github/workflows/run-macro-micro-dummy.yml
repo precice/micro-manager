@@ -27,4 +27,4 @@ jobs:
       - name: Run macro-micro dummy
         run: |
           cd examples/macro-micro-dummy/
-          python3 macro_dummy.py & micro_manager micro-manager-config.json
+          python3 macro_dummy.py & python3 run_micro_manager.py
