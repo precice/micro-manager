@@ -1,15 +1,15 @@
 # Micro Manager
 
-A manager tool to facilitate solving two-scale (macro-micro) coupled problems using the coupling library preCICE.
+A manager tool to facilitate solving two-scale (macro-micro) coupled problems using the coupling library [preCICE](https://github.com/precice/precice).
 
-## Installing the package
+## Installing the manager
 
 ### Option 1: Using pip
 
 It is recommended to install [micro-manager from PyPI]() by running
 
 ```bash
-pip3 install --user micro-manager
+pip install --user micro-manager
 ```
 
 If the dependencies are not installed, then `pip` will attempt to install them for you. If you encounter problems in the direct installation, see the [dependencies section](https://github.com/precice/micro-manager#required-dependencies) below for links to installation procedures of all dependencies.
@@ -99,7 +99,7 @@ The micro manager is configured at runtime using a JSON file `micro-manager-conf
         "write_data_names": {"Micro-Scalar-Data": "scalar", "Micro-Vector-Data": "vector"}
     },
     "simulation_params": {
-        "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+        "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
     }
 }
 ```
@@ -144,3 +144,30 @@ The micro manager can also be run in parallel, using the same script as stated a
 ```bash
 mpirun -n <number-of-procs> python3 run-micro-manager.py
 ```
+
+### Advanced configuration options
+
+In addition to the above mentioned configuration options, the manager offers more options for diagnostics output.
+
+If the user wants to output the clock time required to solve each micro simulation, They can add the following keyword to the configuration:
+
+```json
+"diagnostics": {
+  "output_micro_sim_solve_time": "True"
+}
+```
+
+Additionally if the micro simulation code has a function called `output`, the manager will try to call it in order to generate output of all micro simulations. In this situation, the manager can be configured to output at a particular interval. This configuration is done as follows:
+
+```json
+"simulation_params": {
+  "micro_output_n": 10
+}
+```
+
+Here, the manager will write output of micro simulations every 10 time steps. If the entity `micro_output_n` is not defined, then the manager will output the micro simulation output in every time step.
+
+### Creating a preCICE configuration file for a macro-micro problem
+
+In addition to configuring the Micro Manager, preCICE itself also needs to be configured via a [XML configuration file](https://precice.org/configuration-overview.html).
+The user is expected to configure preCICE with the correct names of the data being exchanged between the macro and micro side. An example of such a macro-micro configuration for preCICE can be found in [this two-scale heat conduction example](https://github.com/IshaanDesai/coupled-heat-conduction).
