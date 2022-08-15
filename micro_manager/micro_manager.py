@@ -57,7 +57,7 @@ class MicroManager:
 
         Parameters
         ----------
-        config_filename : string
+        config_file : string
             Name of the JSON configuration file (to be provided by the user)
         """
         self._comm = MPI.COMM_WORLD
@@ -185,7 +185,7 @@ class MicroManager:
             else:
                 raise Exception("Micro Manager has no micro simulations.")
 
-        nms_all_ranks = np.zeros(self._size, dtype=np.int)
+        nms_all_ranks = np.zeros(self._size, dtype=np.int64)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
         # simulations have been created by previous ranks, so that it can set the correct IDs
         self._comm.Allgather(np.array(self._number_of_micro_simulations), nms_all_ranks)
