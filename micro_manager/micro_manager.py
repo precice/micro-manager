@@ -157,7 +157,7 @@ class MicroManager:
             self._macro_bounds) / 2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of " \
                                                                          "incorrect dimension"
         if self._is_parallel:
-            coupling_mesh_bounds = self.decompose_macro_domain(macro_bounds)
+            coupling_mesh_bounds = self.decompose_macro_domain(self._macro_bounds)
         else:
             coupling_mesh_bounds = self._macro_bounds
 
