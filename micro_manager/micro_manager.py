@@ -36,9 +36,16 @@ def create_micro_problem_class(base_micro_simulation):
         def __init__(self, micro_sim_id):
             base_micro_simulation.__init__(self, micro_sim_id)
             self._id = micro_sim_id
+            self._is_active = False
 
         def get_id(self):
             return self._id
+
+        def activate(self):
+            self._is_active = True
+
+        def deactivate(self):
+            self._is_active = False
 
     return MicroProblem
 
@@ -173,7 +180,7 @@ class MicroManager:
         if self._number_of_micro_simulations == 0:
             if self._is_parallel:
                 self._logger.info("Rank {} has no micro simulations and hence will not do any computation.".format(
-                    rank))
+                    self._rank))
                 self._is_rank_empty = True
             else:
                 raise Exception("Micro Manager has no micro simulations.")
@@ -359,7 +366,7 @@ class MicroManager:
 
                 if self._micro_sims_have_output:
                     if n % self._micro_n_out == 0:
-                        for micro_sim in micro_sims:
+                        for micro_sim in self._micro_sims:
                             micro_sim.output(n)
 
         self._interface.finalize()
