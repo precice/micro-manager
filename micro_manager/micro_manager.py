@@ -9,7 +9,7 @@ import sys
 import precice
 from .config import Config
 from mpi4py import MPI
-from math import sqrt
+from math import sqrt, exp
 import numpy as np
 from functools import reduce
 from operator import iconcat
@@ -104,10 +104,54 @@ class MicroManager:
 
         self._number_of_micro_simulations = None
         self._is_rank_empty = False
-        self._micro_sims = None
+        self._micro_sims = None  # Array carrying micro simulation objects
         self._dt = None
-        self._mesh_vertex_ids = None
+        self._mesh_vertex_ids = None  # IDs of macro vertices as set by preCICE
         self._micro_n_out = config.get_micro_output_n()
+
+        # Adaptivity variables
+        self._similarity_matrix = None
+        self._adap_hist_param = 0.5  # To be configured later
+        self._refine_const = 0.5  # To be configured later
+        self._coarse_const = 0.5  # To be configured later
+        self._active_ids = None
+        self._inactive_ids = []
+
+    def calculate_adaptivity(self, state_data):
+        """
+
+        """
+        micro_ids = list(range(self._number_of_micro_simulations))
+        for id_1 in micro_ids:
+            for id_2 in micro_ids:
+                if id_1 != id_2:
+                    self._similarity_matrix[id_1, id_2] = exp(-self._adap_hist_param * self._dt) * \
+                                                          self._similarity_matrix[id_1, id_2] + \
+                                                          self._dt * abs(state_data[id_1] - state_data[id_2])
+                else:
+                    self._similarity_matrix[id_1, id_2] = 0.0
+                micro_ids.remove(id_1)
+
+        ref_tol = self._refine_const * np.amax(self._similarity_matrix)
+        coarse_tol = self._coarse_const * ref_tol
+
+        for id_1 in self._active_ids:
+            for id_2 in self._active_ids:
+                if self._similarity_matrix[id_1, id_2] < coarse_tol:
+                    self._micro_sims[id_1].deactivate()
+                    self._active_ids.remove(id_1)
+                    self._inactive_ids.append(id_1)
+
+        similarity_dists = []
+        for id_1 in self._inactive_ids:
+            for id_2 in self._active_ids:
+                similarity_dists.append(self._similarity_matrix[id_1, id_2])
+            if min(similarity_dists) > ref_tol:
+                self._micro_sims[id_1].activate()
+                self._inactive_ids.remove(id_1)
+                self._active_ids.append(id_1)
+            similarity_dists = []
+
 
     def decompose_macro_domain(self, macro_bounds):
         """
@@ -176,6 +220,9 @@ class MicroManager:
         self._mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(self._macro_mesh_id)
         self._number_of_micro_simulations, _ = mesh_vertex_coords.shape
         self._logger.info("Number of micro simulations = {}".format(self._number_of_micro_simulations))
+
+        self._similarity_matrix = np.zeros((self._number_of_micro_simulations, self._number_of_micro_simulations))
+        self._active_ids = np.arange(self._number_of_micro_simulations)
 
         if self._number_of_micro_simulations == 0:
             if self._is_parallel:
