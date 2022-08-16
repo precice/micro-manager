@@ -37,6 +37,7 @@ def create_micro_problem_class(base_micro_simulation):
             base_micro_simulation.__init__(self, micro_sim_id)
             self._id = micro_sim_id
             self._is_active = False
+            self._most_similar_active_id = 0
 
         def get_id(self):
             return self._id
@@ -46,6 +47,13 @@ def create_micro_problem_class(base_micro_simulation):
 
         def deactivate(self):
             self._is_active = False
+
+        def is_most_similar_to(self, similar_active_id):
+            assert self._is_active is False
+            self._most_similar_active_id = similar_active_id
+
+        def get_most_similar_active_id(self):
+            return self._most_similar_active_id
 
     return MicroProblem
 
@@ -111,11 +119,11 @@ class MicroManager:
 
         # Adaptivity variables
         self._similarity_matrix = None
-        self._adap_hist_param = 0.5  # To be configured later
-        self._refine_const = 0.5  # To be configured later
-        self._coarse_const = 0.5  # To be configured later
-        self._active_ids = None
-        self._inactive_ids = []
+        self._adap_hist_param = config.get_adaptivity_hist_param()  # To be configured later
+        self._refine_const = config.get_refining_const()  # To be configured later
+        self._coarse_const = config.get_coarsening_const()  # To be configured later
+        self._active_ids = []
+        self._inactive_ids = None
 
     def calculate_adaptivity(self, state_data):
         """
@@ -135,6 +143,7 @@ class MicroManager:
         ref_tol = self._refine_const * np.amax(self._similarity_matrix)
         coarse_tol = self._coarse_const * ref_tol
 
+        # Update the set of active micro sims
         for id_1 in self._active_ids:
             for id_2 in self._active_ids:
                 if self._similarity_matrix[id_1, id_2] < coarse_tol:
@@ -142,6 +151,7 @@ class MicroManager:
                     self._active_ids.remove(id_1)
                     self._inactive_ids.append(id_1)
 
+        # Update the set of inactive micro sims
         similarity_dists = []
         for id_1 in self._inactive_ids:
             for id_2 in self._active_ids:
@@ -152,6 +162,13 @@ class MicroManager:
                 self._active_ids.append(id_1)
             similarity_dists = []
 
+        # Associate inactive micro sims to active micro sims
+        similarity_d, micro_id = 100, 0
+        for id_1 in self._inactive_ids:
+            for id_2 in self._active_ids:
+                if self._similarity_matrix[id_1, id_2] < similarity_d:
+                    micro_id = id_2
+            self._micro_sims[id_1].is_most_similar_to(micro_id)
 
     def decompose_macro_domain(self, macro_bounds):
         """
@@ -222,7 +239,7 @@ class MicroManager:
         self._logger.info("Number of micro simulations = {}".format(self._number_of_micro_simulations))
 
         self._similarity_matrix = np.zeros((self._number_of_micro_simulations, self._number_of_micro_simulations))
-        self._active_ids = np.arange(self._number_of_micro_simulations)
+        self._inactive_ids = list(range(self._number_of_micro_simulations))  # All micro sims are inactive at the start
 
         if self._number_of_micro_simulations == 0:
             if self._is_parallel:
@@ -307,11 +324,14 @@ class MicroManager:
             if is_data_vector:
                 read_data.update({name: self._interface.read_block_vector_data(self._read_data_ids[name],
                                                                                self._mesh_vertex_ids)})
+                raw_read_data = self._interface.read_block_vector_data(self._read_data_ids[name], self._mesh_vertex_ids)
             else:
                 read_data.update({name: self._interface.read_block_scalar_data(self._read_data_ids[name],
                                                                                self._mesh_vertex_ids)})
+                raw_read_data = self._interface.read_block_scalar_data(self._read_data_ids[name], self._mesh_vertex_ids)
 
-        return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
+
+        return [dict(zip(read_data, t)) for t in zip(*read_data.values())], raw_read_data
 
     def write_data_to_precice(self, micro_sims_output):
         """
@@ -362,14 +382,24 @@ class MicroManager:
             List of dicts in which keys are names of data and the values are the data of the output of the micro
             simulations.
         """
-        micro_sims_output = []
-        for i in range(self._number_of_micro_simulations):
-            self._logger.info("Solving micro simulation ({})".format(self._micro_sims[i].get_id()))
+        micro_sims_output = list(range(self._number_of_micro_simulations))
+        # Solve all active micro simulations
+        for i in self._active_ids:
+            self._logger.info("Solving active micro simulation ({})".format(self._micro_sims[i].get_id()))
             start_time = time.time()
-            micro_sims_output.append(self._micro_sims[i].solve(micro_sims_input[i], self._dt))
+            micro_sims_output[i] = self._micro_sims[i].solve(micro_sims_input[i], self._dt)
             end_time = time.time()
             if self._is_micro_solve_time_required:
                 micro_sims_output[i]["micro_sim_time"] = end_time - start_time
+
+        # Copy data from similar active micro simulations to the corresponding inactive ones
+        for i in self._inactive_ids:
+            self._logger.info("Micro simulation ({}) is inactive. Copying data from most similar active micro "
+                              "simulation ({})".format(self._micro_sims[i].get_id(),
+                                                       self._micro_sims[i].get_most_similar_active_id()))
+            micro_sims_output[i] = micro_sims_output[self._micro_sims[i].get_most_similar_active_id()]
+            if self._is_micro_solve_time_required:
+                micro_sims_output[i]["micro_sim_time"] = 0
 
         return micro_sims_output
 
