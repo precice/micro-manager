@@ -35,6 +35,12 @@ class Config:
 
         self._output_micro_sim_time = False
 
+        self._adaptivity = False
+        self._data_for_adaptivity = dict()
+        self._adaptivity_history_param = 0.5
+        self._adaptivity_coarsening_constant = 0.5
+        self._adaptivity_refining_constant = 0.5
+
         self.read_json(config_filename)
 
     def read_json(self, config_filename):
@@ -96,6 +102,21 @@ class Config:
         except BaseException:
             print("Output interval of micro simulations not specified, if output is available then it will be called "
                   "in every time window.")
+
+        try:
+            self._adaptivity = data["simulation_params"]["adaptivity"]
+
+            data_for_adaptivity = data["simulation_params"]["adaptivity_data"]
+            exchange_data = {**self._read_data_names, **self._write_data_names}
+            for dname in data_for_adaptivity:
+                self._data_for_adaptivity[dname] = exchange_data[dname]
+
+            self._adaptivity_history_param = data["simulation_params"]["adaptivity_history_param"]
+            self._adaptivity_coarsening_constant = data["simulation_params"]["adaptivity_coarsening_constant"]
+            self._adaptivity_refining_constant = data["simulation_params"]["adaptivity_refining_constant"]
+        except BaseException:
+            print("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations "
+                  "in all time steps.")
 
         try:
             diagnostics_data_names = data["diagnostics"]["data_from_micro_sims"]
@@ -212,3 +233,48 @@ class Config:
             True if micro simulation solve time is required.
         """
         return self._output_micro_sim_time
+
+    def turn_on_adaptivity(self):
+        """
+
+        Returns
+        -------
+
+        """
+        return self._adaptivity
+
+    def get_data_for_adaptivity(self):
+        """
+
+        Returns
+        -------
+
+        """
+        return self._data_for_adaptivity
+
+    def get_adaptivity_hist_param(self):
+        """
+
+        Returns
+        -------
+
+        """
+        return self._adaptivity_history_param
+
+    def get_adaptivity_coarsening_const(self):
+        """
+
+        Returns
+        -------
+
+        """
+        return self._adaptivity_coarsening_constant
+
+    def get_adaptivity_refining_const(self):
+        """
+
+        Returns
+        -------
+
+        """
+        return self._adaptivity_refining_constant
