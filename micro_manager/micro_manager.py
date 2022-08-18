@@ -153,8 +153,8 @@ class MicroManager:
             for id_2 in micro_ids:
                 if id_1 != id_2:
                     similarity_dists[id_1, id_2] += exp(-self._adap_hist_param * self._dt) * \
-                                                          similarity_dists_nm1[id_1, id_2] + \
-                                                          self._dt * abs(scalar_data[id_1] - scalar_data[id_2])
+                        similarity_dists_nm1[id_1, id_2] + \
+                        self._dt * abs(scalar_data[id_1] - scalar_data[id_2])
                 else:
                     similarity_dists[id_1, id_2] = 0.0
                 micro_ids.remove(id_1)
@@ -183,7 +183,7 @@ class MicroManager:
                     for d in dims:
                         data_diff += abs(vector_data[id_1, d] - vector_data[id_2, d])
                     similarity_dists[id_1, id_2] += exp(-self._adap_hist_param * self._dt) * \
-                                                    similarity_dists_nm1[id_1, id_2] + self._dt * data_diff
+                        similarity_dists_nm1[id_1, id_2] + self._dt * data_diff
                 else:
                     similarity_dists[id_1, id_2] = 0.0
                 micro_ids.remove(id_1)
@@ -200,7 +200,8 @@ class MicroManager:
         # Update the set of active micro sims
         for id_1 in self._active_ids:
             for id_2 in self._active_ids:
-                if similarity_dists[id_1, id_2] < coarse_tol:  # If active sim is similar to another active sim, deactivate it
+                # If active sim is similar to another active sim, deactivate it
+                if similarity_dists[id_1, id_2] < coarse_tol:
                     self._micro_sims[id_1].deactivate()
                     self._active_ids.remove(id_1)
                     self._inactive_ids.append(id_1)
@@ -210,7 +211,8 @@ class MicroManager:
         for id_1 in self._inactive_ids:
             for id_2 in self._active_ids:
                 similarity_dists.append(similarity_dists[id_1, id_2])
-            if min(similarity_dists) > ref_tol:  # If inactive sim is not similar to any active sim, activate it
+            # If inactive sim is not similar to any active sim, activate it
+            if min(similarity_dists) > ref_tol:
                 self._micro_sims[id_1].activate()
                 self._inactive_ids.remove(id_1)
                 self._active_ids.append(id_1)
@@ -220,7 +222,8 @@ class MicroManager:
         similarity_d, micro_id = 100, 0
         for id_1 in self._inactive_ids:
             for id_2 in self._active_ids:
-                if similarity_dists[id_1, id_2] < similarity_d:  # Find most similar active sim for every inactive sim
+                # Find most similar active sim for every inactive sim
+                if similarity_dists[id_1, id_2] < similarity_d:
                     micro_id = id_2
             self._micro_sims[id_1].is_most_similar_to(micro_id)
 
@@ -378,12 +381,13 @@ class MicroManager:
             if is_data_vector:
                 read_data.update({name: self._interface.read_block_vector_data(self._read_data_ids[name],
                                                                                self._mesh_vertex_ids)})
-                self._exchange_data[name] = self._interface.read_block_vector_data(self._read_data_ids[name], self._mesh_vertex_ids)
+                self._exchange_data[name] = self._interface.read_block_vector_data(self._read_data_ids[name],
+                                                                                   self._mesh_vertex_ids)
             else:
                 read_data.update({name: self._interface.read_block_scalar_data(self._read_data_ids[name],
                                                                                self._mesh_vertex_ids)})
-                self._exchange_data[name] = self._interface.read_block_scalar_data(self._read_data_ids[name], self._mesh_vertex_ids)
-
+                self._exchange_data[name] = self._interface.read_block_scalar_data(self._read_data_ids[name],
+                                                                                   self._mesh_vertex_ids)
 
         return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
 
@@ -439,10 +443,10 @@ class MicroManager:
         for name, is_data_vector in self._adaptivity_data_names:
             if is_data_vector:
                 self._similarity_dists = self.calculate_vector_similarity_dists(self._similarity_dists_nm1,
-                                                                                 self._exchange_data[name])
+                                                                                self._exchange_data[name])
             else:
                 self._similarity_dists = self.calculate_scalar_similarity_dists(self._similarity_dists_nm1,
-                                                                                 self._exchange_data[name])
+                                                                                self._exchange_data[name])
 
         micro_sims_output = list(range(self._number_of_micro_simulations))
         # Solve all active micro simulations
