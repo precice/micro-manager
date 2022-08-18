@@ -106,9 +106,8 @@ class Config:
         try:
             self._adaptivity = data["simulation_params"]["adaptivity"]
 
-            data_for_adaptivity = data["simulation_params"]["adaptivity_data"]
             exchange_data = {**self._read_data_names, **self._write_data_names}
-            for dname in data_for_adaptivity:
+            for dname in data["simulation_params"]["adaptivity_data"]:
                 self._data_for_adaptivity[dname] = exchange_data[dname]
 
             self._adaptivity_history_param = data["simulation_params"]["adaptivity_history_param"]

@@ -9,7 +9,7 @@
     "simulation_params": {
         "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
         "adaptivity": "True",
-        "adaptivity_data": ["macro-scalar_data", "micro_scalar_data"],
+        "adaptivity_data": ["macro-scalar-data", "micro-scalar-data"],
         "adaptivity_history_param": 0.5,
         "adaptivity_coarsening_constant": 0.5,
         "adaptivity_refining_constant": 0.5

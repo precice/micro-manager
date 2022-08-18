@@ -128,7 +128,7 @@ class MicroManager:
         self._adaptivity_data_names = config.get_data_for_adaptivity()  # Names of data to be used for adaptivity computation
 
         self._exchange_data = dict()
-        for name, _ in self._adaptivity_data_names:
+        for name, _ in self._adaptivity_data_names.items():
             self._exchange_data[name] = []
 
         self._adap_hist_param = config.get_adaptivity_hist_param()
@@ -194,6 +194,7 @@ class MicroManager:
         """
 
         """
+        print("similarity_dists = {}".format(similarity_dists))
         ref_tol = self._refine_const * np.amax(similarity_dists)
         coarse_tol = self._coarse_const * ref_tol
 
@@ -440,13 +441,15 @@ class MicroManager:
             List of dicts in which keys are names of data and the values are the data of the output of the micro
             simulations.
         """
-        for name, is_data_vector in self._adaptivity_data_names:
+        for name, is_data_vector in self._adaptivity_data_names.items():
             if is_data_vector:
                 self._similarity_dists = self.calculate_vector_similarity_dists(self._similarity_dists_nm1,
                                                                                 self._exchange_data[name])
             else:
                 self._similarity_dists = self.calculate_scalar_similarity_dists(self._similarity_dists_nm1,
                                                                                 self._exchange_data[name])
+
+        self.calculate_adaptivity(self._similarity_dists)
 
         micro_sims_output = list(range(self._number_of_micro_simulations))
         # Solve all active micro simulations
