@@ -121,28 +121,39 @@ class MicroManager:
         self._micro_n_out = config.get_micro_output_n()
 
         # Adaptivity variables
-        self._similarity_matrix = None
+        self._similarity_dists = None  # 2D array containing similarity distance between all micro simulations
+        self._similarity_dists_nm1 = None
+        self._similarity_dists_cp = None
         self._is_adaptivity_on = config.turn_on_adaptivity()
-        self._adaptivity_data_names = config.get_data_for_adaptivity()
+        self._adaptivity_data_names = config.get_data_for_adaptivity()  # Names of data to be used for adaptivity computation
+
+        self._exchange_data = dict()
+        for name, _ in self._adaptivity_data_names:
+            self._exchange_data[name] = []
+
         self._adap_hist_param = config.get_adaptivity_hist_param()
         self._refine_const = config.get_adaptivity_refining_const()
         self._coarse_const = config.get_adaptivity_coarsening_const()
-        self._active_ids = []
-        self._inactive_ids = None
+        self._active_ids = []  # List of ids of micro simulations which are active at time t_n
+        self._active_ids_cp = []  # List of ids of micro simulations which are active in time t_{n-1}
+        self._inactive_ids = None  # List of ids of micro simulations which are inactive at time t_n
+        self._inactive_ids_cp = None  # List of ids of micro simulations which are inactive in time t_{n-1}
 
-    def calculate_scalar_similarity_dists(self, similarity_dists, scalar_data):
+    def calculate_scalar_similarity_dists(self, similarity_dists_nm1, scalar_data):
         """
 
         Returns
         -------
 
         """
-        micro_ids = list(range(self._number_of_micro_simulations))
+        nms = scalar_data.shape
+        micro_ids = list(range(nms))
+        similarity_dists = list(range(nms))
         for id_1 in micro_ids:
             for id_2 in micro_ids:
                 if id_1 != id_2:
                     similarity_dists[id_1, id_2] += exp(-self._adap_hist_param * self._dt) * \
-                                                          similarity_dists[id_1, id_2] + \
+                                                          similarity_dists_nm1[id_1, id_2] + \
                                                           self._dt * abs(scalar_data[id_1] - scalar_data[id_2])
                 else:
                     similarity_dists[id_1, id_2] = 0.0
@@ -150,28 +161,29 @@ class MicroManager:
 
         return similarity_dists
 
-    def calculate_vector_similarity_dists(self, similarity_dists, vector_data):
+    def calculate_vector_similarity_dists(self, similarity_dists_nm1, vector_data):
         """
 
         Parameters
         ----------
-        similarity_dists
+        similarity_dists_nm1
         vector_data
 
         Returns
         -------
 
         """
-        micro_ids = list(range(self._number_of_micro_simulations))
-        _, dim = vector_data.shape
+        nms, dim = vector_data.shape
+        micro_ids = list(range(nms))
+        similarity_dists = list(range(nms))
         for id_1 in micro_ids:
             for id_2 in micro_ids:
                 if id_1 != id_2:
                     data_diff = 0
                     for d in dims:
                         data_diff += abs(vector_data[id_1, d] - vector_data[id_2, d])
-                    similarity_dists[id_1, id_2] = exp(-self._adap_hist_param * self._dt) * \
-                                                   similarity_dists[id_1, id_2] + self._dt * data_diff
+                    similarity_dists[id_1, id_2] += exp(-self._adap_hist_param * self._dt) * \
+                                                    similarity_dists_nm1[id_1, id_2] + self._dt * data_diff
                 else:
                     similarity_dists[id_1, id_2] = 0.0
                 micro_ids.remove(id_1)
@@ -208,7 +220,7 @@ class MicroManager:
         similarity_d, micro_id = 100, 0
         for id_1 in self._inactive_ids:
             for id_2 in self._active_ids:
-                if similarity_dists[id_1, id_2] < similarity_d:
+                if similarity_dists[id_1, id_2] < similarity_d:  # Find most similar active sim for every inactive sim
                     micro_id = id_2
             self._micro_sims[id_1].is_most_similar_to(micro_id)
 
@@ -280,7 +292,7 @@ class MicroManager:
         self._number_of_micro_simulations, _ = mesh_vertex_coords.shape
         self._logger.info("Number of micro simulations = {}".format(self._number_of_micro_simulations))
 
-        self._similarity_matrix = np.zeros((self._number_of_micro_simulations, self._number_of_micro_simulations))
+        self._similarity_dists_nm1 = np.zeros((self._number_of_micro_simulations, self._number_of_micro_simulations))
         self._inactive_ids = list(range(self._number_of_micro_simulations))  # All micro sims are inactive at the start
 
         if self._number_of_micro_simulations == 0:
@@ -426,10 +438,10 @@ class MicroManager:
         """
         for name, is_data_vector in self._adaptivity_data_names:
             if is_data_vector:
-                self._similarity_matrix = self.calculate_vector_similarity_dists(self._similarity_matrix,
+                self._similarity_dists = self.calculate_vector_similarity_dists(self._similarity_dists_nm1,
                                                                                  self._exchange_data[name])
             else:
-                self._similarity_matrix = self.calculate_scalar_similarity_dists(self._similarity_matrix,
+                self._similarity_dists = self.calculate_scalar_similarity_dists(self._similarity_dists_nm1,
                                                                                  self._exchange_data[name])
 
         micro_sims_output = list(range(self._number_of_micro_simulations))
@@ -438,11 +450,11 @@ class MicroManager:
             self._logger.info("Solving active micro simulation ({})".format(self._micro_sims[i].get_id()))
             start_time = time.time()
             micro_sims_output[i] = self._micro_sims[i].solve(micro_sims_input[i], self._dt)
+            end_time = time.time()
 
             for name, values in micro_sims_output[i].items():
-                self._exchange_data[name].append(values)  # Collect micro sim output for adaptivity
+                self._exchange_data[name][i] = values  # Collect micro sim output for adaptivity
 
-            end_time = time.time()
             if self._is_micro_solve_time_required:
                 micro_sims_output[i]["micro_sim_time"] = end_time - start_time
 
@@ -471,6 +483,9 @@ class MicroManager:
                     micro_sim.save_checkpoint()
                 t_checkpoint = t
                 n_checkpoint = n
+                self._similarity_dists_cp = self._similarity_dists
+                self._active_ids_cp = self._active_ids
+                self._inactive_ids_cp = self._inactive_ids
                 self._interface.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
 
             micro_sims_input = self.read_data_from_precice()
@@ -490,6 +505,9 @@ class MicroManager:
                     micro_sim.reload_checkpoint()
                 n = n_checkpoint
                 t = t_checkpoint
+                self._similarity_dists = self._similarity_dists_cp
+                self._active_ids = self._active_ids_cp
+                self._inactive_ids = self._inactive_ids_cp
                 self._interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
                 self._logger.info("Micro simulations {} - {}: time window t = {} has converged".format(
@@ -499,6 +517,8 @@ class MicroManager:
                     if n % self._micro_n_out == 0:
                         for micro_sim in self._micro_sims:
                             micro_sim.output(n)
+
+                self._similarity_dists_nm1 = self._similarity_dists
 
         self._interface.finalize()
 
