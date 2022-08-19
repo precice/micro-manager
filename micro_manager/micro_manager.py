@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Micro manager to organize many micro simulations and couple them via preCICE to a macro simulation
+Micro Manager: a tool to organize many micro simulations and couple them via preCICE to a macro simulation
 """
 
 import argparse
@@ -125,12 +125,17 @@ class MicroManager:
         self._similarity_dists_nm1 = None
         self._similarity_dists_cp = None
         self._is_adaptivity_on = config.turn_on_adaptivity()
-        self._adaptivity_data_names = config.get_data_for_adaptivity()  # Names of data to be used for adaptivity computation
+
+        adaptivity_data_names = config.get_data_for_adaptivity()  # Names of data to be used for adaptivity computation
+        self._adaptivity_macro_data_names = dict()
+        self._adaptivity_micro_data_names = dict()
+        for name, is_data_vector in adaptivity_data_names.items():
+            if name in self._read_data_names:
+                self._adaptivity_macro_data_names[name] = is_data_vector
+            if name in self._write_data_names:
+                self._adaptivity_micro_data_names[name] = is_data_vector
 
         self._exchange_data = dict()
-        for name, _ in self._adaptivity_data_names.items():
-            self._exchange_data[name] = []
-
         self._adap_hist_param = config.get_adaptivity_hist_param()
         self._refine_const = config.get_adaptivity_refining_const()
         self._coarse_const = config.get_adaptivity_coarsening_const()
@@ -139,6 +144,8 @@ class MicroManager:
         self._inactive_ids = None  # List of ids of micro simulations which are inactive at time t_n
         self._inactive_ids_cp = None  # List of ids of micro simulations which are inactive in time t_{n-1}
 
+
+
     def calculate_scalar_similarity_dists(self, similarity_dists_nm1, scalar_data):
         """
 
@@ -146,9 +153,8 @@ class MicroManager:
         -------
 
         """
-        nms = scalar_data.shape
-        micro_ids = list(range(nms))
-        similarity_dists = list(range(nms))
+        micro_ids = list(range(len(scalar_data)))
+        similarity_dists = np.zeros((self._number_of_micro_simulations, self._number_of_micro_simulations))
         for id_1 in micro_ids:
             for id_2 in micro_ids:
                 if id_1 != id_2:
@@ -157,7 +163,7 @@ class MicroManager:
                         self._dt * abs(scalar_data[id_1] - scalar_data[id_2])
                 else:
                     similarity_dists[id_1, id_2] = 0.0
-                micro_ids.remove(id_1)
+            micro_ids.remove(id_1)
 
         return similarity_dists
 
@@ -175,18 +181,18 @@ class MicroManager:
         """
         nms, dim = vector_data.shape
         micro_ids = list(range(nms))
-        similarity_dists = list(range(nms))
+        similarity_dists = np.zeros((self._number_of_micro_simulations, self._number_of_micro_simulations))
         for id_1 in micro_ids:
             for id_2 in micro_ids:
                 if id_1 != id_2:
                     data_diff = 0
-                    for d in dims:
+                    for d in dim:
                         data_diff += abs(vector_data[id_1, d] - vector_data[id_2, d])
                     similarity_dists[id_1, id_2] += exp(-self._adap_hist_param * self._dt) * \
                         similarity_dists_nm1[id_1, id_2] + self._dt * data_diff
                 else:
                     similarity_dists[id_1, id_2] = 0.0
-                micro_ids.remove(id_1)
+            micro_ids.remove(id_1)
 
         return similarity_dists
 
@@ -194,7 +200,12 @@ class MicroManager:
         """
 
         """
-        print("similarity_dists = {}".format(similarity_dists))
+        # If max of similarity dist is zero, it is the first iteration, all micro simulations are then active.
+        if np.amax(similarity_dists) == 0:
+            self._active_ids = list(range(self._number_of_micro_simulations))
+            self._inactive_ids = []
+            return
+
         ref_tol = self._refine_const * np.amax(similarity_dists)
         coarse_tol = self._coarse_const * ref_tol
 
@@ -206,26 +217,31 @@ class MicroManager:
                     self._micro_sims[id_1].deactivate()
                     self._active_ids.remove(id_1)
                     self._inactive_ids.append(id_1)
+                    break
+
+        if not self._active_ids:  # If there are no active simulations, then all simulations are activated.
+            self._active_ids = list(range(self._number_of_micro_simulations))
 
         # Update the set of inactive micro sims
-        similarity_dists = []
+        dists = []
         for id_1 in self._inactive_ids:
             for id_2 in self._active_ids:
-                similarity_dists.append(similarity_dists[id_1, id_2])
+                dists.append(similarity_dists[id_1, id_2])
             # If inactive sim is not similar to any active sim, activate it
-            if min(similarity_dists) > ref_tol:
+            if min(dists) > ref_tol:
                 self._micro_sims[id_1].activate()
                 self._inactive_ids.remove(id_1)
                 self._active_ids.append(id_1)
-            similarity_dists = []
+            dists = []
 
         # Associate inactive micro sims to active micro sims
-        similarity_d, micro_id = 100, 0
+        dist_min, micro_id = 100, 0
         for id_1 in self._inactive_ids:
             for id_2 in self._active_ids:
                 # Find most similar active sim for every inactive sim
-                if similarity_dists[id_1, id_2] < similarity_d:
+                if similarity_dists[id_1, id_2] < dist_min:
                     micro_id = id_2
+                    dist_min = similarity_dists[id_1, id_2]
             self._micro_sims[id_1].is_most_similar_to(micro_id)
 
     def decompose_macro_domain(self, macro_bounds):
@@ -298,6 +314,9 @@ class MicroManager:
 
         self._similarity_dists_nm1 = np.zeros((self._number_of_micro_simulations, self._number_of_micro_simulations))
         self._inactive_ids = list(range(self._number_of_micro_simulations))  # All micro sims are inactive at the start
+
+        for name, _ in self._adaptivity_data_names.items():
+            self._exchange_data[name] = list(range(self._number_of_micro_simulations))
 
         if self._number_of_micro_simulations == 0:
             if self._is_parallel:
@@ -382,13 +401,15 @@ class MicroManager:
             if is_data_vector:
                 read_data.update({name: self._interface.read_block_vector_data(self._read_data_ids[name],
                                                                                self._mesh_vertex_ids)})
-                self._exchange_data[name] = self._interface.read_block_vector_data(self._read_data_ids[name],
-                                                                                   self._mesh_vertex_ids)
+                if name in self._adaptivity_macro_data_names:
+                    self._exchange_data[name] = self._interface.read_block_vector_data(self._read_data_ids[name],
+                                                                                       self._mesh_vertex_ids)
             else:
                 read_data.update({name: self._interface.read_block_scalar_data(self._read_data_ids[name],
                                                                                self._mesh_vertex_ids)})
-                self._exchange_data[name] = self._interface.read_block_scalar_data(self._read_data_ids[name],
-                                                                                   self._mesh_vertex_ids)
+                if name in self._adaptivity_macro_data_names:
+                    self._exchange_data[name] = self._interface.read_block_scalar_data(self._read_data_ids[name],
+                                                                                       self._mesh_vertex_ids)
 
         return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
 
@@ -459,8 +480,8 @@ class MicroManager:
             micro_sims_output[i] = self._micro_sims[i].solve(micro_sims_input[i], self._dt)
             end_time = time.time()
 
-            for name, values in micro_sims_output[i].items():
-                self._exchange_data[name][i] = values  # Collect micro sim output for adaptivity
+            for name in self._adaptivity_data_names:
+                self._exchange_data[name][i] = micro_sims_output[i][name]  # Collect micro sim output for adaptivity
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[i]["micro_sim_time"] = end_time - start_time
