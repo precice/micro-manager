@@ -126,10 +126,10 @@ class MicroManager:
         self._similarity_dists_cp = None
         self._is_adaptivity_on = config.turn_on_adaptivity()
 
-        adaptivity_data_names = config.get_data_for_adaptivity()  # Names of data to be used for adaptivity computation
-        self._adaptivity_macro_data_names = dict()
-        self._adaptivity_micro_data_names = dict()
-        for name, is_data_vector in adaptivity_data_names.items():
+        self._adaptivity_data_names = config.get_data_for_adaptivity()  # Names of data to be used for adaptivity computation
+        self._adaptivity_macro_data_names = dict()  # Names of macro data to be used for adaptivity computation
+        self._adaptivity_micro_data_names = dict()  # Names of micro data to be used for adaptivity computation
+        for name, is_data_vector in self._adaptivity_data_names.items():
             if name in self._read_data_names:
                 self._adaptivity_macro_data_names[name] = is_data_vector
             if name in self._write_data_names:
@@ -143,8 +143,6 @@ class MicroManager:
         self._active_ids_cp = []  # List of ids of micro simulations which are active in time t_{n-1}
         self._inactive_ids = None  # List of ids of micro simulations which are inactive at time t_n
         self._inactive_ids_cp = None  # List of ids of micro simulations which are inactive in time t_{n-1}
-
-
 
     def calculate_scalar_similarity_dists(self, similarity_dists_nm1, scalar_data):
         """
@@ -480,7 +478,7 @@ class MicroManager:
             micro_sims_output[i] = self._micro_sims[i].solve(micro_sims_input[i], self._dt)
             end_time = time.time()
 
-            for name in self._adaptivity_data_names:
+            for name in self._adaptivity_micro_data_names:
                 self._exchange_data[name][i] = micro_sims_output[i][name]  # Collect micro sim output for adaptivity
 
             if self._is_micro_solve_time_required:
