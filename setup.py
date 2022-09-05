@@ -13,9 +13,9 @@ with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 
 setup(
-    name='micro-manager',
+    name='micro-manager-precice',
     version='v0.1.0',
-    description='micro-manager is a package which facilitates two-scale macro-micro coupled simulations using preCICE',
+    description='micro-manager-precice is a package which facilitates two-scale macro-micro coupled simulations using preCICE',
     long_description=long_description,
     long_description_content_type='text/markdown',
     url='https://github.com/precice/micro-manager',
