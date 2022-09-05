@@ -2,6 +2,10 @@
 
 ## latest
 
+## v0.2.0
+
+- Change package from `micro-manager` to `micro-manager-precice` and upload to PyPI.
+
 ## v0.2.0rc1
 
 - Change package from `micro-manager` to `micro-manager-precice`.
