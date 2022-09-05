@@ -87,19 +87,24 @@ class MicroSimulation:
 
 ### Configuring the micro manager
 
-The micro manager is configured at runtime using a JSON file `micro-manager-config.json`. The configuration file for example in `/examples/macro-micro-dummy`:
+The micro manager is configured at runtime using a JSON file `micro-manager-config.json`. An example configuration file is:
 
 ```json
 {
-    "micro_file": "micro_problem",
+    "micro_file_name": "micro_heat",
     "coupling_params": {
-        "precice_config": "precice-config.xml",
-        "macro_mesh": "Macro-Mesh",
-        "read_data_names": {"Macro-Scalar-Data": "scalar", "Macro-Vector-Data": "vector"},
-        "write_data_names": {"Micro-Scalar-Data": "scalar", "Micro-Vector-Data": "vector"}
+            "participant_name": "Micro-Manager",
+            "config_file_name": "precice-config.xml",
+            "macro_mesh_name": "macro-mesh",
+            "write_data_names": {"k_00": "scalar", "k_11": "scalar", "porosity": "scalar"},
+            "read_data_names": {"concentration": "scalar"}
     },
     "simulation_params": {
-        "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
+      "macro_domain_bounds": [0.0, 1.0, 0.0, 0.5]
+    },
+    "diagnostics": {
+      "data_from_micro_sims": {"grain_size": "scalar"},
+      "output_micro_sim_solve_time": "True"
     }
 }
 ```
@@ -114,7 +119,22 @@ The following quantities need to be configured:
   * `write_data_names`: A Python dictionary with the names of the data to be written to preCICE as keys and `"scalar"` or `"vector"`  as values.
 * `simulation_params`:
   * `macro_domain_bounds`: Minimum and maximum limits of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]`.
-  
+
+In addition to the aforementioned configuration options there are optional choices:
+
+* `simulation_params`:
+  * `micro_output_n`: Frequency of calling the output functionality of the micro simulation in terms of number of time steps. If this quantity is configured the micro manager will attempt to call the `output()` function of the micro simulation.
+
+The micro manager is capable of generating diagnostics type output of the micro simulations, which is critical in the development phase of two-scale simulations. The following configuration options are available:
+
+* `diagnostics`:
+  * `data_from_micro_sims`: A Python dictionary with the names of the data from the micro simulation to be written to VTK files as keys and `"scalar"` or `"vector"`  as values.
+  * `output_micro_sim_solve_time`: When `True`, the manager writes the wall clock time of the `solve()` function of each micro simulation to the VTK output.
+
+### Changes to preCICE configuration file
+
+The micro manager relies on the [export functionality](https://precice.org/configuration-export.html#enabling-exporters) of preCICE to write diagnostics data output. If the option `diagnotics: data_from_micro_sims` is configured, the corresponding export tag also needs to be set in the preCICE XML configuration script. 
+
 ### Running the micro manager
 
 The micro manager is run directly from the terminal by providing the configuration file as an input argument in the following way:
