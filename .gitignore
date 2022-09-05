@@ -1,7 +1,10 @@
 # PyCharm
-.idea/
+.idea
 __pycache__
 
-# Building artefacts
-build/
+# Building artifacts
+build
 micro_manager.egg-info/
+
+# Packaging artifacts
+dist
