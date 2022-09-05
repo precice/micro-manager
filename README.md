@@ -6,10 +6,10 @@ A Manager tool to facilitate solving two-scale (macro-micro) coupled problems us
 
 ### Option 1: Using pip
 
-It is recommended to install [micro-manager from PyPI]() by running
+It is recommended to install [micro-manager-precice from PyPI]() by running
 
 ```bash
-pip install --user micro-manager
+pip install --user micro-manager-precice
 ```
 
 If the dependencies are not installed, then `pip` will attempt to install them for you. If you encounter problems in the direct installation, see the [dependencies section](https://github.com/precice/micro-manager#required-dependencies) below for links to installation procedures of all dependencies.
