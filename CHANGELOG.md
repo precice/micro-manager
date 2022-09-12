@@ -2,6 +2,10 @@
 
 ## latest
 
+## v0.2.1
+
+- Fixing the broken action workflow `run-macro-micro-dummy` 
+
 ## v0.2.0
 
 - Change package from `micro-manager` to `micro-manager-precice` and upload to PyPI.
