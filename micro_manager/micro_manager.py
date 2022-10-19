@@ -183,7 +183,7 @@ class MicroManager:
             for id_2 in micro_ids:
                 if id_1 != id_2:
                     data_diff = 0
-                    for d in dim:
+                    for d in range(dim):
                         data_diff += abs(vector_data[id_1, d] - vector_data[id_2, d])
                     similarity_dists[id_1, id_2] = exp(-self._adap_hist_param * self._dt) * \
                         similarity_dists_nm1[id_1, id_2] + self._dt * data_diff
@@ -197,11 +197,7 @@ class MicroManager:
         """
 
         """
-        # If max of similarity dist is zero, it is the first iteration, all micro simulations are then active.
-        if np.amax(similarity_dists) == 0:
-            self._active_ids = list(range(self._number_of_micro_simulations))
-            self._inactive_ids = []
-            return
+        print("similarity_dists at the start of calculate_adaptivity = {}".format(similarity_dists))
 
         ref_tol = self._refine_const * np.amax(similarity_dists)
         coarse_tol = self._coarse_const * ref_tol

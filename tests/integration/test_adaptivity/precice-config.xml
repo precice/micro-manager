@@ -37,6 +37,7 @@
       <write-data name="micro-scalar-data" mesh="macro-mesh"/>
       <write-data name="micro-vector-data" mesh="macro-mesh"/>
       <write-data name="micro_sim_time" mesh="macro-mesh"/>
+      <write-data name="active_state" mesh="macro-mesh"/>
       <export:vtu directory="output"/>
     </participant>
 
