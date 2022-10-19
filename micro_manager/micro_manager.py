@@ -123,23 +123,25 @@ class MicroManager:
         self._similarity_dists_cp = None
         self._is_adaptivity_on = config.turn_on_adaptivity()
 
-        self._adaptivity_data_names = config.get_data_for_adaptivity()  # Names of data to be used for adaptivity computation
-        self._adaptivity_macro_data_names = dict()  # Names of macro data to be used for adaptivity computation
-        self._adaptivity_micro_data_names = dict()  # Names of micro data to be used for adaptivity computation
-        for name, is_data_vector in self._adaptivity_data_names.items():
-            if name in self._read_data_names:
-                self._adaptivity_macro_data_names[name] = is_data_vector
-            if name in self._write_data_names:
-                self._adaptivity_micro_data_names[name] = is_data_vector
+        if self._is_adaptivity_on:
+            self._adaptivity_data_names = config.get_data_for_adaptivity()  # Names of data to be used for adaptivity computation
+            self._adap_hist_param = config.get_adaptivity_hist_param()
+            self._refine_const = config.get_adaptivity_refining_const()
+            self._coarse_const = config.get_adaptivity_coarsening_const()
+            self._adaptivity_macro_data_names = dict()  # Names of macro data to be used for adaptivity computation
+            self._adaptivity_micro_data_names = dict()  # Names of micro data to be used for adaptivity computation
+            for name, is_data_vector in self._adaptivity_data_names.items():
+                if name in self._read_data_names:
+                    self._adaptivity_macro_data_names[name] = is_data_vector
+                if name in self._write_data_names:
+                    self._adaptivity_micro_data_names[name] = is_data_vector
+
+            self._active_ids = []  # List of ids of micro simulations which are active at time t_n
+            self._active_ids_cp = []  # List of ids of micro simulations which are active in time t_{n-1}
+            self._inactive_ids = None  # List of ids of micro simulations which are inactive at time t_n
+            self._inactive_ids_cp = None  # List of ids of micro simulations which are inactive in time t_{n-1}
 
         self._exchange_data = dict()
-        self._adap_hist_param = config.get_adaptivity_hist_param()
-        self._refine_const = config.get_adaptivity_refining_const()
-        self._coarse_const = config.get_adaptivity_coarsening_const()
-        self._active_ids = []  # List of ids of micro simulations which are active at time t_n
-        self._active_ids_cp = []  # List of ids of micro simulations which are active in time t_{n-1}
-        self._inactive_ids = None  # List of ids of micro simulations which are inactive at time t_n
-        self._inactive_ids_cp = None  # List of ids of micro simulations which are inactive in time t_{n-1}
 
     def calculate_scalar_similarity_dists(self, similarity_dists_nm1, scalar_data):
         """
@@ -347,6 +349,8 @@ class MicroManager:
                 if micro_sims_output is not None:
                     if self._is_micro_solve_time_required:
                         micro_sims_output["micro_sim_time"] = 0.0
+                    if self._is_adaptivity_on:
+                        micro_sims_output["active_state"] = 1
 
                     for data_name, data in micro_sims_output.items():
                         write_data[data_name].append(data)
@@ -439,7 +443,7 @@ class MicroManager:
                 else:
                     self._interface.write_block_scalar_data(self._write_data_ids[dname], [], np.array([]))
 
-    def solve_micro_simulations(self, micro_sims_input):
+    def solve_micro_simulations_with_adaptivity(self, micro_sims_input):
         """
         Solve all micro simulations using the input data and assemble the micro simulations outputs in a list of dicts
         format.
@@ -480,6 +484,8 @@ class MicroManager:
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[i]["micro_sim_time"] = end_time - start_time
+            
+            micro_sims_output[i]["active_state"] = 1
 
         # Copy data from similar active micro simulations to the corresponding inactive ones
         for i in self._inactive_ids:
@@ -487,10 +493,44 @@ class MicroManager:
                               "simulation ({})".format(self._micro_sims[i].get_id(),
                                                        self._micro_sims[i].get_most_similar_active_id()))
             micro_sims_output[i] = micro_sims_output[self._micro_sims[i].get_most_similar_active_id()]
+
             if self._is_micro_solve_time_required:
                 micro_sims_output[i]["micro_sim_time"] = 0
 
+            micro_sims_output[i]["active_state"] = 0
+
         return micro_sims_output
+
+    def solve_all_micro_simulations(self, micro_sims_input):
+        """
+        Solve all micro simulations using the input data and assemble the micro simulations outputs in a list of dicts
+        format.
+
+        Parameters
+        ----------
+        micro_sims_input : list
+            List of dicts in which keys are names of data and the values are the data which are required inputs to
+            solve a micro simulation.
+
+        Returns
+        -------
+        micro_sims_output : list
+            List of dicts in which keys are names of data and the values are the data of the output of the micro
+            simulations.
+        """
+        micro_sims_output = list(range(self._number_of_micro_simulations))
+        # Solve all active micro simulations
+        for i in range(self._number_of_micro_simulations):
+            self._logger.info("Solving active micro simulation ({})".format(self._micro_sims[i].get_id()))
+            start_time = time.time()
+            micro_sims_output[i] = self._micro_sims[i].solve(micro_sims_input[i], self._dt)
+            end_time = time.time()
+
+            if self._is_micro_solve_time_required:
+                micro_sims_output[i]["micro_sim_time"] = end_time - start_time
+
+        return micro_sims_output
+
 
     def solve(self):
         """
@@ -506,14 +546,20 @@ class MicroManager:
                     micro_sim.save_checkpoint()
                 t_checkpoint = t
                 n_checkpoint = n
-                self._similarity_dists_cp = self._similarity_dists
-                self._active_ids_cp = self._active_ids
-                self._inactive_ids_cp = self._inactive_ids
+                
+                if self._is_adaptivity_on:
+                    self._similarity_dists_cp = self._similarity_dists
+                    self._active_ids_cp = self._active_ids
+                    self._inactive_ids_cp = self._inactive_ids
+                
                 self._interface.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
 
             micro_sims_input = self.read_data_from_precice()
 
-            micro_sims_output = self.solve_micro_simulations(micro_sims_input)
+            if self._is_adaptivity_on:
+                micro_sims_output = self.solve_micro_simulations_with_adaptivity(micro_sims_input)
+            else:
+                micro_sims_output = self.solve_all_micro_simulations(micro_sims_input)
 
             self.write_data_to_precice(micro_sims_output)
 
@@ -528,9 +574,12 @@ class MicroManager:
                     micro_sim.reload_checkpoint()
                 n = n_checkpoint
                 t = t_checkpoint
-                self._similarity_dists = self._similarity_dists_cp
-                self._active_ids = self._active_ids_cp
-                self._inactive_ids = self._inactive_ids_cp
+
+                if self._is_adaptivity_on:
+                    self._similarity_dists = self._similarity_dists_cp
+                    self._active_ids = self._active_ids_cp
+                    self._inactive_ids = self._inactive_ids_cp
+                
                 self._interface.mark_action_fulfilled(precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
                 self._logger.info("Micro simulations {} - {}: time window t = {} has converged".format(
