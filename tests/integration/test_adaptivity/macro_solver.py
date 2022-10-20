@@ -5,6 +5,7 @@ import numpy as np
 import precice
 from random import random
 
+
 def main():
     """
     Dummy macro simulation which is coupled to a set of micro simulations via preCICE and the Micro Manager
@@ -51,7 +52,7 @@ def main():
                 write_vector_data[n, 1] = vector_value[1]
                 write_vector_data[n, 2] = vector_value[2]
         scalar_value += 1
-        vector_value = [x + 1 for x in vector_value] 
+        vector_value = [x + 1 for x in vector_value]
 
     # Define Gauss points on entire domain as coupling mesh
     vertex_ids = interface.set_mesh_vertices(read_mesh_id, coords)
