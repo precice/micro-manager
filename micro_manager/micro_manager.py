@@ -214,9 +214,8 @@ class MicroManager:
                     for d in range(dim):
                         data_diff += abs(vector_data[id_1,
                                          d] - vector_data[id_2, d])
-                    similarity_dists[id_1,
-                                     id_2] = exp(-self._adap_hist_param * self._dt) * similarity_dists_nm1[id_1,
-                                                                                                           id_2] + self._dt * data_diff
+                    similarity_dists[id_1, id_2] = exp(-self._adap_hist_param * self._dt) * \
+                        similarity_dists_nm1[id_1, id_2] + self._dt * data_diff
                 else:
                     similarity_dists[id_1, id_2] = 0.0
             micro_ids.remove(id_1)
