@@ -14,10 +14,10 @@ def main():
     t = t_checkpoint = 0
 
     # preCICE setup
-    interface = precice.Interface("Macro-dummy", "precice-config.xml", 0, 1)
+    interface = precice.Interface("macro-cube", "precice-config.xml", 0, 1)
 
     # define coupling meshes
-    read_mesh_name = write_mesh_name = "macro-mesh"
+    read_mesh_name = write_mesh_name = "macro-cube-mesh"
     read_mesh_id = interface.get_mesh_id(read_mesh_name)
     read_data_names = {"micro-scalar-data": 0, "micro-vector-data": 1}
 
@@ -25,7 +25,7 @@ def main():
     write_data_names = {"macro-scalar-data": 0, "macro-vector-data": 1}
 
     # Coupling mesh - unit cube with 5 points in each direction
-    np_axis = 5
+    np_axis = 2
     x_coords, y_coords, z_coords = np.meshgrid(
         np.linspace(0, 1, np_axis),
         np.linspace(0, 1, np_axis),

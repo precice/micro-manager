@@ -154,14 +154,8 @@ class MicroManager:
                 if name in self._write_data_names:
                     self._adaptivity_micro_data_names[name] = is_data_vector
 
-            self._active_ids = []  # List of ids of micro simulations which are active at time t_n
-            # List of ids of micro simulations which are active in time t_{n-1}
-            self._active_ids_cp = []
-            # List of ids of micro simulations which are inactive at time t_n
-            self._inactive_ids = None
-            # List of ids of micro simulations which are inactive in time
-            # t_{n-1}
-            self._inactive_ids_cp = None
+            self._micro_sim_states = None  # List of booleans depending on active and inactive micro simulations at time t_n
+            self._micro_sim_states_cp = []
 
         self._exchange_data = dict()
 
@@ -185,7 +179,6 @@ class MicroManager:
                                                                                                            id_2] + self._dt * abs(scalar_data[id_1] - scalar_data[id_2])
                 else:
                     similarity_dists[id_1, id_2] = 0.0
-            micro_ids.remove(id_1)
 
         return similarity_dists
 
@@ -218,44 +211,54 @@ class MicroManager:
                         similarity_dists_nm1[id_1, id_2] + self._dt * data_diff
                 else:
                     similarity_dists[id_1, id_2] = 0.0
-            micro_ids.remove(id_1)
 
         return similarity_dists
 
-    def calculate_adaptivity(self, similarity_dists):
-        """
-
-        """
-        print("similarity_dists at the start of calculate_adaptivity = {}".format(
-            similarity_dists))
-
+    def update_active_micro_simulations(self, similarity_dists, micro_sim_states):
         ref_tol = self._refine_const * np.amax(similarity_dists)
         coarse_tol = self._coarse_const * ref_tol
 
-        # Update the set of active micro sims
-        for id_1 in self._active_ids:
-            for id_2 in self._active_ids:
-                if id_1 != id_2:
-                    # If active sim is similar to another active sim,
-                    # deactivate it
-                    if similarity_dists[id_1, id_2] < coarse_tol:
-                        self._micro_sims[id_1].deactivate()
-                        self._active_ids.remove(id_1)
-                        self._inactive_ids.append(id_1)
-                        break
+        print("Active ids at the start of adaptivity = {}".format(self._active_ids))
+        print("Inactive ids at the start of adaptivity = {}".format(self._inactive_ids))
 
+        # Update the set of active micro sims
+        for id_1 in range(self._number_of_micro_simulations):
+            if micro_sim_states[id_1]:  # if id_1 sim is active
+                for id_2 in range(self._number_of_micro_simulations):
+                    if micro_sim_states[id_2]:  # if id_2 is active
+                        if id_1 != id_2:
+                            # If active sim is similar to another active sim,
+                            # deactivate it
+                            if similarity_dists[id_1, id_2] < coarse_tol:
+                                print("sim {} and sim {} are similar, so deactivating {}".format(id_1, id_2, id_1))
+                                self._micro_sims[id_1].deactivate()
+                                micro_sim_states[id_1] = 0
+                                break
+
+        print("Active ids after updating active sims = {}".format(self._active_ids))
+        print("Inactive ids after updating active sims = {}".format(self._inactive_ids))
+
+        return micro_sim_states
+
+
+    def update_inactive_micro_simulations(self, similarity_dists, micro_sim_states):
+        ref_tol = self._refine_const * np.amax(similarity_dists)
         # Update the set of inactive micro sims
         dists = []
-        for id_1 in self._inactive_ids:
-            for id_2 in self._active_ids:
-                dists.append(similarity_dists[id_1, id_2])
-            # If inactive sim is not similar to any active sim, activate it
-            if min(dists) > ref_tol:
-                self._micro_sims[id_1].activate()
-                self._inactive_ids.remove(id_1)
-                self._active_ids.append(id_1)
-            dists = []
+        for id_1 in range(self._number_of_micro_simulations):
+            if not micro_sim_states[id_1]:
+                for id_2 in range(self._number_of_micro_simulations):
+                    if micro_sim_states[id_2]:
+                        dists.append(similarity_dists[id_1, id_2])
+                # If inactive sim is not similar to any active sim, activate it
+                if min(dists) > ref_tol:
+                    self._micro_sims[id_1].activate()
+                    self._inactive_ids.remove(id_1)
+                    self._active_ids.append(id_1)
+                dists = []
 
+
+    def associate_inactive_to_active(self, similarity_dists):
         # Associate inactive micro sims to active micro sims
         micro_id = 0
         for id_1 in self._inactive_ids:
@@ -353,8 +356,9 @@ class MicroManager:
         self._similarity_dists_nm1 = np.zeros(
             (self._number_of_micro_simulations,
              self._number_of_micro_simulations))
-        # All micro sims are inactive at the start
-        self._inactive_ids = list(range(self._number_of_micro_simulations))
+
+        # All micro sims are active at the start
+        self._micro_sim_states = np.array((self._number_of_micro_simulations))
 
         for name, _ in self._adaptivity_data_names.items():
             self._exchange_data[name] = list(
