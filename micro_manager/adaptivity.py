@@ -4,6 +4,7 @@ Functionality for adaptive initialization and control of micro simulations
 import numpy as np
 import sys
 
+
 class AdaptiveController:
     def __init__(self, configurator) -> None:
         # Names of data to be used for adaptivity computation
@@ -41,7 +42,7 @@ class AdaptiveController:
                             data_diff += abs(data[id_1, d] - data[id_2, d])
                     else:
                         data_diff = abs(data[id_1] - data[id_2])
-                    
+
                     similarity_dists[id_1, id_2] += dt * data_diff
                 else:
                     similarity_dists[id_1, id_2] = 0.0
@@ -94,7 +95,7 @@ class AdaptiveController:
                     micro_sims[id_1].activate()
                     _micro_sim_states[id_1] = 1
                 dists = []
-        
+
         return _micro_sim_states
 
     def associate_inactive_to_active(self, similarity_dists, micro_sim_states, micro_sims):

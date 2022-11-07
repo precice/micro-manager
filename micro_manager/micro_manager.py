@@ -81,48 +81,35 @@ class MicroManager:
         fh = logging.FileHandler('micro-manager.log')
         fh.setLevel(logging.INFO)
         # Create formatter and add it to handlers
-        formatter = logging.Formatter(
-            '[' + str(self._rank) + '] %(name)s -  %(levelname)s - %(message)s')
+        formatter = logging.Formatter('[' + str(self._rank) + '] %(name)s -  %(levelname)s - %(message)s')
         fh.setFormatter(formatter)
         self._logger.addHandler(fh)  # add the handlers to the logger
 
         self._is_parallel = self._size > 1
         self._micro_sims_have_output = False
 
-        self._logger.info(
-            "Provided configuration file: {}".format(config_file))
+        self._logger.info("Provided configuration file: {}".format(config_file))
         config = Config(config_file)
 
         # Define the preCICE interface
-        self._interface = precice.Interface(
-            "Micro-Manager",
-            config.get_config_file_name(),
-            self._rank,
-            self._size)
+        self._interface = precice.Interface("Micro-Manager", config.get_config_file_name(), self._rank, self._size)
 
         micro_file_name = config.get_micro_file_name()
-        self._micro_problem = getattr(
-            __import__(
-                micro_file_name,
-                fromlist=["MicroSimulation"]),
-            "MicroSimulation")
+        self._micro_problem = getattr(__import__(micro_file_name, fromlist=["MicroSimulation"]), "MicroSimulation")
 
-        self._macro_mesh_id = self._interface.get_mesh_id(
-            config.get_macro_mesh_name())
+        self._macro_mesh_id = self._interface.get_mesh_id(config.get_macro_mesh_name())
 
         # Data names and ids of data written to preCICE
         self._write_data_names = config.get_write_data_names()
         self._write_data_ids = dict()
         for name in self._write_data_names.keys():
-            self._write_data_ids[name] = self._interface.get_data_id(
-                name, self._macro_mesh_id)
+            self._write_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
         # Data names and ids of data read from preCICE
         self._read_data_names = config.get_read_data_names()
         self._read_data_ids = dict()
         for name in self._read_data_names.keys():
-            self._read_data_ids[name] = self._interface.get_data_id(
-                name, self._macro_mesh_id)
+            self._read_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
         self._exchange_data = dict()
 
@@ -196,21 +183,11 @@ class MicroManager:
 
         mesh_bounds = []
         if self._interface.get_dimensions() == 2:
-            mesh_bounds = [
-                local_xmin,
-                local_xmin + dx,
-                local_ymin,
-                local_ymin + dy]
+            mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy]
         elif self._interface.get_dimensions() == 3:
             # TODO: Domain needs to be decomposed optimally in the Z direction
             # too
-            mesh_bounds = [
-                local_xmin,
-                local_xmin + dx,
-                local_ymin,
-                local_ymin + dy,
-                macro_bounds[4],
-                macro_bounds[5]]
+            mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy, macro_bounds[4], macro_bounds[5]]
 
         self._logger.info("Bounding box limits are {}".format(mesh_bounds))
 
@@ -227,37 +204,29 @@ class MicroManager:
         """
         # Decompose the macro-domain and set the mesh access region for each
         # partition in preCICE
-        assert len(self._macro_bounds) / 2 == self._interface.get_dimensions(
-        ), "Provided macro mesh bounds are of " "incorrect dimension"
+        assert len(self._macro_bounds) / \
+            2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of " "incorrect dimension"
         if self._is_parallel:
-            coupling_mesh_bounds = self.decompose_macro_domain(
-                self._macro_bounds)
+            coupling_mesh_bounds = self.decompose_macro_domain(self._macro_bounds)
         else:
             coupling_mesh_bounds = self._macro_bounds
 
-        self._interface.set_mesh_access_region(
-            self._macro_mesh_id, coupling_mesh_bounds)
+        self._interface.set_mesh_access_region(self._macro_mesh_id, coupling_mesh_bounds)
 
         # initialize preCICE
         self._dt = self._interface.initialize()
 
-        self._mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(
-            self._macro_mesh_id)
+        self._mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(self._macro_mesh_id)
         self._number_of_micro_simulations, _ = mesh_vertex_coords.shape
-        self._logger.info(
-            "Number of micro simulations = {}".format(
-                self._number_of_micro_simulations))
+        self._logger.info("Number of micro simulations = {}".format(self._number_of_micro_simulations))
 
-        self._similarity_dists_nm1 = np.zeros(
-            (self._number_of_micro_simulations,
-             self._number_of_micro_simulations))
+        self._similarity_dists_nm1 = np.zeros((self._number_of_micro_simulations, self._number_of_micro_simulations))
 
         # All micro sims are active at the start
         self._micro_sim_states = np.zeros((self._number_of_micro_simulations))
 
         for name, _ in self._adaptivity_data_names.items():
-            self._exchange_data[name] = list(
-                range(self._number_of_micro_simulations))
+            self._exchange_data[name] = list(range(self._number_of_micro_simulations))
 
         if self._number_of_micro_simulations == 0:
             if self._is_parallel:
@@ -272,10 +241,7 @@ class MicroManager:
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
         # simulations have been created by previous ranks, so that it can set
         # the correct IDs
-        self._comm.Allgather(
-            np.array(
-                self._number_of_micro_simulations),
-            nms_all_ranks)
+        self._comm.Allgather(np.array(self._number_of_micro_simulations), nms_all_ranks)
 
         # Create all micro simulations
         sim_id = 0
@@ -295,12 +261,7 @@ class MicroManager:
             write_data[name] = []
 
         # Initialize all micro simulations
-        if hasattr(
-                self._micro_problem,
-                'initialize') and callable(
-                getattr(
-                self._micro_problem,
-                'initialize')):
+        if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
             for micro_sim in self._micro_sims:
                 micro_sims_output = micro_sim.initialize()
                 if micro_sims_output is not None:
@@ -319,16 +280,11 @@ class MicroManager:
                         else:
                             write_data[name].append(0.0)
 
-        self._logger.info("Micro simulations {} - {} initialized.".format(
-            self._micro_sims[0].get_id(), self._micro_sims[-1].get_id()))
+        self._logger.info(
+            "Micro simulations {} - {} initialized.".format(self._micro_sims[0].get_id(), self._micro_sims[-1].get_id()))
 
         self._micro_sims_have_output = False
-        if hasattr(
-                self._micro_problem,
-                'output') and callable(
-                getattr(
-                self._micro_problem,
-                'output')):
+        if hasattr(self._micro_problem, 'output') and callable(getattr(self._micro_problem, 'output')):
             self._micro_sims_have_output = True
 
         # Initialize coupling data
@@ -432,11 +388,15 @@ class MicroManager:
             self._similarity_dists = exp(-self._hist_param * self._dt) * self._similarity_dists_nm1
 
             for name, _ in self._adaptivity_data_names.items():
-                self._similarity_dists = self._adaptivity_controller.get_similarity_dists(self._dt, self._similarity_dists, self._exchange_data[name])
+                self._similarity_dists = self._adaptivity_controller.get_similarity_dists(
+                    self._dt, self._similarity_dists, self._exchange_data[name])
 
-            self._micro_sim_states = self._adaptivity_controller.update_active_micro_sims(self._similarity_dists, self._micro_sim_states, self._micro_sims)
-            self._micro_sim_states = self._adaptivity_controller.update_inactive_micro_sims(self._similarity_dists, self._micro_sim_states, self._micro_sims)
-            self._adaptivity_controller.associate_inactive_to_active(self._similarity_dists, self._micro_sim_states, self._micro_sims)
+            self._micro_sim_states = self._adaptivity_controller.update_active_micro_sims(
+                self._similarity_dists, self._micro_sim_states, self._micro_sims)
+            self._micro_sim_states = self._adaptivity_controller.update_inactive_micro_sims(
+                self._similarity_dists, self._micro_sim_states, self._micro_sims)
+            self._adaptivity_controller.associate_inactive_to_active(
+                self._similarity_dists, self._micro_sim_states, self._micro_sims)
 
         micro_sims_output = list(range(self._number_of_micro_simulations))
 
@@ -462,10 +422,10 @@ class MicroManager:
 
         for i in inactive_sim_indices:
             self._logger.info(
-            "Micro simulation ({}) is inactive. Copying data from most similar active micro "
-            "simulation ({})".format(
-                self._micro_sims[i].get_id(),
-                self._micro_sims[i].get_most_similar_active_id()))
+                "Micro simulation ({}) is inactive. Copying data from most similar active micro "
+                "simulation ({})".format(
+                    self._micro_sims[i].get_id(),
+                    self._micro_sims[i].get_most_similar_active_id()))
 
             micro_sims_output[i] = micro_sims_output[self._micro_sims[i].get_most_similar_active_id()]
 
@@ -490,8 +450,7 @@ class MicroManager:
 
         while self._interface.is_coupling_ongoing():
             # Write checkpoints for all micro simulations
-            if self._interface.is_action_required(
-                    precice.action_write_iteration_checkpoint()):
+            if self._interface.is_action_required(precice.action_write_iteration_checkpoint()):
                 for micro_sim in self._micro_sims:
                     micro_sim.save_checkpoint()
                 t_checkpoint = t
@@ -507,7 +466,7 @@ class MicroManager:
             micro_sims_input = self.read_data_from_precice()
 
             micro_sims_output = self.solve_micro_simulations(micro_sims_input)
-            
+
             self.write_data_to_precice(micro_sims_output)
 
             self._dt = self._interface.advance(self._dt)
@@ -516,8 +475,7 @@ class MicroManager:
             n += 1
 
             # Revert all micro simulations to checkpoints if required
-            if self._interface.is_action_required(
-                    precice.action_read_iteration_checkpoint()):
+            if self._interface.is_action_required(precice.action_read_iteration_checkpoint()):
                 for micro_sim in self._micro_sims:
                     micro_sim.reload_checkpoint()
                 n = n_checkpoint
