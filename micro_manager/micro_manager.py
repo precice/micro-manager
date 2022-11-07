@@ -57,7 +57,7 @@ def create_micro_problem_class(base_micro_simulation):
 
 
 class MicroManager:
-    def __init__(self, config_file):
+    def __init__(self, config_file) -> None:
         """
         Constructor of MicroManager class.
 
@@ -139,11 +139,8 @@ class MicroManager:
         self._is_adaptivity_on = config.turn_on_adaptivity()
 
         if self._is_adaptivity_on:
-            # Names of data to be used for adaptivity computation
             self._adaptivity_data_names = config.get_data_for_adaptivity()
-            self._adap_hist_param = config.get_adaptivity_hist_param()
-            self._refine_const = config.get_adaptivity_refining_const()
-            self._coarse_const = config.get_adaptivity_coarsening_const()
+
             # Names of macro data to be used for adaptivity computation
             self._adaptivity_macro_data_names = dict()
             # Names of micro data to be used for adaptivity computation
@@ -158,117 +155,6 @@ class MicroManager:
             self._micro_sim_states_cp = []
 
         self._exchange_data = dict()
-
-    def calculate_scalar_similarity_dists(
-            self, similarity_dists_nm1, scalar_data):
-        """
-
-        Returns
-        -------
-
-        """
-        micro_ids = list(range(len(scalar_data)))
-        similarity_dists = np.zeros(
-            (self._number_of_micro_simulations,
-             self._number_of_micro_simulations))
-        for id_1 in micro_ids:
-            for id_2 in micro_ids:
-                if id_1 != id_2:
-                    similarity_dists[id_1,
-                                     id_2] = exp(-self._adap_hist_param * self._dt) * similarity_dists_nm1[id_1,
-                                                                                                           id_2] + self._dt * abs(scalar_data[id_1] - scalar_data[id_2])
-                else:
-                    similarity_dists[id_1, id_2] = 0.0
-
-        return similarity_dists
-
-    def calculate_vector_similarity_dists(
-            self, similarity_dists_nm1, vector_data):
-        """
-
-        Parameters
-        ----------
-        similarity_dists_nm1
-        vector_data
-
-        Returns
-        -------
-
-        """
-        nms, dim = vector_data.shape
-        micro_ids = list(range(nms))
-        similarity_dists = np.zeros(
-            (self._number_of_micro_simulations,
-             self._number_of_micro_simulations))
-        for id_1 in micro_ids:
-            for id_2 in micro_ids:
-                if id_1 != id_2:
-                    data_diff = 0
-                    for d in range(dim):
-                        data_diff += abs(vector_data[id_1,
-                                         d] - vector_data[id_2, d])
-                    similarity_dists[id_1, id_2] = exp(-self._adap_hist_param * self._dt) * \
-                        similarity_dists_nm1[id_1, id_2] + self._dt * data_diff
-                else:
-                    similarity_dists[id_1, id_2] = 0.0
-
-        return similarity_dists
-
-    def update_active_micro_simulations(self, similarity_dists, micro_sim_states):
-        ref_tol = self._refine_const * np.amax(similarity_dists)
-        coarse_tol = self._coarse_const * ref_tol
-
-        print("Active ids at the start of adaptivity = {}".format(self._active_ids))
-        print("Inactive ids at the start of adaptivity = {}".format(self._inactive_ids))
-
-        # Update the set of active micro sims
-        for id_1 in range(self._number_of_micro_simulations):
-            if micro_sim_states[id_1]:  # if id_1 sim is active
-                for id_2 in range(self._number_of_micro_simulations):
-                    if micro_sim_states[id_2]:  # if id_2 is active
-                        if id_1 != id_2:
-                            # If active sim is similar to another active sim,
-                            # deactivate it
-                            if similarity_dists[id_1, id_2] < coarse_tol:
-                                print("sim {} and sim {} are similar, so deactivating {}".format(id_1, id_2, id_1))
-                                self._micro_sims[id_1].deactivate()
-                                micro_sim_states[id_1] = 0
-                                break
-
-        print("Active ids after updating active sims = {}".format(self._active_ids))
-        print("Inactive ids after updating active sims = {}".format(self._inactive_ids))
-
-        return micro_sim_states
-
-
-    def update_inactive_micro_simulations(self, similarity_dists, micro_sim_states):
-        ref_tol = self._refine_const * np.amax(similarity_dists)
-        # Update the set of inactive micro sims
-        dists = []
-        for id_1 in range(self._number_of_micro_simulations):
-            if not micro_sim_states[id_1]:
-                for id_2 in range(self._number_of_micro_simulations):
-                    if micro_sim_states[id_2]:
-                        dists.append(similarity_dists[id_1, id_2])
-                # If inactive sim is not similar to any active sim, activate it
-                if min(dists) > ref_tol:
-                    self._micro_sims[id_1].activate()
-                    self._inactive_ids.remove(id_1)
-                    self._active_ids.append(id_1)
-                dists = []
-
-
-    def associate_inactive_to_active(self, similarity_dists):
-        # Associate inactive micro sims to active micro sims
-        micro_id = 0
-        for id_1 in self._inactive_ids:
-            dist_min = 100
-            for id_2 in self._active_ids:
-                # Find most similar active sim for every inactive sim
-                if similarity_dists[id_1, id_2] < dist_min:
-                    micro_id = id_2
-                    dist_min = similarity_dists[id_1, id_2]
-            self._micro_sims[id_1].is_most_similar_to(micro_id)
 
     def decompose_macro_domain(self, macro_bounds):
         """
@@ -541,7 +427,7 @@ class MicroManager:
                 self._similarity_dists = self.calculate_scalar_similarity_dists(
                     self._similarity_dists, self._exchange_data[name])
 
-        self.calculate_adaptivity(self._similarity_dists)
+        
 
         micro_sims_output = list(range(self._number_of_micro_simulations))
         # Solve all active micro simulations
