@@ -13,6 +13,7 @@ from math import sqrt, exp
 import numpy as np
 import logging
 import time
+from adaptivity import AdaptiveController
 
 sys.path.append(os.getcwd())
 
@@ -52,6 +53,9 @@ def create_micro_problem_class(base_micro_simulation):
         def get_most_similar_active_id(self):
             assert self._is_active is False
             return self._most_similar_active_id
+
+        def is_active(self):
+            return self._is_active
 
     return MicroProblem
 
@@ -139,6 +143,7 @@ class MicroManager:
         self._is_adaptivity_on = config.turn_on_adaptivity()
 
         if self._is_adaptivity_on:
+            self._hist_param = config.get_adaptivity_hist_param()
             self._adaptivity_data_names = config.get_data_for_adaptivity()
 
             # Names of macro data to be used for adaptivity computation
@@ -401,7 +406,7 @@ class MicroManager:
                     self._interface.write_block_scalar_data(
                         self._write_data_ids[dname], [], np.array([]))
 
-    def solve_micro_simulations_with_adaptivity(self, micro_sims_input):
+    def solve_micro_simulations(self, micro_sims_input):
         """
         Solve all micro simulations using the input data and assemble the micro simulations outputs in a list of dicts
         format.
@@ -418,82 +423,42 @@ class MicroManager:
             List of dicts in which keys are names of data and the values are the data of the output of the micro
             simulations.
         """
-        self._similarity_dists = self._similarity_dists_nm1  # put old similarity distance into current distances for calculation.
-        for name, is_data_vector in self._adaptivity_data_names.items():
-            if is_data_vector:
-                self._similarity_dists = self.calculate_vector_similarity_dists(
-                    self._similarity_dists, self._exchange_data[name])
-            else:
-                self._similarity_dists = self.calculate_scalar_similarity_dists(
-                    self._similarity_dists, self._exchange_data[name])
+        if self._is_adaptivity_on:
+            # Multiply old similarity distance by history term to get current distances
+            self._similarity_dists = exp(-self._hist_param * self._dt) * self._similarity_dists_nm1
 
-        
+            for name, _ in self._adaptivity_data_names.items():
+                self._similarity_dists = AdaptiveController.get_similarity_dists(self._similarity_dists, self._exchange_data[name])
+
+            AdaptiveController.update_active_micro_simulations(self._similarity_dists, self._micro_sim_states)
+            AdaptiveController.update_inactive_micro_simulations(self._similarity_dists, self._micro_sim_states)
+            AdaptiveController.associate_inactive_to_active(self._similarity_dists, self._micro_sims)
 
         micro_sims_output = list(range(self._number_of_micro_simulations))
         # Solve all active micro simulations
-        for i in self._active_ids:
-            self._logger.info(
-                "Solving active micro simulation ({})".format(
-                    self._micro_sims[i].get_id()))
-            start_time = time.time()
-            micro_sims_output[i] = self._micro_sims[i].solve(
-                micro_sims_input[i], self._dt)
-            end_time = time.time()
+        for i in self._number_of_micro_simulations:
+            if self._micro_sims[i].is_active():
+                self._logger.info("Solving active micro simulation ({})".format(self._micro_sims[i].get_id()))
+                start_time = time.time()
+                micro_sims_output[i] = self._micro_sims[i].solve(micro_sims_input[i], self._dt)
+                end_time = time.time()
 
-            for name in self._adaptivity_micro_data_names:
-                # Collect micro sim output for adaptivity
-                self._exchange_data[name][i] = micro_sims_output[i][name]
+                micro_sims_output[i]["active_state"] = 1
 
-            if self._is_micro_solve_time_required:
-                micro_sims_output[i]["micro_sim_time"] = end_time - start_time
-
-            micro_sims_output[i]["active_state"] = 1
-
-        # Copy data from similar active micro simulations to the corresponding
-        # inactive ones
-        for i in self._inactive_ids:
-            self._logger.info(
+            else:
+                self._logger.info(
                 "Micro simulation ({}) is inactive. Copying data from most similar active micro "
                 "simulation ({})".format(
                     self._micro_sims[i].get_id(),
                     self._micro_sims[i].get_most_similar_active_id()))
-            micro_sims_output[i] = micro_sims_output[self._micro_sims[i].get_most_similar_active_id(
-            )]
+                micro_sims_output[i] = micro_sims_output[self._micro_sims[i].get_most_similar_active_id()]
+                start_time = end_time = 0
 
-            if self._is_micro_solve_time_required:
-                micro_sims_output[i]["micro_sim_time"] = 0
+                micro_sims_output[i]["active_state"] = 0
 
-            micro_sims_output[i]["active_state"] = 0
-
-        return micro_sims_output
-
-    def solve_all_micro_simulations(self, micro_sims_input):
-        """
-        Solve all micro simulations using the input data and assemble the micro simulations outputs in a list of dicts
-        format.
-
-        Parameters
-        ----------
-        micro_sims_input : list
-            List of dicts in which keys are names of data and the values are the data which are required inputs to
-            solve a micro simulation.
-
-        Returns
-        -------
-        micro_sims_output : list
-            List of dicts in which keys are names of data and the values are the data of the output of the micro
-            simulations.
-        """
-        micro_sims_output = list(range(self._number_of_micro_simulations))
-        # Solve all active micro simulations
-        for i in range(self._number_of_micro_simulations):
-            self._logger.info(
-                "Solving active micro simulation ({})".format(
-                    self._micro_sims[i].get_id()))
-            start_time = time.time()
-            micro_sims_output[i] = self._micro_sims[i].solve(
-                micro_sims_input[i], self._dt)
-            end_time = time.time()
+            for name in self._adaptivity_micro_data_names:
+                # Collect micro sim output for adaptivity
+                self._exchange_data[name][i] = micro_sims_output[i][name]
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[i]["micro_sim_time"] = end_time - start_time
@@ -526,13 +491,8 @@ class MicroManager:
 
             micro_sims_input = self.read_data_from_precice()
 
-            if self._is_adaptivity_on:
-                micro_sims_output = self.solve_micro_simulations_with_adaptivity(
-                    micro_sims_input)
-            else:
-                micro_sims_output = self.solve_all_micro_simulations(
-                    micro_sims_input)
-
+            micro_sims_output = self.solve_micro_simulations(micro_sims_input)
+            
             self.write_data_to_precice(micro_sims_output)
 
             self._dt = self._interface.advance(self._dt)

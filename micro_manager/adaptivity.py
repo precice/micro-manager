@@ -3,21 +3,28 @@ Functionality for adaptive initialization and control of micro simulations
 """
 import numpy as np
 from math import exp
+import sys
 
 class AdaptiveController:
     def __init__(self, configurator) -> None:
         # Names of data to be used for adaptivity computation
-        self._hist_param = configurator.get_adaptivity_hist_param()
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
 
     def get_similarity_dists(self, dt, similarity_dists_nm1, data):
         """
+        Calculate metric which determines if two micro simulations are similar enough to have one of them deactivated.
+
+        Parameters
+        ----------
 
         Returns
         -------
+        similarity_dists : numpy array
 
         """
+        similarity_dists = similarity_dists_nm1
+
         if data.ndim == 1:
             number_of_micro_sims = len(data)
             dim = 0
@@ -35,7 +42,7 @@ class AdaptiveController:
                     else:
                         data_diff = abs(data[id_1] - data[id_2])
                     
-                    similarity_dists[id_1, id_2] = exp(-self._hist_param * self._dt) * similarity_dists_nm1[id_1, id_2] + dt * data_diff)
+                    similarity_dists[id_1, id_2] += dt * data_diff
                 else:
                     similarity_dists[id_1, id_2] = 0.0
 
@@ -84,7 +91,7 @@ class AdaptiveController:
         # Associate inactive micro sims to active micro sims
         micro_id = 0
         for id_1 in self._inactive_ids:
-            dist_min = 100
+            dist_min = sys.float_info.max
             for id_2 in self._active_ids:
                 # Find most similar active sim for every inactive sim
                 if similarity_dists[id_1, id_2] < dist_min:
