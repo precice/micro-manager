@@ -3,7 +3,6 @@
 
 import numpy as np
 import precice
-from random import random
 
 
 def main():
@@ -25,7 +24,7 @@ def main():
     write_data_names = {"macro-scalar-data": 0, "macro-vector-data": 1}
 
     # Coupling mesh - unit cube with 5 points in each direction
-    np_axis = 2
+    np_axis = 5
     x_coords, y_coords, z_coords = np.meshgrid(
         np.linspace(0, 1, np_axis),
         np.linspace(0, 1, np_axis),
@@ -53,6 +52,9 @@ def main():
                 write_vector_data[n, 2] = vector_value[2]
         scalar_value += 1
         vector_value = [x + 1 for x in vector_value]
+
+    print("write_scalar_data = {}".format(write_scalar_data))
+    print("write_vector_data = {}".format(write_vector_data))
 
     # Define Gauss points on entire domain as coupling mesh
     vertex_ids = interface.set_mesh_vertices(read_mesh_id, coords)
@@ -96,11 +98,9 @@ def main():
             elif dim == 1:
                 read_vector_data = interface.read_block_vector_data(read_data_ids[name], vertex_ids)
 
-        # Set the read data as the write data
-        write_scalar_data[:] = read_scalar_data[:]
-        for i in range(nv):
-            for d in range(interface.get_dimensions()):
-                write_vector_data[i, d] = read_vector_data[i, d]
+        # Set the read data as the write data with an increment
+        write_scalar_data = read_scalar_data + 1
+        write_vector_data = read_vector_data + 1
 
         # Write data to preCICE
         for name, dim in write_data_names.items():

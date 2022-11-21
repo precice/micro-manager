@@ -16,13 +16,11 @@ class MicroSimulation:
         self._checkpoint = None
 
     def initialize(self):
-        # print("Initialize micro problem ({})".format(self._sim_id))
         self._micro_scalar_data = 0
         self._micro_vector_data = []
         self._checkpoint = 0
 
     def solve(self, macro_data, dt):
-        # print("Solve timestep of micro problem ({})".format(self._sim_id))
         assert dt != 0
         self._micro_vector_data = macro_data["macro-vector-data"] + 1
         self._micro_scalar_data = macro_data["macro-scalar-data"] + 1
@@ -31,9 +29,7 @@ class MicroSimulation:
                 "micro-vector-data": self._micro_vector_data.copy()}
 
     def save_checkpoint(self):
-        # print("Saving state of micro problem ({})".format(self._sim_id))
         self._checkpoint = self._micro_scalar_data
 
     def reload_checkpoint(self):
-        # print("Reverting to old state of micro problem ({})".format(self._sim_id))
         self._micro_scalar_data = self._checkpoint

@@ -45,31 +45,15 @@
 
     <m2n:sockets from="Micro-Manager" to="macro-cube"/>
 
-    <coupling-scheme:parallel-implicit>
-       <participants first="macro-cube" second="Micro-Manager"/>
-       <max-time value="1.0"/>
+    <coupling-scheme:serial-explicit>
+       <participants first="Micro-Manager" second="macro-cube"/>
+       <max-time value="10.0"/>
        <time-window-size value="1.0"/>
-       <max-iterations value="1"/>
-       <exchange data="micro-scalar-data" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube" initialize="yes"/>
-       <exchange data="micro-vector-data" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube" initialize="yes"/>
+       <exchange data="micro-scalar-data" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube"/>
+       <exchange data="micro-vector-data" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube"/>
        <exchange data="macro-scalar-data" mesh="macro-cube-mesh" from="macro-cube" to="Micro-Manager" initialize="yes"/>
        <exchange data="macro-vector-data" mesh="macro-cube-mesh" from="macro-cube" to="Micro-Manager" initialize="yes"/>
-       <relative-convergence-measure limit="1e-5" data="macro-scalar-data" mesh="macro-cube-mesh"/>
-       <relative-convergence-measure limit="1e-5" data="macro-vector-data" mesh="macro-cube-mesh"/>
-       <relative-convergence-measure limit="1e-5" data="micro-scalar-data" mesh="macro-cube-mesh"/>
-       <relative-convergence-measure limit="1e-5" data="micro-vector-data" mesh="macro-cube-mesh"/>
-       <acceleration:IQN-ILS>
-          <data name="micro-scalar-data" mesh="macro-cube-mesh"/>
-          <data name="micro-vector-data" mesh="macro-cube-mesh"/>
-          <data name="macro-scalar-data" mesh="macro-cube-mesh"/>
-          <data name="macro-vector-data" mesh="macro-cube-mesh"/>
-          <preconditioner type="residual-sum"/>
-          <initial-relaxation value="0.9"/>
-          <max-used-iterations value="40"/>
-          <time-windows-reused value="20"/>
-          <filter type="QR2" limit="1e-2"/>
-       </acceleration:IQN-ILS>
-    </coupling-scheme:parallel-implicit>
+    </coupling-scheme:serial-explicit>
 
   </solver-interface>
 </precice-configuration>
