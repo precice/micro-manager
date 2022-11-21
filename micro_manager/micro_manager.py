@@ -240,29 +240,24 @@ class MicroManager:
                     self._micro_problem)(sim_id))
             sim_id += 1
 
-        write_data = dict()
-        for name in self._write_data_names.keys():
-            write_data[name] = []
+        micro_sims_output = list(range(self._number_of_micro_simulations))
 
         # Initialize micro simulations if initialize() method exists
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
-            for micro_sim in self._micro_sims:
-                micro_sims_output = micro_sim.initialize()
-                if micro_sims_output is not None:
+            for i in range(self._number_of_micro_simulations):
+                micro_sims_output[i] = self._micro_sims[i].initialize()
+                if micro_sims_output[i] is not None:
                     if self._is_micro_solve_time_required:
-                        micro_sims_output["micro_sim_time"] = 0.0
+                        micro_sims_output[i]["micro_sim_time"] = 0.0
                     if self._is_adaptivity_on:
-                        micro_sims_output["active_state"] = 0
-
-                    for data_name, data in micro_sims_output.items():
-                        write_data[data_name].append(data)
+                        micro_sims_output[i]["active_state"] = 0
                 else:
+                    micro_sims_output[i] = dict()
                     for name, is_data_vector in self._write_data_names.items():
                         if is_data_vector:
-                            write_data[name].append(
-                                np.zeros(self._interface.get_dimensions()))
+                            micro_sims_output[i][name] = np.zeros(self._interface.get_dimensions())
                         else:
-                            write_data[name].append(0.0)
+                            micro_sims_output[i][name] = 0.0
 
         self._logger.info(
             "Micro simulations {} - {} initialized.".format(self._micro_sims[0].get_id(), self._micro_sims[-1].get_id()))
@@ -271,9 +266,10 @@ class MicroManager:
         if hasattr(self._micro_problem, 'output') and callable(getattr(self._micro_problem, 'output')):
             self._micro_sims_have_output = True
 
-        # Initialize coupling data
+        # Write initial data if required
         if self._interface.is_action_required(precice.action_write_initial_data()):
-            self.write_data_to_precice(write_data)
+            self.write_data_to_precice(micro_sims_output)
+            self._interface.mark_action_fulfilled(precice.action_write_initial_data())
 
         self._interface.initialize_data()
 
