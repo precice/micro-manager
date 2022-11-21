@@ -11,8 +11,8 @@
         "adaptivity": "True",
         "adaptivity_data": ["macro-scalar-data", "macro-vector-data"],
         "adaptivity_history_param": 0.5,
-        "adaptivity_coarsening_constant": 0.5,
-        "adaptivity_refining_constant": 0.5
+        "adaptivity_coarsening_constant": 0.4,
+        "adaptivity_refining_constant": 0.3
     },
     "diagnostics": {
       "output_micro_sim_solve_time": "True"

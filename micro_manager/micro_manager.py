@@ -273,7 +273,7 @@ class MicroManager:
 
         # Initialize coupling data
         if self._interface.is_action_required(precice.action_write_initial_data()):
-                self.write_data_to_precice(write_data)
+            self.write_data_to_precice(write_data)
 
         self._interface.initialize_data()
 
@@ -368,10 +368,10 @@ class MicroManager:
 
             micro_sim_states_n = self._adaptivity_controller.update_active_micro_sims(
                 similarity_dists_n, micro_sim_states_nm1, self._micro_sims)
-            
+
             micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(
                 similarity_dists_n, micro_sim_states_n, self._micro_sims)
-            
+
             self._adaptivity_controller.associate_inactive_to_active(
                 similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
@@ -379,9 +379,6 @@ class MicroManager:
 
         active_sim_indices = np.where(micro_sim_states_n == 1)[0]
         inactive_sim_indices = np.where(micro_sim_states_n == 0)[0]
-
-        print("active_sim_indices = {}".format(active_sim_indices))
-        print("inactive_sim_indices = {}".format(inactive_sim_indices))
 
         # Solve all active micro simulations
         for i in active_sim_indices:
@@ -450,7 +447,8 @@ class MicroManager:
 
             micro_sims_input = self.read_data_from_precice()
 
-            micro_sims_output, similarity_dists, micro_sim_states = self.solve_micro_simulations(micro_sims_input, similarity_dists, micro_sim_states)
+            micro_sims_output, similarity_dists, micro_sim_states = self.solve_micro_simulations(
+                micro_sims_input, similarity_dists, micro_sim_states)
 
             self.write_data_to_precice(micro_sims_output)
 

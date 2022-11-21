@@ -24,7 +24,7 @@ def main():
     write_data_names = {"macro-scalar-data": 0, "macro-vector-data": 1}
 
     # Coupling mesh - unit cube with 5 points in each direction
-    np_axis = 5
+    np_axis = 3
     x_coords, y_coords, z_coords = np.meshgrid(
         np.linspace(0, 1, np_axis),
         np.linspace(0, 1, np_axis),
@@ -52,9 +52,6 @@ def main():
                 write_vector_data[n, 2] = vector_value[2]
         scalar_value += 1
         vector_value = [x + 1 for x in vector_value]
-
-    print("write_scalar_data = {}".format(write_scalar_data))
-    print("write_vector_data = {}".format(write_vector_data))
 
     # Define Gauss points on entire domain as coupling mesh
     vertex_ids = interface.set_mesh_vertices(read_mesh_id, coords)
