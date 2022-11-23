@@ -25,8 +25,8 @@ class MicroSimulation:
         self._micro_vector_data = macro_data["macro-vector-data"] + 1
         self._micro_scalar_data = macro_data["macro-scalar-data"] + 1
 
-        return {"micro-scalar-data": self._micro_scalar_data.copy(),
-                "micro-vector-data": self._micro_vector_data.copy()}
+        return {"micro-scalar-data": self._micro_scalar_data,
+                "micro-vector-data": self._micro_vector_data}
 
     def save_checkpoint(self):
         self._checkpoint = self._micro_scalar_data

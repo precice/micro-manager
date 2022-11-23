@@ -141,7 +141,7 @@ class MicroManager:
                 if name in self._write_data_names:
                     self._adaptivity_micro_data_names[name] = is_data_vector
 
-    def decompose_macro_domain(self, macro_bounds):
+    def decompose_macro_domain(self, macro_bounds) -> list:
         """
         Decompose the macro domain equally among all ranks, if the Micro Manager is run in parallel.
 
@@ -182,7 +182,7 @@ class MicroManager:
 
         return mesh_bounds
 
-    def initialize(self):
+    def initialize(self) -> None:
         """
         This function does the following things:
         - If the Micro Manager has been executed in parallel, it decomposes the domain as equally as possible.
@@ -303,7 +303,7 @@ class MicroManager:
 
         return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
 
-    def write_data_to_precice(self, micro_sims_output):
+    def write_data_to_precice(self, micro_sims_output: list) -> None:
         """
         Write output of micro simulations to preCICE.
 
@@ -370,11 +370,15 @@ class MicroManager:
 
             self._adaptivity_controller.associate_inactive_to_active(
                 similarity_dists_n, micro_sim_states_n, self._micro_sims)
+        
+            active_sim_indices = np.where(micro_sim_states_n == 1)[0]
+            inactive_sim_indices = np.where(micro_sim_states_n == 0)[0]
+        else:
+            # If adaptivity is off, all micro simulations are active
+            active_sim_indices = np.ones_like(micro_sim_states_nm1)
+            inactive_sim_indices = np.zeros_like(micro_sim_states_nm1)
 
         micro_sims_output = list(range(self._number_of_micro_simulations))
-
-        active_sim_indices = np.where(micro_sim_states_n == 1)[0]
-        inactive_sim_indices = np.where(micro_sim_states_n == 0)[0]
 
         # Solve all active micro simulations
         for i in active_sim_indices:
@@ -384,7 +388,8 @@ class MicroManager:
             micro_sims_output[i] = self._micro_sims[i].solve(micro_sims_input[i], self._dt)
             end_time = time.time()
 
-            micro_sims_output[i]["active_state"] = 1
+            if self._is_adaptivity_on:
+                micro_sims_output[i]["active_state"] = 1
 
             for name in self._adaptivity_micro_data_names:
                 # Collect micro sim output for adaptivity
@@ -393,6 +398,7 @@ class MicroManager:
             if self._is_micro_solve_time_required:
                 micro_sims_output[i]["micro_sim_time"] = end_time - start_time
 
+        # For each inactive simulation, copy data from most similar active simulation
         for i in inactive_sim_indices:
             self._logger.info(
                 "Micro simulation ({}) is inactive. Copying data from most similar active micro "
@@ -400,7 +406,9 @@ class MicroManager:
                     self._micro_sims[i].get_id(),
                     self._micro_sims[i].get_most_similar_active_id()))
 
-            micro_sims_output[i] = micro_sims_output[self._micro_sims[i].get_most_similar_active_id()]
+            micro_sims_output[i] = dict()
+            for dname, values in micro_sims_output[self._micro_sims[i].get_most_similar_active_id()].items():
+                micro_sims_output[i][dname] = values
 
             start_time = end_time = 0
             micro_sims_output[i]["active_state"] = 0
@@ -411,7 +419,7 @@ class MicroManager:
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[i]["micro_sim_time"] = end_time - start_time
-
+            
         return micro_sims_output, similarity_dists_n, micro_sim_states_n
 
     def solve(self):

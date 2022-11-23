@@ -67,7 +67,6 @@ class AdaptiveController:
                             # If active sim is similar to another active sim,
                             # deactivate it
                             if similarity_dists[id_1, id_2] < coarse_tol:
-                                print("sim {} and sim {} are similar, so DEACTIVATING {}".format(id_1, id_2, id_1))
                                 micro_sims[id_1].deactivate()
                                 _micro_sim_states[id_1] = 0
                                 break
@@ -83,20 +82,16 @@ class AdaptiveController:
 
         if not np.any(_micro_sim_states):
             _micro_sim_states[0] = 1  # If all sims are inactive, activate the first one (a random choice)
-            print("No active sims, so ID 0 is activated.")
 
         # Update the set of inactive micro sims
         for id_1 in range(number_of_micro_sims):
             dists = []
             if not _micro_sim_states[id_1]:  # if id_1 is inactive
-                print("Running comparison for inactive id = {}".format(id_1))
                 for id_2 in range(number_of_micro_sims):
                     if _micro_sim_states[id_2]:  # if id_2 is active
                         dists.append(similarity_dists[id_1, id_2])
                 # If inactive sim is not similar to any active sim, activate it
-                print("Min distance for micro sim {} is {}, as compared to tolerance {}".format(id_1, min(dists), ref_tol))
                 if min(dists) > ref_tol:
-                    print("ACTIVATING micro sim {}".format(id_1))
                     micro_sims[id_1].activate()
                     _micro_sim_states[id_1] = 1
 

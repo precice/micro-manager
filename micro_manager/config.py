@@ -113,6 +113,8 @@ class Config:
             self._adaptivity_history_param = data["simulation_params"]["adaptivity_history_param"]
             self._adaptivity_coarsening_constant = data["simulation_params"]["adaptivity_coarsening_constant"]
             self._adaptivity_refining_constant = data["simulation_params"]["adaptivity_refining_constant"]
+
+            self._write_data_names["active_state"] = False
         except BaseException:
             print("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations "
                   "in all time steps.")
