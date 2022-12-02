@@ -20,11 +20,9 @@ jobs:
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           python -m pip install --upgrade pip
           pip install setuptools wheel twine
-      - name: Install pyprecice
-        run: pip3 install --user pyprecice
       - name: Install micro-manager
         run: pip3 install --user .
-      - name: Run macro-micro dummy
+      - name: Run adaptivity test
         run: |
           cd tests/integration/test_adaptivity/
-          python3 macro_solver.py & micro_manager micro-manager-config.json
+          python3 macro_solver.py & python3 run_micro_manager.py
