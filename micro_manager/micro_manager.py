@@ -370,7 +370,7 @@ class MicroManager:
 
             self._adaptivity_controller.associate_inactive_to_active(
                 similarity_dists_n, micro_sim_states_n, self._micro_sims)
-        
+
             active_sim_indices = np.where(micro_sim_states_n == 1)[0]
             inactive_sim_indices = np.where(micro_sim_states_n == 0)[0]
         else:
@@ -419,7 +419,7 @@ class MicroManager:
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[i]["micro_sim_time"] = end_time - start_time
-            
+
         return micro_sims_output, similarity_dists_n, micro_sim_states_n
 
     def solve(self):
