@@ -48,11 +48,11 @@ def create_micro_problem_class(base_micro_simulation):
             self._is_active = False
 
         def is_most_similar_to(self, similar_active_id):
-            assert self._is_active is False
+            assert self._is_active is False, "Micro simulation {} is active and hence cannot be most similar to another active simulation".format(self._id)
             self._most_similar_active_id = similar_active_id
 
         def get_most_similar_active_id(self):
-            assert self._is_active is False
+            assert self._is_active is False, "Micro simulation {} is active and hence cannot have a most similar active id".format(self._id)
             return self._most_similar_active_id
 
         def is_active(self):
@@ -111,12 +111,13 @@ class MicroManager:
         for name in self._read_data_names.keys():
             self._read_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
-        self._exchange_data = dict()
+        self._data_used_for_adaptivity = dict()
 
         self._macro_bounds = config.get_macro_domain_bounds()
         self._is_micro_solve_time_required = config.write_micro_solve_time()
 
-        self._number_of_micro_simulations = None
+        self._local_number_of_micro_sims = None
+        self._global_number_of_micro_sims = None
         self._is_rank_empty = False
         self._micro_sims = None  # Array carrying micro simulation objects
         self._dt = None
@@ -127,7 +128,6 @@ class MicroManager:
 
         if self._is_adaptivity_on:
             self._adaptivity_controller = AdaptiveController(config)
-
             self._hist_param = config.get_adaptivity_hist_param()
             self._adaptivity_data_names = config.get_data_for_adaptivity()
 
@@ -140,6 +140,7 @@ class MicroManager:
                     self._adaptivity_macro_data_names[name] = is_data_vector
                 if name in self._write_data_names:
                     self._adaptivity_micro_data_names[name] = is_data_vector
+
 
     def decompose_macro_domain(self, macro_bounds) -> list:
         """
@@ -194,7 +195,7 @@ class MicroManager:
         # Decompose the macro-domain and set the mesh access region for each
         # partition in preCICE
         assert len(self._macro_bounds) / \
-            2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of " "incorrect dimension"
+            2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of incorrect dimension"
         if self._is_parallel:
             coupling_mesh_bounds = self.decompose_macro_domain(self._macro_bounds)
         else:
@@ -206,13 +207,16 @@ class MicroManager:
         self._dt = self._interface.initialize()
 
         self._mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(self._macro_mesh_id)
-        self._number_of_micro_simulations, _ = mesh_vertex_coords.shape
-        self._logger.info("Number of micro simulations = {}".format(self._number_of_micro_simulations))
+        self._local_number_of_micro_sims, _ = mesh_vertex_coords.shape
+        self._logger.info("Number of local micro simulations = {}".format(self._local_number_of_micro_sims))
 
-        for name, _ in self._adaptivity_data_names.items():
-            self._exchange_data[name] = list(range(self._number_of_micro_simulations))
+        for name, is_data_vector in self._adaptivity_data_names.items():
+            if is_data_vector:
+                self._data_used_for_adaptivity[name] = np.zeros((self._local_number_of_micro_sims, self._interface.get_dimensions()))
+            else:
+                self._data_used_for_adaptivity[name] = np.zeros((self._local_number_of_micro_sims))
 
-        if self._number_of_micro_simulations == 0:
+        if self._local_number_of_micro_sims == 0:
             if self._is_parallel:
                 self._logger.info(
                     "Rank {} has no micro simulations and hence will not do any computation.".format(
@@ -225,7 +229,10 @@ class MicroManager:
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
         # simulations have been created by previous ranks, so that it can set
         # the correct IDs
-        self._comm.Allgather(np.array(self._number_of_micro_simulations), nms_all_ranks)
+        self._comm.Allgather(np.array(self._local_number_of_micro_sims), nms_all_ranks)
+
+        # Get global number of micro simulations
+        self._global_number_of_micro_sims = np.sum(nms_all_ranks)
 
         # Create all micro simulations
         sim_id = 0
@@ -233,18 +240,18 @@ class MicroManager:
             for i in range(self._rank - 1, -1, -1):
                 sim_id += nms_all_ranks[i]
 
-        self._micro_sims = []
-        for _ in range(self._number_of_micro_simulations):
-            self._micro_sims.append(
-                create_micro_problem_class(
-                    self._micro_problem)(sim_id))
+        self._micro_sims = [None for _ in range(self._global_number_of_micro_sims)]
+        self._micro_sim_global_ids = []
+        for _ in range(self._local_number_of_micro_sims):
+            self._micro_sims[sim_id] = create_micro_problem_class(self._micro_problem)(sim_id)
+            self._micro_sim_global_ids.append(sim_id)
             sim_id += 1
 
-        micro_sims_output = list(range(self._number_of_micro_simulations))
+        micro_sims_output = list(range(self._global_number_of_micro_sims))
 
         # Initialize micro simulations if initialize() method exists
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
-            for i in range(self._number_of_micro_simulations):
+            for i in self._micro_sim_global_ids:
                 micro_sims_output[i] = self._micro_sims[i].initialize()
                 if micro_sims_output[i] is not None:
                     if self._is_micro_solve_time_required:
@@ -260,7 +267,7 @@ class MicroManager:
                             micro_sims_output[i][name] = 0.0
 
         self._logger.info(
-            "Micro simulations {} - {} initialized.".format(self._micro_sims[0].get_id(), self._micro_sims[-1].get_id()))
+            "Micro simulations {} - {} initialized.".format(self._micro_sims[self._micro_sim_global_ids[0]].get_id(), self._micro_sims[self._micro_sim_global_ids[-1]].get_id()))
 
         self._micro_sims_have_output = False
         if hasattr(self._micro_problem, 'output') and callable(getattr(self._micro_problem, 'output')):
@@ -292,16 +299,22 @@ class MicroManager:
                 read_data.update({name: self._interface.read_block_vector_data(
                     self._read_data_ids[name], self._mesh_vertex_ids)})
                 if name in self._adaptivity_macro_data_names:
-                    self._exchange_data[name] = self._interface.read_block_vector_data(
-                        self._read_data_ids[name], self._mesh_vertex_ids)
+                    self._data_used_for_adaptivity[name] = read_data[name]
             else:
                 read_data.update({name: self._interface.read_block_scalar_data(
                     self._read_data_ids[name], self._mesh_vertex_ids)})
                 if name in self._adaptivity_macro_data_names:
-                    self._exchange_data[name] = self._interface.read_block_scalar_data(
-                        self._read_data_ids[name], self._mesh_vertex_ids)
+                    self._data_used_for_adaptivity[name] = read_data[name]
 
-        return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
+        local_read_data = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
+        global_read_data = list(range(self._global_number_of_micro_sims))
+
+        counter = 0
+        for id in self._micro_sim_global_ids:
+            global_read_data[id] = local_read_data[counter]
+            counter += 1
+
+        return global_read_data
 
     def write_data_to_precice(self, micro_sims_output: list) -> None:
         """
@@ -314,11 +327,11 @@ class MicroManager:
         """
         write_data = dict()
         if not self._is_rank_empty:
-            for name in micro_sims_output[0]:
+            for name in micro_sims_output[self._micro_sim_global_ids[0]]:
                 write_data[name] = []
 
-            for dic in micro_sims_output:
-                for name, values in dic.items():
+            for id in self._micro_sim_global_ids:
+                for name, values in micro_sims_output[id].items():
                     write_data[name].append(values)
 
             for dname, is_data_vector in self._write_data_names.items():
@@ -360,49 +373,48 @@ class MicroManager:
 
             for name, _ in self._adaptivity_data_names.items():
                 similarity_dists_n = self._adaptivity_controller.get_similarity_dists(
-                    self._dt, similarity_dists_n, self._exchange_data[name])
+                    self._dt, self._micro_sim_global_ids, similarity_dists_n, self._data_used_for_adaptivity[name])
 
-            micro_sim_states_n = self._adaptivity_controller.update_active_micro_sims(
+            micro_sim_states_n = self._adaptivity_controller.update_active_micro_sims(self._micro_sim_global_ids, 
                 similarity_dists_n, micro_sim_states_nm1, self._micro_sims)
 
-            micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(
+            micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(self._micro_sim_global_ids, 
                 similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
-            self._adaptivity_controller.associate_inactive_to_active(
+            self._adaptivity_controller.associate_inactive_to_active(self._micro_sim_global_ids, 
                 similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
-            active_sim_indices = np.where(micro_sim_states_n == 1)[0]
-            inactive_sim_indices = np.where(micro_sim_states_n == 0)[0]
+            active_sim_ids, inactive_sim_ids = self._adaptivity_controller.get_active_and_inactive_ids(self._micro_sim_global_ids, micro_sim_states_n)
         else:
             # If adaptivity is off, all micro simulations are active
-            active_sim_indices = np.ones_like(micro_sim_states_nm1)
-            inactive_sim_indices = np.zeros_like(micro_sim_states_nm1)
+            active_sim_ids, inactive_sim_ids = self._adaptivity_controller.get_active_and_inactive_ids(self._micro_sim_global_ids, micro_sim_states_nm1)
 
-        micro_sims_output = list(range(self._number_of_micro_simulations))
+        micro_sims_output = list(range(self._global_number_of_micro_sims))
 
         # Solve all active micro simulations
-        for i in active_sim_indices:
-            self._logger.info("Solving active micro simulation ({})".format(self._micro_sims[i].get_id()))
+        for i in active_sim_ids:
+            self._logger.info("Solving active micro sim [{}]".format(self._micro_sims[i].get_id()))
 
             start_time = time.time()
             micro_sims_output[i] = self._micro_sims[i].solve(micro_sims_input[i], self._dt)
             end_time = time.time()
 
             if self._is_adaptivity_on:
+                # Mark the micro sim as active for export
                 micro_sims_output[i]["active_state"] = 1
 
             for name in self._adaptivity_micro_data_names:
                 # Collect micro sim output for adaptivity
-                self._exchange_data[name][i] = micro_sims_output[i][name]
+                self._data_used_for_adaptivity[name][i] = micro_sims_output[i][name]
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[i]["micro_sim_time"] = end_time - start_time
 
         # For each inactive simulation, copy data from most similar active simulation
-        for i in inactive_sim_indices:
+        for i in inactive_sim_ids:
             self._logger.info(
-                "Micro simulation ({}) is inactive. Copying data from most similar active micro "
-                "simulation ({})".format(
+                "Micro sim [{}] is inactive. Copying data from most similar active micro "
+                "sim [{}]".format(
                     self._micro_sims[i].get_id(),
                     self._micro_sims[i].get_most_similar_active_id()))
 
@@ -415,7 +427,7 @@ class MicroManager:
 
             for name in self._adaptivity_micro_data_names:
                 # Collect micro sim output for adaptivity
-                self._exchange_data[name][i] = micro_sims_output[i][name]
+                self._data_used_for_adaptivity[name][i] = micro_sims_output[i][name]
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[i]["micro_sim_time"] = end_time - start_time
@@ -428,8 +440,10 @@ class MicroManager:
         """
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
-        similarity_dists = np.zeros((self._number_of_micro_simulations, self._number_of_micro_simulations))
-        micro_sim_states = np.zeros((self._number_of_micro_simulations))
+        similarity_dists = np.zeros((self._global_number_of_micro_sims, self._global_number_of_micro_sims))
+        micro_sim_states = np.zeros((self._global_number_of_micro_sims))
+
+        # similarity_dists, micro_sim_states = self._adaptivity_controller.prepare_adaptivity_datasets(self._micro_sim_global_ids, similarity_dists, micro_sim_states)
 
         similarity_dists_cp = None
         micro_sim_states_cp = None
@@ -476,7 +490,7 @@ class MicroManager:
                     precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
                 self._logger.info("Micro simulations {} - {}: time window t = {} has converged".format(
-                    self._micro_sims[0].get_id(), self._micro_sims[-1].get_id(), t))
+                    self._micro_sims[self._micro_sim_global_ids[0]].get_id(), self._micro_sims[self._micro_sim_global_ids[-1]].get_id(), t))
 
                 if self._micro_sims_have_output:
                     if n % self._micro_n_out == 0:

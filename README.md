@@ -137,9 +137,28 @@ The Micro Manager is capable of generating diagnostics type output of the micro 
   * `data_from_micro_sims`: A Python dictionary with the names of the data from the micro simulation to be written to VTK files as keys and `"scalar"` or `"vector"`  as values.
   * `output_micro_sim_solve_time`: When `True`, the Manager writes the wall clock time of the `solve()` function of each micro simulation to the VTK output.
 
+The Micro Manager can adaptively initialize micro simulations. The adaptivity strategy is taken from two publications:
+
+1. Redeker, Magnus & Eck, Christof. (2013). A fast and accurate adaptive solution strategy for two-scale models with continuous inter-scale dependencies. Journal of Computational Physics. 240. 268-283. 10.1016/j.jcp.2012.12.025.
+
+2. Bastidas, Manuela & Bringedal, Carina & Pop, Iuliu. (2021). A two-scale iterative scheme for a phase-field model for precipitation and dissolution in porous media. Applied Mathematics and Computation. 396. 125933. 10.1016/j.amc.2020.125933.
+
+To turn on adaptivity, the following options need to be set in `simulation_params`:
+
+* `adaptivity`: Set as `True`.
+* `adaptivity_data`: List of names of data which are to be used to calculate if two micro-simulations are similar or not. For example `["macro-scalar-data", "macro-vector-data"]`
+* `adaptivity_history_param`: History parameter $\Lambda$, set as $\Lambda >= 0$.
+* `adaptivity_coarsening_constant`: Coarsening constant $C_c$, set as $C_c < 1$.
+* `adaptivity_refining_constant`: Refining constant $C_r$, set as $C_r >= 0$.
+
+All variables names are chosen to be same as the second publication mentioned above.
+
 #### Changes to preCICE configuration file
 
-The Micro Manager relies on the [export functionality](https://precice.org/configuration-export.html#enabling-exporters) of preCICE to write diagnostics data output. If the option `diagnotics: data_from_micro_sims` is configured, the corresponding export tag also needs to be set in the preCICE XML configuration script.
+The Micro Manager relies on the [export functionality](https://precice.org/configuration-export.html#enabling-exporters) of preCICE to write diagnostics data output.
+
+* If the option `diagnotics: data_from_micro_sims` is configured, the corresponding export tag also needs to be set in the preCICE XML configuration script.
+* If adaptivity is turned on, the Micro Manager will attempt to write a scalar data set `active_state` to preCICE. Add this data set to the preCICE configuration file.
 
 ### Running the Micro Manager
 
