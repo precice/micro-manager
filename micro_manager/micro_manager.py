@@ -32,14 +32,18 @@ def create_micro_problem_class(base_micro_simulation):
         Definition of class MicroProblem defined in this function.
     """
     class MicroProblem(base_micro_simulation):
-        def __init__(self, micro_sim_id):
-            base_micro_simulation.__init__(self, micro_sim_id)
-            self._id = micro_sim_id
+        def __init__(self, local_id, global_id):
+            base_micro_simulation.__init__(self, local_id)
+            self._local_id = local_id
+            self._global_id = global_id
             self._is_active = False
-            self._most_similar_active_id = 0
+            self._most_similar_active_local_id = 0
 
-        def get_id(self):
-            return self._id
+        def get_local_id(self):
+            return self._local_id
+
+        def get_global_id(self):
+            return self._global_id
 
         def activate(self):
             self._is_active = True
@@ -47,13 +51,13 @@ def create_micro_problem_class(base_micro_simulation):
         def deactivate(self):
             self._is_active = False
 
-        def is_most_similar_to(self, similar_active_id):
+        def is_most_similar_to(self, similar_active_local_id):
             assert self._is_active is False, "Micro simulation {} is active and hence cannot be most similar to another active simulation".format(self._id)
-            self._most_similar_active_id = similar_active_id
+            self._most_similar_active_id = similar_active_local_id
 
         def get_most_similar_active_id(self):
             assert self._is_active is False, "Micro simulation {} is active and hence cannot have a most similar active id".format(self._id)
-            return self._most_similar_active_id
+            return self._most_similar_active_local_id
 
         def is_active(self):
             return self._is_active
@@ -77,9 +81,11 @@ class MicroManager:
 
         self._logger = logging.getLogger(__name__)
         self._logger.setLevel(level=logging.INFO)
+
         # Create file handler which logs messages
         fh = logging.FileHandler('micro-manager.log')
         fh.setLevel(logging.INFO)
+
         # Create formatter and add it to handlers
         formatter = logging.Formatter('[' + str(self._rank) + '] %(name)s -  %(levelname)s - %(message)s')
         fh.setFormatter(formatter)
@@ -240,18 +246,18 @@ class MicroManager:
             for i in range(self._rank - 1, -1, -1):
                 sim_id += nms_all_ranks[i]
 
-        self._micro_sims = [None for _ in range(self._global_number_of_micro_sims)]
+        self._micro_sims = []
         self._micro_sim_global_ids = []
-        for _ in range(self._local_number_of_micro_sims):
-            self._micro_sims[sim_id] = create_micro_problem_class(self._micro_problem)(sim_id)
+        for i in range(self._local_number_of_micro_sims):
+            self._micro_sims.append(create_micro_problem_class(self._micro_problem)(i, sim_id))
             self._micro_sim_global_ids.append(sim_id)
             sim_id += 1
 
-        micro_sims_output = list(range(self._global_number_of_micro_sims))
+        micro_sims_output = list(range(self._local_number_of_micro_sims))
 
         # Initialize micro simulations if initialize() method exists
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
-            for i in self._micro_sim_global_ids:
+            for i in range(self._local_number_of_micro_sims):
                 micro_sims_output[i] = self._micro_sims[i].initialize()
                 if micro_sims_output[i] is not None:
                     if self._is_micro_solve_time_required:
@@ -267,7 +273,7 @@ class MicroManager:
                             micro_sims_output[i][name] = 0.0
 
         self._logger.info(
-            "Micro simulations {} - {} initialized.".format(self._micro_sims[self._micro_sim_global_ids[0]].get_id(), self._micro_sims[self._micro_sim_global_ids[-1]].get_id()))
+            "Micro simulations with global IDs {} - {} initialized.".format(self._micro_sim_global_ids[0], self._micro_sim_global_ids[-1]))
 
         self._micro_sims_have_output = False
         if hasattr(self._micro_problem, 'output') and callable(getattr(self._micro_problem, 'output')):
@@ -307,14 +313,15 @@ class MicroManager:
                     self._data_used_for_adaptivity[name] = read_data[name]
 
         local_read_data = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
-        global_read_data = list(range(self._global_number_of_micro_sims))
+        #global_read_data = list(range(self._global_number_of_micro_sims))
 
-        counter = 0
-        for id in self._micro_sim_global_ids:
-            global_read_data[id] = local_read_data[counter]
-            counter += 1
+        #counter = 0
+        #for id in self._micro_sim_global_ids:
+        #    global_read_data[id] = local_read_data[counter]
+        #    counter += 1
 
-        return global_read_data
+        #return global_read_data
+        return local_read_data
 
     def write_data_to_precice(self, micro_sims_output: list) -> None:
         """
@@ -327,11 +334,11 @@ class MicroManager:
         """
         write_data = dict()
         if not self._is_rank_empty:
-            for name in micro_sims_output[self._micro_sim_global_ids[0]]:
+            for name in micro_sims_output[0]:
                 write_data[name] = []
 
-            for id in self._micro_sim_global_ids:
-                for name, values in micro_sims_output[id].items():
+            for i in range(self._local_number_of_micro_sims):
+                for name, values in micro_sims_output[i].items():
                     write_data[name].append(values)
 
             for dname, is_data_vector in self._write_data_names.items():
@@ -372,28 +379,24 @@ class MicroManager:
             similarity_dists_n = exp(-self._hist_param * self._dt) * similarity_dists_nm1
 
             for name, _ in self._adaptivity_data_names.items():
-                similarity_dists_n = self._adaptivity_controller.get_similarity_dists(
-                    self._dt, self._micro_sim_global_ids, similarity_dists_n, self._data_used_for_adaptivity[name])
+                similarity_dists_n = self._adaptivity_controller.get_similarity_dists(self._dt, similarity_dists_n, self._data_used_for_adaptivity[name])
 
-            micro_sim_states_n = self._adaptivity_controller.update_active_micro_sims(self._micro_sim_global_ids, 
-                similarity_dists_n, micro_sim_states_nm1, self._micro_sims)
+            micro_sim_states_n = self._adaptivity_controller.update_active_micro_sims(similarity_dists_n, micro_sim_states_nm1, self._micro_sims)
 
-            micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(self._micro_sim_global_ids, 
-                similarity_dists_n, micro_sim_states_n, self._micro_sims)
+            micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
-            self._adaptivity_controller.associate_inactive_to_active(self._micro_sim_global_ids, 
-                similarity_dists_n, micro_sim_states_n, self._micro_sims)
+            self._adaptivity_controller.associate_inactive_to_active(similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
-            active_sim_ids, inactive_sim_ids = self._adaptivity_controller.get_active_and_inactive_ids(self._micro_sim_global_ids, micro_sim_states_n)
+            active_sim_ids, inactive_sim_ids = self._adaptivity_controller.get_active_and_inactive_ids(micro_sim_states_n)
         else:
             # If adaptivity is off, all micro simulations are active
-            active_sim_ids, inactive_sim_ids = self._adaptivity_controller.get_active_and_inactive_ids(self._micro_sim_global_ids, micro_sim_states_nm1)
+            active_sim_ids, inactive_sim_ids = self._adaptivity_controller.get_active_and_inactive_ids(micro_sim_states_nm1)
 
-        micro_sims_output = list(range(self._global_number_of_micro_sims))
+        micro_sims_output = list(range(self._local_number_of_micro_sims))
 
         # Solve all active micro simulations
         for i in active_sim_ids:
-            self._logger.info("Solving active micro sim [{}]".format(self._micro_sims[i].get_id()))
+            self._logger.info("Solving active micro sim [{}]".format(self._micro_sims[i].get_global_id()))
 
             start_time = time.time()
             micro_sims_output[i] = self._micro_sims[i].solve(micro_sims_input[i], self._dt)
@@ -415,7 +418,7 @@ class MicroManager:
             self._logger.info(
                 "Micro sim [{}] is inactive. Copying data from most similar active micro "
                 "sim [{}]".format(
-                    self._micro_sims[i].get_id(),
+                    self._micro_sims[i].get_global_id(),
                     self._micro_sims[i].get_most_similar_active_id()))
 
             micro_sims_output[i] = dict()
@@ -440,8 +443,8 @@ class MicroManager:
         """
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
-        similarity_dists = np.zeros((self._global_number_of_micro_sims, self._global_number_of_micro_sims))
-        micro_sim_states = np.zeros((self._global_number_of_micro_sims))
+        similarity_dists = np.zeros((self._local_number_of_micro_sims, self._local_number_of_micro_sims))
+        micro_sim_states = np.zeros((self._local_number_of_micro_sims))
 
         # similarity_dists, micro_sim_states = self._adaptivity_controller.prepare_adaptivity_datasets(self._micro_sim_global_ids, similarity_dists, micro_sim_states)
 
@@ -490,7 +493,7 @@ class MicroManager:
                     precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
                 self._logger.info("Micro simulations {} - {}: time window t = {} has converged".format(
-                    self._micro_sims[self._micro_sim_global_ids[0]].get_id(), self._micro_sims[self._micro_sim_global_ids[-1]].get_id(), t))
+                    self._micro_sims[self._micro_sim_global_ids[0]].get_global_id(), self._micro_sims[self._micro_sim_global_ids[-1]].get_global_id(), t))
 
                 if self._micro_sims_have_output:
                     if n % self._micro_n_out == 0:
