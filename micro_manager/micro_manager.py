@@ -425,8 +425,7 @@ class MicroManager:
             self._logger.info(
                 "Micro sim [{}] is inactive. Copying data from most similar active micro "
                 "sim [{}]".format(
-                    self._micro_sims[i].get_global_id(),
-                    self._micro_sims[i].get_most_similar_active_id()))
+                    self._micro_sims[i].get_global_id(), self._micro_sim_global_ids[self._micro_sims[i].get_most_similar_active_id()]))
 
             micro_sims_output[i] = dict()
             for dname, values in micro_sims_output[self._micro_sims[i].get_most_similar_active_id()].items():
