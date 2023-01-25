@@ -1,0 +1,59 @@
+<?xml version="1.0"?>
+
+<precice-configuration>
+
+    <log>
+	<sink type="stream" output="stdout"  filter= "%Severity% > debug" enabled="true" />
+    </log>
+  
+  <solver-interface experimental="true" dimensions="3">
+    
+    <data:scalar name="macro-scalar-data"/>
+    <data:vector name="macro-vector-data"/>
+    <data:scalar name="micro-scalar-data"/>
+    <data:vector name="micro-vector-data"/>
+    <data:scalar name="micro_sim_time"/>
+    <data:scalar name="active_state"/>
+
+    <mesh name="macro-cube-mesh">
+       <use-data name="macro-scalar-data"/>
+       <use-data name="macro-vector-data"/>
+       <use-data name="micro-scalar-data"/>
+       <use-data name="micro-vector-data"/>
+       <use-data name="micro_sim_time"/>
+       <use-data name="active_state"/>
+    </mesh>
+
+    <participant name="macro-cube">
+      <use-mesh name="macro-cube-mesh" provide="yes"/>
+      <read-data name="micro-scalar-data" mesh="macro-cube-mesh"/>
+      <read-data name="micro-vector-data" mesh="macro-cube-mesh"/>
+      <write-data name="macro-scalar-data" mesh="macro-cube-mesh"/>
+      <write-data name="macro-vector-data" mesh="macro-cube-mesh"/>
+    </participant>
+
+    <participant name="Micro-Manager">
+      <use-mesh name="macro-cube-mesh" from="macro-cube" direct-access="true" safety-factor="0.0"/>
+      <read-data name="macro-scalar-data" mesh="macro-cube-mesh"/>
+      <read-data name="macro-vector-data" mesh="macro-cube-mesh"/>
+      <write-data name="micro-scalar-data" mesh="macro-cube-mesh"/>
+      <write-data name="micro-vector-data" mesh="macro-cube-mesh"/>
+      <write-data name="micro_sim_time" mesh="macro-cube-mesh"/>
+      <write-data name="active_state" mesh="macro-cube-mesh"/>
+      <export:vtu directory="output"/>
+    </participant>
+
+    <m2n:sockets from="Micro-Manager" to="macro-cube"/>
+
+    <coupling-scheme:serial-explicit>
+       <participants first="Micro-Manager" second="macro-cube"/>
+       <max-time value="2.0"/>
+       <time-window-size value="1.0"/>
+       <exchange data="micro-scalar-data" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube"/>
+       <exchange data="micro-vector-data" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube"/>
+       <exchange data="macro-scalar-data" mesh="macro-cube-mesh" from="macro-cube" to="Micro-Manager" initialize="yes"/>
+       <exchange data="macro-vector-data" mesh="macro-cube-mesh" from="macro-cube" to="Micro-Manager" initialize="yes"/>
+    </coupling-scheme:serial-explicit>
+
+  </solver-interface>
+</precice-configuration>

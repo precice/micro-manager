@@ -1,4 +1,4 @@
-name: Run macro-micro dummy case
+name: Run integration test for adaptivity
 on:
   push:
     branches:
@@ -7,8 +7,8 @@ on:
     branches:
       - "*"
 jobs:  
-  run_macro_micro_dummy:
-    name: Run macro-micro dummy
+  run_test_adaptivity:
+    name: Test adaptivity
     runs-on: ubuntu-latest
     container: precice/precice
     steps:
@@ -22,7 +22,7 @@ jobs:
           pip install setuptools wheel twine
       - name: Install micro-manager
         run: pip3 install --user .
-      - name: Run macro-micro dummy
+      - name: Run adaptivity test
         run: |
-          cd examples/macro-micro-dummy/
-          python3 macro_dummy.py & python3 run_micro_manager.py
+          cd tests/integration/test_adaptivity/
+          python3 macro_solver.py & python3 run_micro_manager.py
