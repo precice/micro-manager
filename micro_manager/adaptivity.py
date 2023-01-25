@@ -144,7 +144,11 @@ class AdaptiveController:
 
         return _micro_sim_states
 
-    def associate_inactive_to_active(self, similarity_dists: np.ndarray, micro_sim_states: np.ndarray, micro_sims: list) -> None:
+    def associate_inactive_to_active(
+            self,
+            similarity_dists: np.ndarray,
+            micro_sim_states: np.ndarray,
+            micro_sims: list) -> None:
         """
         Associate inactive micro simulations to most similar active micro simulation.
 
