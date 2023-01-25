@@ -357,7 +357,7 @@ class MicroManager:
                         self._write_data_ids[dname], [], np.array([]))
 
     def solve_micro_simulations(self, micro_sims_input: dict, similarity_dists_nm1: np.ndarray,
-                                micro_sim_states_nm1: np.ndarray) -> tuple[list, np.ndarray, np.ndarray]:
+                                micro_sim_states_nm1: np.ndarray):
         """
         Solve all micro simulations using the data read from preCICE and assemble the micro simulations outputs in a list of dicts
         format.
