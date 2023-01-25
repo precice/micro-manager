@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Micro Manager: a tool to organize many micro simulations and couple them via preCICE to a macro simulation
+Micro Manager: a tool to initialize and adaptively control micro simulations and couple them via preCICE to a macro simulation
 """
 
 import argparse
@@ -22,10 +22,12 @@ sys.path.append(os.getcwd())
 def create_micro_problem_class(base_micro_simulation):
     """
     Creates a class MicroProblem which inherits from the class of the micro simulation.
+
     Parameters
     ----------
     base_micro_simulation : class
         The base class from the micro simulation script.
+
     Returns
     -------
     MicroProblem : class
@@ -52,11 +54,13 @@ def create_micro_problem_class(base_micro_simulation):
             self._is_active = False
 
         def is_most_similar_to(self, similar_active_local_id):
-            assert self._is_active is False, "Micro simulation {} is active and hence cannot be most similar to another active simulation".format(self._id)
+            assert self._is_active is False, "Micro simulation {} is active and hence cannot be most similar to another active simulation".format(
+                self._global_id)
             self._most_similar_active_id = similar_active_local_id
 
         def get_most_similar_active_id(self):
-            assert self._is_active is False, "Micro simulation {} is active and hence cannot have a most similar active id".format(self._id)
+            assert self._is_active is False, "Micro simulation {} is active and hence cannot have a most similar active id".format(
+                self._global_id)
             return self._most_similar_active_local_id
 
         def is_active(self):
@@ -147,7 +151,6 @@ class MicroManager:
                 if name in self._write_data_names:
                     self._adaptivity_micro_data_names[name] = is_data_vector
 
-
     def decompose_macro_domain(self, macro_bounds) -> list:
         """
         Decompose the macro domain equally among all ranks, if the Micro Manager is run in parallel.
@@ -192,10 +195,10 @@ class MicroManager:
     def initialize(self) -> None:
         """
         This function does the following things:
-        - If the Micro Manager has been executed in parallel, it decomposes the domain as equally as possible.
+        - If the Micro Manager has been executed in parallel, it decomposes the domain as uniformly as possible.
         - Initializes preCICE.
-        - Get the macro mesh information.
-        - Creates all micro simulation objects and initializes them if the an initialization procedure is available.
+        - Gets the macro mesh information from preCICE.
+        - Creates all micro simulation objects and initializes them if an initialization procedure is available.
         - Writes initial data to preCICE.
         """
         # Decompose the macro-domain and set the mesh access region for each
@@ -218,7 +221,8 @@ class MicroManager:
 
         for name, is_data_vector in self._adaptivity_data_names.items():
             if is_data_vector:
-                self._data_used_for_adaptivity[name] = np.zeros((self._local_number_of_micro_sims, self._interface.get_dimensions()))
+                self._data_used_for_adaptivity[name] = np.zeros(
+                    (self._local_number_of_micro_sims, self._interface.get_dimensions()))
             else:
                 self._data_used_for_adaptivity[name] = np.zeros((self._local_number_of_micro_sims))
 
@@ -234,11 +238,13 @@ class MicroManager:
         nms_all_ranks = np.zeros(self._size, dtype=np.int64)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
         # simulations have been created by previous ranks, so that it can set
-        # the correct IDs
+        # the correct global IDs
         self._comm.Allgather(np.array(self._local_number_of_micro_sims), nms_all_ranks)
 
         # Get global number of micro simulations
         self._global_number_of_micro_sims = np.sum(nms_all_ranks)
+
+        self._adaptivity_controller.set_number_of_sims(self._local_number_of_micro_sims)
 
         # Create all micro simulations
         sim_id = 0
@@ -272,8 +278,8 @@ class MicroManager:
                         else:
                             micro_sims_output[i][name] = 0.0
 
-        self._logger.info(
-            "Micro simulations with global IDs {} - {} initialized.".format(self._micro_sim_global_ids[0], self._micro_sim_global_ids[-1]))
+        self._logger.info("Micro simulations with global IDs {} - {} initialized.".format(
+            self._micro_sim_global_ids[0], self._micro_sim_global_ids[-1]))
 
         self._micro_sims_have_output = False
         if hasattr(self._micro_problem, 'output') and callable(getattr(self._micro_problem, 'output')):
@@ -286,14 +292,14 @@ class MicroManager:
 
         self._interface.initialize_data()
 
-    def read_data_from_precice(self):
+    def read_data_from_precice(self) -> list:
         """
         Read data from preCICE. Depending on initial definition of whether a data is scalar or vector, the appropriate
         preCICE API command is called.
 
         Returns
         -------
-        list : list
+        local_read_data : list
             List of dicts in which keys are names of data being read and the values are the data from preCICE.
         """
         read_data = dict()
@@ -313,14 +319,7 @@ class MicroManager:
                     self._data_used_for_adaptivity[name] = read_data[name]
 
         local_read_data = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
-        #global_read_data = list(range(self._global_number_of_micro_sims))
 
-        #counter = 0
-        #for id in self._micro_sim_global_ids:
-        #    global_read_data[id] = local_read_data[counter]
-        #    counter += 1
-
-        #return global_read_data
         return local_read_data
 
     def write_data_to_precice(self, micro_sims_output: list) -> None:
@@ -357,9 +356,10 @@ class MicroManager:
                     self._interface.write_block_scalar_data(
                         self._write_data_ids[dname], [], np.array([]))
 
-    def solve_micro_simulations(self, micro_sims_input, similarity_dists_nm1, micro_sim_states_nm1):
+    def solve_micro_simulations(self, micro_sims_input: dict, similarity_dists_nm1: np.ndarray,
+                                micro_sim_states_nm1: np.ndarray) -> tuple[list, np.ndarray, np.ndarray]:
         """
-        Solve all micro simulations using the input data and assemble the micro simulations outputs in a list of dicts
+        Solve all micro simulations using the data read from preCICE and assemble the micro simulations outputs in a list of dicts
         format.
 
         Parameters
@@ -379,18 +379,24 @@ class MicroManager:
             similarity_dists_n = exp(-self._hist_param * self._dt) * similarity_dists_nm1
 
             for name, _ in self._adaptivity_data_names.items():
-                similarity_dists_n = self._adaptivity_controller.get_similarity_dists(self._dt, similarity_dists_n, self._data_used_for_adaptivity[name])
+                similarity_dists_n = self._adaptivity_controller.get_similarity_dists(
+                    self._dt, similarity_dists_n, self._data_used_for_adaptivity[name])
 
-            micro_sim_states_n = self._adaptivity_controller.update_active_micro_sims(similarity_dists_n, micro_sim_states_nm1, self._micro_sims)
+            micro_sim_states_n = self._adaptivity_controller.update_active_micro_sims(
+                similarity_dists_n, micro_sim_states_nm1, self._micro_sims)
 
-            micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(similarity_dists_n, micro_sim_states_n, self._micro_sims)
+            micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(
+                similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
-            self._adaptivity_controller.associate_inactive_to_active(similarity_dists_n, micro_sim_states_n, self._micro_sims)
+            self._adaptivity_controller.associate_inactive_to_active(
+                similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
-            active_sim_ids, inactive_sim_ids = self._adaptivity_controller.get_active_and_inactive_ids(micro_sim_states_n)
+            active_sim_ids, inactive_sim_ids = self._adaptivity_controller.get_active_and_inactive_ids(
+                micro_sim_states_n)
         else:
             # If adaptivity is off, all micro simulations are active
-            active_sim_ids, inactive_sim_ids = self._adaptivity_controller.get_active_and_inactive_ids(micro_sim_states_nm1)
+            active_sim_ids, inactive_sim_ids = self._adaptivity_controller.get_active_and_inactive_ids(
+                micro_sim_states_nm1)
 
         micro_sims_output = list(range(self._local_number_of_micro_sims))
 
@@ -446,8 +452,6 @@ class MicroManager:
         similarity_dists = np.zeros((self._local_number_of_micro_sims, self._local_number_of_micro_sims))
         micro_sim_states = np.zeros((self._local_number_of_micro_sims))
 
-        # similarity_dists, micro_sim_states = self._adaptivity_controller.prepare_adaptivity_datasets(self._micro_sim_global_ids, similarity_dists, micro_sim_states)
-
         similarity_dists_cp = None
         micro_sim_states_cp = None
 
@@ -493,7 +497,7 @@ class MicroManager:
                     precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
                 self._logger.info("Micro simulations {} - {}: time window t = {} has converged".format(
-                    self._micro_sims[self._micro_sim_global_ids[0]].get_global_id(), self._micro_sims[self._micro_sim_global_ids[-1]].get_global_id(), t))
+                    self._micro_sims[0].get_global_id(), self._micro_sims[-1].get_global_id(), t))
 
                 if self._micro_sims_have_output:
                     if n % self._micro_n_out == 0:
