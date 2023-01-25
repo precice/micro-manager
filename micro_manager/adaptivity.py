@@ -157,13 +157,13 @@ class AdaptiveController:
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        active_sim_ids = np.where(micro_sim_states == 1)
-        inactive_sim_ids = np.where(micro_sim_states == 0)
+        active_sim_ids = np.where(micro_sim_states == 1)[0]
+        inactive_sim_ids = np.where(micro_sim_states == 0)[0]
 
         # Associate inactive micro sims to active micro sims
-        for id_1 in inactive_sim_ids[0]:
+        for id_1 in inactive_sim_ids:
             dist_min = sys.float_info.max
-            for id_2 in active_sim_ids[0]:
+            for id_2 in active_sim_ids:
                 # Find most similar active sim for every inactive sim
                 if similarity_dists[id_1, id_2] < dist_min:
                     micro_id = id_2

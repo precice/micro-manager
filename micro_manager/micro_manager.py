@@ -391,12 +391,13 @@ class MicroManager:
             self._adaptivity_controller.associate_inactive_to_active(
                 similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
-            active_sim_ids, inactive_sim_ids = self._adaptivity_controller.get_active_and_inactive_ids(
-                micro_sim_states_n)
+            active_sim_ids = np.where(micro_sim_states_n == 1)[0]
+            inactive_sim_ids = np.where(micro_sim_states_n == 0)[0]
+
         else:
             # If adaptivity is off, all micro simulations are active
-            active_sim_ids, inactive_sim_ids = self._adaptivity_controller.get_active_and_inactive_ids(
-                micro_sim_states_nm1)
+            active_sim_ids = np.where(micro_sim_states_nm1 == 1)[0]
+            inactive_sim_ids = np.where(micro_sim_states_nm1 == 0)[0]
 
         micro_sims_output = list(range(self._local_number_of_micro_sims))
 
