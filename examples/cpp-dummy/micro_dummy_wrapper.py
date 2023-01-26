@@ -12,14 +12,16 @@ class MicroSimulation:
         self.MicroSimulation_lib.MicroSimulation_initialize(self.obj)
 
     def solve(self, macro_data, dt:float):
-        # macro_data["macro-scalar-data"]=1.0
-        # macro_data["macro-vector-data"]=np.array([1.,2.,3.])
         macro_scalar_data_ptr = ctypes.c_double(macro_data["macro-scalar-data"])
-        macro_vector_data_ptr = macro_data["macro-vector-data"].ctypes.data_as(ctypes.POINTER(ctypes.c_double)) # now in c++: macro_vector_data_ptr[0] = 1.0, macro_vector_data_ptr[1] = 2.0, macro_vector_data_ptr[2] = 3.0
+        macro_vector_data_ptr = macro_data["macro-vector-data"].ctypes.data_as(ctypes.POINTER(ctypes.c_double))
         c_dt = ctypes.c_double(dt)
-        res = self.MicroSimulation_lib.MicroSimulation_solve(self.obj, macro_scalar_data_ptr, macro_vector_data_ptr, c_dt)
-        return {"micro-scalar-data": res, "micro-vector-data": [res]*3}
-
+        self.MicroSimulation_lib.MicroSimulation_solve(self.obj, macro_scalar_data_ptr, macro_vector_data_ptr, c_dt)
+        # convert back to double and numpy array
+        micro_data = {}
+        micro_data["micro-scalar-data"] = macro_scalar_data_ptr.value
+        micro_data["micro-vector-data"] = np.ctypeslib.as_array(macro_vector_data_ptr, shape=(3,))
+        return micro_data
+            
     def save_checkpoint(self):
         self.MicroSimulation_lib.MicroSimulation_save_checkpoint(self.obj)
     
