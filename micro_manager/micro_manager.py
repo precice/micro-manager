@@ -104,9 +104,26 @@ class MicroManager:
         # Define the preCICE interface
         self._interface = precice.Interface("Micro-Manager", config.get_config_file_name(), self._rank, self._size)
 
-        micro_file_name = config.get_micro_file_name()
-        self._micro_problem = getattr(__import__(micro_file_name, fromlist=["MicroSimulation"]), "MicroSimulation")
-
+        # get the name of the micro simulation script and split file name and extension
+        micro_file_name, extension = os.path.splitext(config.get_micro_file_name())
+        if extension == ".py":
+            self._micro_problem = getattr(__import__(micro_file_name, fromlist=["MicroSimulation"]), "MicroSimulation")
+            
+        elif extension == ".so":
+            from .micro_cpp_wrapper import MicroSimulation
+            # give the name of the shared library to the wrapper
+            # and create a class MicroProblem which inherits from MicroSimulation
+            # TODO Not the prettiest solution, but it works
+            class MicroProblem(MicroSimulation):
+                def __init__(self, sim_id):
+                    super().__init__(micro_file_name, sim_id)
+            self._micro_problem = MicroProblem
+                        
+        elif extension == ".cpp": # error: needs to be compiled to shared library
+            raise Exception("Micro simulation file must be compiled to shared library (.so) before running the micro manager.")
+        else:
+            raise Exception("Micro simulation file must be either a python script (.py) or a compiled shared library (.so).")
+        
         self._macro_mesh_id = self._interface.get_mesh_id(config.get_macro_mesh_name())
 
         # Data names and ids of data written to preCICE
@@ -262,7 +279,7 @@ class MicroManager:
         micro_sims_output = list(range(self._local_number_of_micro_sims))
 
         # Initialize micro simulations if initialize() method exists
-        if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
+        if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')): # always true for c++ Microproblem
             for i in range(self._local_number_of_micro_sims):
                 micro_sims_output[i] = self._micro_sims[i].initialize()
                 if micro_sims_output[i] is not None:

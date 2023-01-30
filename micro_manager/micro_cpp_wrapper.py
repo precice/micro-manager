@@ -2,8 +2,10 @@ import ctypes
 import numpy as np
 
 class MicroSimulation:
-    def __init__(self, sim_id:int):
-        self.MicroSimulation_lib = ctypes.CDLL('./micro_dummy.so')        
+    def __init__(self, lib_path:str, sim_id:int):
+        if not lib_path.endswith(".so"):
+            lib_path += ".so"
+        self.MicroSimulation_lib = ctypes.CDLL(lib_path)
         self.MicroSimulation_lib.MicroSimulation_solve.argtypes = [ctypes.c_void_p, ctypes.POINTER(ctypes.c_double), ctypes.POINTER(ctypes.c_double), ctypes.c_double]
         # return type is a std::pair of float and numpy array
         self.obj = self.MicroSimulation_lib.MicroSimulation_new(sim_id)
