@@ -2,7 +2,8 @@ name: Run macro-micro dummy case
 on:
   push:
     branches:
-      - "*"
+      - "develop"
+      - "main"
   pull_request:
     branches:
       - "*"
@@ -24,5 +25,5 @@ jobs:
         run: pip3 install --user .
       - name: Run macro-micro dummy
         run: |
-          cd examples/macro-micro-dummy/
-          python3 macro_dummy.py & python3 run_micro_manager.py
+          cd examples/
+          python3 macro_dummy.py & cd macro-micro-dummy && python3 run_micro_manager.py

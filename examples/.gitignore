@@ -2,6 +2,7 @@
 *.log
 *events.json
 precice-run/
+*.so
 
 # PyCharm related files
 .idea
