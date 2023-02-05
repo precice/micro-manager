@@ -7,7 +7,7 @@
         "write_data_names": {}
     },
     "simulation_params": {
-        "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
+        "macro_domain_bounds": [],
         "adaptivity": "True",
         "adaptivity_data": [],
         "adaptivity_history_param": 0.5,
