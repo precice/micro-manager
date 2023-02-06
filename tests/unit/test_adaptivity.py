@@ -73,7 +73,8 @@ class TestAdaptivity(TestCase):
 
     def test_update_active_micro_sims(self):
         self._adaptivity_controller._number_of_sims = self._number_of_sims
-        expected_micro_sim_states = np.array([0, 0, 1, 0, 1])  # Third and fifth micro sim are active, rest are deactivate
+        # Third and fifth micro sim are active, rest are deactivate
+        expected_micro_sim_states = np.array([0, 0, 1, 0, 1])
 
         similarity_dists = np.zeros((self._number_of_sims, self._number_of_sims))
         for i in range(self._number_of_sims):
@@ -95,13 +96,15 @@ class TestAdaptivity(TestCase):
         for i in range(self._number_of_sims):
             dummy_micro_sims.append(MicroSimulation())
 
-        actual_micro_sim_states = self._adaptivity_controller.update_active_micro_sims(similarity_dists, actual_micro_sim_states, dummy_micro_sims)
+        actual_micro_sim_states = self._adaptivity_controller.update_active_micro_sims(
+            similarity_dists, actual_micro_sim_states, dummy_micro_sims)
 
         self.assertTrue(np.array_equal(expected_micro_sim_states, actual_micro_sim_states))
 
     def test_update_inactive_micro_sims(self):
         self._adaptivity_controller._number_of_sims = self._number_of_sims
-        expected_micro_sim_states = np.array([0, 1, 0, 1, 0])  # Third and fifth micro sim are active, rest are deactivate
+        # Third and fifth micro sim are active, rest are deactivate
+        expected_micro_sim_states = np.array([0, 1, 0, 1, 0])
 
         similarity_dists = np.zeros((self._number_of_sims, self._number_of_sims))
         for i in range(self._number_of_sims):
@@ -123,7 +126,8 @@ class TestAdaptivity(TestCase):
         for i in range(self._number_of_sims):
             dummy_micro_sims.append(MicroSimulation())
 
-        actual_micro_sim_states = self._adaptivity_controller.update_inactive_micro_sims(similarity_dists, actual_micro_sim_states, dummy_micro_sims)
+        actual_micro_sim_states = self._adaptivity_controller.update_inactive_micro_sims(
+            similarity_dists, actual_micro_sim_states, dummy_micro_sims)
 
         self.assertTrue(np.array_equal(expected_micro_sim_states, actual_micro_sim_states))
 
