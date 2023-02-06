@@ -1,4 +1,4 @@
-name: Run integration test for adaptivity
+name: Run tests for adaptivity
 on:
   push:
     branches:
@@ -12,17 +12,35 @@ jobs:
     runs-on: ubuntu-latest
     container: precice/precice
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v2      
-      - name: Install Dependencies
+      - name: Checkout repository
+        uses: actions/checkout@v3      
+      - name: Install dependencies
         run: |
           apt-get -qq update
-          apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
+          apt-get -y install python3-dev python3-pip git python-is-python3 pkg-config
           python -m pip install --upgrade pip
           pip install setuptools wheel
-      - name: Install micro-manager
+      - name: Install Micro Manager
         run: pip3 install --user .
-      - name: Run adaptivity test
+      - name: Run integration test
         run: |
           cd tests/integration/test_adaptivity/
           python3 macro_solver.py & python3 run_micro_manager.py
+
+  adaptivity_unit_tests:
+    name: Run adaptivity unit tests
+    runs-on: ubuntu-latest
+    container: precice/precice
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+      - name: Install Dependencies
+        run: |
+          apt-get -yy update
+          apt-get -y install python3-dev python3-pip git python-is-python3 pkg-config
+          python -m pip install --upgrade pip
+          pip install setuptools wheel
+      - name: Install Micro Manager
+        run: pip3 install --user .
+      - name: Run unit tests
+        run: python3 -m unittest
