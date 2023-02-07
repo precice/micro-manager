@@ -509,7 +509,7 @@ class MicroManager:
                 if self._micro_sims_have_output:
                     if n % self._micro_n_out == 0:
                         for micro_sim in self._micro_sims:
-                            micro_sim.output(n)
+                            micro_sim.output()
 
         self._interface.finalize()
 
