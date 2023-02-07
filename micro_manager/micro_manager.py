@@ -369,8 +369,12 @@ class MicroManager:
         micro_sim_states_n = self._adaptivity_controller.update_active_micro_sims(
             similarity_dists_n, micro_sim_states_nm1, self._micro_sims)
 
+        print("Micro sim states after updating active sims: {}".format(micro_sim_states_n))
+
         micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(
             similarity_dists_n, micro_sim_states_n, self._micro_sims)
+
+        print("Micro sim states after updating inactive sims: {}".format(micro_sim_states_n))
 
         self._adaptivity_controller.associate_inactive_to_active(
             similarity_dists_n, micro_sim_states_n, self._micro_sims)

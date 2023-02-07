@@ -102,12 +102,14 @@ class AdaptiveController:
             active_id: int,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray) -> bool:
-        for ii in range(self._number_of_sims):
-            if micro_sim_states[ii]:  # if id is active
-                if active_id != ii:  # don't compare active sim to itself
-                    # If active sim is similar to another active sim, deactivate it
-                    if similarity_dists[active_id, ii] < self._coarse_tol:
-                        return True
+
+        active_sim_ids = np.where(micro_sim_states == 1)[0]
+
+        for active_id_2 in active_sim_ids:
+            if active_id != active_id_2:  # don't compare active sim to itself
+                # If active sim is similar to another active sim, deactivate it
+                if similarity_dists[active_id, active_id_2] < self._coarse_tol:
+                    return True
         return False
 
     def update_inactive_micro_sims(
@@ -155,9 +157,12 @@ class AdaptiveController:
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray) -> bool:
         dists = []
-        for ii in range(self._number_of_sims):
-            if micro_sim_states[ii]:  # if id is active
-                dists.append(similarity_dists[inactive_id, ii])
+
+        active_sim_ids = np.where(micro_sim_states == 1)[0]
+
+        for active_id in active_sim_ids:
+            dists.append(similarity_dists[inactive_id, active_id])
+
         # If inactive sim is not similar to any active sim, activate it
         return min(dists) > self._ref_tol
 
@@ -182,11 +187,11 @@ class AdaptiveController:
         inactive_sim_ids = np.where(micro_sim_states == 0)[0]
 
         # Associate inactive micro sims to active micro sims
-        for id_1 in inactive_sim_ids:
+        for inactive_id in inactive_sim_ids:
             dist_min = sys.float_info.max
-            for id_2 in active_sim_ids:
+            for active_id in active_sim_ids:
                 # Find most similar active sim for every inactive sim
-                if similarity_dists[id_1, id_2] < dist_min:
-                    micro_id = id_2
-                    dist_min = similarity_dists[id_1, id_2]
-            micro_sims[id_1].is_most_similar_to(micro_id)
+                if similarity_dists[inactive_id, active_id] < dist_min:
+                    most_similar_active_id = active_id
+                    dist_min = similarity_dists[inactive_id, active_id]
+            micro_sims[inactive_id].is_most_similar_to(most_similar_active_id)
