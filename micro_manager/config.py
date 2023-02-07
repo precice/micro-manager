@@ -286,7 +286,7 @@ class Config:
 
     def is_adaptivity_required_in_every_implicit_iteration(self):
         """
-        
+
         Returns
         -------
         """

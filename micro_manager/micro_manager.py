@@ -477,7 +477,8 @@ class MicroManager:
             micro_sims_input = self.read_data_from_precice()
 
             if self._is_adaptivity_required_in_every_implicit_iteration:
-                active_sim_ids, inactive_sim_ids, similarity_dists, micro_sim_states = self.compute_adaptivity(similarity_dists, micro_sim_states)
+                active_sim_ids, inactive_sim_ids, similarity_dists, micro_sim_states = self.compute_adaptivity(
+                    similarity_dists, micro_sim_states)
 
             micro_sims_output = self.solve_micro_simulations(micro_sims_input, active_sim_ids, inactive_sim_ids)
 
