@@ -140,6 +140,7 @@ class AdaptiveController:
         _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
 
         if not np.any(_micro_sim_states):
+            micro_sims[0].activate()
             _micro_sim_states[0] = 1  # If all sims are inactive, activate the first one (a random choice)
 
         # Update the set of inactive micro sims

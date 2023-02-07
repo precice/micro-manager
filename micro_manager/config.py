@@ -40,6 +40,7 @@ class Config:
         self._adaptivity_history_param = 0.5
         self._adaptivity_coarsening_constant = 0.5
         self._adaptivity_refining_constant = 0.5
+        self._adaptivity_every_implicit_iteration = False
 
         self.read_json(config_filename)
 
@@ -104,7 +105,12 @@ class Config:
                   "in every time window.")
 
         try:
-            self._adaptivity = data["simulation_params"]["adaptivity"]
+            adaptivity = data["simulation_params"]["adaptivity"]
+
+            if adaptivity == "True":
+                self._adaptivity = True
+            elif adaptivity == "False":
+                self._adaptivity = False
 
             exchange_data = {**self._read_data_names, **self._write_data_names}
             for dname in data["simulation_params"]["adaptivity_data"]:
@@ -113,7 +119,12 @@ class Config:
             self._adaptivity_history_param = data["simulation_params"]["adaptivity_history_param"]
             self._adaptivity_coarsening_constant = data["simulation_params"]["adaptivity_coarsening_constant"]
             self._adaptivity_refining_constant = data["simulation_params"]["adaptivity_refining_constant"]
-            self._adaptivity_every_implicit_iteration = data["simulation_params"]["adaptivity_every_implicit_iteration"]
+            adaptivity_every_implicit_iteration = data["simulation_params"]["adaptivity_every_implicit_iteration"]
+
+            if adaptivity_every_implicit_iteration == "True":
+                self._adaptivity_every_implicit_iteration = True
+            elif adaptivity_every_implicit_iteration == "False":
+                self._adaptivity_every_implicit_iteration = False
 
             if not self._adaptivity_every_implicit_iteration:
                 print("Micro Manager will compute adaptivity once at the start of every time window")
