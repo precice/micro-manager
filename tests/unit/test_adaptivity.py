@@ -155,7 +155,7 @@ class TestAdaptivity(TestCase):
         dummy_micro_sims = []
         for i in range(self._number_of_sims):
             dummy_micro_sims.append(MicroSimulation())
-
+        
         self._adaptivity_controller.associate_inactive_to_active(similarity_dists, micro_sim_states, dummy_micro_sims)
 
         self.assertEqual(dummy_micro_sims[0].get_most_similar_active_id(), 2)

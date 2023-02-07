@@ -113,6 +113,10 @@ class Config:
             self._adaptivity_history_param = data["simulation_params"]["adaptivity_history_param"]
             self._adaptivity_coarsening_constant = data["simulation_params"]["adaptivity_coarsening_constant"]
             self._adaptivity_refining_constant = data["simulation_params"]["adaptivity_refining_constant"]
+            self._adaptivity_every_implicit_iteration = data["simulation_params"]["adaptivity_every_implicit_iteration"]
+
+            if not self._adaptivity_every_implicit_iteration:
+                print("Micro Manager will compute adaptivity once at the start of every time window")
 
             self._write_data_names["active_state"] = False
         except BaseException:
@@ -279,3 +283,11 @@ class Config:
 
         """
         return self._adaptivity_refining_constant
+
+    def is_adaptivity_required_in_every_implicit_iteration(self):
+        """
+        
+        Returns
+        -------
+        """
+        return self._adaptivity_every_implicit_iteration
