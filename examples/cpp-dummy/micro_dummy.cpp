@@ -10,7 +10,7 @@ class MicroSimulation
 public:
     MicroSimulation(int sim_id);
     void initialize();
-    void solve(double *macro_scalar_data, double *macro_vector_data, double dt);
+    void solve(double *macro_write_scalar_data, double* macro_write_vector_data, double dt, double *macro_read_scalar_data, double* macro_read_vector_data);
     void save_checkpoint();
     void reload_checkpoint();
     int get_dims();
@@ -36,7 +36,7 @@ void MicroSimulation::initialize()
 }
 
 // Solve
-void MicroSimulation::solve(double *macro_scalar_data, double* macro_vector_data, double dt)
+void MicroSimulation::solve(double *macro_write_scalar_data, double* macro_write_vector_data, double dt, double *macro_read_scalar_data, double* macro_read_vector_data)
 {
     std::cout << "Solve timestep of micro problem (" << _sim_id << ")\n";
     // assert(dt != 0);
@@ -46,15 +46,15 @@ void MicroSimulation::solve(double *macro_scalar_data, double* macro_vector_data
         exit(1);
     }
     
-    _micro_scalar_data = *macro_scalar_data;
+    _micro_scalar_data = *macro_write_scalar_data;
     _micro_vector_data.clear();
     for (int d = 0; d < _dims; d++)
     {
-        _micro_vector_data.push_back(macro_vector_data[d]);
+        _micro_vector_data.push_back(macro_write_vector_data[d]);
     }
 
-    macro_scalar_data = &_micro_scalar_data;
-    macro_vector_data = &_micro_vector_data[0];
+    macro_write_scalar_data = &_micro_scalar_data;
+    macro_write_vector_data = &_micro_vector_data[0];
 }
 // Save Checkpoint
 void MicroSimulation::save_checkpoint()
@@ -84,12 +84,17 @@ extern "C" {
         microsim->initialize();
     }
 
-    void MicroSimulation_solve(MicroSimulation* microsim, double* macro_scalar_data, double* macro_vector_data, double dt) 
+    void MicroSimulation_solve(MicroSimulation* microsim, double* macro_read_scalar_data, double* macro_read_vector_data, double dt, double* macro_write_scalar_data, double* macro_write_vector_data) 
     {
-        // std::cout << "Solve timestep " << dt << "\n";
-        // std::cout << "Macro scalar data " << *macro_scalar_data << "\n";
-        // std::cout << "Macro vector data " << macro_vector_data[0] << " " << macro_vector_data[1] << " " << macro_vector_data[2] << "\n";
-        microsim->solve(macro_scalar_data, macro_vector_data, dt);
+        std::cout << "Macro read scalar data " << *macro_read_scalar_data << "\n";
+        std::cout << "Macro read vector data " << *macro_read_vector_data << "\n";
+        std::cout << "Solve timestep " << dt << "\n";
+        std::cout << "Macro write scalar data " << *macro_write_scalar_data << "\n";
+        std::cout << "Macro write vector data " << *macro_write_vector_data << "\n";
+
+        // create std::vector from macro_vector_data
+
+        microsim->solve(macro_write_scalar_data, macro_write_vector_data, dt, macro_read_scalar_data, macro_read_vector_data);
     }
 
     void MicroSimulation_save_checkpoint(MicroSimulation* microsim) {

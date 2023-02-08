@@ -57,7 +57,7 @@ class Config:
         read_file = open(path, "r")
         data = json.load(read_file)
 
-        self._micro_file_name = data["micro_file_name"]
+        self._micro_file_name = data["micro_file_name"] # why not just .replace('/', '.')? Isn't this also a problem if a user gives './micro.py'?
         i = 0
         micro_filename = list(self._micro_file_name)
         for c in micro_filename:
@@ -65,6 +65,9 @@ class Config:
                 micro_filename[i] = '.'
             i += 1
         self._micro_file_name = ''.join(micro_filename)
+        if self._micro_file_name.startswith('...'): # python cant import modules in parent directories without sys.path.append
+            raise Exception("The micro file has to be in the same directory or a subfolder of the current working directory.")
+            
 
         self._config_file_name = os.path.join(folder, data["coupling_params"]["config_file_name"])
         self._macro_mesh_name = data["coupling_params"]["macro_mesh_name"]

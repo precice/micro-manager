@@ -1,0 +1,29 @@
+name: Run macro-micro c++ dummy case
+on:
+  push:
+    branches:
+      - "develop"
+      - "main"
+  pull_request:
+    branches:
+      - "*"
+jobs:  
+  run_macro_micro_dummy:
+    name: Run macro-micro dummy
+    runs-on: ubuntu-latest
+    container: precice/precice
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v2      
+      - name: Install Dependencies
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
+          python -m pip install --upgrade pip
+          pip install setuptools wheel twine
+      - name: Install micro-manager
+        run: pip3 install --user .
+      - name: Run macro-micro dummy
+        run: |
+          cd examples/
+          python3 macro_dummy.py & cd macro-micro-dummy && python3 run_micro_manager.py

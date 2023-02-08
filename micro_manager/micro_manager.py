@@ -106,6 +106,7 @@ class MicroManager:
 
         # get the name of the micro simulation script and split file name and extension
         micro_file_name, extension = os.path.splitext(config.get_micro_file_name())
+        print("micro_file_name: ", micro_file_name, "extension: ", extension, "file_name: ", config.get_micro_file_name())
         if extension == ".py":
             self._micro_problem = getattr(__import__(micro_file_name, fromlist=["MicroSimulation"]), "MicroSimulation")
             
@@ -116,7 +117,9 @@ class MicroManager:
             # TODO Not the prettiest solution, but it works
             class MicroProblem(MicroSimulation):
                 def __init__(self, sim_id):
-                    super().__init__(micro_file_name, sim_id)
+                    # micro_file_name is in form "path.to.shared_library.so" we need it as "path/to/shared_library.so"
+                    path = micro_file_name.replace(".", "/") + extension
+                    super().__init__(path, config._read_data_names, config._write_data_names, sim_id)
             self._micro_problem = MicroProblem
                         
         elif extension == ".cpp": # error: needs to be compiled to shared library
