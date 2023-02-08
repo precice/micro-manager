@@ -366,35 +366,15 @@ class MicroManager:
             similarity_dists_n = self._adaptivity_controller.get_similarity_dists(
                 self._dt, similarity_dists_n, self._data_used_for_adaptivity[name])
 
-        #self._logger.info("Micro sim states before updating active sims: {}".format(micro_sim_states_nm1))
-
         micro_sim_states_n = self._adaptivity_controller.update_active_micro_sims(
             similarity_dists_n, micro_sim_states_nm1, self._micro_sims)
-
-        #self._logger.info("Micro sim states after updating active sims: {}".format(micro_sim_states_n))
-
-        #active_sim_ids = np.where(micro_sim_states_n == 1)[0]
-        #inactive_sim_ids = np.where(micro_sim_states_n == 0)[0]
-        #for active_id in active_sim_ids:
-        #    assert self._micro_sims[active_id].is_active(), "Check after updating active sims: Micro sim {} is supposed to be active, but it is inactive.".format(self._micro_sim_global_ids[active_id])
-        #for inactive_id in inactive_sim_ids:
-        #    assert not self._micro_sims[inactive_id].is_active(), "Check after updating active sims: Micro sim {} is supposed to be inactive, but it is active.".format(self._micro_sim_global_ids[inactive_id])
 
         micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(
             similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
-        #self._logger.info("Micro sim states after updating inactive sims: {}".format(micro_sim_states_n))
-
-        #active_sim_ids = np.where(micro_sim_states_n == 1)[0]
-        #inactive_sim_ids = np.where(micro_sim_states_n == 0)[0]
-        #for active_id in active_sim_ids:
-        #    assert self._micro_sims[active_id].is_active(), "Check after updating inactive sims: Micro sim {} is supposed to be active, but it is inactive.".format(self._micro_sim_global_ids[active_id])
-        #for inactive_id in inactive_sim_ids:
-        #    assert not self._micro_sims[inactive_id].is_active(), "Check after updating inactive sims: Micro sim {} is supposed to be inactive, but it is active.".format(self._micro_sim_global_ids[inactive_id])
-
         self._adaptivity_controller.associate_inactive_to_active(
             similarity_dists_n, micro_sim_states_n, self._micro_sims)
- 
+
         return similarity_dists_n, micro_sim_states_n
 
     def solve_micro_simulations(self, micro_sims_input: dict, active_sim_ids: np.ndarray,
@@ -445,15 +425,14 @@ class MicroManager:
             for dname, values in micro_sims_output[self._micro_sims[i].get_most_similar_active_id()].items():
                 micro_sims_output[i][dname] = values
 
-            start_time = end_time = 0
-            micro_sims_output[i]["active_state"] = 0
-
             for name in self._adaptivity_micro_data_names:
                 # Collect micro sim output for adaptivity
                 self._data_used_for_adaptivity[name][i] = micro_sims_output[i][name]
 
+            micro_sims_output[i]["active_state"] = 0
+
             if self._is_micro_solve_time_required:
-                micro_sims_output[i]["micro_sim_time"] = end_time - start_time
+                micro_sims_output[i]["micro_sim_time"] = 0
 
         return micro_sims_output
 
@@ -479,7 +458,6 @@ class MicroManager:
 
                 if self._is_adaptivity_on:
                     if not self._is_adaptivity_required_in_every_implicit_iteration:
-                        #self._logger.info("Micro sim states just before being passed to compute_adaptivity: {}".format(micro_sim_states))
                         similarity_dists, micro_sim_states = self.compute_adaptivity(similarity_dists, micro_sim_states)
 
                     similarity_dists_cp = np.copy(similarity_dists)
