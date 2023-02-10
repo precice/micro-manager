@@ -130,6 +130,7 @@ class Config:
                 print("Micro Manager will compute adaptivity once at the start of every time window")
 
             self._write_data_names["active_state"] = False
+            self._write_data_names["active_steps"] = False
         except BaseException:
             print("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations "
                   "in all time steps.")

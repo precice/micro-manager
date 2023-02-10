@@ -14,6 +14,7 @@
     <data:vector name="micro-vector-data"/>
     <data:scalar name="micro_sim_time"/>
     <data:scalar name="active_state"/>
+    <data:scalar name="active_steps"/>
 
     <mesh name="macro-cube-mesh">
        <use-data name="macro-scalar-data"/>
@@ -22,6 +23,7 @@
        <use-data name="micro-vector-data"/>
        <use-data name="micro_sim_time"/>
        <use-data name="active_state"/>
+       <use-data name="active_steps"/>
     </mesh>
 
     <participant name="macro-cube">
@@ -40,6 +42,7 @@
       <write-data name="micro-vector-data" mesh="macro-cube-mesh"/>
       <write-data name="micro_sim_time" mesh="macro-cube-mesh"/>
       <write-data name="active_state" mesh="macro-cube-mesh"/>
+      <write-data name="active_steps" mesh="macro-cube-mesh"/>
       <export:vtu directory="output"/>
     </participant>
 
@@ -47,7 +50,7 @@
 
     <coupling-scheme:serial-explicit>
        <participants first="Micro-Manager" second="macro-cube"/>
-       <max-time value="2.0"/>
+       <max-time value="10.0"/>
        <time-window-size value="1.0"/>
        <exchange data="micro-scalar-data" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube"/>
        <exchange data="micro-vector-data" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube"/>
