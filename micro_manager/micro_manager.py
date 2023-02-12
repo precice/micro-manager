@@ -362,6 +362,25 @@ class MicroManager:
                         self._write_data_ids[dname], [], np.array([]))
 
     def compute_adaptivity(self, similarity_dists_nm1: np.ndarray, micro_sim_states_nm1: np.ndarray):
+        """
+        Compute adaptivity based on similartiy distances and micro simulation states from t_{n-1}
+
+        Parameters
+        ----------
+
+        similarity_dists_nm1 : numpy array
+            2D array having similarity distances between each micro simulation pair at t_{n-1}
+        micro_sim_states_nm1 : numpy array
+            1D array having state (active or inactive) of each micro simulation at t_{n-1}
+
+        Results
+        -------
+        similarity_dists : numpy array
+            2D array having similarity distances between each micro simulation pair at t_{n}
+        micro_sim_states : numpy array
+            1D array having state (active or inactive) of each micro simulation at t_{n}
+
+        """
         # Multiply old similarity distance by history term to get current distances
         similarity_dists_n = exp(-self._hist_param * self._dt) * similarity_dists_nm1
 
@@ -392,6 +411,8 @@ class MicroManager:
         micro_sims_input : list
             List of dicts in which keys are names of data and the values are the data which are required inputs to
             solve a micro simulation.
+        micro_sim_states : numpy array
+            1D array having state (active or inactive) of each micro simulation
 
         Returns
         -------
