@@ -222,12 +222,15 @@ class MicroManager:
         self._local_number_of_micro_sims, _ = mesh_vertex_coords.shape
         self._logger.info("Number of local micro simulations = {}".format(self._local_number_of_micro_sims))
 
-        for name, is_data_vector in self._adaptivity_data_names.items():
-            if is_data_vector:
-                self._data_used_for_adaptivity[name] = np.zeros(
-                    (self._local_number_of_micro_sims, self._interface.get_dimensions()))
-            else:
-                self._data_used_for_adaptivity[name] = np.zeros((self._local_number_of_micro_sims))
+        if self._is_adaptivity_on:
+            for name, is_data_vector in self._adaptivity_data_names.items():
+                if is_data_vector:
+                    self._data_used_for_adaptivity[name] = np.zeros(
+                        (self._local_number_of_micro_sims, self._interface.get_dimensions()))
+                else:
+                    self._data_used_for_adaptivity[name] = np.zeros((self._local_number_of_micro_sims))
+            
+            self._adaptivity_controller.set_number_of_sims(self._local_number_of_micro_sims)
 
         if self._local_number_of_micro_sims == 0:
             if self._is_parallel:
@@ -246,8 +249,6 @@ class MicroManager:
 
         # Get global number of micro simulations
         self._global_number_of_micro_sims = np.sum(nms_all_ranks)
-
-        self._adaptivity_controller.set_number_of_sims(self._local_number_of_micro_sims)
 
         # Create all micro simulations
         sim_id = 0
@@ -315,11 +316,11 @@ class MicroManager:
             if is_data_vector:
                 read_data.update({name: self._interface.read_block_vector_data(
                     self._read_data_ids[name], self._mesh_vertex_ids)})
-                if name in self._adaptivity_macro_data_names:
-                    self._data_used_for_adaptivity[name] = read_data[name]
             else:
                 read_data.update({name: self._interface.read_block_scalar_data(
                     self._read_data_ids[name], self._mesh_vertex_ids)})
+            
+            if self._is_adaptivity_on:
                 if name in self._adaptivity_macro_data_names:
                     self._data_used_for_adaptivity[name] = read_data[name]
 
@@ -341,8 +342,8 @@ class MicroManager:
             for name in micro_sims_output[0]:
                 write_data[name] = []
 
-            for i in range(self._local_number_of_micro_sims):
-                for name, values in micro_sims_output[i].items():
+            for output_dict in micro_sims_output:
+                for name, values in output_dict.items():
                     write_data[name].append(values)
 
             for dname, is_data_vector in self._write_data_names.items():
@@ -454,12 +455,13 @@ class MicroManager:
             for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_most_similar_active_id()].items():
                 micro_sims_output[inactive_id][dname] = values
 
-            for name in self._adaptivity_micro_data_names:
-                # Collect micro sim output for adaptivity
-                self._data_used_for_adaptivity[name][inactive_id] = micro_sims_output[inactive_id][name]
+            if self._is_adaptivity_on:
+                for name in self._adaptivity_micro_data_names:
+                    # Collect micro sim output for adaptivity
+                    self._data_used_for_adaptivity[name][inactive_id] = micro_sims_output[inactive_id][name]
 
-            micro_sims_output[inactive_id]["active_state"] = 0
-            micro_sims_output[inactive_id]["active_steps"] = self._micro_sims_active_steps[inactive_id]
+                micro_sims_output[inactive_id]["active_state"] = 0
+                micro_sims_output[inactive_id]["active_steps"] = self._micro_sims_active_steps[inactive_id]
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[inactive_id]["micro_sim_time"] = 0
