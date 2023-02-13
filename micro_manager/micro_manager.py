@@ -229,7 +229,7 @@ class MicroManager:
                         (self._local_number_of_micro_sims, self._interface.get_dimensions()))
                 else:
                     self._data_used_for_adaptivity[name] = np.zeros((self._local_number_of_micro_sims))
-            
+
             self._adaptivity_controller.set_number_of_sims(self._local_number_of_micro_sims)
 
         if self._local_number_of_micro_sims == 0:
@@ -319,7 +319,7 @@ class MicroManager:
             else:
                 read_data.update({name: self._interface.read_block_scalar_data(
                     self._read_data_ids[name], self._mesh_vertex_ids)})
-            
+
             if self._is_adaptivity_on:
                 if name in self._adaptivity_macro_data_names:
                     self._data_used_for_adaptivity[name] = read_data[name]
@@ -475,7 +475,7 @@ class MicroManager:
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
         similarity_dists = np.zeros((self._local_number_of_micro_sims, self._local_number_of_micro_sims))
-        micro_sim_states = np.zeros((self._local_number_of_micro_sims))
+        micro_sim_states = np.ones((self._local_number_of_micro_sims))  # Start with all active simulations
 
         similarity_dists_cp = None
         micro_sim_states_cp = None
@@ -489,6 +489,8 @@ class MicroManager:
                 n_checkpoint = n
 
                 if self._is_adaptivity_on:
+                    # Start adaptivity calculation with all sims inactive
+                    micro_sim_states = np.zeros((self._local_number_of_micro_sims))
                     if not self._is_adaptivity_required_in_every_implicit_iteration:
                         similarity_dists, micro_sim_states = self.compute_adaptivity(similarity_dists, micro_sim_states)
 
