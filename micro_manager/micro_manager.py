@@ -39,7 +39,7 @@ def create_micro_problem_class(base_micro_simulation):
             self._local_id = local_id
             self._global_id = global_id
             self._is_active = False
-            self._most_similar_active_local_id = 0
+            self._most_similar_active_local_id = None
 
         def get_local_id(self):
             return self._local_id
@@ -56,7 +56,7 @@ def create_micro_problem_class(base_micro_simulation):
         def is_most_similar_to(self, similar_active_local_id):
             assert not self._is_active, "Micro simulation {} is active and hence cannot be most similar to another active simulation".format(
                 self._global_id)
-            self._most_similar_active_id = similar_active_local_id
+            self._most_similar_active_local_id = similar_active_local_id
 
         def get_most_similar_active_id(self):
             assert not self._is_active, "Micro simulation {} is active and hence cannot have a most similar active id".format(
