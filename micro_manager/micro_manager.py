@@ -477,6 +477,10 @@ class MicroManager:
         similarity_dists = np.zeros((self._local_number_of_micro_sims, self._local_number_of_micro_sims))
         micro_sim_states = np.ones((self._local_number_of_micro_sims))  # Start with all active simulations
 
+        if self._is_adaptivity_on:
+            # Start adaptivity calculation with all sims inactive
+            micro_sim_states = np.zeros((self._local_number_of_micro_sims))
+
         similarity_dists_cp = None
         micro_sim_states_cp = None
         micro_sims_cp = None
@@ -489,8 +493,6 @@ class MicroManager:
                 n_checkpoint = n
 
                 if self._is_adaptivity_on:
-                    # Start adaptivity calculation with all sims inactive
-                    micro_sim_states = np.zeros((self._local_number_of_micro_sims))
                     if not self._is_adaptivity_required_in_every_implicit_iteration:
                         similarity_dists, micro_sim_states = self.compute_adaptivity(similarity_dists, micro_sim_states)
 
