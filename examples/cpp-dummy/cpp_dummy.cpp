@@ -57,21 +57,20 @@ py::dict MicroSimulation::solve(py::dict macro_write_data, double dt)
     double macro_scalar_data = macro_write_data["macro-scalar-data"].cast<double>();
     // macro_write_data["micro_vector_data"] is a numpy array
     py::array_t<double> macro_vector_data = macro_write_data["macro-vector-data"].cast<py::array_t<double>>(); // doc on numpy arrays: https://pybind11.readthedocs.io/en/stable/advanced/pycpp/numpy.html#arrays
-
+    _micro_vector_data = std::vector<double>(macro_vector_data.data(), macro_vector_data.data() + macro_vector_data.size()); // convert numpy array to std::vector. directly casting to std::vector does not work?
 
     // micro_scalar_data and micro_vector_data are writedata+1
-    _micro_scalar_data = macro_scalar_data + 1;
-    _micro_vector_data = std::vector<double>(macro_vector_data.data(), macro_vector_data.data() + macro_vector_data.size());
+    _micro_scalar_data = macro_scalar_data + 0.;
     for (uint i = 0; i < _micro_vector_data.size(); i++)
     {
-        _micro_vector_data[i] += 1;
+        _micro_vector_data[i] += 0.;
     }
 
     // create python dict for micro_write_data
     py::dict micro_write_data;
     // add micro_scalar_data and micro_vector_data to micro_write_data
     micro_write_data["micro-scalar-data"] = _micro_scalar_data;
-    micro_write_data["micro-vector-data"] = _micro_vector_data;
+    micro_write_data["micro-vector-data"] = _micro_vector_data; // numpy array is automatically converted to python list
 
     // return micro_write_data
     return micro_write_data;
