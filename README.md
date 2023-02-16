@@ -150,6 +150,7 @@ To turn on adaptivity, the following options need to be set in `simulation_param
 * `adaptivity_history_param`: History parameter $\Lambda$, set as $\Lambda >= 0$.
 * `adaptivity_coarsening_constant`: Coarsening constant $C_c$, set as $C_c < 1$.
 * `adaptivity_refining_constant`: Refining constant $C_r$, set as $C_r >= 0$.
+* `adaptivity_every_implicit_iteration`: Set as `True` if adaptivity calculation is to be done in every implicit iteration. Setting `False` would lead to adaptivity being calculated once at the start of the time window and then reused in every implicit time iteration.
 
 All variables names are chosen to be same as the second publication mentioned above.
 
