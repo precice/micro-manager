@@ -116,7 +116,7 @@ class AdaptiveController:
         Parameters
         ----------
         active_id : int
-            ID of active simulation which is checked for deactivation            
+            ID of active simulation which is checked for deactivation
         similarity_dists : numpy array
             2D array having similarity distances between each micro simulation pair
         micro_sim_states : numpy array
@@ -182,7 +182,7 @@ class AdaptiveController:
         Parameters
         ----------
         inactive_id : int
-            ID of inactive simulation which is checked for activation            
+            ID of inactive simulation which is checked for activation
         similarity_dists : numpy array
             2D array having similarity distances between each micro simulation pair
         micro_sim_states : numpy array
