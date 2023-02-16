@@ -14,6 +14,14 @@ class AdaptiveController:
         self._coarse_tol = 0.0
 
     def set_number_of_sims(self, number_of_sims: int) -> None:
+        """
+        Setting number of simulations for the AdaptiveController object.
+
+        Parameters
+        ----------
+        number_of_sims : int
+            Number of micro simulations
+        """
         self._number_of_sims = number_of_sims
 
     def get_similarity_dists(self, dt: float, similarity_dists: np.ndarray, data: np.ndarray) -> np.ndarray:
@@ -102,7 +110,18 @@ class AdaptiveController:
             active_id: int,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray) -> bool:
+        """
+        Function to check if an active simulation needs to be deactivated
 
+        Parameters
+        ----------
+        active_id : int
+            ID of active simulation which is checked for deactivation            
+        similarity_dists : numpy array
+            2D array having similarity distances between each micro simulation pair
+        micro_sim_states : numpy array
+            1D array having state (active or inactive) of each micro simulation
+        """
         active_sim_ids = np.where(micro_sim_states == 1)[0]
 
         for active_id_2 in active_sim_ids:
@@ -157,6 +176,18 @@ class AdaptiveController:
             inactive_id: int,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray) -> bool:
+        """
+        Function to check if an inactive simulation needs to be activated
+
+        Parameters
+        ----------
+        inactive_id : int
+            ID of inactive simulation which is checked for activation            
+        similarity_dists : numpy array
+            2D array having similarity distances between each micro simulation pair
+        micro_sim_states : numpy array
+            1D array having state (active or inactive) of each micro simulation
+        """
         dists = []
 
         active_sim_ids = np.where(micro_sim_states == 1)[0]

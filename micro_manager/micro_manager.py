@@ -70,7 +70,7 @@ def create_micro_problem_class(base_micro_simulation):
 
 
 class MicroManager:
-    def __init__(self, config_file) -> None:
+    def __init__(self, config_file: str) -> None:
         """
         Constructor of MicroManager class.
 
@@ -154,7 +154,7 @@ class MicroManager:
             self._is_adaptivity_required_in_every_implicit_iteration = config.is_adaptivity_required_in_every_implicit_iteration()
             self._micro_sims_active_steps = None
 
-    def decompose_macro_domain(self, macro_bounds) -> list:
+    def decompose_macro_domain(self, macro_bounds: list) -> list:
         """
         Decompose the macro domain equally among all ranks, if the Micro Manager is run in parallel.
 
@@ -380,7 +380,6 @@ class MicroManager:
             2D array having similarity distances between each micro simulation pair at t_{n}
         micro_sim_states : numpy array
             1D array having state (active or inactive) of each micro simulation at t_{n}
-
         """
         # Multiply old similarity distance by history term to get current distances
         similarity_dists_n = exp(-self._hist_param * self._dt) * similarity_dists_nm1
@@ -402,7 +401,7 @@ class MicroManager:
 
         return similarity_dists_n, micro_sim_states_n
 
-    def solve_micro_simulations(self, micro_sims_input: dict, micro_sim_states: np.ndarray):
+    def solve_micro_simulations(self, micro_sims_input: list, micro_sim_states: np.ndarray) -> list:
         """
         Solve all micro simulations using the data read from preCICE and assemble the micro simulations outputs in a list of dicts
         format.
@@ -513,6 +512,7 @@ class MicroManager:
             if self._is_adaptivity_on:
                 if self._is_adaptivity_required_in_every_implicit_iteration:
                     similarity_dists, micro_sim_states = self.compute_adaptivity(similarity_dists, micro_sim_states)
+
                     active_sim_ids = np.where(micro_sim_states == 1)[0]
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
