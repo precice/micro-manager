@@ -451,7 +451,8 @@ class MicroManager:
         # For each inactive simulation, copy data from most similar active simulation
         for inactive_id in inactive_sim_ids:
             # self._logger.info("Micro sim [{}] is inactive. Copying data from most similar active micro sim [{}]".format(
-            #     self._micro_sims[inactive_id].get_global_id(), self._micro_sim_global_ids[self._micro_sims[inactive_id].get_most_similar_active_id()]))
+            # self._micro_sims[inactive_id].get_global_id(),
+            # self._micro_sim_global_ids[self._micro_sims[inactive_id].get_most_similar_active_id()]))
 
             micro_sims_output[inactive_id] = dict()
             for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_most_similar_active_id()].items():
