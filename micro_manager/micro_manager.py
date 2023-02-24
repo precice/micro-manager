@@ -399,6 +399,9 @@ class MicroManager:
 
         assert np.any(micro_sim_states_n), "There are no active simulations, which is not possible."
 
+        self._logger.info("Number of active micro simulations = {}".format(np.count_nonzero(micro_sim_states_n == 1)))
+        self._logger.info("Number of inactive micro simulations = {}".format(np.count_nonzero(micro_sim_states_n == 0)))
+
         return similarity_dists_n, micro_sim_states_n
 
     def solve_micro_simulations(self, micro_sims_input: list, micro_sim_states: np.ndarray) -> list:
@@ -427,7 +430,7 @@ class MicroManager:
 
         # Solve all active micro simulations
         for active_id in active_sim_ids:
-            self._logger.info("Solving active micro sim [{}]".format(self._micro_sims[active_id].get_global_id()))
+            # self._logger.info("Solving active micro sim [{}]".format(self._micro_sims[active_id].get_global_id()))
 
             start_time = time.time()
             micro_sims_output[active_id] = self._micro_sims[active_id].solve(micro_sims_input[active_id], self._dt)
@@ -447,8 +450,8 @@ class MicroManager:
 
         # For each inactive simulation, copy data from most similar active simulation
         for inactive_id in inactive_sim_ids:
-            self._logger.info("Micro sim [{}] is inactive. Copying data from most similar active micro sim [{}]".format(
-                self._micro_sims[inactive_id].get_global_id(), self._micro_sim_global_ids[self._micro_sims[inactive_id].get_most_similar_active_id()]))
+            # self._logger.info("Micro sim [{}] is inactive. Copying data from most similar active micro sim [{}]".format(
+            #     self._micro_sims[inactive_id].get_global_id(), self._micro_sim_global_ids[self._micro_sims[inactive_id].get_most_similar_active_id()]))
 
             micro_sims_output[inactive_id] = dict()
             for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_most_similar_active_id()].items():
