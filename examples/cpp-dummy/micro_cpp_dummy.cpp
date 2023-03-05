@@ -60,10 +60,10 @@ py::dict MicroSimulation::solve(py::dict macro_write_data, double dt)
     _micro_vector_data = std::vector<double>(macro_vector_data.data(), macro_vector_data.data() + macro_vector_data.size()); // convert numpy array to std::vector. directly casting to std::vector does not work?
 
     // micro_scalar_data and micro_vector_data are writedata+1
-    _micro_scalar_data = macro_scalar_data + 0.;
+    _micro_scalar_data = macro_scalar_data + 1.;
     for (uint i = 0; i < _micro_vector_data.size(); i++)
     {
-        _micro_vector_data[i] += 0.;
+        _micro_vector_data[i] += 1.;
     }
 
     // create python dict for micro_write_data
@@ -94,7 +94,7 @@ int MicroSimulation::get_dims()
     return _dims;
 }
 
-PYBIND11_MODULE(cpp_dummy, m) {
+PYBIND11_MODULE(micro_dummy, m) {
     m.doc() = "pybind11 example plugin"; // optional module docstring
 
     py::class_<MicroSimulation>(m, "MicroSimulation")
@@ -106,6 +106,6 @@ PYBIND11_MODULE(cpp_dummy, m) {
         .def("get_dims", &MicroSimulation::get_dims);
 }
 
-// compile with 
-// c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) cpp_dummy.cpp -o cpp_dummy$(python3-config --extension-suffix)
-// then from the same directory run python3 -c "import cpp_dummy; cpp_dummy.MicroSimulation(1)"
+// compile with
+// c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_cpp_dummy$(python3-config --extension-suffix)
+// then from the same directory run python3 -c "import micro_dummy; micro_dummy.MicroSimulation(1)"
