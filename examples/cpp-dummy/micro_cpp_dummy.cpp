@@ -21,14 +21,13 @@ public:
 
 private:
     int _sim_id;
-    int _dims;
     double _micro_scalar_data;
     std::vector<double> _micro_vector_data;
     double _checkpoint;
 };
 
 // Constructor
-MicroSimulation::MicroSimulation(int sim_id) : _sim_id(sim_id), _dims(3), _micro_scalar_data(0), _checkpoint(0) {}
+MicroSimulation::MicroSimulation(int sim_id) : _sim_id(sim_id), _micro_scalar_data(0), _checkpoint(0) {}
 
 // Initialize
 void MicroSimulation::initialize()
