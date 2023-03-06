@@ -9,3 +9,6 @@ micro_manager.egg-info/
 
 # Packaging artifacts
 dist
+
+# vscode
+.vscode

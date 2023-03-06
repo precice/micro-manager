@@ -1,0 +1,11 @@
+# preCICE related files
+*.log
+*events.json
+precice-run/
+
+# PyCharm related files
+.idea
+__pycache__
+
+# Compiled files
+*.so

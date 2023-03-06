@@ -22,7 +22,14 @@ jobs:
           pip install setuptools wheel twine
       - name: Install micro-manager
         run: pip3 install --user .
-      - name: Run macro-micro dummy
+      - name: Run python macro-micro dummy
         run: |
-          cd examples/macro-micro-dummy/
-          python3 macro_dummy.py & python3 run_micro_manager.py
+          cd examples/
+          python3 macro_dummy.py & python3 python-dummy/run_micro_manager.py
+      - name: Run c++ macro-micro dummy
+        run: |
+          cd examples/cpp-dummy/
+          pip install pybind11
+          c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy$(python3-config --extension-suffix)
+          cd ../
+          python3 macro_dummy.py & python3 cpp-dummy/run_micro_manager.py
