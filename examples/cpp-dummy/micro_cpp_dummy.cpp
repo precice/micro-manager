@@ -1,5 +1,5 @@
 // Micro simulation
-// In this script we solve a dummy micro problem to show how to adjust the macro-micro coupling
+// In this file we solve a dummy micro problem to show how to adjust the macro-micro coupling
 // This dummy is written in C++ and is bound to python using pybind11
 
 #include "micro_cpp_dummy.hpp"
@@ -28,11 +28,10 @@ py::dict MicroSimulation::solve(py::dict macro_data, double dt)
     double macro_scalar_data = macro_data["macro-scalar-data"].cast<double>();
 
     // macro_write_data["micro_vector_data"] is a numpy array
-    py::array_t<double> macro_vector_data = macro_data["macro-vector-data"].cast<py::array_t<double>>(); 
-   
-    _micro_vector_data = std::vector<double>(macro_vector_data.data(), macro_vector_data.data() + macro_vector_data.size()); // convert numpy array to std::vector. directly casting to std::vector does not work?
+    py::array_t<double> macro_vector_data = macro_data["macro-vector-data"].cast<py::array_t<double>>();
+    _micro_vector_data = std::vector<double>(macro_vector_data.data(), macro_vector_data.data() + macro_vector_data.size()); // convert numpy array to std::vector.
 
-    // micro_scalar_data and micro_vector_data are writedata+1
+    // Change data
     _micro_scalar_data = macro_scalar_data + 1.;
     for (uint i = 0; i < _micro_vector_data.size(); i++)
     {
@@ -63,7 +62,8 @@ void MicroSimulation::reload_checkpoint()
 }
 
 PYBIND11_MODULE(micro_dummy, m) {
-    m.doc() = "pybind11 example plugin"; // optional module docstring
+    // optional docstring
+    m.doc() = "pybind11 micro dummy plugin";
 
     py::class_<MicroSimulation>(m, "MicroSimulation")
         .def(py::init<int>())
@@ -75,4 +75,4 @@ PYBIND11_MODULE(micro_dummy, m) {
 
 // compile with
 // c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy$(python3-config --extension-suffix)
-// then from the same directory run python3 -c "import micro_dummy; micro_dummy.MicroSimulation(1)"
+// To check if python is able to import it, run python3 -c "import micro_dummy; micro_dummy.MicroSimulation(1)" from the same directory
