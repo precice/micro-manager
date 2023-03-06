@@ -1,30 +1,8 @@
 // Micro simulation
 // In this script we solve a dummy micro problem to show how to adjust the macro-micro coupling
 // This dummy is written in C++ and is bound to python using pybind11
-#include <iostream>
-#include <vector>
-#include <pybind11/pybind11.h>
-#include <pybind11/numpy.h> // numpy arrays
-#include <pybind11/stl.h> // std::vector conversion
 
-namespace py = pybind11;
-
-class MicroSimulation
-{
-public:
-    MicroSimulation(int sim_id);
-    void initialize();
-    // solve takes python dict for macro_write data, dt, and returns python dict for macro_read data
-    py::dict solve(py::dict macro_write_data, double dt);
-    void save_checkpoint();
-    void reload_checkpoint();
-
-private:
-    int _sim_id;
-    double _micro_scalar_data;
-    std::vector<double> _micro_vector_data;
-    double _checkpoint;
-};
+#include "micro_cpp_dummy.hpp"
 
 // Constructor
 MicroSimulation::MicroSimulation(int sim_id) : _sim_id(sim_id), _micro_scalar_data(0), _checkpoint(0) {}
