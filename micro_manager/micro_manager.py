@@ -175,13 +175,13 @@ class MicroManager:
         while self._size % size_x != 0:
             size_x -= 1
 
-        size_y = int(self._size / size_x)
+        size_y = self._size // size_x
 
         dx = abs(macro_bounds[1] - macro_bounds[0]) / size_x
         dy = abs(macro_bounds[3] - macro_bounds[2]) / size_y
 
         local_xmin = macro_bounds[0] + dx * (self._rank % size_x)
-        local_ymin = macro_bounds[2] + dy * int(self._rank / size_x)
+        local_ymin = macro_bounds[2] + dy * self._rank // size_x
 
         mesh_bounds = []
         if self._interface.get_dimensions() == 2:
@@ -251,10 +251,7 @@ class MicroManager:
         self._global_number_of_micro_sims = np.sum(nms_all_ranks)
 
         # Create all micro simulations
-        sim_id = 0
-        if self._rank != 0:
-            for i in range(self._rank - 1, -1, -1):
-                sim_id += nms_all_ranks[i]
+        sim_id = np.sum(nms_all_ranks[:self._rank])
 
         self._micro_sims = []
         self._micro_sim_global_ids = []
@@ -539,9 +536,9 @@ class MicroManager:
 
                 if self._is_adaptivity_on:
                     if not self._is_adaptivity_required_in_every_implicit_iteration:
-                        similarity_dists = np.copy(similarity_dists_cp)
-                        micro_sim_states = np.copy(micro_sim_states_cp)
-                        self._micro_sims = micro_sims_cp.copy()
+                        similarity_dists = similarity_dists_cp
+                        micro_sim_states = micro_sim_states_cp
+                        self._micro_sims = micro_sims_cp
 
                 self._interface.mark_action_fulfilled(
                     precice.action_read_iteration_checkpoint())
