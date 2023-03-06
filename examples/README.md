@@ -1,9 +1,9 @@
 # Solverdummies
 
-The `solverdummies` are minimal working examples for using the preCICE micro-manager with different languages. At the moment, there are examples for Python, and C++. They can be coupled with any other solver, for example the `macro-dummy.py` in this directory.
+The `solverdummies` are minimal working examples for using the preCICE Micro Manager with different languages. At the moment, there are examples for Python, and C++. They can be coupled with any other solver, for example the `macro-dummy.py` in this directory.
 
 ## Python
-To run the Python solverdummies, run the following commands in **two different terminals** the `examples` directory:
+To run the Python solverdummies, run the following commands in the `examples/` directory in **two different terminals**:
 
 ```bash
 python macro-dummy.py
@@ -31,7 +31,7 @@ The command above compiles the C++ solverdummy and creates a shared library that
 
 </details>
 
-Then, run the following commands in **two different terminals** the `examples` directory:
+Then, run the following commands in the `examples/` directory, in **two different terminals**:
 
 ```bash
 python macro_dummy.py

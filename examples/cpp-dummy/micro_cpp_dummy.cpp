@@ -41,22 +41,19 @@ void MicroSimulation::initialize()
 }
 
 // Solve
-py::dict MicroSimulation::solve(py::dict macro_write_data, double dt)
+py::dict MicroSimulation::solve(py::dict macro_data, double dt)
 {
     std::cout << "Solve timestep of micro problem (" << _sim_id << ")\n";
 
-    // assert(dt != 0);
-    if (dt == 0)
-    {
-        std::cout << "dt is zero\n";
-        exit(1);
-    }
 
-    //! Here, insert your code, changing the data and casting it to the correct type
-    // create double variable from macro_write_data["micro_scalar_data"]; which is a python float
-    double macro_scalar_data = macro_write_data["macro-scalar-data"].cast<double>();
+    //! Insert your solving routine here, changing the data and casting it to the correct type
+
+    // create double variable from macro_data["micro_scalar_data"]; which is a python float
+    double macro_scalar_data = macro_data["macro-scalar-data"].cast<double>();
+
     // macro_write_data["micro_vector_data"] is a numpy array
-    py::array_t<double> macro_vector_data = macro_write_data["macro-vector-data"].cast<py::array_t<double>>(); // doc on numpy arrays: https://pybind11.readthedocs.io/en/stable/advanced/pycpp/numpy.html#arrays
+    py::array_t<double> macro_vector_data = macro_data["macro-vector-data"].cast<py::array_t<double>>(); 
+   
     _micro_vector_data = std::vector<double>(macro_vector_data.data(), macro_vector_data.data() + macro_vector_data.size()); // convert numpy array to std::vector. directly casting to std::vector does not work?
 
     // micro_scalar_data and micro_vector_data are writedata+1
@@ -66,7 +63,7 @@ py::dict MicroSimulation::solve(py::dict macro_write_data, double dt)
         _micro_vector_data[i] += 1.;
     }
 
-    // create python dict for micro_write_data
+    // Convert data to a py::dict again to send it back to the Micro Manager
     py::dict micro_write_data;
     // add micro_scalar_data and micro_vector_data to micro_write_data
     micro_write_data["micro-scalar-data"] = _micro_scalar_data;
