@@ -73,7 +73,6 @@ def main():
             n_checkpoint = n
             interface.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
 
-        # Read porosity and apply
         for name, dim in read_data_names.items():
             if dim == 0:
                 read_scalar_data = interface.read_block_scalar_data(read_data_ids[name], vertex_ids)
