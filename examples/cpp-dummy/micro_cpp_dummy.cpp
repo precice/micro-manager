@@ -18,7 +18,6 @@ public:
     py::dict solve(py::dict macro_write_data, double dt);
     void save_checkpoint();
     void reload_checkpoint();
-    int get_dims();
 
 private:
     int _sim_id;
@@ -86,11 +85,6 @@ void MicroSimulation::reload_checkpoint()
     _micro_scalar_data = _checkpoint;
 }
 
-int MicroSimulation::get_dims()
-{
-    return _dims;
-}
-
 PYBIND11_MODULE(micro_dummy, m) {
     m.doc() = "pybind11 example plugin"; // optional module docstring
 
@@ -99,10 +93,9 @@ PYBIND11_MODULE(micro_dummy, m) {
         .def("initialize", &MicroSimulation::initialize)
         .def("solve", &MicroSimulation::solve)
         .def("save_checkpoint", &MicroSimulation::save_checkpoint)
-        .def("reload_checkpoint", &MicroSimulation::reload_checkpoint)
-        .def("get_dims", &MicroSimulation::get_dims);
+        .def("reload_checkpoint", &MicroSimulation::reload_checkpoint);
 }
 
 // compile with
-// c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_cpp_dummy$(python3-config --extension-suffix)
+// c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy$(python3-config --extension-suffix)
 // then from the same directory run python3 -c "import micro_dummy; micro_dummy.MicroSimulation(1)"
