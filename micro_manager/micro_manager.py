@@ -536,9 +536,9 @@ class MicroManager:
 
                 if self._is_adaptivity_on:
                     if not self._is_adaptivity_required_in_every_implicit_iteration:
-                        similarity_dists = similarity_dists_cp
-                        micro_sim_states = micro_sim_states_cp
-                        self._micro_sims = micro_sims_cp
+                        similarity_dists = np.copy(similarity_dists_cp)
+                        micro_sim_states = np.copy(micro_sim_states_cp)
+                        self._micro_sims = micro_sims_cp.copy()
 
                 self._interface.mark_action_fulfilled(
                     precice.action_read_iteration_checkpoint())
