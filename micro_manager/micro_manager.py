@@ -175,13 +175,13 @@ class MicroManager:
         while self._size % size_x != 0:
             size_x -= 1
 
-        size_y = self._size // size_x
+        size_y = int(self._size / size_x)
 
         dx = abs(macro_bounds[1] - macro_bounds[0]) / size_x
         dy = abs(macro_bounds[3] - macro_bounds[2]) / size_y
 
         local_xmin = macro_bounds[0] + dx * (self._rank % size_x)
-        local_ymin = macro_bounds[2] + dy * self._rank // size_x
+        local_ymin = macro_bounds[2] + dy * int(self._rank / size_x)
 
         mesh_bounds = []
         if self._interface.get_dimensions() == 2:
