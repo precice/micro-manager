@@ -55,17 +55,11 @@ class Config:
         """
         folder = os.path.dirname(os.path.join(os.getcwd(), os.path.dirname(sys.argv[0]), config_filename))
         path = os.path.join(folder, os.path.basename(config_filename))
-        read_file = open(path, "r")
-        data = json.load(read_file)
+        with open(path, "r") as read_file:
+            data = json.load(read_file)
 
-        self._micro_file_name = data["micro_file_name"]
-        i = 0
-        micro_filename = list(self._micro_file_name)
-        for c in micro_filename:
-            if c == '/':
-                micro_filename[i] = '.'
-            i += 1
-        self._micro_file_name = ''.join(micro_filename)
+        # convert paths to python-importable paths
+        self._micro_file_name = data["micro_file_name"].replace("/", ".").replace("\\", ".").replace(".py", "")
 
         self._config_file_name = os.path.join(folder, data["coupling_params"]["config_file_name"])
         self._macro_mesh_name = data["coupling_params"]["macro_mesh_name"]
@@ -154,8 +148,6 @@ class Config:
                 self._write_data_names["micro_sim_time"] = False
         except BaseException:
             print("Micro manager will not output time required to solve each micro simulation in each time step.")
-
-        read_file.close()
 
     def get_config_file_name(self):
         """

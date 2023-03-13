@@ -251,10 +251,7 @@ class MicroManager:
         self._global_number_of_micro_sims = np.sum(nms_all_ranks)
 
         # Create all micro simulations
-        sim_id = 0
-        if self._rank != 0:
-            for i in range(self._rank - 1, -1, -1):
-                sim_id += nms_all_ranks[i]
+        sim_id = np.sum(nms_all_ranks[:self._rank])
 
         self._micro_sims = []
         self._micro_sim_global_ids = []

@@ -49,10 +49,8 @@ class AdaptiveController:
         elif data.ndim == 2:
             _, dim = data.shape
 
-        counter_1 = 0
-        for id_1 in range(self._number_of_sims):
-            counter_2 = 0
-            for id_2 in range(self._number_of_sims):
+        for counter_1, id_1 in enumerate(range(self._number_of_sims)):
+            for counter_2, id_2 in enumerate(range(self._number_of_sims)):
                 data_diff = 0
                 if id_1 != id_2:
                     if dim:
@@ -64,8 +62,6 @@ class AdaptiveController:
                     _similarity_dists[id_1, id_2] += dt * data_diff
                 else:
                     _similarity_dists[id_1, id_2] = 0
-                counter_2 += 1
-            counter_1 += 1
 
         return _similarity_dists
 
@@ -188,12 +184,9 @@ class AdaptiveController:
         micro_sim_states : numpy array
             1D array having state (active or inactive) of each micro simulation
         """
-        dists = []
-
         active_sim_ids = np.where(micro_sim_states == 1)[0]
 
-        for active_id in active_sim_ids:
-            dists.append(similarity_dists[inactive_id, active_id])
+        dists = similarity_dists[inactive_id, active_sim_ids]
 
         # If inactive sim is not similar to any active sim, activate it
         return min(dists) > self._ref_tol
