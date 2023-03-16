@@ -196,7 +196,7 @@ class AdaptiveController:
             self,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray,
-            micro_sims: list) -> None:
+            micro_sims: list) -> list:
         """
         Associate inactive micro simulations to most similar active micro simulation.
 
@@ -209,6 +209,8 @@ class AdaptiveController:
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
+        _micro_sims = micro_sims.copy()
+
         active_sim_ids = np.where(micro_sim_states == 1)[0]
         inactive_sim_ids = np.where(micro_sim_states == 0)[0]
 
@@ -220,11 +222,13 @@ class AdaptiveController:
                 if similarity_dists[inactive_id, active_id] < dist_min:
                     most_similar_active_id = active_id
                     dist_min = similarity_dists[inactive_id, active_id]
-            micro_sims[inactive_id].is_most_similar_to(most_similar_active_id)
+            _micro_sims[inactive_id].is_most_similar_to(most_similar_active_id)
 
             # Effectively kill the micro sim object associated to the inactive ID
-            micro_sims[inactive_id] = None
+            _micro_sims[inactive_id] = None
 
             # Make a copy of the micro sim object associated to the active ID and add
             # it at the correct location in the list micro_sims
-            micro_sims[inactive_id] = deepcopy(micro_sims[most_similar_active_id])
+            _micro_sims[inactive_id] = deepcopy(micro_sims[most_similar_active_id])
+
+            return _micro_sims

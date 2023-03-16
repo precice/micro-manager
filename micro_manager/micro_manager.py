@@ -361,7 +361,7 @@ class MicroManager:
 
     def compute_adaptivity(self, similarity_dists_nm1: np.ndarray, micro_sim_states_nm1: np.ndarray):
         """
-        Compute adaptivity based on similartiy distances and micro simulation states from t_{n-1}
+        Compute adaptivity based on similarity distances and micro simulation states from t_{n-1}
 
         Parameters
         ----------
@@ -391,7 +391,7 @@ class MicroManager:
         micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(
             similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
-        self._adaptivity_controller.associate_inactive_to_active(
+        self._micro_sims = self._adaptivity_controller.associate_inactive_to_active(
             similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
         assert np.any(micro_sim_states_n), "There are no active simulations, which is not possible."
