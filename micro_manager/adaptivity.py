@@ -3,6 +3,7 @@ Functionality for adaptive initialization and control of micro simulations
 """
 import numpy as np
 import sys
+from copy import deepcopy
 
 
 class AdaptiveController:
@@ -220,3 +221,10 @@ class AdaptiveController:
                     most_similar_active_id = active_id
                     dist_min = similarity_dists[inactive_id, active_id]
             micro_sims[inactive_id].is_most_similar_to(most_similar_active_id)
+
+            # Effectively kill the micro sim object associated to the inactive ID
+            micro_sims[inactive_id] = None
+
+            # Make a copy of the micro sim object associated to the active ID and add
+            # it at the correct location in the list micro_sims
+            micro_sims[inactive_id] = deepcopy(micro_sims[most_similar_active_id])
