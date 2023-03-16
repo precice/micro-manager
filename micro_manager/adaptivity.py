@@ -222,13 +222,20 @@ class AdaptiveController:
                 if similarity_dists[inactive_id, active_id] < dist_min:
                     most_similar_active_id = active_id
                     dist_min = similarity_dists[inactive_id, active_id]
-            _micro_sims[inactive_id].is_most_similar_to(most_similar_active_id)
 
-            # Effectively kill the micro sim object associated to the inactive ID
-            _micro_sims[inactive_id] = None
+            # Only copy active micro sim object if the inactive sim is associated to a
+            # different active micro sim than in t_{n-1}
+            if most_similar_active_id != _micro_sims[inactive_id].get_most_similar_active_id():
+                # Effectively kill the micro sim object associated to the inactive ID
+                _micro_sims[inactive_id] = None
 
-            # Make a copy of the micro sim object associated to the active ID and add
-            # it at the correct location in the list micro_sims
-            _micro_sims[inactive_id] = deepcopy(micro_sims[most_similar_active_id])
+                # Make a copy of the micro sim object associated to the active ID and add
+                # it at the correct location in the list micro_sims
+                _micro_sims[inactive_id] = deepcopy(micro_sims[most_similar_active_id])
 
-            return _micro_sims
+                # Redo the deactivation and association step because an active sim object
+                # has been copied over, so its properties are still those of an active sim
+                _micro_sims[inactive_id].deactivate()
+                _micro_sims[inactive_id].is_most_similar_to(most_similar_active_id)
+
+        return _micro_sims
