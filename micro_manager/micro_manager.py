@@ -121,8 +121,6 @@ class MicroManager:
         for name in self._read_data_names.keys():
             self._read_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
-        self._data_used_for_adaptivity = dict()
-
         self._macro_bounds = config.get_macro_domain_bounds()
         self._is_micro_solve_time_required = config.write_micro_solve_time()
 
@@ -137,6 +135,9 @@ class MicroManager:
         self._is_adaptivity_on = config.turn_on_adaptivity()
 
         if self._is_adaptivity_on:
+            self._data_used_for_adaptivity = dict()
+            self._adaptivity_type = config.get_adaptivity_type()
+
             self._adaptivity_controller = AdaptiveController(config)
             self._hist_param = config.get_adaptivity_hist_param()
             self._adaptivity_data_names = config.get_data_for_adaptivity()
@@ -223,14 +224,20 @@ class MicroManager:
         self._logger.info("Number of local micro simulations = {}".format(self._local_number_of_micro_sims))
 
         if self._is_adaptivity_on:
+            number_of_micro_sims_for_adaptivity = 0
+            if self._adaptivity_type == "local":
+                number_of_micro_sims_for_adaptivity = self._local_number_of_micro_sims
+            elif self._adaptivity_type == "global":
+                number_of_micro_sims_for_adaptivity = self._global_number_of_micro_sims
+
             for name, is_data_vector in self._adaptivity_data_names.items():
                 if is_data_vector:
                     self._data_used_for_adaptivity[name] = np.zeros(
-                        (self._local_number_of_micro_sims, self._interface.get_dimensions()))
+                        (number_of_micro_sims_for_adaptivity, self._interface.get_dimensions()))
                 else:
-                    self._data_used_for_adaptivity[name] = np.zeros((self._local_number_of_micro_sims))
+                    self._data_used_for_adaptivity[name] = np.zeros((number_of_micro_sims_for_adaptivity))
 
-            self._adaptivity_controller.set_number_of_sims(self._local_number_of_micro_sims)
+            self._adaptivity_controller.set_number_of_sims(number_of_micro_sims_for_adaptivity)
 
         if self._local_number_of_micro_sims == 0:
             if self._is_parallel:
