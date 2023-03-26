@@ -99,13 +99,15 @@ class Config:
                   "in every time window.")
 
         try:
-            adaptivity = data["simulation_params"]["adaptivity"]
-
-            if adaptivity == "True":
+            if data["simulation_params"]["adaptivity"] == "True":
                 self._adaptivity = True
-            elif adaptivity == "False":
+            elif data["simulation_params"]["adaptivity"] == "False":
                 self._adaptivity = False
+        except BaseException:
+            print("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations "
+                  "in all time steps.")
 
+        if self._adaptivity:
             exchange_data = {**self._read_data_names, **self._write_data_names}
             for dname in data["simulation_params"]["adaptivity_data"]:
                 self._data_for_adaptivity[dname] = exchange_data[dname]
@@ -125,9 +127,6 @@ class Config:
 
             self._write_data_names["active_state"] = False
             self._write_data_names["active_steps"] = False
-        except BaseException:
-            print("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations "
-                  "in all time steps.")
 
         try:
             diagnostics_data_names = data["diagnostics"]["data_from_micro_sims"]
