@@ -135,8 +135,11 @@ class MicroManager:
         self._is_adaptivity_on = config.turn_on_adaptivity()
 
         if self._is_adaptivity_on:
+            self._number_of_micro_sims_for_adaptivity = 0
+            self._micro_sim_iter_ids = None
+
             self._data_used_for_adaptivity = dict()
-            self._adaptivity_type = config.get_adaptivity_type()
+            self._adaptivity_type = config.get_adaptivity_type()           
 
             self._adaptivity_controller = AdaptiveController(config)
             self._hist_param = config.get_adaptivity_hist_param()
@@ -224,20 +227,19 @@ class MicroManager:
         self._logger.info("Number of local micro simulations = {}".format(self._local_number_of_micro_sims))
 
         if self._is_adaptivity_on:
-            number_of_micro_sims_for_adaptivity = 0
             if self._adaptivity_type == "local":
-                number_of_micro_sims_for_adaptivity = self._local_number_of_micro_sims
+                self._number_of_micro_sims_for_adaptivity = self._local_number_of_micro_sims
             elif self._adaptivity_type == "global":
-                number_of_micro_sims_for_adaptivity = self._global_number_of_micro_sims
+                self._number_of_micro_sims_for_adaptivity = self._global_number_of_micro_sims
 
             for name, is_data_vector in self._adaptivity_data_names.items():
                 if is_data_vector:
                     self._data_used_for_adaptivity[name] = np.zeros(
-                        (number_of_micro_sims_for_adaptivity, self._interface.get_dimensions()))
+                        (self._number_of_micro_sims_for_adaptivity, self._interface.get_dimensions()))
                 else:
-                    self._data_used_for_adaptivity[name] = np.zeros((number_of_micro_sims_for_adaptivity))
+                    self._data_used_for_adaptivity[name] = np.zeros((self._number_of_micro_sims_for_adaptivity))
 
-            self._adaptivity_controller.set_number_of_sims(number_of_micro_sims_for_adaptivity)
+            self._adaptivity_controller.set_number_of_sims(self._number_of_micro_sims_for_adaptivity)
 
         if self._local_number_of_micro_sims == 0:
             if self._is_parallel:
@@ -257,36 +259,53 @@ class MicroManager:
         # Get global number of micro simulations
         self._global_number_of_micro_sims = np.sum(nms_all_ranks)
 
-        # Create all micro simulations
+        # Create lists of local and global IDs
         sim_id = np.sum(nms_all_ranks[:self._rank])
-
-        self._micro_sims = []
         self._micro_sim_global_ids = []
+        self._micro_sim_local_ids = []
         for i in range(self._local_number_of_micro_sims):
-            self._micro_sims.append(create_micro_problem_class(self._micro_problem)(i, sim_id))
             self._micro_sim_global_ids.append(sim_id)
             sim_id += 1
+            self._micro_sim_local_ids.append(i)
+
+        if self._is_adaptivity_on:
+            self._micro_sims = list(range(self._number_of_micro_sims_for_adaptivity))
+            self._micro_sim_iter_ids = None
+            if self._adaptivity_type == "local":
+                # If adaptivity is calculated locally, IDs to iterate over are local
+                self._micro_sim_iter_ids = self._micro_sim_local_ids
+                for i in self._micro_sim_local_ids:
+                    self._micro_sims[i] = create_micro_problem_class(self._micro_problem)(i, self._micro_sim_global_ids[i])
+            elif self._adaptivity_type == "global":
+                # If adaptivity is calculated globally, IDs to iterate over are global
+                self._micro_sim_iter_ids = self._micro_sim_global_ids
+                for counter, i in enumerate(self._micro_sim_global_ids):
+                    self._micro_sims[i] = create_micro_problem_class(self._micro_problem)(counter, i)
+        else:
+            self._micro_sims = []
+            for i in range(self._local_number_of_micro_sims):
+                self._micro_sims.append(create_micro_problem_class(self._micro_problem)(i, self._micro_sim_global_ids[i]))
 
         micro_sims_output = list(range(self._local_number_of_micro_sims))
         self._micro_sims_active_steps = np.zeros(self._local_number_of_micro_sims)
 
         # Initialize micro simulations if initialize() method exists
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
-            for i in range(self._local_number_of_micro_sims):
-                micro_sims_output[i] = self._micro_sims[i].initialize()
-                if micro_sims_output[i] is not None:
+            for counter, i in enumerate(self._micro_sim_iter_ids):
+                micro_sims_output[counter] = self._micro_sims[i].initialize()
+                if micro_sims_output[counter] is not None:
                     if self._is_micro_solve_time_required:
-                        micro_sims_output[i]["micro_sim_time"] = 0.0
+                        micro_sims_output[counter]["micro_sim_time"] = 0.0
                     if self._is_adaptivity_on:
-                        micro_sims_output[i]["active_state"] = 0
-                        micro_sims_output[i]["active_steps"] = 0
+                        micro_sims_output[counter]["active_state"] = 0
+                        micro_sims_output[counter]["active_steps"] = 0
                 else:
-                    micro_sims_output[i] = dict()
+                    micro_sims_output[counter] = dict()
                     for name, is_data_vector in self._write_data_names.items():
                         if is_data_vector:
-                            micro_sims_output[i][name] = np.zeros(self._interface.get_dimensions())
+                            micro_sims_output[counter][name] = np.zeros(self._interface.get_dimensions())
                         else:
-                            micro_sims_output[i][name] = 0.0
+                            micro_sims_output[counter][name] = 0.0
 
         self._logger.info("Micro simulations with global IDs {} - {} initialized.".format(
             self._micro_sim_global_ids[0], self._micro_sim_global_ids[-1]))
