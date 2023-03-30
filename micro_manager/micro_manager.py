@@ -345,7 +345,11 @@ class MicroManager:
 
             if self._is_adaptivity_on:
                 if name in self._adaptivity_macro_data_names:
-                    self._data_used_for_adaptivity[name] = read_data[name]
+                    if self._adaptivity_type == "local": # directly use read_data
+                        self._data_used_for_adaptivity[name] = read_data[name]
+                    elif self._adaptivity_type == "global": # arrange read_data in a global array
+                        for counter, i in enumerate(self._micro_sim_global_ids):
+                            self._data_used_for_adaptivity[name][i] = read_data[name][counter]
 
         local_read_data = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
 
