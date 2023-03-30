@@ -155,20 +155,17 @@ class AdaptiveController:
 
         _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
 
-        if not np.any(_micro_sim_states):
-            micro_sims[0].activate()
-            _micro_sim_states[0] = 1  # If all sims are inactive, activate the first one (a random choice)
-
         # Update the set of inactive micro sims
         for i in range(self._number_of_sims):
             if not _micro_sim_states[i]:  # if id is inactive
                 if self._check_for_activation(i, similarity_dists, _micro_sim_states):
+                    associated_active_id = micro_sims[i].get_most_similar_active_id()
+
                     # Effectively kill the micro sim object associated to the inactive ID
                     micro_sims[i] = None
 
                     # Make a copy of the associated active micro sim object
-                    micro_sims[i] = deepcopy(micro_sims[micro_sims[i].get_most_similar_active_id()])
-
+                    micro_sims[i] = deepcopy(micro_sims[associated_active_id])
                     _micro_sim_states[i] = 1
 
         return _micro_sim_states

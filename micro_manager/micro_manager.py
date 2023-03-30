@@ -38,7 +38,7 @@ def create_micro_problem_class(base_micro_simulation):
             base_micro_simulation.__init__(self, local_id)
             self._local_id = local_id
             self._global_id = global_id
-            self._is_active = False
+            self._is_active = False  # Simulation is created in an inactive state
             self._most_similar_active_local_id = None
 
         def get_local_id(self):
@@ -475,11 +475,19 @@ class MicroManager:
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
         similarity_dists = np.zeros((self._local_number_of_micro_sims, self._local_number_of_micro_sims))
-        micro_sim_states = np.ones((self._local_number_of_micro_sims))  # Start with all active simulations
+        micro_sim_states = np.ones((self._local_number_of_micro_sims))  # By default all sims are active
 
         if self._is_adaptivity_on:
             # Start adaptivity calculation with all sims inactive
             micro_sim_states = np.zeros((self._local_number_of_micro_sims))
+
+            # If all sims are inactive, activate the first one (a random choice)
+            self._micro_sims[0].activate()
+            micro_sim_states[0] = 1
+
+            # All inactive sims are associated to the one active sim
+            for i in range(1, self._local_number_of_micro_sims):
+                self._micro_sims[i].is_most_similar_to(0)
 
         similarity_dists_cp = None
         micro_sim_states_cp = None
