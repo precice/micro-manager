@@ -155,15 +155,17 @@ class AdaptiveController:
 
         _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
 
-        if not np.any(_micro_sim_states):
-            micro_sims[0].activate()
-            _micro_sim_states[0] = 1  # If all sims are inactive, activate the first one (a random choice)
-
         # Update the set of inactive micro sims
         for i in range(self._number_of_sims):
             if not _micro_sim_states[i]:  # if id is inactive
                 if self._check_for_activation(i, similarity_dists, _micro_sim_states):
-                    micro_sims[i].activate()
+                    associated_active_id = micro_sims[i].get_most_similar_active_id()
+
+                    # Effectively kill the micro sim object associated to the inactive ID
+                    micro_sims[i] = None
+
+                    # Make a copy of the associated active micro sim object
+                    micro_sims[i] = deepcopy(micro_sims[associated_active_id])
                     _micro_sim_states[i] = 1
 
         return _micro_sim_states
@@ -223,19 +225,4 @@ class AdaptiveController:
                     most_similar_active_id = active_id
                     dist_min = similarity_dists[inactive_id, active_id]
 
-            # Only copy active micro sim object if the inactive sim is associated to a
-            # different active micro sim than in t_{n-1}
-            if most_similar_active_id != _micro_sims[inactive_id].get_most_similar_active_id():
-                # Effectively kill the micro sim object associated to the inactive ID
-                _micro_sims[inactive_id] = None
-
-                # Make a copy of the micro sim object associated to the active ID and add
-                # it at the correct location in the list micro_sims
-                _micro_sims[inactive_id] = deepcopy(micro_sims[most_similar_active_id])
-
-                # Redo the deactivation and association step because an active sim object
-                # has been copied over, so its properties are still those of an active sim
-                _micro_sims[inactive_id].deactivate()
-                _micro_sims[inactive_id].is_most_similar_to(most_similar_active_id)
-
-        return _micro_sims
+            micro_sims[inactive_id].is_most_similar_to(most_similar_active_id)
