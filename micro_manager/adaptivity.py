@@ -159,7 +159,7 @@ class AdaptiveController:
         for i in range(self._number_of_sims):
             if not _micro_sim_states[i]:  # if id is inactive
                 if self._check_for_activation(i, similarity_dists, _micro_sim_states):
-                    associated_active_id = micro_sims[i].get_most_similar_active_id()
+                    associated_active_id = micro_sims[i].get_associated_active_id()
 
                     # Effectively kill the micro sim object associated to the inactive ID
                     micro_sims[i] = None
@@ -222,7 +222,7 @@ class AdaptiveController:
             for active_id in active_sim_ids:
                 # Find most similar active sim for every inactive sim
                 if similarity_dists[inactive_id, active_id] < dist_min:
-                    most_similar_active_id = active_id
+                    associated_active_id = active_id
                     dist_min = similarity_dists[inactive_id, active_id]
 
-            micro_sims[inactive_id].is_most_similar_to(most_similar_active_id)
+            micro_sims[inactive_id].is_associated_to(associated_active_id)
