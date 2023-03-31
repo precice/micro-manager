@@ -39,7 +39,7 @@ def create_micro_problem_class(base_micro_simulation):
             self._local_id = local_id
             self._global_id = global_id
             self._is_active = False  # Simulation is created in an inactive state
-            self._most_similar_active_local_id = None
+            self._associated_active_local_id = None
 
         def get_local_id(self):
             return self._local_id
@@ -53,15 +53,15 @@ def create_micro_problem_class(base_micro_simulation):
         def deactivate(self):
             self._is_active = False
 
-        def is_most_similar_to(self, similar_active_local_id):
+        def is_associated_to(self, similar_active_local_id):
             assert not self._is_active, "Micro simulation {} is active and hence cannot be most similar to another active simulation".format(
                 self._global_id)
-            self._most_similar_active_local_id = similar_active_local_id
+            self._associated_active_local_id = similar_active_local_id
 
-        def get_most_similar_active_id(self):
+        def get_associated_active_id(self):
             assert not self._is_active, "Micro simulation {} is active and hence cannot have a most similar active id".format(
                 self._global_id)
-            return self._most_similar_active_local_id
+            return self._associated_active_local_id
 
         def is_active(self):
             return self._is_active
@@ -449,10 +449,10 @@ class MicroManager:
         for inactive_id in inactive_sim_ids:
             # self._logger.info("Micro sim [{}] is inactive. Copying data from most similar active micro sim [{}]".format(
             # self._micro_sims[inactive_id].get_global_id(),
-            # self._micro_sim_global_ids[self._micro_sims[inactive_id].get_most_similar_active_id()]))
+            # self._micro_sim_global_ids[self._micro_sims[inactive_id].get_associated_active_id()]))
 
             micro_sims_output[inactive_id] = dict()
-            for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_most_similar_active_id()].items():
+            for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_associated_active_id()].items():
                 micro_sims_output[inactive_id][dname] = values
 
             if self._is_adaptivity_on:
@@ -487,7 +487,7 @@ class MicroManager:
 
             # All inactive sims are associated to the one active sim
             for i in range(1, self._local_number_of_micro_sims):
-                self._micro_sims[i].is_most_similar_to(0)
+                self._micro_sims[i].is_associated_to(0)
 
         similarity_dists_cp = None
         micro_sim_states_cp = None
@@ -551,7 +551,7 @@ class MicroManager:
                 self._interface.mark_action_fulfilled(
                     precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
-                self._logger.info("Micro simulations {} - {}: time window t = {} has converged".format(
+                self._logger.info("Micro simulations {} - {} have converged at t = {}".format(
                     self._micro_sims[0].get_global_id(), self._micro_sims[-1].get_global_id(), t))
 
                 if self._micro_sims_have_output:
