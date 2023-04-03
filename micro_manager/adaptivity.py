@@ -66,14 +66,13 @@ class AdaptiveController:
 
         return _similarity_dists
 
-    def update_active_micro_sims(
+    def update_active_micro_states(
             self,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray,
             micro_sims: list) -> np.ndarray:
         """
-        Update set of active micro simulations. Active micro simulations are compared to each other
-        and if found similar, one of them is deactivated.
+        Update the data micro_sim_states locally by deactivating active simulations which have similar counterparts
 
         Parameters
         ----------
@@ -97,7 +96,7 @@ class AdaptiveController:
         for i in range(self._number_of_sims):
             if _micro_sim_states[i]:  # if sim is active
                 if self._check_for_deactivation(i, similarity_dists, _micro_sim_states):
-                    micro_sims[i].deactivate()
+                    # micro_sims[i].deactivate()
                     _micro_sim_states[i] = 0
 
         return _micro_sim_states
@@ -128,7 +127,7 @@ class AdaptiveController:
                     return True
         return False
 
-    def update_inactive_micro_sims(
+    def update_inactive_micro_states(
             self,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray,
@@ -211,8 +210,6 @@ class AdaptiveController:
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        _micro_sims = micro_sims.copy()
-
         active_sim_ids = np.where(micro_sim_states == 1)[0]
         inactive_sim_ids = np.where(micro_sim_states == 0)[0]
 
