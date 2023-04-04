@@ -11,10 +11,12 @@ class AdaptiveController:
         # Names of data to be used for adaptivity computation
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
-        self._number_of_sims = 0
+        self._number_of_local_sims = 0
+        self._number_of_global_sims = 0
         self._coarse_tol = 0.0
+        self._ref_tol = 0.0
 
-    def set_number_of_sims(self, number_of_sims: int) -> None:
+    def set_number_of_sims(self, number_of_local_sims, number_of_global_sims: int) -> None:
         """
         Setting number of simulations for the AdaptiveController object.
 
@@ -23,7 +25,8 @@ class AdaptiveController:
         number_of_sims : int
             Number of micro simulations
         """
-        self._number_of_sims = number_of_sims
+        self._number_of_local_sims = number_of_local_sims
+        self._number_of_global_sims = number_of_global_sims
 
     def get_similarity_dists(self, dt: float, similarity_dists: np.ndarray, data: np.ndarray) -> np.ndarray:
         """
@@ -66,7 +69,7 @@ class AdaptiveController:
 
         return _similarity_dists
 
-    def update_active_micro_states(
+    def update_micro_sim_states(
             self,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray,
@@ -89,6 +92,7 @@ class AdaptiveController:
             Updated 1D array having state (active or inactive) of each micro simulation
         """
         self._coarse_tol = self._coarse_const * self._refine_const * np.amax(similarity_dists)
+        self._ref_tol = self._refine_const * np.amax(similarity_dists)
 
         _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
 
@@ -99,72 +103,17 @@ class AdaptiveController:
                     # micro_sims[i].deactivate()
                     _micro_sim_states[i] = 0
 
-        return _micro_sim_states
-
-    def _check_for_deactivation(
-            self,
-            active_id: int,
-            similarity_dists: np.ndarray,
-            micro_sim_states: np.ndarray) -> bool:
-        """
-        Function to check if an active simulation needs to be deactivated
-
-        Parameters
-        ----------
-        active_id : int
-            ID of active simulation which is checked for deactivation
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
-        micro_sim_states : numpy array
-            1D array having state (active or inactive) of each micro simulation
-        """
-        active_sim_ids = np.where(micro_sim_states == 1)[0]
-
-        for active_id_2 in active_sim_ids:
-            if active_id != active_id_2:  # don't compare active sim to itself
-                # If active sim is similar to another active sim, deactivate it
-                if similarity_dists[active_id, active_id_2] < self._coarse_tol:
-                    return True
-        return False
-
-    def update_inactive_micro_states(
-            self,
-            similarity_dists: np.ndarray,
-            micro_sim_states: np.ndarray,
-            micro_sims: list) -> np.ndarray:
-        """
-        Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
-        and if it is not similar to any of them, it is activated.
-
-        Parameters
-        ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
-        micro_sim_states : numpy array
-            1D array having state (active or inactive) of each micro simulation
-        micro_sims : list
-            List of objects of class MicroProblem, which are the micro simulations
-
-        Returns
-        -------
-        _micro_sim_states : numpy array
-            Updated 1D array having state (active or inactive) of each micro simulation
-        """
-        self._ref_tol = self._refine_const * np.amax(similarity_dists)
-
-        _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
-
         # Update the set of inactive micro sims
         for i in range(self._number_of_sims):
             if not _micro_sim_states[i]:  # if id is inactive
                 if self._check_for_activation(i, similarity_dists, _micro_sim_states):
-                    associated_active_id = micro_sims[i].get_associated_active_id()
+                    # associated_active_id = micro_sims[i].get_associated_active_id()
 
                     # Effectively kill the micro sim object associated to the inactive ID
-                    micro_sims[i] = None
+                    # micro_sims[i] = None
 
                     # Make a copy of the associated active micro sim object
-                    micro_sims[i] = deepcopy(micro_sims[associated_active_id])
+                    # micro_sims[i] = deepcopy(micro_sims[associated_active_id])
                     _micro_sim_states[i] = 1
 
         return _micro_sim_states
@@ -192,6 +141,41 @@ class AdaptiveController:
 
         # If inactive sim is not similar to any active sim, activate it
         return min(dists) > self._ref_tol
+
+    def _check_for_deactivation(
+            self,
+            active_id: int,
+            similarity_dists: np.ndarray,
+            micro_sim_states: np.ndarray) -> bool:
+        """
+        Function to check if an active simulation needs to be deactivated
+
+        Parameters
+        ----------
+        active_id : int
+            ID of active simulation which is checked for deactivation
+        similarity_dists : numpy array
+            2D array having similarity distances between each micro simulation pair
+        micro_sim_states : numpy array
+            1D array having state (active or inactive) of each micro simulation
+        """
+        active_sim_ids = np.where(micro_sim_states == 1)[0]
+
+        for active_id_2 in active_sim_ids:
+            if active_id != active_id_2:  # don't compare active sim to itself
+                # If active sim is similar to another active sim, deactivate it
+                if similarity_dists[active_id, active_id_2] < self._coarse_tol:
+                    return True
+        return False
+
+    def update_micro_sims_locally(
+            self,
+            micro_sim_states: np.ndarray,
+            micro_sims: list) -> list:
+        """
+        """
+        for i in range(self._number_of_local_sims):
+
 
     def associate_inactive_to_active(
             self,
