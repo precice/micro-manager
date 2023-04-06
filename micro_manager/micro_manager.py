@@ -14,60 +14,10 @@ import logging
 import time
 
 from .config import Config
+from.micro_simulation import create_micro_problem_class
 from .adaptivity import AdaptiveController
 
 sys.path.append(os.getcwd())
-
-
-def create_micro_problem_class(base_micro_simulation):
-    """
-    Creates a class MicroProblem which inherits from the class of the micro simulation.
-
-    Parameters
-    ----------
-    base_micro_simulation : class
-        The base class from the micro simulation script.
-
-    Returns
-    -------
-    MicroProblem : class
-        Definition of class MicroProblem defined in this function.
-    """
-    class MicroProblem(base_micro_simulation):
-        def __init__(self, local_id, global_id):
-            base_micro_simulation.__init__(self, local_id)
-            self._local_id = local_id
-            self._global_id = global_id
-            self._is_active = False  # Simulation is created in an inactive state
-            self._associated_active_local_id = None
-
-        def get_local_id(self):
-            return self._local_id
-
-        def get_global_id(self):
-            return self._global_id
-
-        def activate(self):
-            self._is_active = True
-
-        def deactivate(self):
-            self._is_active = False
-
-        def is_associated_to(self, similar_active_local_id):
-            assert not self._is_active, "Micro simulation {} is active and hence cannot be most similar to another active simulation".format(
-                self._global_id)
-            self._associated_active_local_id = similar_active_local_id
-
-        def get_associated_active_id(self):
-            assert not self._is_active, "Micro simulation {} is active and hence cannot have a most similar active id".format(
-                self._global_id)
-            return self._associated_active_local_id
-
-        def is_active(self):
-            return self._is_active
-
-    return MicroProblem
-
 
 class MicroManager:
     def __init__(self, config_file: str) -> None:
@@ -262,24 +212,30 @@ class MicroManager:
         # Create lists of local and global IDs
         sim_id = np.sum(nms_all_ranks[:self._rank])
         self._micro_sim_global_ids = []
-        self._micro_sim_local_ids = []
         for i in range(self._local_number_of_micro_sims):
             self._micro_sim_global_ids.append(sim_id)
             sim_id += 1
-            self._micro_sim_local_ids.append(i)
 
         if self._is_adaptivity_on:
-            self._micro_sims = list(range(self._number_of_micro_sims_for_adaptivity))  # DECLARATION
+            self._micro_sims = [None] * self._number_of_micro_sims_for_adaptivity  # DECLARATION
             if self._adaptivity_type == "local":
                 # If adaptivity is calculated locally, IDs to iterate over are local
-                micro_sim_iter_ids = self._micro_sim_local_ids
-                for i in self._micro_sim_local_ids:
+                for i in range(self._local_number_of_micro_sims):
                     self._micro_sims[i] = create_micro_problem_class(self._micro_problem)(i, self._micro_sim_global_ids[i])
+                
+                micro_sim_iter_ids = range(self._local_number_of_micro_sims)
             elif self._adaptivity_type == "global":
                 # If adaptivity is calculated globally, IDs to iterate over are global
-                micro_sim_iter_ids = self._micro_sim_global_ids
                 for counter, i in enumerate(self._micro_sim_global_ids):
                     self._micro_sims[i] = create_micro_problem_class(self._micro_problem)(counter, i)
+
+                micro_sim_is_on_this_rank = [None] * self._local_number_of_micro_sims
+                for i in self._micro_sim_global_ids:
+                    micro_sim_is_on_this_rank[i] = self._rank
+
+                self._micro_sim_is_on_rank = self._comm.allgather(micro_sim_is_on_this_rank)  # DECLARATION
+
+                micro_sim_iter_ids = self._micro_sim_global_ids
         else:
             self._micro_sims = []  # DECLARATION
             for i in range(self._local_number_of_micro_sims):
@@ -433,6 +389,21 @@ class MicroManager:
         micro_sim_states_n = self._adaptivity_controller.update_micro_sim_states(
             similarity_dists_n, micro_sim_states_nm1)
 
+        # Update micro simulations on this rank
+        if self._adaptivity_type == "global":
+            for i in range(self._local_number_of_micro_sims):
+                global_id = self._micro_sim_global_ids[i]
+                if not micro_sim_states_n[global_id]:
+                    self._micro_sims[i].deactivate()
+                elif micro_sim_states_n[global_id]:  # activate the micro simulation
+                    
+        elif self._adaptivity_type == "local":
+            for i in range(self._local_number_of_micro_sims):
+                if micro_sim_states_n[i]:
+                    self._micro_sims[i].activate()
+                elif not micro_sim_states_n[i]:
+                    self._micro_sims[i].deactivate()
+
         self._micro_sims = self._adaptivity_controller.associate_inactive_to_active(
             similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
@@ -526,7 +497,7 @@ class MicroManager:
 
             # All inactive sims are associated to the one active sim
             for i in range(1, self._number_of_micro_sims_for_adaptivity):
-                self._micro_sims[i].is_associated_to(0)
+                self._micro_sims[i].is_associated_to_active_sim(0, self._micro_sim_global_ids[0])
 
         similarity_dists_cp = None
         micro_sim_states_cp = None

@@ -11,6 +11,7 @@ class AdaptiveController:
         # Names of data to be used for adaptivity computation
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
+        self._adaptivity_type = configurator.get_adaptivity_type()
         self._number_of_local_sims = 0
         self._number_of_global_sims = 0
         self._coarse_tol = 0.0
@@ -53,8 +54,10 @@ class AdaptiveController:
         elif data.ndim == 2:
             _, dim = data.shape
 
-        for counter_1, id_1 in enumerate(range(self._number_of_sims)):
-            for counter_2, id_2 in enumerate(range(self._number_of_sims)):
+        number_of_sims, _ = _similarity_dists.shape
+
+        for counter_1, id_1 in enumerate(range(number_of_sims)):
+            for counter_2, id_2 in enumerate(range(number_of_sims)):
                 data_diff = 0
                 if id_1 != id_2:
                     if dim:
@@ -167,15 +170,6 @@ class AdaptiveController:
                 if similarity_dists[active_id, active_id_2] < self._coarse_tol:
                     return True
         return False
-
-    def update_micro_sims_locally(
-            self,
-            micro_sim_states: np.ndarray,
-            micro_sims: list) -> list:
-        """
-        """
-        for i in range(self._number_of_local_sims):
-
 
     def associate_inactive_to_active(
             self,
