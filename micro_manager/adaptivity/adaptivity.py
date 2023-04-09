@@ -6,7 +6,7 @@ import sys
 from copy import deepcopy
 
 
-class AdaptiveController:
+class AdaptivityCalculator:
     def __init__(self, configurator) -> None:
         # Names of data to be used for adaptivity computation
         self._refine_const = configurator.get_adaptivity_refining_const()
@@ -72,54 +72,73 @@ class AdaptiveController:
 
         return _similarity_dists
 
-    def update_micro_sim_states(
+    def update_active_micro_sims_locally(
             self,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray,
             micro_sims: list) -> np.ndarray:
         """
-        Update the data micro_sim_states locally by deactivating active simulations which have similar counterparts
-
-        Parameters
-        ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
-        micro_sim_states : numpy array
-            1D array having state (active or inactive) of each micro simulation
-        micro_sims : list
-            List of objects of class MicroProblem, which are the micro simulations
-
-        Returns
-        -------
-        _micro_sim_states : numpy array
-            Updated 1D array having state (active or inactive) of each micro simulation
         """
         self._coarse_tol = self._coarse_const * self._refine_const * np.amax(similarity_dists)
-        self._ref_tol = self._refine_const * np.amax(similarity_dists)
 
         _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
 
         # Update the set of active micro sims
-        for i in range(self._number_of_sims):
+        for i in range(self._number_of_local_sims):
             if _micro_sim_states[i]:  # if sim is active
                 if self._check_for_deactivation(i, similarity_dists, _micro_sim_states):
-                    # micro_sims[i].deactivate()
+                    micro_sims[i].deactivate()
                     _micro_sim_states[i] = 0
+
+        return _micro_sim_states
+
+    def update_active_micro_sims_globally(
+            self,
+            similarity_dists: np.ndarray,
+            micro_sim_states: np.ndarray,
+            micro_sims: list) -> np.ndarray:
+        """
+        """
+        self._coarse_tol = self._coarse_const * self._refine_const * np.amax(similarity_dists)
+
+        _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
+        # Update the set of active micro sims
+        for i in range(self._number_of_local_sims):
+            if _micro_sim_states[i]:  # if sim is active
+                if self._check_for_deactivation(i, similarity_dists, _micro_sim_states):
+                    micro_sims[i].deactivate()
+                    _micro_sim_states[i] = 0
+
+
+
+    def update_inactive_micro_sims_locally(
+            self,
+            similarity_dists: np.ndarray,
+            micro_sim_states: np.ndarray,
+            micro_sims: list) -> np.ndarray:
+        """
+        """
+        self._ref_tol = self._refine_const * np.amax(similarity_dists)
+
+        _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
 
         # Update the set of inactive micro sims
         for i in range(self._number_of_sims):
             if not _micro_sim_states[i]:  # if id is inactive
                 if self._check_for_activation(i, similarity_dists, _micro_sim_states):
-                    # associated_active_id = micro_sims[i].get_associated_active_id()
-
-                    # Effectively kill the micro sim object associated to the inactive ID
-                    # micro_sims[i] = None
-
-                    # Make a copy of the associated active micro sim object
-                    # micro_sims[i] = deepcopy(micro_sims[associated_active_id])
                     _micro_sim_states[i] = 1
 
+                    associated_active_local_id = micro_sims[i].get_associated_active_local_id()
+
+                    # Effectively kill the micro sim object associated to the inactive ID
+                    micro_sims[i] = None
+
+                    # Make a copy of the associated active micro sim object
+                    micro_sims[i] = deepcopy(self._micro_sims[associated_active_local_id])
+        
         return _micro_sim_states
+
+
 
     def _check_for_activation(
             self,
@@ -171,7 +190,7 @@ class AdaptiveController:
                     return True
         return False
 
-    def associate_inactive_to_active(
+    def associate_inactive_to_active_locally(
             self,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray,
