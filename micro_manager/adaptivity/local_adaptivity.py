@@ -7,10 +7,9 @@ from copy import deepcopy
 from adaptivity import AdaptivityCalculator
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator, number_of_local_sims, global_ids) -> None:
-        super().__init__(configurator)
+    def __init__(self, configurator, global_ids, number_of_local_sims) -> None:
+        super().__init__(configurator, global_ids)
         self._number_of_local_sims = number_of_local_sims
-        self._micro_sim_global_ids = global_ids
 
     def update_active_micro_sims(
         self,
@@ -88,4 +87,4 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                     associated_active_id = active_id
                     dist_min = similarity_dists[inactive_id, active_id]
 
-            micro_sims[inactive_id].is_associated_to_active_sim(associated_active_id, self._micro_sim_global_ids[associated_active_id])
+            micro_sims[inactive_id].is_associated_to_active_sim(associated_active_id, self._global_ids_of_local_sims[associated_active_id])
