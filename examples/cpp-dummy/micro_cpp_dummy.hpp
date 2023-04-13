@@ -20,6 +20,7 @@ public:
     py::dict solve(py::dict macro_write_data, double dt);
     void save_checkpoint();
     void reload_checkpoint();
+    MicroSimulation __deepcopy__(py::dict memo);
 
 private:
     int _sim_id;
