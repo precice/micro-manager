@@ -28,6 +28,7 @@ c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_c
 The command above compiles the C++ solverdummy and creates a shared library that can be imported from python using `pybind11`. 
 - The `$(python3 -m pybind11 --includes)` part is necessary to include the correct header files for `pybind11`. 
 - The `$(python3-config --extension-suffix)` part is necessary to create the correct file extension for the shared library. For more information, see the [pybind11 documentation](https://pybind11.readthedocs.io/en/stable/compiling.html#building-manually).
+- If you have multiple versions of Python installed, you might have to replace `python3-config` with `python3.8-config` or similar.
 
 </details>
 
@@ -40,3 +41,7 @@ python cpp-dummy/run_micro_manager.py
 
 When changing the C++ solverdummy to your own solver, make sure to change the `PYBIND11_MODULE` in `micro_cpp_dummy.cpp` to the name that you want to compile to. 
 For example, if you want to import the module as `my_solver`, change the line to `PYBIND11_MODULE(my_solver, m) {`. Then, change the `micro_file_name` in `micro-manager-config.json` to `my_solver`.
+
+### Adaptivity
+
+For the case of adaptivity, the deepcopy function also has to be implemented for the C++ class. An example is provided in the `cpp-dummy` directory.
