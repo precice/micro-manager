@@ -33,6 +33,7 @@ jobs:
 
       - name: Run adaptive python macro-micro dummy
         run: |
+          cd examples/
           python3 macro_dummy.py & python3 python-dummy/run_micro_manager_adaptivity.py
 
       - name: Run c++ macro-micro dummy
@@ -45,4 +46,5 @@ jobs:
 
       - name: Run adaptive c++ macro-micro dummy
         run: |
+          cd examples/
           python3 macro_dummy.py & python3 cpp-dummy/run_micro_manager_adaptivity.py
