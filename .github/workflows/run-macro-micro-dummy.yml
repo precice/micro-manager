@@ -27,16 +27,19 @@ jobs:
         run: pip3 install --user .
 
       - name: Run python macro-micro dummy
+        timeout-minutes: 3
         run: |
           cd examples/
           python3 python-dummy/run_micro_manager.py & python3 macro_dummy.py
 
       - name: Run adaptive python macro-micro dummy
+        timeout-minutes: 3
         run: |
           cd examples/
           python3 python-dummy/run_micro_manager_adaptivity.py & python3 macro_dummy.py
 
       - name: Run c++ macro-micro dummy
+        timeout-minutes: 3
         run: |
           cd examples/cpp-dummy/
           pip install pybind11
@@ -45,6 +48,7 @@ jobs:
           python3 cpp-dummy/run_micro_manager.py & python3 macro_dummy.py
 
       - name: Run adaptive c++ macro-micro dummy
+        timeout-minutes: 3
         run: |
           cd examples/
           python3 cpp-dummy/run_micro_manager_adaptivity.py & python3 macro_dummy.py
