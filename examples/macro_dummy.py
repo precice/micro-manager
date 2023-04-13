@@ -83,6 +83,10 @@ def main():
         for i in range(nv):
             for d in range(interface.get_dimensions()):
                 write_vector_data[i, d] = read_vector_data[i, d]
+                if t>1: # to trigger adaptivity after some time
+                    # ensure that the data is different from the previous time step
+                    # previously inactive microsimulations will be activated
+                    write_vector_data[i, d] += np.random.randint(0, 10) 
 
         for name, dim in write_data_names.items():
             if dim == 0:
