@@ -69,14 +69,16 @@ void MicroSimulation::reload_checkpoint()
     _micro_scalar_data = _checkpoint;
 }
 
-// This function is not relevant for the Micro Manager but is important for serialization of the micro simulation object
+// This function needs to set the complete state of a micro simulation
 void MicroSimulation::setState(double micro_scalar_data, double checkpoint)
 {
     _micro_scalar_data = micro_scalar_data;
     _checkpoint = checkpoint;
 }
 
-std::tuple<double, double> MicroSimulation::getState()
+
+// This function needs to return variables which can fully define the state of a micro simulation
+std::tuple<double, double, double> MicroSimulation::getState() const
 {
     return {_sim_id, _micro_scalar_data, _checkpoint};
 }
@@ -102,7 +104,7 @@ PYBIND11_MODULE(micro_dummy, m) {
                     throw std::runtime_error("Invalid state!");
                 
                 /* Create a new C++ instance */
-                MicroSimulation ms(t[0]);
+                MicroSimulation ms(t[0].cast<double>());
 
                 ms.setState(t[1].cast<double>(), t[2].cast<double>());
 
