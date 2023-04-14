@@ -47,6 +47,12 @@ def create_micro_problem_class(base_micro_simulation):
         def get_global_id(self):
             return self._global_id
 
+        def set_local_id(self, local_id):
+            self._local_id = local_id
+
+        def set_global_id(self, global_id):
+            self._global_id = global_id
+
         def activate(self):
             self._is_active = True
 
