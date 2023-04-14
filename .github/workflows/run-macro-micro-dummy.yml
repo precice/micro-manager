@@ -30,13 +30,13 @@ jobs:
         timeout-minutes: 3
         run: |
           cd examples/
-          python3 python-dummy/run_micro_manager.py --config micro-manager-config.json & python3 macro_dummy.py
+          python3 python-dummy/run_micro_manager.py --config ../micro-manager-config.json & python3 macro_dummy.py
 
       - name: Run adaptive python macro-micro dummy
         timeout-minutes: 3
         run: |
           cd examples/
-          python3 python-dummy/run_micro_manager_adaptivity.py --config micro-manager-adaptivity-config.json & python3 macro_dummy.py
+          python3 python-dummy/run_micro_manager_adaptivity.py --config ../micro-manager-adaptivity-config.json & python3 macro_dummy.py
 
       - name: Run c++ macro-micro dummy
         timeout-minutes: 3
@@ -45,10 +45,10 @@ jobs:
           pip install pybind11
           c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy$(python3-config --extension-suffix)
           cd ../
-          python3 cpp-dummy/run_micro_manager.py --config micro-manager-config.json & python3 macro_dummy.py
+          python3 cpp-dummy/run_micro_manager.py --config ../micro-manager-config.json & python3 macro_dummy.py
 
       - name: Run adaptive c++ macro-micro dummy
         timeout-minutes: 3
         run: |
           cd examples/
-          python3 cpp-dummy/run_micro_manager_adaptivity.py --config micro-manager-adaptivity-config.json & python3 macro_dummy.py
+          python3 cpp-dummy/run_micro_manager_adaptivity.py --config ../micro-manager-adaptivity-config.json & python3 macro_dummy.py
