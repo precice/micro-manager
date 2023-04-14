@@ -36,7 +36,7 @@ jobs:
         timeout-minutes: 3
         run: |
           cd examples/
-          python3 python-dummy/run_micro_manager_adaptivity.py --config ../micro-manager-adaptivity-config.json & python3 macro_dummy.py
+          python3 python-dummy/run_micro_manager.py --config ../micro-manager-adaptivity-config.json & python3 macro_dummy.py
 
       - name: Run c++ macro-micro dummy
         timeout-minutes: 3
@@ -51,4 +51,4 @@ jobs:
         timeout-minutes: 3
         run: |
           cd examples/
-          python3 cpp-dummy/run_micro_manager_adaptivity.py --config ../micro-manager-adaptivity-config.json & python3 macro_dummy.py
+          python3 cpp-dummy/run_micro_manager.py --config ../micro-manager-adaptivity-config.json & python3 macro_dummy.py
