@@ -78,7 +78,10 @@ void MicroSimulation::setState(double micro_scalar_data, double checkpoint)
 
 
 // This function needs to return variables which can fully define the state of a micro simulation
-std::tuple<double, double, double> MicroSimulation::getState() const
+py::tuple MicroSimulation::getState() const
+{
+    return py::make_tuple(_sim_id, _micro_scalar_data, _checkpoint);
+}
 {
     return {_sim_id, _micro_scalar_data, _checkpoint};
 }
