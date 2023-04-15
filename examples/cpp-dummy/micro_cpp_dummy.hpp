@@ -22,7 +22,7 @@ public:
     void reload_checkpoint();
 
     void setState(double micro_scalar_data, double checkpoint);
-    std::tuple<double, double, double> getState() const;
+    py::tuple<double, double, double> getState() const;
 
 private:
     int _sim_id;
