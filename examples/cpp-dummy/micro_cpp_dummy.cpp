@@ -98,7 +98,7 @@ PYBIND11_MODULE(micro_dummy, m) {
                 return ms.getState();
             },
             [](py::tuple t) { // __setstate__
-                if (t.size() != 3)
+                if (t.size() != 2)
                     throw std::runtime_error("Invalid state!");
                 
                 /* Create a new C++ instance */
