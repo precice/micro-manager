@@ -6,24 +6,23 @@ In this script we solve a dummy micro problem to just show the working of the ma
 
 class MicroSimulation:
 
-    def __init__(self, sim_id):
+    def __init__(self):
         """
         Constructor of MicroSimulation class.
         """
-        self._sim_id = sim_id
         self._dims = 3
         self._micro_scalar_data = None
         self._micro_vector_data = None
         self._checkpoint = None
 
     def initialize(self):
-        print("Initialize micro problem ({})".format(self._sim_id))
+        print("Initialize micro problem")
         self._micro_scalar_data = 0
         self._micro_vector_data = []
         self._checkpoint = 0
 
     def solve(self, macro_data, dt):
-        print("Solve timestep of micro problem ({})".format(self._sim_id))
+        print("Solve timestep of micro problem")
         assert dt != 0
         self._micro_vector_data = []
         self._micro_scalar_data = macro_data["macro-scalar-data"] + 1
@@ -34,9 +33,9 @@ class MicroSimulation:
                 "micro-vector-data": self._micro_vector_data.copy()}
 
     def save_checkpoint(self):
-        print("Saving state of micro problem ({})".format(self._sim_id))
+        print("Saving state of micro problem")
         self._checkpoint = self._micro_scalar_data
 
     def reload_checkpoint(self):
-        print("Reverting to old state of micro problem ({})".format(self._sim_id))
+        print("Reverting to old state of micro problem")
         self._micro_scalar_data = self._checkpoint
