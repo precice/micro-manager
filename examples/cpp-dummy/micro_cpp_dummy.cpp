@@ -102,9 +102,9 @@ PYBIND11_MODULE(micro_dummy, m) {
                     throw std::runtime_error("Invalid state!");
                 
                 /* Create a new C++ instance */
-                MicroSimulation ms(t[0].cast<double>());
+                MicroSimulation ms;
 
-                ms.setState(t[1].cast<double>(), t[2].cast<double>());
+                ms.setState(t[0].cast<double>(), t[1].cast<double>());
 
                 return ms;
             }
