@@ -21,6 +21,9 @@ public:
     void save_checkpoint();
     void reload_checkpoint();
 
+    void setState(double micro_scalar_data, double checkpoint);
+    py::tuple getState() const;
+
 private:
     int _sim_id;
     double _micro_scalar_data;

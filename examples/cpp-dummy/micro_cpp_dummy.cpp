@@ -69,6 +69,19 @@ void MicroSimulation::reload_checkpoint()
     _micro_scalar_data = _checkpoint;
 }
 
+// This function needs to set the complete state of a micro simulation
+void MicroSimulation::setState(double micro_scalar_data, double checkpoint)
+{
+    _micro_scalar_data = micro_scalar_data;
+    _checkpoint = checkpoint;
+}
+
+// This function needs to return variables which can fully define the state of a micro simulation
+py::tuple MicroSimulation::getState() const
+{
+    return py::make_tuple(_sim_id, _micro_scalar_data, _checkpoint);
+}
+
 PYBIND11_MODULE(micro_dummy, m) {
     // optional docstring
     m.doc() = "pybind11 micro dummy plugin";
@@ -78,5 +91,22 @@ PYBIND11_MODULE(micro_dummy, m) {
         .def("initialize", &MicroSimulation::initialize)
         .def("solve", &MicroSimulation::solve)
         .def("save_checkpoint", &MicroSimulation::save_checkpoint)
-        .def("reload_checkpoint", &MicroSimulation::reload_checkpoint);
+        .def("reload_checkpoint", &MicroSimulation::reload_checkpoint)
+        .def(py::pickle(
+            [](const MicroSimulation &ms) { // __getstate__
+                /* Return a tuple that fully encodes the state of the object */
+                return ms.getState();
+            },
+            [](py::tuple t) { // __setstate__
+                if (t.size() != 3)
+                    throw std::runtime_error("Invalid state!");
+                
+                /* Create a new C++ instance */
+                MicroSimulation ms(t[0].cast<double>());
+
+                ms.setState(t[1].cast<double>(), t[2].cast<double>());
+
+                return ms;
+            }
+        ));
 }
