@@ -165,7 +165,8 @@ class AdaptiveController:
                     local_id = micro_sims[i].get_local_id()
                     global_id = micro_sims[i].get_global_id()
 
-                    # Copy state from associated active simulation with __getstate__ and __setstate__ if available else deepcopy
+                    # Copy state from associated active simulation with get_state and
+                    # set_state if available else deepcopy
                     if hasattr(micro_sims[associated_active_id], 'get_state') and \
                             hasattr(micro_sims[associated_active_id], 'set_state'):
                         micro_sims[i].set_state(*micro_sims[associated_active_id].get_state())
