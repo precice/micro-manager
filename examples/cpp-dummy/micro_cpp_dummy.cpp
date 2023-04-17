@@ -79,7 +79,7 @@ void MicroSimulation::setState(double micro_scalar_data, double checkpoint)
 // This function needs to return variables which can fully define the state of a micro simulation
 py::tuple MicroSimulation::getState() const
 {
-    return py::make_tuple(_sim_id, _micro_scalar_data, _checkpoint);
+    return py::make_tuple(_micro_scalar_data, _checkpoint);
 }
 
 PYBIND11_MODULE(micro_dummy, m) {
@@ -87,7 +87,7 @@ PYBIND11_MODULE(micro_dummy, m) {
     m.doc() = "pybind11 micro dummy plugin";
 
     py::class_<MicroSimulation>(m, "MicroSimulation")
-        .def(py::init<int>())
+        .def(py::init())
         .def("initialize", &MicroSimulation::initialize)
         .def("solve", &MicroSimulation::solve)
         .def("save_checkpoint", &MicroSimulation::save_checkpoint)
