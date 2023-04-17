@@ -69,16 +69,6 @@ void MicroSimulation::reload_checkpoint()
     _micro_scalar_data = _checkpoint;
 }
 
-// For adaptivity only: Need to be able to deepcopy the object
-MicroSimulation MicroSimulation::__deepcopy__(py::dict memo)
-{
-    MicroSimulation new_sim(_sim_id);
-    new_sim._micro_scalar_data = _micro_scalar_data;
-    new_sim._micro_vector_data = _micro_vector_data;
-    new_sim._checkpoint = _checkpoint;
-    return new_sim;
-}
-
 // This function needs to set the complete state of a micro simulation
 void MicroSimulation::setState(double micro_scalar_data, double checkpoint)
 {
@@ -89,7 +79,7 @@ void MicroSimulation::setState(double micro_scalar_data, double checkpoint)
 // This function needs to return variables which can fully define the state of a micro simulation
 py::tuple MicroSimulation::getState() const
 {
-    return py::make_tuple(_sim_id, _micro_scalar_data, _checkpoint);
+    return py::make_tuple(_micro_scalar_data, _checkpoint);
 }
 
 PYBIND11_MODULE(micro_dummy, m) {
@@ -102,20 +92,21 @@ PYBIND11_MODULE(micro_dummy, m) {
         .def("solve", &MicroSimulation::solve)
         .def("save_checkpoint", &MicroSimulation::save_checkpoint)
         .def("reload_checkpoint", &MicroSimulation::reload_checkpoint)
-        .def("__deepcopy__", &MicroSimulation::__deepcopy__)
+        .def("get_state", &MicroSimulation::getState)
+        .def("set_state", &MicroSimulation::setState)
         .def(py::pickle(
             [](const MicroSimulation &ms) { // __getstate__
                 /* Return a tuple that fully encodes the state of the object */
                 return ms.getState();
             },
             [](py::tuple t) { // __setstate__
-                if (t.size() != 3)
+                if (t.size() != 2)
                     throw std::runtime_error("Invalid state!");
                 
                 /* Create a new C++ instance */
                 MicroSimulation ms(t[0].cast<double>());
 
-                ms.setState(t[1].cast<double>(), t[2].cast<double>());
+                ms.setState(t[0].cast<double>(), t[1].cast<double>());
 
                 return ms;
             }

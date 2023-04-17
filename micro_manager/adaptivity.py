@@ -165,13 +165,15 @@ class AdaptiveController:
                     local_id = micro_sims[i].get_local_id()
                     global_id = micro_sims[i].get_global_id()
 
-                    # Effectively kill the micro sim object associated to the inactive ID
-                    micro_sims[i] = None
-
-                    # Make a copy of the associated active micro sim object
-                    micro_sims[i] = deepcopy(micro_sims[associated_active_id])
-                    micro_sims[i].set_local_id(local_id)
-                    micro_sims[i].set_global_id(global_id)
+                    # Copy state from associated active simulation with __getstate__ and __setstate__ if available else deepcopy
+                    if hasattr(micro_sims[associated_active_id], 'get_state') and \
+                            hasattr(micro_sims[associated_active_id], 'set_state'):
+                        micro_sims[i].set_state(*micro_sims[associated_active_id].get_state())
+                    else:
+                        micro_sims[i] = None
+                        micro_sims[i] = deepcopy(micro_sims[associated_active_id])
+                        micro_sims[i].set_local_id(local_id)
+                        micro_sims[i].set_global_id(global_id)
                     _micro_sim_states[i] = 1
 
         return _micro_sim_states
