@@ -22,6 +22,9 @@ public:
     void reload_checkpoint();
     MicroSimulation __deepcopy__(py::dict memo);
 
+    void setState(double micro_scalar_data, double checkpoint);
+    py::tuple getState() const;
+
 private:
     int _sim_id;
     double _micro_scalar_data;

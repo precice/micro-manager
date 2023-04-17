@@ -161,11 +161,17 @@ class AdaptiveController:
                 if self._check_for_activation(i, similarity_dists, _micro_sim_states):
                     associated_active_id = micro_sims[i].get_associated_active_id()
 
+                    # Get local and global ID of inactive simulation, to set it to the copied simulation later
+                    local_id = micro_sims[i].get_local_id()
+                    global_id = micro_sims[i].get_global_id()
+
                     # Effectively kill the micro sim object associated to the inactive ID
                     micro_sims[i] = None
 
                     # Make a copy of the associated active micro sim object
                     micro_sims[i] = deepcopy(micro_sims[associated_active_id])
+                    micro_sims[i].set_local_id(local_id)
+                    micro_sims[i].set_global_id(global_id)
                     _micro_sim_states[i] = 1
 
         return _micro_sim_states
