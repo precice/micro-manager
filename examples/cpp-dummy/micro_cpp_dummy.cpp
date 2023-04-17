@@ -95,7 +95,7 @@ PYBIND11_MODULE(micro_dummy, m) {
         .def(py::pickle(
             [](const MicroSimulation &ms) { // __getstate__
                 /* Return a tuple that fully encodes the state of the object */
-                return py::make_tuple(ms.getState());
+                return ms.getState();
             },
             [](py::tuple t) { // __setstate__
                 if (t.size() != 3)
