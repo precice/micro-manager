@@ -3,8 +3,13 @@ Script to run the Micro Manager
 """
 
 from micro_manager import MicroManager
+from argparse import ArgumentParser
 
-manager = MicroManager("../micro-manager-config.json")
+parser = ArgumentParser()
+parser.add_argument("--config", required=True, help="Path to the micro manager configuration file")
+args = parser.parse_args()
+
+manager = MicroManager(args.config)
 
 manager.initialize()
 
