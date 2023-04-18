@@ -35,7 +35,7 @@ def create_micro_problem_class(base_micro_simulation):
     """
     class MicroProblem(base_micro_simulation):
         def __init__(self, local_id, global_id):
-            base_micro_simulation.__init__(self, local_id)
+            base_micro_simulation.__init__(self)
             self._local_id = local_id
             self._global_id = global_id
             self._is_active = False  # Simulation is created in an inactive state
