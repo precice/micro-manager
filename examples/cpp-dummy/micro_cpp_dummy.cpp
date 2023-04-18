@@ -13,12 +13,12 @@
 #include "micro_cpp_dummy.hpp"
 
 // Constructor
-MicroSimulation::MicroSimulation(int sim_id) : _sim_id(sim_id), _micro_scalar_data(0), _checkpoint(0) {}
+MicroSimulation::MicroSimulation() : _micro_scalar_data(0), _checkpoint(0) {}
 
 // Initialize
 void MicroSimulation::initialize()
 {
-    std::cout << "Initialize micro problem (" << _sim_id << ")\n";
+    std::cout << "Initialize micro problem\n";
     _micro_scalar_data = 0;
     _micro_vector_data.clear();
     _checkpoint = 0;
@@ -27,7 +27,7 @@ void MicroSimulation::initialize()
 // Solve
 py::dict MicroSimulation::solve(py::dict macro_data, double dt)
 {
-    std::cout << "Solve timestep of micro problem (" << _sim_id << ")\n";
+    std::cout << "Solve timestep of micro problem\n";
 
     //! Code below shows how to convert input macro data and use it in your C++ solver
 
@@ -58,14 +58,14 @@ py::dict MicroSimulation::solve(py::dict macro_data, double dt)
 // Save Checkpoint -- only valid for implicit coupling
 void MicroSimulation::save_checkpoint()
 {
-    std::cout << "Saving state of micro problem (" << _sim_id << ")\n";
+    std::cout << "Saving state of micro problem\n";
     _checkpoint = _micro_scalar_data;
 }
 
 // Reload Checkpoint -- only valid for implicit coupling
 void MicroSimulation::reload_checkpoint()
 {
-    std::cout << "Reverting to old state of micro problem (" << _sim_id << ")\n";
+    std::cout << "Reverting to old state of micro problem\n";
     _micro_scalar_data = _checkpoint;
 }
 
@@ -79,7 +79,7 @@ void MicroSimulation::setState(double micro_scalar_data, double checkpoint)
 // This function needs to return variables which can fully define the state of a micro simulation
 py::tuple MicroSimulation::getState() const
 {
-    return py::make_tuple(_sim_id, _micro_scalar_data, _checkpoint);
+    return py::make_tuple(_micro_scalar_data, _checkpoint);
 }
 
 PYBIND11_MODULE(micro_dummy, m) {
@@ -87,7 +87,7 @@ PYBIND11_MODULE(micro_dummy, m) {
     m.doc() = "pybind11 micro dummy plugin";
 
     py::class_<MicroSimulation>(m, "MicroSimulation")
-        .def(py::init<int>())
+        .def(py::init())
         .def("initialize", &MicroSimulation::initialize)
         .def("solve", &MicroSimulation::solve)
         .def("save_checkpoint", &MicroSimulation::save_checkpoint)
@@ -98,13 +98,13 @@ PYBIND11_MODULE(micro_dummy, m) {
                 return ms.getState();
             },
             [](py::tuple t) { // __setstate__
-                if (t.size() != 3)
+                if (t.size() != 2)
                     throw std::runtime_error("Invalid state!");
                 
                 /* Create a new C++ instance */
-                MicroSimulation ms(t[0].cast<double>());
+                MicroSimulation ms;
 
-                ms.setState(t[1].cast<double>(), t[2].cast<double>());
+                ms.setState(t[0].cast<double>(), t[1].cast<double>());
 
                 return ms;
             }

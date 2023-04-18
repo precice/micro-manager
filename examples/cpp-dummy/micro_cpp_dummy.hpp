@@ -14,7 +14,7 @@ namespace py = pybind11;
 class MicroSimulation
 {
 public:
-    MicroSimulation(int sim_id);
+    MicroSimulation();
     void initialize();
     // solve takes a python dict data, and the timestep dt as inputs, and returns a python dict
     py::dict solve(py::dict macro_write_data, double dt);
@@ -25,7 +25,6 @@ public:
     py::tuple getState() const;
 
 private:
-    int _sim_id;
     double _micro_scalar_data;
     std::vector<double> _micro_vector_data;
     double _checkpoint;
