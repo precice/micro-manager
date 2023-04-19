@@ -6,7 +6,7 @@
 //
 // c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy$(python3-config --extension-suffix)
 //
-// To check if python is able to import it, run: 
+// To check if python is able to import it, run:
 // python3 -c "import micro_dummy; micro_dummy.MicroSimulation(1)"
 // from the same directory
 
@@ -92,6 +92,8 @@ PYBIND11_MODULE(micro_dummy, m) {
         .def("solve", &MicroSimulation::solve)
         .def("save_checkpoint", &MicroSimulation::save_checkpoint)
         .def("reload_checkpoint", &MicroSimulation::reload_checkpoint)
+        .def("get_state", &MicroSimulation::getState)
+        .def("set_state", &MicroSimulation::setState)
         .def(py::pickle(
             [](const MicroSimulation &ms) { // __getstate__
                 /* Return a tuple that fully encodes the state of the object */
