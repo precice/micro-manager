@@ -16,6 +16,12 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._comm = comm
         self._rank = rank
 
+    def _create_tag(self, sim_id, src_rank, dest_rank):
+        send_hashtag = hashlib.sha256()
+        send_hashtag.update((str(src_rank) + str(sim_id) + str(dest_rank)).encode('utf-8'))
+        tag = int(send_hashtag.hexdigest()[:6], base=16)
+        return tag
+
     def update_active_micro_sims(
         self,
         similarity_dists: np.ndarray,
@@ -48,8 +54,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
 
         # Update the set of inactive micro sims
-        global_ids_of_sims_to_receive = []
-        recv_reqs = []
+        send_sims_to_ranks_local = dict()  # keys are global IDs, values are rank to send to
+        recv_sims_from_ranks = dict() # keys are global IDs, values are ranks to receive from
         for i in range(self._number_of_global_sims):
             if not _micro_sim_states[i]:  # if id is inactive
                 if self._check_for_activation(i, similarity_dists, _micro_sim_states):
@@ -62,25 +68,48 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                         micro_sims[i] = None
 
                         recv_rank = self._micro_sim_is_on_rank[associated_active_global_id]
-                        
+
+                        # If simulation is to be copied from this rank, just do it directly                        
                         if recv_rank == self._rank:
                             local_id = self._global_ids_of_local_sims.index(associated_active_global_id)
                             micro_sims[i] = deepcopy(micro_sims[local_id])
                         else:
-                            hash_tag = hashlib.sha256()
-                            hash_tag.update((str(self._rank) + str(associated_active_global_id) + str(recv_rank)).encode('utf-8'))
-                            tag = int(hash_tag.hexdigest()[:6], base=16)
-                            recv_reqs.append(self._comm.irecv(source=recv_rank, tag=tag))
+                            # Gather information about which sims to receive from where
+                            recv_sims_from_ranks[associated_active_global_id] = recv_rank
+                            # Gather information about which sims to send where, but from the receiving perspective
+                            send_sims_to_ranks_local[associated_active_global_id] = self._rank
 
-                            global_ids_of_sims_to_receive.append(associated_active_global_id)
+        # ----- Gather information about which sims to send where, and now from the sending perspective -----
+        send_sims_to_ranks = self._comm.allgather(send_sims_to_ranks_local)
 
-        for active_global_id in global_ids_of_sims_to_receive:
-            if self._rank == self._micro_sim_is_on_rank[active_global_id]:
-                send_hashtag = hashlib.sha256()
-                send_hashtag.update((str(self._rank) + str(neigh)).encode('utf-8'))
-                send_tag = int(send_hashtag.hexdigest()[:6], base=16)
-                req = comm.isend(unowned_gids, dest=neigh, tag=send_tag)
-                send_reqs.append(req)
+        send_sims_from_this_rank = dict()
+        for global_id, rank in send_sims_to_ranks.items():
+            if self._micro_sim_is_on_rank[global_id] == self._rank:
+                send_sims_from_this_rank[global_id] = rank
+        # ----------
+
+        # Asynchronous receive operations
+        recv_reqs = []
+        for global_id, recv_rank in recv_sims_from_ranks.items():
+            tag = self._create_tag(global_id, recv_rank, self._rank)
+            recv_reqs.append(self._comm.irecv(source=recv_rank, tag=tag))
+
+        # Asynchronous send operations
+        send_reqs = []
+        for global_id, send_rank in send_sims_from_this_rank.items():
+            tag = self._create_tag(global_id, self._rank, send_rank)
+            req = self._comm.isend(micro_sims[self._global_ids_of_local_sims.index(global_id)], dest=send_rank, tag=tag)
+            send_reqs.append(req)
+
+        # Wait for all non-blocking communications to complete
+        self._comm.waitall(send_reqs)
+
+        # Attach received data into the existing FEniCS style data array
+        counter = 0
+        for recv_gid in recv_pts.keys():
+            recv_lid = int(np.where(fenics_gids == recv_gid)[0][0])
+            coupling_data[tuple(fenics_coords[recv_lid])] = recv_reqs[counter].wait()
+            counter += 1
 
 
         return _micro_sim_states
