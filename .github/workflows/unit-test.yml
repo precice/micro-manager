@@ -20,6 +20,7 @@ jobs:
       - name: Install dummy bindings
         run: |
           cd python-bindings
+          apt update
           apt install -y python3-pip python-is-python3
           pip3 install setuptools wheel
           python3 setup.py test
