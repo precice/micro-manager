@@ -1,0 +1,35 @@
+name: Run unit tests
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - "*"
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: precice/precice
+    steps:
+      - name: Checkout python bindings
+        uses: actions/checkout@v3
+        with:
+          repository: precice/python-bindings
+          path: python-bindings
+      - name: Install dummy bindings
+        run: |
+          cd python-bindings
+          python setup.py test
+      - uses: actions/checkout@v3
+        with:
+          path: micro-manager
+
+      - name: Install micro-manager
+        run: |
+          cd micro-manager
+          pip3 install --user .
+
+      - name: Run unit tests
+        run:
+            python -m unittest
