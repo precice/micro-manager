@@ -12,18 +12,6 @@ jobs:
     runs-on: ubuntu-latest
     container: precice/precice
     steps:
-      - name: Checkout python bindings
-        uses: actions/checkout@v3
-        with:
-          repository: precice/python-bindings
-          path: python-bindings
-      - name: Install dummy bindings
-        run: |
-          cd python-bindings
-          apt update
-          apt install -y python3-pip python-is-python3
-          pip3 install setuptools wheel
-          python3 setup.py test
       - uses: actions/checkout@v3
         with:
           path: micro-manager
@@ -33,5 +21,21 @@ jobs:
           cd micro-manager
           pip3 install --user .
 
+      - name: Checkout python bindings
+        uses: actions/checkout@v3
+        with:
+          repository: precice/python-bindings
+          path: python-bindings
+
+      - name: Install dummy bindings
+        run: |
+          cd python-bindings
+          apt update
+          apt install -y python3-pip python-is-python3
+          pip3 install setuptools wheel cython
+          python3 setup.py test
+
       - name: Run unit tests
-        run: python3 -m unittest
+        run: |
+          export PYTHONPATH=$PYTHONPATH:/home/runner/work/python-bindings/python-bindings
+          python3 -m unittest
