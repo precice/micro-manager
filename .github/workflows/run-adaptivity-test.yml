@@ -16,7 +16,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3      
       - name: Install dependencies
-        run: |
+        run: |An error occurred while installing stringio (3.0.2), and Bundler cannot continue.An error occurred while installing stringio (3.0.2), and Bundler cannot continue.
           apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           python3 -m pip install --upgrade pip
