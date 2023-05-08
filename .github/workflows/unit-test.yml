@@ -12,6 +12,12 @@ jobs:
     runs-on: ubuntu-latest
     container: precice/precice
     steps:
+      - name: Install required packages
+        run: |
+          apt update
+          apt install -y python3-pip python-is-python3
+          pip3 install setuptools wheel cython
+
       - uses: actions/checkout@v3
         with:
           path: micro-manager
@@ -30,9 +36,6 @@ jobs:
       - name: Install dummy bindings
         run: |
           cd python-bindings
-          apt update
-          apt install -y python3-pip python-is-python3
-          pip3 install setuptools wheel cython
           python3 setup.py test
 
       - name: Run unit tests
