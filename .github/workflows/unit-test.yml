@@ -8,7 +8,7 @@ on:
     branches:
       - "*"
 jobs:
-  test:
+  unit-tests:
     runs-on: ubuntu-latest
     container: precice/precice
     steps:
@@ -20,7 +20,7 @@ jobs:
       - name: Install dummy bindings
         run: |
           cd python-bindings
-          python setup.py test
+          python3 setup.py test
       - uses: actions/checkout@v3
         with:
           path: micro-manager
@@ -31,5 +31,4 @@ jobs:
           pip3 install --user .
 
       - name: Run unit tests
-        run:
-            python -m unittest
+        run: python3 -m unittest
