@@ -20,7 +20,6 @@ jobs:
       - name: Install dummy bindings
         run: |
           cd python-bindings
-          python3 -m pip install --upgrade pip
           pip3 install setuptools wheel
           python3 setup.py test
       - uses: actions/checkout@v3
