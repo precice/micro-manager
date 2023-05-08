@@ -17,6 +17,11 @@ class MicroSimulation:
 
 
 class TestFunctioncalls(TestCase):
+    def test_create_micro_problem_class(self):
+        MicroProblem = micro_manager.create_micro_problem_class(MicroSimulation)
+        MicroProblem(1, 2)
+        self.assertTrue(True)
+
     def test_micromanager_initialize(self):
         print(sys.path)
         manager = micro_manager.MicroManager('test_unit.json')
