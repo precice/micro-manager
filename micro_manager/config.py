@@ -262,7 +262,7 @@ class Config:
 
     def get_adaptivity_type(self):
         """
-        
+
         Returns
         -------
         """

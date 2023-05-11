@@ -12,7 +12,8 @@ class AdaptivityCalculator:
         self._adaptivity_type = configurator.get_adaptivity_type()
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
-        self._global_ids_of_local_sims = set(global_ids)  # Use set to make the "in" functionality faster for large lists
+        # Use set to make the "in" functionality faster for large lists
+        self._global_ids_of_local_sims = set(global_ids)
 
     def get_similarity_dists(self, dt: float, similarity_dists: np.ndarray, data: np.ndarray) -> np.ndarray:
         """
