@@ -1,5 +1,5 @@
 from unittest import TestCase
-from micro_manager.adaptivity import AdaptiveController
+from micro_manager.adaptivity import LocalAdaptivityCalculator
 from micro_manager.config import Config
 import numpy as np
 
@@ -7,7 +7,7 @@ import numpy as np
 class TestAdaptivity(TestCase):
 
     def setUp(self):
-        self._adaptivity_controller = AdaptiveController(Config("./tests/unit/test_adaptivity_config.json"))
+        self._adaptivity_controller = LocalAdaptivityCalculator(Config("./tests/unit/test_adaptivity_config.json"))
         self._number_of_sims = 5
         self._dt = 0.1
         self._dim = 3
