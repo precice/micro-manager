@@ -19,6 +19,7 @@ jobs:
       - name: Install micro-manager
         run: |
           cd micro-manager
+          apt install -y python3-pip
           python3 -m pip install --user .
 
       - name: Run unit tests
