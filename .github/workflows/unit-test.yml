@@ -25,5 +25,6 @@ jobs:
           python3 -m pip uninstall -y pyprecice
 
       - name: Run unit tests
+        working-directory: micro-manager/tests/unit
         run: |
-          python3 -m unittest
+          python3 -m unittest test_functioncalls.py
