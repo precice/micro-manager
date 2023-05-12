@@ -8,7 +8,8 @@
     },
     "simulation_params": {
         "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
-        "adaptivity": "False"
+        "adaptivity": "False",
+        "micro_output_n": 10
     },
     "diagnostics": {
       "output_micro_sim_solve_time": "True"
