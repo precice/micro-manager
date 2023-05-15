@@ -210,26 +210,20 @@ class MicroManager:
             self._global_ids_of_local_sims.append(sim_id)
             sim_id += 1
 
-        if self._adaptivity_type == "local":
-            self._adaptivity_controller = LocalAdaptivityCalculator(self._config, self._global_ids_of_local_sims, self._local_number_of_micro_sims)
-
         if self._is_adaptivity_on:
             self._micro_sims = [None] * self._number_of_micro_sims_for_adaptivity  # DECLARATION
             if self._adaptivity_type == "local":
+                self._adaptivity_controller = LocalAdaptivityCalculator(self._config, self._global_ids_of_local_sims, self._local_number_of_micro_sims)
                 # If adaptivity is calculated locally, IDs to iterate over are local
                 for i in range(self._local_number_of_micro_sims):
                     self._micro_sims[i] = create_micro_problem_class(
                         self._micro_problem)(i, self._global_ids_of_local_sims[i])
-
-                micro_sim_iter_ids = range(self._local_number_of_micro_sims)
 
                 micro_sim_is_on_rank = [None] * self._local_number_of_micro_sims
                 for i in self._global_ids_of_local_sims:
                     micro_sim_is_on_rank[i] = self._rank
 
                 self._micro_sim_is_on_rank = self._comm.allgather(micro_sim_is_on_rank)  # DECLARATION
-
-                micro_sim_iter_ids = self._global_ids_of_local_sims
         else:
             self._micro_sims = []  # DECLARATION
             for i in range(self._local_number_of_micro_sims):
@@ -243,7 +237,7 @@ class MicroManager:
 
         # Initialize micro simulations if initialize() method exists
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
-            for counter, i in enumerate(micro_sim_iter_ids):
+            for counter, i in enumerate(range(self._local_number_of_micro_sims)):
                 micro_sims_output[counter] = self._micro_sims[i].initialize()
                 if micro_sims_output[counter] is not None:
                     if self._is_micro_solve_time_required:
