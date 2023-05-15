@@ -54,7 +54,7 @@ class Config:
         config_filename : string
             Name of the JSON configuration file
         """
-        folder = os.path.dirname(os.path.join(os.getcwd(), config_filename))
+        folder = os.path.dirname(os.path.join(os.getcwd(), os.path.dirname(sys.argv[0]), config_filename))
         path = os.path.join(folder, os.path.basename(config_filename))
         with open(path, "r") as read_file:
             data = json.load(read_file)
