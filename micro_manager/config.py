@@ -36,6 +36,7 @@ class Config:
         self._output_micro_sim_time = False
 
         self._adaptivity = False
+        self._adaptivity_type = "local"
         self._data_for_adaptivity = dict()
         self._adaptivity_history_param = 0.5
         self._adaptivity_coarsening_constant = 0.5
@@ -103,11 +104,19 @@ class Config:
                 self._adaptivity = True
             elif data["simulation_params"]["adaptivity"] == "False":
                 self._adaptivity = False
+            else:
+                raise Exception("Adaptivity can be either True or False.")
         except BaseException:
-            print("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations "
-                  "in all time steps.")
+            print("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations in all time steps.")
 
         if self._adaptivity:
+            if data["simulation_params"]["adaptivity_type"] == "local":
+                self._adaptivity_type = "local"
+            elif data["simulation_params"]["adaptivity_type"] == "global":
+                self._adaptivity_type = "global"
+            else:
+                raise Exception("Adaptivity type can be either local or global.")
+
             exchange_data = {**self._read_data_names, **self._write_data_names}
             for dname in data["simulation_params"]["adaptivity_data"]:
                 self._data_for_adaptivity[dname] = exchange_data[dname]
@@ -250,6 +259,14 @@ class Config:
 
         """
         return self._adaptivity
+
+    def get_adaptivity_type(self):
+        """
+
+        Returns
+        -------
+        """
+        return self._adaptivity_type
 
     def get_data_for_adaptivity(self):
         """
