@@ -53,7 +53,11 @@ class MicroManager:
         self._config = Config(config_file)
 
         # Define the preCICE interface
-        self._interface = precice.Interface("Micro-Manager", self._config.get_config_file_name(), self._rank, self._size)
+        self._interface = precice.Interface(
+            "Micro-Manager",
+            self._config.get_config_file_name(),
+            self._rank,
+            self._size)
 
         micro_file_name = self._config.get_micro_file_name()
         self._micro_problem = getattr(__import__(micro_file_name, fromlist=["MicroSimulation"]), "MicroSimulation")
@@ -213,7 +217,8 @@ class MicroManager:
         if self._is_adaptivity_on:
             self._micro_sims = [None] * self._number_of_micro_sims_for_adaptivity  # DECLARATION
             if self._adaptivity_type == "local":
-                self._adaptivity_controller = LocalAdaptivityCalculator(self._config, self._global_ids_of_local_sims, self._local_number_of_micro_sims)
+                self._adaptivity_controller = LocalAdaptivityCalculator(
+                    self._config, self._global_ids_of_local_sims, self._local_number_of_micro_sims)
                 # If adaptivity is calculated locally, IDs to iterate over are local
                 for i in range(self._local_number_of_micro_sims):
                     self._micro_sims[i] = create_micro_problem_class(
@@ -364,7 +369,8 @@ class MicroManager:
         micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(
             similarity_dists_n, micro_sim_states_nm1, self._micro_sims)
 
-        self._adaptivity_controller.associate_inactive_to_active(similarity_dists_n, micro_sim_states_n, self._micro_sims)
+        self._adaptivity_controller.associate_inactive_to_active(
+            similarity_dists_n, micro_sim_states_n, self._micro_sims)
 
         self._logger.info(
             "Number of active micro simulations = {}".format(
@@ -424,7 +430,8 @@ class MicroManager:
         # For each inactive simulation, copy data from most similar active simulation
         for inactive_id in inactive_sim_ids:
             micro_sims_output[inactive_id] = dict()
-            for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_associated_active_local_id()].items():
+            for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_associated_active_local_id()].items(
+            ):
                 micro_sims_output[inactive_id][dname] = values
 
             if self._is_adaptivity_on:
@@ -476,7 +483,7 @@ class MicroManager:
                     micro_sim.save_checkpoint()
                 t_checkpoint = t
                 n_checkpoint = n
-              
+
                 if self._is_adaptivity_on:
                     if not self._is_adaptivity_required_in_every_implicit_iteration:
                         if self._adaptivity_type == "local":
