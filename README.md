@@ -13,7 +13,7 @@ The Micro Manager is a tool to facilitate solving two-scale (macro-micro) couple
 
 ## Installation
 
-The Micro Manager is a Python package that can be installed using `pip` or manually. Make sure [preCICE](installation-overview.html) is installed before installing the Micro Manager.
+The Micro Manager is a Python package that can be installed using `pip` or manually. Make sure [preCICE](installation-overview.html) is installed before installing the Micro Manager. The Micro Manager is tested with preCICE version [2.5.0](https://github.com/precice/precice/releases/tag/v2.5.0).
 
 ### Option 1: Using pip
 
@@ -32,7 +32,7 @@ Installing preCICE is mandatory, other dependencies will be installed by `pip` i
 Ensure that the following dependencies are installed:
 
 * Python 3 or higher
-* [preCICE](installation-overview.html)
+* [preCICE](installation-overview.html) Version [2.5.0](https://github.com/precice/precice/releases/tag/v2.5.0)
 * [pyprecice: Python language bindings for preCICE](installation-bindings-python.html)
 * [numpy](https://numpy.org/install/)
 * [mpi4py](https://mpi4py.readthedocs.io/en/stable/install.html)
@@ -55,7 +55,7 @@ python setup.py install --user
 
 ## Using the Micro Manager
 
-The Micro Manager facilitates two-scale coupling between one macro-scale simulation and many micro-scale simulations. It creates instances of several micro simulations and couples them to one macro simulation, using preCICE.
+The Micro Manager facilitates two-scale coupling between one macro-scale and many micro-scale simulations. It creates instances of several micro simulations and couples them to one macro simulation, using preCICE.
 
 An existing micro simulation code written in Python needs to be converted into a library with a specific class name and specific function names. The next section describes the required library structure of the micro simulation code. On the other hand, the micro-problem is coupled to preCICE directly. The section [couple your code](couple-your-code-overview.html) of the preCICE documentation gives more details on coupling existing codes.
 
@@ -69,23 +69,23 @@ class MicroSimulation: # Name is fixed
     def __init__(self): # No input arguments
         # Initialize class member variables
 
-    def initialize(self):
+    def initialize(self) -> dict:
         # *Optional*
         # Compute initial state of the micro simulation and return initial values.
-        # Values have to be a dictionary of shape {"data-name":<value>,}
+        # Return values have to be a dictionary of shape {"data-name":<value>,...}
 
-    def solve(self, macro_data, dt):
+    def solve(self, macro_data, dt) -> dict:
         # Solve one time step of the micro simulation or for steady-state problems: solve until steady state is reached
-        # macro_data is a dictionary with macro quantity names as keys and data as values
-        # Return quantities that need to be communicated to the macro simulation in a analogously shaped dictionary
+        # `macro_data` is a dictionary with macro quantity names as keys and data as values
+        # Return values need to be communicated to the macro simulation in a analogously shaped dictionary
 
     def save_checkpoint(self):
         # *Required for implicit coupling*
-        # Save current state of the micro simulation
+        # Save current state of the micro simulation in an internal variable
 
     def reload_checkpoint(self):
         # *Required for implicit coupling*
-        # Revert to saved state of the micro simulation
+        # Revert to the saved state of the micro simulation
 
     def output(self):
         # *Optional*
@@ -127,7 +127,7 @@ The file containing the python importable micro simulation class is specified in
 
 Parameter | Description
 --- | ---
-`precice_config` |  Path to the preCICE XML configuration file.
+`config_file_name` |  Path to the preCICE XML configuration file.
 `macro_mesh_name` |  Name of the macro mesh as stated in the preCICE configuration.
 `read_data_names` |  A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"`  as values.
 `write_data_names` |  A Python dictionary with the names of the data to be written to preCICE as keys and `"scalar"` or `"vector"`  as values.
@@ -145,7 +145,7 @@ Parameter | Description
 Parameter | Description
 --- | ---
 `data_from_micro_sims` | A Python dictionary with the names of the data from the micro simulation to be written to VTK files as keys and `"scalar"` or `"vector"` as values. This relies on the [export functionality](configuration-export.html#enabling-exporters) of preCICE and requires the corresponding export tag to be set in the preCICE XML configuration script.
-`output_micro_sim_solve_time` | When `True`, the Manager writes the wall clock time of the `solve()` function of each micro simulation to the VTK output.
+`output_micro_sim_solve_time` | If `True`, the Manager writes the wall clock time of the `solve()` function of each micro simulation to the VTK output.
 
 An example configuration file can be found in [`examples/micro-manager-config.json`](https://github.com/precice/micro-manager/tree/main/examples/micro-manager-config.json).
 
@@ -159,14 +159,16 @@ The Micro Manager can adaptively initialize micro simulations. The following ada
 
 To turn on adaptivity, the following options need to be set in `simulation_params`:
 
-* `adaptivity`: Set as `True`.
-* `adaptivity_data`: List of names of data which are to be used to calculate if two micro-simulations are similar or not. For example `["macro-scalar-data", "macro-vector-data"]`
-* `adaptivity_history_param`: History parameter $\Lambda$, set as $\Lambda >= 0$.
-* `adaptivity_coarsening_constant`: Coarsening constant $C_c$, set as $C_c < 1$.
-* `adaptivity_refining_constant`: Refining constant $C_r$, set as $C_r >= 0$.
-* `adaptivity_every_implicit_iteration`: Set as `True` if adaptivity calculation is to be done in every implicit iteration. Setting `False` would lead to adaptivity being calculated once at the start of the time window and then reused in every implicit time iteration.
+Parameter | Description
+--- | ---
+`adaptivity` | Set as `True` to turn on adaptivity.
+`adaptivity_data` | List of names of data which are to be used to calculate if two micro-simulations are similar or not. For example `["macro-scalar-data", "macro-vector-data"]`
+`adaptivity_history_param` | History parameter $\Lambda$, set as $\Lambda >= 0$.
+`adaptivity_coarsening_constant` | Coarsening constant $C_c$, set as $C_c < 1$.
+`adaptivity_refining_constant` | Refining constant $C_r$, set as $C_r >= 0$.
+`adaptivity_every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
 
-All variables names are chosen to be same as the second publication mentioned above.
+All variables names are chosen to be same as the [second publication](https://doi.org/10.1016/j.amc.2020.125933) mentioned above.
 
 If adaptivity is turned on, the Micro Manager will attempt to write a scalar data set `active_state` to preCICE. Add this data set to the preCICE configuration file. In the mesh and the micro participant add the following lines:
 
@@ -224,7 +226,7 @@ The `solve()` function should have the following signature:
 
     [`py::dict`](https://pybind11.readthedocs.io/en/stable/advanced/pycpp/object.html?#instantiating-compound-python-types-from-c) is a Python dictionary which can be used to pass data between Python and C++. You need to cast the data to the correct type before using it in C++ and vice versa. An example is given in the dummy micro simulation.
 2. Export the C++ class to Python using pybind11. Follow the instructions to exporting classes in the [pybind11 documentation](https://pybind11.readthedocs.io/en/stable/classes.html) or read their [first steps](https://pybind11.readthedocs.io/en/stable/basics.html) to get started.
-3. Compile the C++ library. For the solverdummy, run
+3. Compile the C++ library including pybind11. For the solverdummy, run
 
     ```bash
     c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy$(python3-config --extension-suffix)
