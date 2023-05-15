@@ -41,6 +41,7 @@ class Config:
         self._adaptivity_coarsening_constant = 0.5
         self._adaptivity_refining_constant = 0.5
         self._adaptivity_every_implicit_iteration = False
+        self._adaptivity_similarity_measure = "L1"
 
         self.read_json(config_filename)
 
@@ -53,7 +54,7 @@ class Config:
         config_filename : string
             Name of the JSON configuration file
         """
-        folder = os.path.dirname(os.path.join(os.getcwd(), os.path.dirname(sys.argv[0]), config_filename))
+        folder = os.path.dirname(os.path.join(os.getcwd(), config_filename))
         path = os.path.join(folder, os.path.basename(config_filename))
         with open(path, "r") as read_file:
             data = json.load(read_file)
@@ -115,6 +116,13 @@ class Config:
             self._adaptivity_history_param = data["simulation_params"]["adaptivity_history_param"]
             self._adaptivity_coarsening_constant = data["simulation_params"]["adaptivity_coarsening_constant"]
             self._adaptivity_refining_constant = data["simulation_params"]["adaptivity_refining_constant"]
+
+            if "adaptivity_similarity_measure" in data["simulation_params"]:
+                self._adaptivity_similarity_measure = data["simulation_params"]["adaptivity_similarity_measure"]
+            else:
+                print("No similarity measure provided, using L1 norm as default")
+                self._adaptivity_similarity_measure = "L1"
+
             adaptivity_every_implicit_iteration = data["simulation_params"]["adaptivity_every_implicit_iteration"]
 
             if adaptivity_every_implicit_iteration == "True":
@@ -286,6 +294,15 @@ class Config:
 
         """
         return self._adaptivity_refining_constant
+
+    def get_adaptivity_similarity_measure(self):
+        """
+
+        Returns
+        -------
+
+        """
+        return self._adaptivity_similarity_measure
 
     def is_adaptivity_required_in_every_implicit_iteration(self):
         """

@@ -11,6 +11,8 @@ class AdaptiveController:
         # Names of data to be used for adaptivity computation
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
+        self._similarity_measure = configurator.get_adaptivity_similarity_measure()
+        self._similarity_measure = self._get_similarity_measure(self._similarity_measure)
         self._number_of_sims = 0
         self._coarse_tol = 0.0
 
@@ -46,23 +48,10 @@ class AdaptiveController:
         _similarity_dists = np.copy(similarity_dists)
 
         if data.ndim == 1:
-            dim = 0
-        elif data.ndim == 2:
-            _, dim = data.shape
+            data = np.expand_dims(data, axis=1)
 
-        for counter_1, id_1 in enumerate(range(self._number_of_sims)):
-            for counter_2, id_2 in enumerate(range(self._number_of_sims)):
-                data_diff = 0
-                if id_1 != id_2:
-                    if dim:
-                        for d in range(dim):
-                            data_diff += abs(data[counter_1, d] - data[counter_2, d])
-                    else:
-                        data_diff = abs(data[counter_1] - data[counter_2])
-
-                    _similarity_dists[id_1, id_2] += dt * data_diff
-                else:
-                    _similarity_dists[id_1, id_2] = 0
+        data_diff = self._similarity_measure(data)
+        _similarity_dists += dt * data_diff
 
         return _similarity_dists
 
@@ -233,3 +222,20 @@ class AdaptiveController:
                     dist_min = similarity_dists[inactive_id, active_id]
 
             micro_sims[inactive_id].is_associated_to(associated_active_id)
+
+    def _get_similarity_measure(self, similarity_measure):
+        """
+        Set similarity measure to be used for similarity calculation
+
+        Parameters
+        ----------
+        similarity_measure : str
+            String specifying the similarity measure to be used
+        """
+        if similarity_measure == 'L1':
+            return lambda data: np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
+        elif similarity_measure == 'L2':
+            return lambda data: np.sqrt(np.sum((data[np.newaxis, :] - data[:, np.newaxis]) ** 2, axis=-1))
+        else:
+            raise ValueError(
+                'Similarity measure not supported. Currently supported similarity measures are "L1" and "L2".')
