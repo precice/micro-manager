@@ -4,7 +4,7 @@ Functionality for adaptive initialization and control of micro simulations local
 import sys
 import numpy as np
 from copy import deepcopy
-from adaptivity import AdaptivityCalculator
+from .adaptivity import AdaptivityCalculator
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
