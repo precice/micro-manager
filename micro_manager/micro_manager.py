@@ -77,6 +77,10 @@ class MicroManager:
             self._read_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
         self._macro_bounds = self._config.get_macro_domain_bounds()
+
+        if self._is_parallel:  # Simulation is run in parallel
+            self._ranks_per_axis = self._config.get_ranks_per_axis()
+
         self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
         self._local_number_of_micro_sims = None
@@ -110,7 +114,7 @@ class MicroManager:
             self._is_adaptivity_required_in_every_implicit_iteration = self._config.is_adaptivity_required_in_every_implicit_iteration()
             self._micro_sims_active_steps = None
 
-    def decompose_macro_domain(self, macro_bounds: list) -> list:
+    def decompose_macro_domain(self, macro_bounds: list, ranks_per_axis: list) -> list:
         """
         Decompose the macro domain equally among all ranks, if the Micro Manager is run in parallel.
 
@@ -120,6 +124,10 @@ class MicroManager:
             List containing upper and lower bounds of the macro domain.
             Format in 2D is [x_min, x_max, y_min, y_max]
             Format in 2D is [x_min, x_max, y_min, y_max, z_min, z_max]
+        ranks_per_axis : list
+            List containing axis wise ranks for a parallel run
+            Format in 2D is [ranks_x, ranks_y]
+            Format in 2D is [ranks_x, ranks_y, ranks_z]
 
         Returns
         -------
@@ -127,25 +135,49 @@ class MicroManager:
             List containing the upper and lower bounds of the domain pertaining to this rank.
             Format is same as input parameter macro_bounds.
         """
-        size_x = int(sqrt(self._size))
-        while self._size % size_x != 0:
-            size_x -= 1
+        assert np.prod(
+            ranks_per_axis) == self._size, "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
 
-        size_y = int(self._size / size_x)
+        dims = self._interface.get_dimensions()
 
-        dx = abs(macro_bounds[1] - macro_bounds[0]) / size_x
-        dy = abs(macro_bounds[3] - macro_bounds[2]) / size_y
+        dx = []
+        for d in range(dims):
+            dx.append(abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / ranks_per_axis[d])
 
-        local_xmin = macro_bounds[0] + dx * (self._rank % size_x)
-        local_ymin = macro_bounds[2] + dy * int(self._rank / size_x)
+        rank_in_axis: list[int] = [None] * dims
+        if ranks_per_axis[0] == 1:
+            rank_in_axis[0] = 0
+        else:
+            rank_in_axis[0] = self._rank % ranks_per_axis[0]  # x axis
+        if dims == 2:
+            if ranks_per_axis[1] == 1:
+                rank_in_axis[1] = 0
+            else:
+                rank_in_axis[1] = int(self._rank / ranks_per_axis[0])  # y axis
+        elif dims == 3:
+            if ranks_per_axis[2] == 1:
+                rank_in_axis[2] = 0
+            else:
+                rank_in_axis[2] = int(self._rank / (ranks_per_axis[0] * ranks_per_axis[1]))  # z axis
+
+            if ranks_per_axis[1] == 1:
+                rank_in_axis[1] = 0
+            else:
+                rank_in_axis[1] = (self._rank - ranks_per_axis[0] * ranks_per_axis[1]
+                                   * rank_in_axis[2]) % ranks_per_axis[0]  # y axis
+
+        print(rank_in_axis)
 
         mesh_bounds = []
-        if self._interface.get_dimensions() == 2:
-            mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy]
-        elif self._interface.get_dimensions() == 3:
-            # TODO: Domain needs to be decomposed optimally in the Z direction
-            # too
-            mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy, macro_bounds[4], macro_bounds[5]]
+        for d in range(dims):
+            mesh_bounds.append(dx[d] * rank_in_axis[d])
+            mesh_bounds.append(dx[d] * (rank_in_axis[d] + 1))
+
+            # Adjust the maximum bound to be exactly the domain size
+            if rank_in_axis[d] + 1 == ranks_per_axis[d]:
+                mesh_bounds[d * 2 + 1] = macro_bounds[d * 2 + 1]
+
+        print(mesh_bounds)
 
         self._logger.info("Bounding box limits are {}".format(mesh_bounds))
 
@@ -165,7 +197,7 @@ class MicroManager:
         assert len(self._macro_bounds) / \
             2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of incorrect dimension"
         if self._is_parallel:
-            coupling_mesh_bounds = self.decompose_macro_domain(self._macro_bounds)
+            coupling_mesh_bounds = self.decompose_macro_domain(self._macro_bounds, self._ranks_per_axis)
         else:
             coupling_mesh_bounds = self._macro_bounds
 
