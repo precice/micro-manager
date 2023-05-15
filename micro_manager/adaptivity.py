@@ -235,7 +235,7 @@ class AdaptiveController:
         if similarity_measure == 'L1':
             return lambda data: np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
         elif similarity_measure == 'L2':
-            return lambda data: np.sqrt(np.sum((data[np.newaxis, :] - data[:, np.newaxis]) ** 2, axis=-1))
+            return lambda data: np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=2, axis=-1)
         else:
             raise ValueError(
                 'Similarity measure not supported. Currently supported similarity measures are "L1" and "L2".')
