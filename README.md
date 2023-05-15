@@ -6,7 +6,6 @@ keywords: tooling, micro-manager, two-scale, macro-micro
 summary: The Micro Manager is a tool to facilitate solving two-scale (macro-micro) coupled problems using the coupling library preCICE.
 ---
 
-
 # The Micro Manager
 
 The Micro Manager is a tool to facilitate solving two-scale (macro-micro) coupled problems using the coupling library [preCICE](https://www.precice.org/).
@@ -163,9 +162,9 @@ Parameter | Description
 --- | ---
 `adaptivity` | Set as `True` to turn on adaptivity.
 `adaptivity_data` | List of names of data which are to be used to calculate if two micro-simulations are similar or not. For example `["macro-scalar-data", "macro-vector-data"]`
-`adaptivity_history_param` | History parameter \$\Lambda\$, set as \$\Lambda >= 0\$.
-`adaptivity_coarsening_constant` | Coarsening constant \$C_c\$, set as \$C_c < 1\$.
-`adaptivity_refining_constant` | Refining constant \$C_r\$, set as \$C_r >= 0\$.
+`adaptivity_history_param` | History parameter $$ \Lambda $$, set as $$ \Lambda >= 0 $$.
+`adaptivity_coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ C_c < 1 $$.
+`adaptivity_refining_constant` | Refining constant $$ C_r $$, set as $$ C_r >= 0 $$.
 `adaptivity_every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
 
 All variables names are chosen to be same as the [second publication](https://doi.org/10.1016/j.amc.2020.125933) mentioned above.
@@ -229,7 +228,7 @@ The `solve()` function should have the following signature:
 3. Compile the C++ library including pybind11. For the solverdummy, run
 
     ```bash
-    c++ -O3 -Wall -shared -std=c++11 -fPIC \$(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy\$(python3-config --extension-suffix)
+    c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy$(python3-config --extension-suffix)
     ```
 
     This will create a shared library `micro_dummy.so` which can be directly imported in Python.
