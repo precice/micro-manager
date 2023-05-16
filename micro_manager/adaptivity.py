@@ -236,6 +236,22 @@ class AdaptiveController:
             return lambda data: np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
         elif similarity_measure == 'L2':
             return lambda data: np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=2, axis=-1)
+        elif similarity_measure == 'L1rel':
+            def l1rel(data):
+                pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
+                # divide by data to get relative difference
+                # transpose to divide row i by data[i].
+                relative = np.nan_to_num((pointwise_diff.transpose(1, 0, 2) / data).transpose(1, 0, 2))
+                return np.linalg.norm(relative, ord=1, axis=-1)
+            return l1rel
+        elif similarity_measure == 'L2rel':
+            def l2rel(data):
+                pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
+                # divide by data to get relative difference
+                # transpose to divide row i by data[i]
+                relative = np.nan_to_num((pointwise_diff.transpose(1, 0, 2) / data).transpose(1, 0, 2))
+                return np.linalg.norm(relative, ord=2, axis=-1)
+            return l2rel
         else:
             raise ValueError(
-                'Similarity measure not supported. Currently supported similarity measures are "L1" and "L2".')
+                'Similarity measure not supported. Currently supported similarity measures are "L1", "L2", "L1rel", "L2rel".')
