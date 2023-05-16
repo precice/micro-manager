@@ -53,15 +53,16 @@ jobs:
           cd examples/
           python3 cpp-dummy/run_micro_manager.py --config ../micro-manager-adaptivity-config.json & python3 macro_dummy.py
       
-      - name: Run Python macro-micro dummy in parallel (variant 1)
+      - name: Use mpi4py
         uses: mpi4py/setup-mpi@v1
+
+      - name: Run Python macro-micro dummy in parallel (variant 1)        
         timeout-minutes: 3
         run: |
           cd examples/
           mpiexec -n 4 python3 python-dummy/run_micro_manager.py --config ../micro-manager-config-parallel-1.json & python3 macro_dummy.py
 
       - name: Run Python macro-micro dummy in parallel (variant 2)
-        uses: mpi4py/setup-mpi@v1
         timeout-minutes: 3
         run: |
           cd examples/
