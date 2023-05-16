@@ -12,7 +12,6 @@ from math import sqrt, exp
 import numpy as np
 import logging
 import time
-from copy import deepcopy
 
 from .config import Config
 from .micro_simulation import create_micro_problem_class
