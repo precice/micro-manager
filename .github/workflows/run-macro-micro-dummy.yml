@@ -57,17 +57,16 @@ jobs:
       - name: Use mpi4py
         uses: mpi4py/setup-mpi@v1
 
-      - name: Adjust user rights
-        run: chown -R $PRECICE_USER .
-
       - name: Run Python macro-micro dummy in parallel (variant 1)        
         timeout-minutes: 3
         run: |
           cd examples/
+          chown -R $PRECICE_USER .
           su -c "mpiexec -n 4 python3 python-dummy/run_micro_manager.py --config ../micro-manager-config-parallel-1.json & python3 macro_dummy.py" $PRECICE_USER
 
       - name: Run Python macro-micro dummy in parallel (variant 2)
         timeout-minutes: 3
         run: |
           cd examples/
+          chown -R $PRECICE_USER .
           su -c "mpiexec -n 6 python3 python-dummy/run_micro_manager.py --config ../micro-manager-config-parallel-2.json & python3 macro_dummy.py" $PRECICE_USER
