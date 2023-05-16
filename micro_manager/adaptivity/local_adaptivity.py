@@ -4,7 +4,8 @@ Functionality for adaptive initialization and control of micro simulations local
 import sys
 import numpy as np
 from copy import deepcopy
-from adaptivity import AdaptivityCalculator
+from .adaptivity import AdaptivityCalculator
+
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(self, configurator, global_ids, number_of_local_sims) -> None:
@@ -123,4 +124,5 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                     associated_active_id = active_id
                     dist_min = similarity_dists[inactive_id, active_id]
 
-            micro_sims[inactive_id].is_associated_to_active_sim(associated_active_id, self._global_ids_of_local_sims[associated_active_id])
+            micro_sims[inactive_id].is_associated_to_active_sim(
+                associated_active_id, self._global_ids_of_local_sims[associated_active_id])
