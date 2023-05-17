@@ -28,20 +28,20 @@ jobs:
         run: useradd -m -s /bin/bash precice
 
       - name: Install Dependencies
-        shell: su precice -l -c 'bash -e {0}'
+        shell: su precice
         run: |
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           python -m pip install --upgrade pip
           pip install setuptools wheel twine
 
       - name: Install micro-manager
-        shell: su precice -l -c 'bash -e {0}'
+        shell: su precice
         run: pip3 install --user .
 
       - name: Run Python macro-micro dummy in parallel (variant 1)        
         timeout-minutes: 3
         run: |
-          shell: su precice -l -c 'bash -e {0}'
+          shell: su precice
           chown -R precice examples/
           cd examples/
           su -c "mpiexec -n 2 python3 python-dummy/run_micro_manager.py --config ../micro-manager-config-parallel-1.json & python3 macro_dummy.py" precice
@@ -49,7 +49,7 @@ jobs:
       - name: Run Python macro-micro dummy in parallel (variant 2)
         timeout-minutes: 3
         run: |
-          shell: su precice -l -c 'bash -e {0}' 
+          shell: su precice 
           chown -R precice examples/
           cd examples/
           su -c "mpiexec -n 6 python3 python-dummy/run_micro_manager.py --config ../micro-manager-config-parallel-2.json & python3 macro_dummy.py" precice
