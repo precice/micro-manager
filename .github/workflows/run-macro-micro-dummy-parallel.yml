@@ -34,7 +34,7 @@ jobs:
           su -c "pip install setuptools wheel twine" precice
 
       - name: Install micro-manager
-        run: su -c "pip3 install --user ."
+        run: su -c "pip3 install --user ." precice
 
       - name: Run Python macro-micro dummy in parallel (variant 1)        
         timeout-minutes: 3
