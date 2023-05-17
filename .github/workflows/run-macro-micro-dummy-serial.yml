@@ -1,4 +1,4 @@
-name: Run macro-micro dummy case
+name: Run macro-micro dummy in serial
 on:
   push:
     branches:
