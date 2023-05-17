@@ -8,7 +8,7 @@
     },
     "simulation_params": {
         "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
-	"axiswise_ranks": [2, 1, 2],
+	"axiswise_ranks": [1, 1, 2],
 	"adaptivity": "False"
     },
     "diagnostics": {
