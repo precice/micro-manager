@@ -58,7 +58,7 @@ jobs:
         uses: mpi4py/setup-mpi@v1
 
       - name: Add user precice
-        uses: useradd -m -s /bin/bash precice
+        uses: useradd precice
 
       - name: Run Python macro-micro dummy in parallel (variant 1)        
         timeout-minutes: 3
