@@ -53,23 +53,3 @@ jobs:
         run: |
           cd examples/
           python3 cpp-dummy/run_micro_manager.py --config ../micro-manager-adaptivity-config.json & python3 macro_dummy.py
-      
-      - name: Use mpi4py
-        uses: mpi4py/setup-mpi@v1
-
-      - name: Add user precice
-        run: useradd -m -s /bin/bash precice
-
-      - name: Run Python macro-micro dummy in parallel (variant 1)        
-        timeout-minutes: 3
-        run: |
-          chown -R precice examples/
-          cd examples/
-          su -c "mpiexec -n 2 python3 python-dummy/run_micro_manager.py --config ../micro-manager-config-parallel-1.json & python3 macro_dummy.py" precice
-
-      - name: Run Python macro-micro dummy in parallel (variant 2)
-        timeout-minutes: 3
-        run: |
-          chown -R precice examples/
-          cd examples/
-          su -c "mpiexec -n 6 python3 python-dummy/run_micro_manager.py --config ../micro-manager-config-parallel-2.json & python3 macro_dummy.py" precice
