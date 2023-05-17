@@ -48,4 +48,4 @@ jobs:
         run: |
           chown -R precice examples/
           cd examples/
-          su -c "mpiexec -n 6 python3 python-dummy/run_micro_manager.py --config ../micro-manager-config-parallel-2.json & python3 macro_dummy.py" precice
+          su -c "mpiexec -n 6 --oversubscribe  python3 python-dummy/run_micro_manager.py --config ../micro-manager-config-parallel-2.json & python3 macro_dummy.py" precice
