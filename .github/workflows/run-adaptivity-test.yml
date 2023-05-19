@@ -2,8 +2,8 @@ name: Run tests for adaptivity
 on:
   push:
     branches:
-      - "main"
-      - "develop"
+      - main
+      - develop
   pull_request:
     branches:
       - "*"
