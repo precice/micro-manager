@@ -18,43 +18,51 @@ class MicroSimulation:
 
 
 class TestFunctioncalls(TestCase):
+    def setUp(self):
+        self.fake_read_data_names = {"macro-scalar-data": False, "macro-vector-data": True}
+        self.fake_read_data = [{"macro-scalar-data": 1, "macro-vector-data": np.array([0, 1, 2])}] * 4
+        self.fake_write_data_names = {"micro-scalar-data": False, "micro-vector-data": True}
+        self.fake_write_data = [{"micro-scalar-data": 1,
+                                 "micro-vector-data": np.array([0, 1, 2]), "micro_sim_time": 0}] * 4
+        self.macro_bounds = [0.0, 25.0, 0.0, 25.0, 0.0, 25.0]
 
-    def test_micromanager_initialize(self):
+    def test_micromanager_constructor(self):
         manager = micro_manager.MicroManager('test_unit.json')
-        self.assertTrue(True)
+        self.assertListEqual(manager._macro_bounds, self.macro_bounds)
+        self.assertDictEqual(manager._read_data_names, self.fake_read_data_names)
+        self.assertDictEqual(dict(self.fake_write_data_names, **{'micro_sim_time': False}), manager._write_data_names)
+        self.assertEqual(manager._micro_n_out, 10)
 
     def test_initialize(self):
         manager = micro_manager.MicroManager('test_unit.json')
         manager.initialize()
-        self.assertEquals(manager._dt, 0.1)  # from Interface.initialize
-        self.assertEquals(manager._global_number_of_micro_sims, 4)
-        self.assertListEqual(manager._macro_bounds, [0.0, 25.0, 0.0, 25.0, 0.0, 25.0])
+        self.assertEqual(manager._dt, 0.1)  # from Interface.initialize
+        self.assertEqual(manager._global_number_of_micro_sims, 4)
+        self.assertListEqual(manager._macro_bounds, self.macro_bounds)
         self.assertListEqual(manager._mesh_vertex_ids.tolist(), [0, 1, 2, 3])
-        self.assertEquals(len(manager._micro_sims), 4)
-        self.assertEquals(manager._micro_sims[0].very_important_value, 0)  # test inheritance
-        self.assertDictEqual(manager._read_data_names, {"macro-scalar-data": False, "macro-vector-data": True})
-        self.assertDictEqual(
-            manager._write_data_names, {
-                "micro-scalar-data": False, "micro-vector-data": True, "micro_sim_time": False})
+        self.assertEqual(len(manager._micro_sims), 4)
+        self.assertEqual(manager._micro_sims[0].very_important_value, 0)  # test inheritance
+        self.assertDictEqual(manager._read_data_names, self.fake_read_data_names)
+        self.assertDictEqual(dict(self.fake_write_data_names, **{'micro_sim_time': False}), manager._write_data_names)
 
     def test_read_write_data_from_precice(self):
         manager = micro_manager.MicroManager('test_unit.json')
         manager.initialize()
-        fake_write_data = [{"micro-scalar-data": 1, "micro-vector-data": np.array([0, 1, 2]), "micro_sim_time": 0}] * 3
-        manager.write_data_to_precice(fake_write_data)
+        manager.write_data_to_precice(self.fake_write_data)
         read_data = manager.read_data_from_precice()
-        for i in range(3):
-            self.assertEqual(read_data[i]["macro-scalar-data"], 1)
-            self.assertListEqual(read_data[i]["macro-vector-data"].tolist(), [0, 1, 2])
+        for data, fake_data in zip(read_data, self.fake_write_data):
+            self.assertEqual(data["macro-scalar-data"], 1)
+            self.assertListEqual(data["macro-vector-data"].tolist(),
+                                 fake_data["micro-vector-data"].tolist())
 
     def test_solve_mico_sims(self):
         manager = micro_manager.MicroManager('test_unit.json')
         manager.initialize()
-        micro_sims_output = manager.solve_micro_simulations(
-            [{"macro-scalar-data": 1, "macro-vector-data": np.array([0, 1, 2]), "micro_sim_time": 0}] * 4, np.array([True, True, True, True]))
-        for i in range(4):
-            self.assertEqual(micro_sims_output[i]["micro-scalar-data"], 2)
-            self.assertListEqual(micro_sims_output[i]["micro-vector-data"].tolist(), [1, 2, 3])
+        micro_sims_output = manager.solve_micro_simulations(self.fake_read_data, np.array([True, True, True, True]))
+        for data, fake_data in zip(micro_sims_output, self.fake_write_data):
+            self.assertEqual(data["micro-scalar-data"], 2)
+            self.assertListEqual(data["micro-vector-data"].tolist(),
+                                 (fake_data["micro-vector-data"] + 1).tolist())
 
     def test_config(self):
         config = micro_manager.Config('test_unit.json')
@@ -62,10 +70,8 @@ class TestFunctioncalls(TestCase):
         self.assertEqual(config._micro_file_name, "test_functioncalls")
         self.assertEqual(config._macro_mesh_name, "macro-mesh")
         self.assertEqual(config._micro_output_n, 10)
-        self.assertDictEqual(config._read_data_names, {"macro-scalar-data": False, "macro-vector-data": True})
-        self.assertDictEqual(
-            config._write_data_names, {
-                "micro-scalar-data": False, "micro-vector-data": True, "micro_sim_time": False})
+        self.assertDictEqual(config._read_data_names, self.fake_read_data_names)
+        self.assertDictEqual(dict(self.fake_write_data_names, **{'micro_sim_time': False}), config._write_data_names)
 
 
 if __name__ == '__main__':
