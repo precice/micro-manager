@@ -2,8 +2,8 @@ name: Run macro-micro dummy case
 on:
   push:
     branches:
-      - "main"
-      - "develop"
+      - main
+      - develop
   pull_request:
     branches:
       - "*"
