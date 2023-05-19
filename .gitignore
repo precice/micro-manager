@@ -12,6 +12,3 @@ dist
 
 # vscode
 .vscode
-
-# micro-manager log
-*.log
