@@ -1,6 +1,6 @@
 ---
 title: Configuration of the Micro Manager
-permalink: micro-manager-configuration.html
+permalink: tooling-micro-manager-usage-configuration.html
 keywords: tooling, macro-micro, two-scale
 summary: The Micro Manager uses a JSON file to configure the coupling. The coupled data has to be specified in the preCICE configuration file.
 ---
@@ -28,7 +28,7 @@ The Micro Manager is configured at runtime using a JSON file `micro-manager-conf
 There are three main sections in the configuration file, the `coupling_params`, the `simulation_params` and the optional `diagnostics`.
 The file containing the python importable micro simulation class is specified in the `micro_file_name` parameter.
 
-#### Coupling Parameters
+## Coupling Parameters
 
 Parameter | Description
 --- | ---
@@ -37,7 +37,7 @@ Parameter | Description
 `read_data_names` |  A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"`  as values.
 `write_data_names` |  A Python dictionary with the names of the data to be written to preCICE as keys and `"scalar"` or `"vector"`  as values.
 
-#### Simulation Parameters
+## Simulation Parameters
 
 Parameter | Description
 --- | ---
@@ -45,7 +45,7 @@ Parameter | Description
 *optional:* `micro_output_n`|  Frequency of calling the output functionality of the micro simulation in terms of number of time steps. If not given, `micro_sim.output()` is called every time step
 *optional:* Adaptivity parameters | See section on [Adaptivity](#adaptivity). By default, adaptivity is disabled.
 
-#### *Optional*: Diagnostics
+## *Optional*: Diagnostics
 
 Parameter | Description
 --- | ---
@@ -54,7 +54,7 @@ Parameter | Description
 
 An example configuration file can be found in [`examples/micro-manager-config.json`](https://github.com/precice/micro-manager/tree/main/examples/micro-manager-config.json).
 
-#### Adaptivity
+## Adaptivity
 
 The Micro Manager can adaptively initialize micro simulations. The following adaptivity strategies are implemented:
 
@@ -88,3 +88,7 @@ If adaptivity is turned on, the Micro Manager will attempt to write a scalar dat
 ```
 
 TODO: what about active_steps? from the examples?
+
+## Next Steps
+
+After creating a configuration file you are ready to [run the Micro Manager](tooling-micro-manager-usage-running.html).

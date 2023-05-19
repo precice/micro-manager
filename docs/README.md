@@ -1,6 +1,6 @@
 ---
 title: The Micro Manager
-permalink: micro-manager-overview.html
+permalink: tooling-micro-manager-overview.html
 keywords: tooling, macro-micro, two-scale
 summary: The Micro Manager is a tool to facilitate solving two-scale (macro-micro) coupled problems using the coupling library preCICE.
 ---
@@ -21,8 +21,8 @@ The Micro Manager is able to couple many micro simulations with one macro simula
 
 For a more detailed look, the documentation is split into the following sections:
 
-- [Installation](https://www.precice.org/micro-manager-installation.html)
-- [Usage](https://www.precice.org/micro-manager-usage.html)
-  - [Code Changes](https://www.precice.org/micro-manager-code-changes.html)
-  - [Configuration](https://www.precice.org/micro-manager-configuration.html)
-  - [Running](https://www.precice.org/micro-manager-running.html)
+- [Installation](tooling-micro-manager-installation.html)
+- [Usage](tooling-micro-manager-usage.html)
+  - [Code Changes](tooling-micro-manager-code-changes.html)
+  - [Configuration](tooling-micro-manager-configuration.html)
+  - [Running](tooling-micro-manager-running.html)

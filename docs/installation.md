@@ -1,6 +1,6 @@
 ---
 title: Installing the Micro Manager
-permalink: micro-manager-installation.html
+permalink: tooling-micro-manager-installation.html
 keywords: tooling, macro-micro, two-scale
 summary: Install the Micro Manager by running `pip install --user micro-manager-precice`.
 ---

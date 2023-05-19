@@ -1,6 +1,6 @@
 ---
 title: Convert Your Micro Simulation to Library
-permalink: micro-manager-code-changes.html
+permalink: tooling-micro-manager-usage-code-changes.html
 keywords: tooling, macro-micro, two-scale
 summary: You need to create an Python-importable class from your micro simulation code.
 ---
@@ -68,3 +68,7 @@ The `solve()` function should have the following signature:
 
     This will create a shared library `micro_dummy.so` which can be directly imported in Python.
     For more information on compiling C++ libraries, see the [pybind11 documentation](https://pybind11.readthedocs.io/en/stable/compiling.html).
+
+## Next Steps
+
+With your code converted to a library, you can now [create a coupling configuration](tooling-micro-manager-usage-configuration.html).
