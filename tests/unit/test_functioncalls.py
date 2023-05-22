@@ -47,7 +47,6 @@ class TestFunctioncalls(TestCase):
 
     def test_read_write_data_from_precice(self):
         manager = micro_manager.MicroManager('test_unit.json')
-        manager.initialize()
         manager.write_data_to_precice(self.fake_write_data)
         read_data = manager.read_data_from_precice()
         for data, fake_data in zip(read_data, self.fake_write_data):
@@ -57,7 +56,6 @@ class TestFunctioncalls(TestCase):
 
     def test_solve_mico_sims(self):
         manager = micro_manager.MicroManager('test_unit.json')
-        manager.initialize()
         micro_sims_output = manager.solve_micro_simulations(self.fake_read_data, np.array([True, True, True, True]))
         for data, fake_data in zip(micro_sims_output, self.fake_write_data):
             self.assertEqual(data["micro-scalar-data"], 2)
