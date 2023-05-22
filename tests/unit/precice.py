@@ -45,11 +45,9 @@ class Interface:
     def write_block_scalar_data(self, data_id, vertex_ids, data):
         if data_id == 1:  # micro-scalar-data not micro_sim_time
             self.read_write_scalar_buffer = data
-        print("write_block_scalar_data", data)
 
     def write_block_vector_data(self, data_id, vertex_ids, data):
         self.read_write_vector_buffer = data
-        print("write_block_vector_data", data)
 
     def write_scalar_data(self, data_id, vertex_id, data):
         pass

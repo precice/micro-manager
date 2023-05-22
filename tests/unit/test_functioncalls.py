@@ -56,6 +56,7 @@ class TestFunctioncalls(TestCase):
 
     def test_solve_mico_sims(self):
         manager = micro_manager.MicroManager('test_unit.json')
+        manager._local_number_of_micro_sims = 4
         micro_sims_output = manager.solve_micro_simulations(self.fake_read_data, np.array([True, True, True, True]))
         for data, fake_data in zip(micro_sims_output, self.fake_write_data):
             self.assertEqual(data["micro-scalar-data"], 2)
@@ -63,13 +64,21 @@ class TestFunctioncalls(TestCase):
                                  (fake_data["micro-vector-data"] + 1).tolist())
 
     def test_config(self):
-        config = micro_manager.Config('test_unit.json')
+        config = micro_manager.Config('test_adaptivity_config.json')
+
         self.assertEqual(config._config_file_name.split("/")[-1], "precice-config.xml")
         self.assertEqual(config._micro_file_name, "test_functioncalls")
         self.assertEqual(config._macro_mesh_name, "macro-mesh")
         self.assertEqual(config._micro_output_n, 10)
         self.assertDictEqual(config._read_data_names, self.fake_read_data_names)
         self.assertDictEqual(dict(self.fake_write_data_names, **{'micro_sim_time': False}), config._write_data_names)
+        # adaptivity config
+        self.assertEqual(config._adaptivity, True)
+        self.assertEqual(config._adaptivity_type, "local")
+        self.assertEqual(config._adaptivity_history_param, 0.3)
+        self.assertEqual(config._adaptivity_coarsening_constant, 0.3)
+        self.assertEqual(config._adaptivity_refining_constant, 0.4)
+        self.assertEqual(config._adaptivity_every_implicit_iteration, False)
 
 
 if __name__ == '__main__':
