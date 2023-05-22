@@ -73,9 +73,9 @@ class TestFunctioncalls(TestCase):
         self.assertDictEqual(config._read_data_names, self.fake_read_data_names)
         self.assertDictEqual(dict(self.fake_write_data_names, **{'micro_sim_time': False}), config._write_data_names)
 
-    def test_config_adaptivity(self):
-        config = micro_manager.Config('test_adaptivity_config.json')
+        # test adaptivity
         self.assertEqual(config._adaptivity, True)
+        self.assertListEqual(config._data_for_adaptivity, self.fake_read_data_names.keys())
         self.assertEqual(config._adaptivity_type, "local")
         self.assertEqual(config._adaptivity_history_param, 0.5)
         self.assertEqual(config._adaptivity_coarsening_constant, 0.3)
