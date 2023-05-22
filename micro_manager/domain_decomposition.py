@@ -4,12 +4,13 @@ Functionality to partition the macro domain according to the user provided parti
 
 import numpy as np
 
+
 class DomainDecomposer:
-    def __init__(self, logger, interface, rank, size) -> None:
+    def __init__(self, logger, dims, rank, size) -> None:
         self._logger = logger
-        self._interface = interface
         self._rank = rank
         self._size = size
+        self._dims = dims
 
     def decompose_macro_domain(self, macro_bounds: list, ranks_per_axis: list) -> list:
         """
@@ -35,40 +36,45 @@ class DomainDecomposer:
         assert np.prod(
             ranks_per_axis) == self._size, "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
 
-        dims = self._interface.get_dimensions()
-
         dx = []
-        for d in range(dims):
+        for d in range(self._dims):
             dx.append(abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / ranks_per_axis[d])
 
-        rank_in_axis: list[int] = [None] * dims
-        if ranks_per_axis[0] == 1:
+        print("dx = {}".format(dx))
+
+        rank_in_axis: list[int] = [None] * self._dims
+        if ranks_per_axis[0] == 1: # if serial in x axis
             rank_in_axis[0] = 0
         else:
             rank_in_axis[0] = self._rank % ranks_per_axis[0]  # x axis
-        if dims == 2:
-            if ranks_per_axis[1] == 1:
+
+        if self._dims == 2:
+            if ranks_per_axis[1] == 1: # if serial in y axis
                 rank_in_axis[1] = 0
             else:
                 rank_in_axis[1] = int(self._rank / ranks_per_axis[0])  # y axis
-        elif dims == 3:
-            if ranks_per_axis[2] == 1:
+        elif self._dims == 3:
+            if ranks_per_axis[2] == 1: # if serial in z axis
                 rank_in_axis[2] = 0
             else:
                 rank_in_axis[2] = int(self._rank / (ranks_per_axis[0] * ranks_per_axis[1]))  # z axis
 
-            if ranks_per_axis[1] == 1:
+            if ranks_per_axis[1] == 1: # if serial in y axis
                 rank_in_axis[1] = 0
             else:
                 rank_in_axis[1] = (self._rank - ranks_per_axis[0] * ranks_per_axis[1]
-                                    * rank_in_axis[2]) % ranks_per_axis[0]  # y axis
+                                   * rank_in_axis[2]) % ranks_per_axis[2]  # y axis
 
         print(rank_in_axis)
 
         mesh_bounds = []
-        for d in range(dims):
-            mesh_bounds.append(dx[d] * rank_in_axis[d])
-            mesh_bounds.append(dx[d] * (rank_in_axis[d] + 1))
+        for d in range(self._dims):
+            if rank_in_axis[d] > 0:
+                mesh_bounds.append(macro_bounds[d * 2] + rank_in_axis[d] * dx[d])
+                mesh_bounds.append(macro_bounds[d * 2] + (rank_in_axis[d] + 1) * dx[d])
+            elif rank_in_axis[d] == 0:
+                mesh_bounds.append(macro_bounds[d * 2])
+                mesh_bounds.append(macro_bounds[d * 2] + dx[d])
 
             # Adjust the maximum bound to be exactly the domain size
             if rank_in_axis[d] + 1 == ranks_per_axis[d]:
