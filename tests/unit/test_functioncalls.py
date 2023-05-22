@@ -64,7 +64,7 @@ class TestFunctioncalls(TestCase):
                                  (fake_data["micro-vector-data"] + 1).tolist())
 
     def test_config(self):
-        config = micro_manager.Config('test_adaptivity_config.json')
+        config = micro_manager.Config('test_unit.json')
 
         self.assertEqual(config._config_file_name.split("/")[-1], "precice-config.xml")
         self.assertEqual(config._micro_file_name, "test_functioncalls")
@@ -72,7 +72,9 @@ class TestFunctioncalls(TestCase):
         self.assertEqual(config._micro_output_n, 10)
         self.assertDictEqual(config._read_data_names, self.fake_read_data_names)
         self.assertDictEqual(dict(self.fake_write_data_names, **{'micro_sim_time': False}), config._write_data_names)
-        # adaptivity config
+
+    def test_config_adaptivity(self):
+        config = micro_manager.Config('test_adaptivity_config.json')
         self.assertEqual(config._adaptivity, True)
         self.assertEqual(config._adaptivity_type, "local")
         self.assertEqual(config._adaptivity_history_param, 0.3)
