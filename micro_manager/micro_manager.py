@@ -16,6 +16,7 @@ import time
 from .config import Config
 from .micro_simulation import create_micro_problem_class
 from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
+from .domain_decomposition import DomainDecomposer
 
 sys.path.append(os.getcwd())
 
@@ -125,10 +126,11 @@ class MicroManager:
         """
         # Decompose the macro-domain and set the mesh access region for each
         # partition in preCICE
+        domain_decomposer = DomainDecomposer(self._logger, self._interface.get_dimensions(), self._rank, self._size)
         assert len(self._macro_bounds) / \
             2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of incorrect dimension"
         if self._is_parallel:
-            coupling_mesh_bounds = self.decompose_macro_domain(self._macro_bounds, self._ranks_per_axis)
+            coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(self._macro_bounds, self._ranks_per_axis)
         else:
             coupling_mesh_bounds = self._macro_bounds
 

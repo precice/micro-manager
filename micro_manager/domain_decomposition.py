@@ -43,23 +43,23 @@ class DomainDecomposer:
         print("dx = {}".format(dx))
 
         rank_in_axis: list[int] = [None] * self._dims
-        if ranks_per_axis[0] == 1: # if serial in x axis
+        if ranks_per_axis[0] == 1:  # if serial in x axis
             rank_in_axis[0] = 0
         else:
             rank_in_axis[0] = self._rank % ranks_per_axis[0]  # x axis
 
         if self._dims == 2:
-            if ranks_per_axis[1] == 1: # if serial in y axis
+            if ranks_per_axis[1] == 1:  # if serial in y axis
                 rank_in_axis[1] = 0
             else:
                 rank_in_axis[1] = int(self._rank / ranks_per_axis[0])  # y axis
         elif self._dims == 3:
-            if ranks_per_axis[2] == 1: # if serial in z axis
+            if ranks_per_axis[2] == 1:  # if serial in z axis
                 rank_in_axis[2] = 0
             else:
                 rank_in_axis[2] = int(self._rank / (ranks_per_axis[0] * ranks_per_axis[1]))  # z axis
 
-            if ranks_per_axis[1] == 1: # if serial in y axis
+            if ranks_per_axis[1] == 1:  # if serial in y axis
                 rank_in_axis[1] = 0
             else:
                 rank_in_axis[1] = (self._rank - ranks_per_axis[0] * ranks_per_axis[1]
