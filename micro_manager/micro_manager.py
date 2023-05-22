@@ -126,10 +126,10 @@ class MicroManager:
         """
         # Decompose the macro-domain and set the mesh access region for each
         # partition in preCICE
-        domain_decomposer = DomainDecomposer(self._logger, self._interface.get_dimensions(), self._rank, self._size)
         assert len(self._macro_bounds) / \
             2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of incorrect dimension"
         if self._is_parallel:
+            domain_decomposer = DomainDecomposer(self._logger, self._interface.get_dimensions(), self._rank, self._size)
             coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(self._macro_bounds, self._ranks_per_axis)
         else:
             coupling_mesh_bounds = self._macro_bounds

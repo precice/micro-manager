@@ -40,8 +40,6 @@ class DomainDecomposer:
         for d in range(self._dims):
             dx.append(abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / ranks_per_axis[d])
 
-        print("dx = {}".format(dx))
-
         rank_in_axis: list[int] = [None] * self._dims
         if ranks_per_axis[0] == 1:  # if serial in x axis
             rank_in_axis[0] = 0
@@ -65,8 +63,6 @@ class DomainDecomposer:
                 rank_in_axis[1] = (self._rank - ranks_per_axis[0] * ranks_per_axis[1]
                                    * rank_in_axis[2]) % ranks_per_axis[2]  # y axis
 
-        print(rank_in_axis)
-
         mesh_bounds = []
         for d in range(self._dims):
             if rank_in_axis[d] > 0:
@@ -79,8 +75,6 @@ class DomainDecomposer:
             # Adjust the maximum bound to be exactly the domain size
             if rank_in_axis[d] + 1 == ranks_per_axis[d]:
                 mesh_bounds[d * 2 + 1] = macro_bounds[d * 2 + 1]
-
-        print(mesh_bounds)
 
         self._logger.info("Bounding box limits are {}".format(mesh_bounds))
 
