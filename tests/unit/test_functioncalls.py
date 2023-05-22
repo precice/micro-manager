@@ -77,7 +77,7 @@ class TestFunctioncalls(TestCase):
         config = micro_manager.Config('test_adaptivity_config.json')
         self.assertEqual(config._adaptivity, True)
         self.assertEqual(config._adaptivity_type, "local")
-        self.assertEqual(config._adaptivity_history_param, 0.3)
+        self.assertEqual(config._adaptivity_history_param, 0.5)
         self.assertEqual(config._adaptivity_coarsening_constant, 0.3)
         self.assertEqual(config._adaptivity_refining_constant, 0.4)
         self.assertEqual(config._adaptivity_every_implicit_iteration, False)
