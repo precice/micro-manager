@@ -2,6 +2,7 @@
 Functionality for adaptive initialization and control of micro simulations
 """
 import numpy as np
+from typing import Callable
 
 
 class AdaptivityCalculator:
@@ -95,9 +96,9 @@ class AdaptivityCalculator:
                     return True
         return False
 
-    def _get_similarity_measure(self, similarity_measure):
+    def _get_similarity_measure(self, similarity_measure: str) -> Callable[[np.ndarray], np.ndarray]:
         """
-        Set similarity measure to be used for similarity calculation
+        Get similarity measure to be used for similarity calculation
 
         Parameters
         ----------
@@ -105,25 +106,33 @@ class AdaptivityCalculator:
             String specifying the similarity measure to be used
         """
         if similarity_measure == 'L1':
-            return lambda data: np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
+            return self._l1
         elif similarity_measure == 'L2':
-            return lambda data: np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=2, axis=-1)
+            return self._l2
         elif similarity_measure == 'L1rel':
-            def l1rel(data):
-                pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
-                # divide by data to get relative difference
-                # transpose to divide row i by data[i].
-                relative = np.nan_to_num((pointwise_diff.transpose(1, 0, 2) / data).transpose(1, 0, 2))
-                return np.linalg.norm(relative, ord=1, axis=-1)
-            return l1rel
+            return self._l1rel
         elif similarity_measure == 'L2rel':
-            def l2rel(data):
-                pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
-                # divide by data to get relative difference
-                # transpose to divide row i by data[i]
-                relative = np.nan_to_num((pointwise_diff.transpose(1, 0, 2) / data).transpose(1, 0, 2))
-                return np.linalg.norm(relative, ord=2, axis=-1)
-            return l2rel
+            return self._l2rel
         else:
             raise ValueError(
                 'Similarity measure not supported. Currently supported similarity measures are "L1", "L2", "L1rel", "L2rel".')
+
+    def _l1(self, data: np.ndarray) -> np.ndarray:
+        return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
+
+    def _l2(self, data: np.ndarray) -> np.ndarray:
+        return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=2, axis=-1)
+
+    def _l1rel(self, data: np.ndarray) -> np.ndarray:
+        pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
+        # divide by data to get relative difference
+        # transpose to divide row i by data[i].
+        relative = np.nan_to_num((pointwise_diff.transpose(1, 0, 2) / data).transpose(1, 0, 2))
+        return np.linalg.norm(relative, ord=1, axis=-1)
+
+    def _l2rel(self, data: np.ndarray) -> np.ndarray:
+        pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
+        # divide by data to get relative difference
+        # transpose to divide row i by data[i]
+        relative = np.nan_to_num((pointwise_diff.transpose(1, 0, 2) / data).transpose(1, 0, 2))
+        return np.linalg.norm(relative, ord=2, axis=-1)
