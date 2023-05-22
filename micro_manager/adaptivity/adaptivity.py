@@ -104,6 +104,11 @@ class AdaptivityCalculator:
         ----------
         similarity_measure : str
             String specifying the similarity measure to be used
+
+        Returns
+        -------
+        similarity_measure : function
+            Function to be used for similarity calculation. Takes data as input and returns similarity measure
         """
         if similarity_measure == 'L1':
             return self._l1
