@@ -30,12 +30,14 @@ class Config:
         self._write_data_names = dict()
 
         self._macro_domain_bounds = None
+        self._ranks_per_axis = None
         self._micro_output_n = 1
         self._diagnostics_data_names = dict()
 
         self._output_micro_sim_time = False
 
         self._adaptivity = False
+        self._adaptivity_type = "local"
         self._data_for_adaptivity = dict()
         self._adaptivity_history_param = 0.5
         self._adaptivity_coarsening_constant = 0.5
@@ -93,6 +95,11 @@ class Config:
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
 
         try:
+            self._ranks_per_axis = data["simulation_params"]["axiswise_ranks"]
+        except BaseException:
+            print("Domain decomposition is not specified, so the Micro Manager will expect to be run in serial.")
+
+        try:
             self._micro_output_n = data["simulation_params"]["micro_output_n"]
         except BaseException:
             print("Output interval of micro simulations not specified, if output is available then it will be called "
@@ -103,11 +110,19 @@ class Config:
                 self._adaptivity = True
             elif data["simulation_params"]["adaptivity"] == "False":
                 self._adaptivity = False
+            else:
+                raise Exception("Adaptivity can be either True or False.")
         except BaseException:
-            print("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations "
-                  "in all time steps.")
+            print("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations in all time steps.")
 
         if self._adaptivity:
+            if data["simulation_params"]["adaptivity_type"] == "local":
+                self._adaptivity_type = "local"
+            elif data["simulation_params"]["adaptivity_type"] == "global":
+                self._adaptivity_type = "global"
+            else:
+                raise Exception("Adaptivity type can be either local or global.")
+
             exchange_data = {**self._read_data_names, **self._write_data_names}
             for dname in data["simulation_params"]["adaptivity_data"]:
                 self._data_for_adaptivity[dname] = exchange_data[dname]
@@ -209,6 +224,17 @@ class Config:
         """
         return self._macro_domain_bounds
 
+    def get_ranks_per_axis(self):
+        """
+        Get the ranks per axis for a parallel simulation
+
+        Returns
+        -------
+        ranks_per_axis : list
+            List containing ranks in the x, y and z axis respectively.
+        """
+        return self._ranks_per_axis
+
     def get_micro_file_name(self):
         """
         Get the path to the Python script of the micro-simulation.
@@ -250,6 +276,14 @@ class Config:
 
         """
         return self._adaptivity
+
+    def get_adaptivity_type(self):
+        """
+
+        Returns
+        -------
+        """
+        return self._adaptivity_type
 
     def get_data_for_adaptivity(self):
         """
