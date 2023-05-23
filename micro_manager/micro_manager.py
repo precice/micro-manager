@@ -8,7 +8,7 @@ import os
 import sys
 import precice
 from mpi4py import MPI
-from math import sqrt, exp
+from math import exp
 import numpy as np
 import logging
 import time
