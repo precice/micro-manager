@@ -2,13 +2,13 @@
     "micro_file_name": "micro_dummy",
     "coupling_params": {
         "config_file_name": "./precice-config.xml",
-        "macro_mesh_name": "macro-mesh",
+        "macro_mesh_name": "macro-cube-mesh",
         "read_data_names": {"macro-scalar-data": "scalar", "macro-vector-data": "vector"},
         "write_data_names": {"micro-scalar-data": "scalar", "micro-vector-data": "vector"}
     },
     "simulation_params": {
-        "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
-	    "axiswise_ranks": [1, 1, 2],
+        "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
+	    "axiswise_ranks": [1, 2, 3],
 	    "adaptivity": "False"
     },
     "diagnostics": {
