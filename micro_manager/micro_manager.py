@@ -152,11 +152,10 @@ class MicroManager:
             else:
                 raise Exception("Micro Manager has no micro simulations.")
 
-        nms_all_ranks = np.zeros(self._size, dtype=np.int64)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
         # simulations have been created by previous ranks, so that it can set
         # the correct global IDs
-        self._comm.Allgather(np.array(self._local_number_of_micro_sims), nms_all_ranks)
+        nms_all_ranks = self._comm.allreduce(self._local_number_of_micro_sims)
 
         # Get global number of micro simulations
         self._global_number_of_micro_sims = np.sum(nms_all_ranks)
@@ -190,7 +189,7 @@ class MicroManager:
                         self._micro_problem)(i, self._global_ids_of_local_sims[i])
 
                 micro_sim_is_on_rank = [None] * self._local_number_of_micro_sims
-                for i in self._global_ids_of_local_sims:
+                for i in self._local_number_of_micro_sims:
                     micro_sim_is_on_rank[i] = self._rank
 
                 self._micro_sim_is_on_rank = self._comm.allgather(micro_sim_is_on_rank)  # DECLARATION
