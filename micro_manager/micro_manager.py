@@ -190,7 +190,7 @@ class MicroManager:
                         self._micro_problem)(i, self._global_ids_of_local_sims[i])
 
                 micro_sim_is_on_rank = np.zeros(self._local_number_of_micro_sims)
-                for i in self._local_number_of_micro_sims:
+                for i in range(self._local_number_of_micro_sims):
                     micro_sim_is_on_rank[i] = self._rank
 
                 self._micro_sim_is_on_rank = np.zeros(self._global_number_of_micro_sims)  # DECLARATION
