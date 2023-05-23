@@ -25,8 +25,8 @@ jobs:
         run: pip3 install --user .
       - name: Run integration test
         run: |
-          cd tests/integration/test_adaptivity/
-          python3 macro_solver.py & python3 run_micro_manager.py
+          cd tests/integration/test_unit_cube_dummy/
+          python3 unit_cube_macro.py & python3 run_micro_manager.py --config micro-manager-config-adaptivity.json
 
   adaptivity_unit_tests:
     name: Run adaptivity unit tests
@@ -44,4 +44,4 @@ jobs:
       - name: Install Micro Manager
         run: pip3 install --user .
       - name: Run unit tests
-        run: python3 -m unittest
+        run: python3 -m unittest tests/unit/test_adaptivity.py
