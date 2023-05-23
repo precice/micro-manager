@@ -46,7 +46,7 @@ jobs:
         timeout-minutes: 3
         run: |
           cd tests/integration/test_unit_cube_dummy/
-          su -c "mpiexec -n 6 python3 run_micro_manager.py --config micro-manager-config-parallel-2.json & python3 unit_cube_macro.py" precice
+          su -c "mpiexec -n 6 --oversubscribe python3 run_micro_manager.py --config micro-manager-config-parallel-2.json & python3 unit_cube_macro.py" precice
 
   domain_decomposition_unit_tests:
     name: Run domain decomposition unit tests
