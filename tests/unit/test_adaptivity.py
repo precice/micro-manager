@@ -1,5 +1,6 @@
 from unittest import TestCase
 from micro_manager.adaptivity.local_adaptivity import LocalAdaptivityCalculator
+from micro_manager.adaptivity.adaptivity import AdaptivityCalculator
 from micro_manager.config import Config
 import numpy as np
 
@@ -170,3 +171,25 @@ class TestAdaptivity(TestCase):
         self.assertEqual(dummy_micro_sims[0].get_associated_active_local_id(), 2)
         self.assertEqual(dummy_micro_sims[1].get_associated_active_local_id(), 2)
         self.assertEqual(dummy_micro_sims[3].get_associated_active_local_id(), 4)
+
+    def test_adaptivity_norms(self):
+        c = Config('tests/unit/test_adaptivity_config.json')
+        calc = AdaptivityCalculator(c, [0, 1, 2, 3, 4])
+
+        fake_data = np.array([[1], [2], [3]])
+        self.assertTrue(np.allclose(calc._l1(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])))
+        # norm taken over last axis -> same as before
+        self.assertTrue(np.allclose(calc._l2(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])))
+        self.assertTrue(np.allclose(calc._l1rel(fake_data), np.array(
+            [[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]])))
+        self.assertTrue(np.allclose(calc._l2rel(fake_data), np.array(
+            [[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]])))
+
+        fake_2d_data = np.array([[1, 2], [3, 4]])
+        self.assertTrue(np.allclose(calc._l1(fake_2d_data), np.array([[0, 4], [4, 0]])))
+        self.assertTrue(np.allclose(calc._l2(fake_2d_data), np.array([[0, np.sqrt((1 - 3)**2 + (2 - 4)**2)],
+                                                                      [np.sqrt((1 - 3)**2 + (2 - 4)**2), 0]])))
+        self.assertTrue(np.allclose(calc._l1rel(fake_2d_data), np.array(
+            [[0, abs((1 - 3) / max(1, 3) + (2 - 4) / max(2, 4))], [abs((1 - 3) / max(1, 3) + (2 - 4) / max(2, 4)), 0]])))
+        self.assertTrue(np.allclose(calc._l2rel(fake_2d_data), np.array([[0, np.sqrt(
+            (1 - 3)**2 / max(1, 3)**2 + (2 - 4)**2 / max(2, 4)**2)], [np.sqrt((1 - 3)**2 / max(1, 3)**2 + (2 - 4)**2 / max(2, 4)**2), 0]])))
