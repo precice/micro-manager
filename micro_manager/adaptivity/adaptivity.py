@@ -131,13 +131,43 @@ class AdaptivityCalculator:
     def _l1rel(self, data: np.ndarray) -> np.ndarray:
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
-        # transpose to divide row i by data[i].
-        relative = np.nan_to_num((pointwise_diff.transpose(1, 0, 2) / data).transpose(1, 0, 2))
+        # divide i,j by max(data[i],data[j]) to get relative difference
+        relative = np.nan_to_num((pointwise_diff / np.maximum(data[np.newaxis, :], data[:, np.newaxis])))
         return np.linalg.norm(relative, ord=1, axis=-1)
 
     def _l2rel(self, data: np.ndarray) -> np.ndarray:
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
-        # transpose to divide row i by data[i]
-        relative = np.nan_to_num((pointwise_diff.transpose(1, 0, 2) / data).transpose(1, 0, 2))
+        # divide i,j by max(data[i],data[j]) to get relative difference
+        relative = np.nan_to_num((pointwise_diff / np.maximum(data[np.newaxis, :], data[:, np.newaxis])))
         return np.linalg.norm(relative, ord=2, axis=-1)
+
+
+if __name__ == "__main__":
+    import sys
+    sys.path.append('micro_manager')
+    from config import Config
+    c = Config('tests/unit/test_adaptivity_config.json')
+    calc = AdaptivityCalculator(c, [0, 1, 2, 3, 4])
+
+    fake_data = np.array([[1], [2], [3]])
+    assert np.allclose(calc._l1(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]]))
+    # norm taken over last axis -> same as before
+    assert np.allclose(calc._l2(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]]))
+    assert np.allclose(calc._l1rel(fake_data), np.array([[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]]))
+    assert np.allclose(calc._l2rel(fake_data), np.array([[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]]))
+
+    print(calc._l1(fake_data), calc._l1(fake_data).shape)
+    print(calc._l2(fake_data), calc._l2(fake_data).shape)
+    print(calc._l1rel(fake_data), calc._l1rel(fake_data).shape)
+    print(calc._l2rel(fake_data), calc._l2rel(fake_data).shape)
+
+    fake_2d_data = np.array([[1, 2], [3, 4]])
+    assert np.allclose(calc._l1(fake_2d_data), np.array([[0, 4], [4, 0]]))
+    assert np.allclose(calc._l2(fake_2d_data), np.array([[0, np.sqrt((1 - 3)**2 + (2 - 4)**2)],
+                                                        [np.sqrt((1 - 3)**2 + (2 - 4)**2), 0]]))
+    assert np.allclose(calc._l1rel(fake_2d_data), np.array([[0, abs((1 - 3) / max(1, 3) + (2 - 4) / max(2, 4))],
+                                                            [abs((1 - 3) / max(1, 3) + (2 - 4) / max(2, 4)), 0]]))
+    assert np.allclose(calc._l2rel(fake_2d_data), np.array([[0, np.sqrt((1 - 3)**2 / max(1, 3)**2 + (2 - 4)**2 / max(2, 4)**2)],
+                                                            [np.sqrt((1 - 3)**2 / max(1, 3)**2 + (2 - 4)**2 / max(2, 4)**2), 0]]))
+    print('done')
