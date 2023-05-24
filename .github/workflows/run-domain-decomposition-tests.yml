@@ -37,15 +37,17 @@ jobs:
 
       - name: Run integration test (variant 1)
         timeout-minutes: 3
+        working-directory: micro-manager/tests/integration
         run: |
-          chown -R precice tests/integration/test_unit_cube_dummy/
-          cd tests/integration/test_unit_cube_dummy/
+          chown -R precice test_unit_cube_dummy/
+          cd test_unit_cube_dummy/
           su -c "mpiexec -n 2 python3 run_micro_manager.py --config micro-manager-config-parallel-1.json & python3 unit_cube_macro.py" precice
       
       - name: Run integration test (variant 2)
         timeout-minutes: 3
+        working-directory: micro-manager/tests/integration
         run: |
-          cd tests/integration/test_unit_cube_dummy/
+          cd test_unit_cube_dummy/
           su -c "mpiexec -n 6 --oversubscribe python3 run_micro_manager.py --config micro-manager-config-parallel-2.json & python3 unit_cube_macro.py" precice
 
   domain_decomposition_unit_tests:
@@ -64,4 +66,5 @@ jobs:
       - name: Install Micro Manager
         run: pip3 install --user .
       - name: Run unit tests
-        run: python3 -m unittest tests/unit/test_domain_decomposition.py
+        working-directory: micro-manager/tests/unit
+        run: python3 -m unittest test_domain_decomposition.py
