@@ -106,9 +106,9 @@ The Micro Manager is configured at runtime using a JSON file `micro-manager-conf
     },
     "simulation_params": {
       "macro_domain_bounds": [0.0, 1.0, 0.0, 0.5],
-      "micro_output_n": 5
     },
     "diagnostics": {
+      "micro_output_n": 5,
       "data_from_micro_sims": {"grain_size": "scalar"},
       "output_micro_sim_solve_time": "True"
     }
@@ -126,14 +126,10 @@ The following quantities need to be configured:
 * `simulation_params`:
   * `macro_domain_bounds`: Minimum and maximum limits of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]`.
 
-In addition to the aforementioned configuration options there are optional choices:
-
-* `simulation_params`:
-  * `micro_output_n`: Frequency of calling the output functionality of the micro simulation in terms of number of time steps. If this quantity is configured the Micro Manager will attempt to call the `output()` function of the micro simulation.
-
 The Micro Manager is capable of generating diagnostics type output of the micro simulations, which is critical in the development phase of two-scale simulations. The following configuration options are available:
 
 * `diagnostics`:
+  * `micro_output_n`: Frequency of calling the output functionality of the micro simulation in terms of number of time steps. If this quantity is configured the Micro Manager will attempt to call the `output()` function of the micro simulation.
   * `data_from_micro_sims`: A Python dictionary with the names of the data from the micro simulation to be written to VTK files as keys and `"scalar"` or `"vector"`  as values.
   * `output_micro_sim_solve_time`: When `True`, the Manager writes the wall clock time of the `solve()` function of each micro simulation to the VTK output.
 
@@ -206,7 +202,7 @@ If the user wants to output the clock time required to solve each micro simulati
 Additionally if the micro simulation code has a function called `output`, the Manager will try to call it in order to generate output of all micro simulations. In this situation, the Manager can be configured to output at a particular interval. This configuration is done as follows:
 
 ```json
-"simulation_params": {
+"diagnostics": {
   "micro_output_n": 10
 }
 ```

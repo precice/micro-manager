@@ -100,12 +100,6 @@ class Config:
             print("Domain decomposition is not specified, so the Micro Manager will expect to be run in serial.")
 
         try:
-            self._micro_output_n = data["simulation_params"]["micro_output_n"]
-        except BaseException:
-            print("Output interval of micro simulations not specified, if output is available then it will be called "
-                  "in every time window.")
-
-        try:
             if data["simulation_params"]["adaptivity"] == "True":
                 self._adaptivity = True
             elif data["simulation_params"]["adaptivity"] == "False":
@@ -155,6 +149,12 @@ class Config:
                     raise Exception("Diagnostics data dictionary as a value other than 'scalar' or 'vector'")
         except BaseException:
             print("No diagnostics data is defined. Micro Manager will not output any diagnostics data.")
+
+        try:
+            self._micro_output_n = data["diagnostics"]["micro_output_n"]
+        except BaseException:
+            print("Output interval of micro simulations not specified, if output is available then it will be called "
+                  "in every time window.")
 
         try:
             if data["diagnostics"]["output_micro_sim_solve_time"]:

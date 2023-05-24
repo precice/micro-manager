@@ -8,7 +8,6 @@
     },
     "simulation_params": {
         "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
-        "micro_output_n": 10,
         "adaptivity": "True",
         "adaptivity_type": "local",
         "adaptivity_data": ["macro-scalar-data", "macro-vector-data"],
@@ -16,9 +15,9 @@
         "adaptivity_coarsening_constant": 0.3,
         "adaptivity_refining_constant": 0.4,
         "adaptivity_every_implicit_iteration": "False"
-
     },
     "diagnostics": {
+      "micro_output_n": 10,
       "output_micro_sim_solve_time": "True"
     }
 }
