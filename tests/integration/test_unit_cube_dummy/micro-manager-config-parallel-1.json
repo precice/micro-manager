@@ -1,5 +1,5 @@
 {
-    "micro_file_name": "micro_solver",
+    "micro_file_name": "micro_dummy",
     "coupling_params": {
         "config_file_name": "precice-config.xml",
         "macro_mesh_name": "macro-cube-mesh",
@@ -8,15 +8,10 @@
     },
     "simulation_params": {
         "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
-        "adaptivity": "True",
-        "adaptivity_type": "local",
-        "adaptivity_data": ["macro-scalar-data", "macro-vector-data"],
-        "adaptivity_history_param": 0.5,
-        "adaptivity_coarsening_constant": 0.3,
-        "adaptivity_refining_constant": 0.4,
-        "adaptivity_every_implicit_iteration": "True"
+	    "axiswise_ranks": [1, 1, 2],
+	    "adaptivity": "False"
     },
     "diagnostics": {
-      "output_micro_sim_solve_time": "True"
+        "output_micro_sim_solve_time": "True"
     }
 }

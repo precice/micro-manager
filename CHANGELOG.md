@@ -2,6 +2,11 @@
 
 ## latest
 
+- New domain decomposition strategy based on user input of number of processors along each axis https://github.com/precice/micro-manager/pull/41
+- Add pickling support for C++ solver dummy https://github.com/precice/micro-manager/pull/30
+- Add C++ solver dummy to show how a C++ micro simulation can be controlled by the Micro Manager https://github.com/precice/micro-manager/pull/22
+- Add local adaptivity https://github.com/precice/micro-manager/pull/21
+
 ## v0.2.1
 
 - Fixing the broken action workflow `run-macro-micro-dummy` 

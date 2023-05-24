@@ -1,0 +1,41 @@
+from unittest import TestCase
+from unittest.mock import MagicMock
+from micro_manager.domain_decomposition import DomainDecomposer
+import numpy as np
+
+
+class TestDomainDecomposition(TestCase):
+
+    def setUp(self) -> None:
+        self._logger = MagicMock()
+        self._macro_bounds_3d = [-1, 1, -2, 2, -2, 8]
+
+    def test_rank5_outof_10_3d(self):
+        rank = 5
+        size = 10
+        ranks_per_axis = [1, 2, 5]
+        domain_decomposer = DomainDecomposer(self._logger, 3, rank, size)
+        domain_decomposer._dims = 3
+        mesh_bounds = domain_decomposer.decompose_macro_domain(self._macro_bounds_3d, ranks_per_axis)
+
+        self.assertTrue(np.allclose(mesh_bounds, [-1, 1, 0, 2, 2, 4]))
+
+    def test_rank10_out_of_32_3d(self):
+        rank = 10
+        size = 32
+        ranks_per_axis = [4, 1, 8]
+        domain_decomposer = DomainDecomposer(self._logger, 3, rank, size)
+        domain_decomposer._dims = 3
+        mesh_bounds = domain_decomposer.decompose_macro_domain(self._macro_bounds_3d, ranks_per_axis)
+
+        self.assertTrue(np.allclose(mesh_bounds, [0, 0.5, -2, 2, 0.5, 1.75]))
+
+    def test_rank7_out_of_16_3d(self):
+        rank = 7
+        size = 16
+        ranks_per_axis = [8, 2, 1]
+        domain_decomposer = DomainDecomposer(self._logger, 3, rank, size)
+        domain_decomposer._dims = 3
+        mesh_bounds = domain_decomposer.decompose_macro_domain(self._macro_bounds_3d, ranks_per_axis)
+
+        self.assertTrue(np.allclose(mesh_bounds, [0.75, 1, -2, 0, -2, 8]))

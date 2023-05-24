@@ -8,7 +8,7 @@ import os
 import sys
 import precice
 from mpi4py import MPI
-from math import sqrt, exp
+from math import exp
 import numpy as np
 import logging
 import time
@@ -17,6 +17,7 @@ from .config import Config
 from .micro_simulation import create_micro_problem_class
 from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
 from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
+from .domain_decomposition import DomainDecomposer
 
 sys.path.append(os.getcwd())
 
@@ -77,6 +78,10 @@ class MicroManager:
             self._read_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
         self._macro_bounds = self._config.get_macro_domain_bounds()
+
+        if self._is_parallel:  # Simulation is run in parallel
+            self._ranks_per_axis = self._config.get_ranks_per_axis()
+
         self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
         self._local_number_of_micro_sims = None
@@ -110,47 +115,6 @@ class MicroManager:
             self._is_adaptivity_required_in_every_implicit_iteration = self._config.is_adaptivity_required_in_every_implicit_iteration()
             self._micro_sims_active_steps = None
 
-    def decompose_macro_domain(self, macro_bounds: list) -> list:
-        """
-        Decompose the macro domain equally among all ranks, if the Micro Manager is run in parallel.
-
-        Parameters
-        ----------
-        macro_bounds : list
-            List containing upper and lower bounds of the macro domain.
-            Format in 2D is [x_min, x_max, y_min, y_max]
-            Format in 2D is [x_min, x_max, y_min, y_max, z_min, z_max]
-
-        Returns
-        -------
-        mesh_bounds : list
-            List containing the upper and lower bounds of the domain pertaining to this rank.
-            Format is same as input parameter macro_bounds.
-        """
-        size_x = int(sqrt(self._size))
-        while self._size % size_x != 0:
-            size_x -= 1
-
-        size_y = int(self._size / size_x)
-
-        dx = abs(macro_bounds[1] - macro_bounds[0]) / size_x
-        dy = abs(macro_bounds[3] - macro_bounds[2]) / size_y
-
-        local_xmin = macro_bounds[0] + dx * (self._rank % size_x)
-        local_ymin = macro_bounds[2] + dy * int(self._rank / size_x)
-
-        mesh_bounds = []
-        if self._interface.get_dimensions() == 2:
-            mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy]
-        elif self._interface.get_dimensions() == 3:
-            # TODO: Domain needs to be decomposed optimally in the Z direction
-            # too
-            mesh_bounds = [local_xmin, local_xmin + dx, local_ymin, local_ymin + dy, macro_bounds[4], macro_bounds[5]]
-
-        self._logger.info("Bounding box limits are {}".format(mesh_bounds))
-
-        return mesh_bounds
-
     def initialize(self) -> None:
         """
         This function does the following things:
@@ -165,7 +129,8 @@ class MicroManager:
         assert len(self._macro_bounds) / \
             2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of incorrect dimension"
         if self._is_parallel:
-            coupling_mesh_bounds = self.decompose_macro_domain(self._macro_bounds)
+            domain_decomposer = DomainDecomposer(self._logger, self._interface.get_dimensions(), self._rank, self._size)
+            coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(self._macro_bounds, self._ranks_per_axis)
         else:
             coupling_mesh_bounds = self._macro_bounds
 
@@ -224,11 +189,12 @@ class MicroManager:
                     self._micro_sims[i] = create_micro_problem_class(
                         self._micro_problem)(i, self._global_ids_of_local_sims[i])
 
-                micro_sim_is_on_rank = [None] * self._local_number_of_micro_sims
-                for i in self._global_ids_of_local_sims:
+                micro_sim_is_on_rank = np.zeros(self._local_number_of_micro_sims)
+                for i in range(self._local_number_of_micro_sims):
                     micro_sim_is_on_rank[i] = self._rank
 
-                self._micro_sim_is_on_rank = self._comm.allgather(micro_sim_is_on_rank)  # DECLARATION
+                self._micro_sim_is_on_rank = np.zeros(self._global_number_of_micro_sims)  # DECLARATION
+                self._comm.Allgather(micro_sim_is_on_rank, self._micro_sim_is_on_rank)
         else:
             self._micro_sims = []  # DECLARATION
             for i in range(self._local_number_of_micro_sims):
