@@ -14,8 +14,12 @@ jobs:
     container: precice/precice
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3      
+        uses: actions/checkout@v3
+        with:
+          path: micro-manager
+
       - name: Install sudo for MPI
+        working-directory: micro-manager
         run: |
           apt-get -qq update
           apt-get -qq install sudo
@@ -27,25 +31,29 @@ jobs:
         run: useradd -m -s /bin/bash precice
 
       - name: Install Dependencies
+        working-directory: micro-manager
         run: |
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           su -c "python -m pip install --upgrade pip" precice
           su -c "pip install setuptools wheel twine" precice
 
       - name: Install micro-manager
+        working-directory: micro-manager
         run: su -c "pip3 install --user ." precice
 
       - name: Run integration test (variant 1)
         timeout-minutes: 3
+        working-directory: micro-manager/tests/integration
         run: |
-          chown -R precice tests/integration/test_unit_cube_dummy/
-          cd tests/integration/test_unit_cube_dummy/
+          chown -R precice test_unit_cube_dummy/
+          cd test_unit_cube_dummy/
           su -c "mpiexec -n 2 python3 run_micro_manager.py --config micro-manager-config-parallel-1.json & python3 unit_cube_macro.py" precice
       
       - name: Run integration test (variant 2)
         timeout-minutes: 3
+        working-directory: micro-manager/tests/integration
         run: |
-          cd tests/integration/test_unit_cube_dummy/
+          cd test_unit_cube_dummy/
           su -c "mpiexec -n 6 --oversubscribe python3 run_micro_manager.py --config micro-manager-config-parallel-2.json & python3 unit_cube_macro.py" precice
 
   domain_decomposition_unit_tests:
@@ -55,13 +63,21 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          path: micro-manager
+
       - name: Install Dependencies
+        working-directory: micro-manager
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           python -m pip install --upgrade pip
           pip install setuptools wheel
+
       - name: Install Micro Manager
+        working-directory: micro-manager
         run: pip3 install --user .
+
       - name: Run unit tests
-        run: python3 -m unittest tests/unit/test_domain_decomposition.py
+        working-directory: micro-manager/tests/unit
+        run: python3 -m unittest test_domain_decomposition.py

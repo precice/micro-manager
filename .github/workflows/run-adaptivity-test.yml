@@ -14,19 +14,25 @@ jobs:
     container: precice/precice
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3      
+        uses: actions/checkout@v3
+        with:
+          path: micro-manager
+
       - name: Install dependencies
+        working-directory: micro-manager
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           python -m pip install --upgrade pip
           pip install setuptools wheel
+
       - name: Install Micro Manager
+        working-directory: micro-manager
         run: pip3 install --user .
+
       - name: Run integration test
-        run: |
-          cd tests/integration/test_unit_cube_dummy/
-          python3 unit_cube_macro.py & python3 run_micro_manager.py --config micro-manager-config-adaptivity.json
+        working-directory: micro-manager/tests/integration/test_unit_cube_dummy
+        run: python3 unit_cube_macro.py & python3 run_micro_manager.py --config micro-manager-config-adaptivity.json
 
   adaptivity_unit_tests:
     name: Run adaptivity unit tests
@@ -35,13 +41,21 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          path: micro-manager
+
       - name: Install Dependencies
+        working-directory: micro-manager
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           python -m pip install --upgrade pip
           pip install setuptools wheel
+
       - name: Install Micro Manager
+        working-directory: micro-manager
         run: pip3 install --user .
+
       - name: Run unit tests
-        run: python3 -m unittest tests/unit/test_adaptivity.py
+        working-directory: micro-manager/tests/unit
+        run: python3 -m unittest test_adaptivity.py

@@ -1,0 +1,29 @@
+name: Run unit tests
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - "*"
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    container: precice/precice
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          path: micro-manager
+
+      - name: Install Micro Manager and uninstall pyprecice
+        working-directory: micro-manager
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
+          python3 -m pip install --user .
+          python3 -m pip uninstall -y pyprecice
+
+      - name: Run unit tests
+        working-directory: micro-manager/tests/unit
+        run: python3 -m unittest test_micro_manager.py
