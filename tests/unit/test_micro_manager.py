@@ -77,7 +77,7 @@ class TestFunctioncalls(TestCase):
         config = micro_manager.Config('micro-manager-unit-test-config.json')
 
         self.assertEqual(config._config_file_name.split("/")[-1], "precice-config.xml")
-        self.assertEqual(config._micro_file_name, "test_functioncalls")
+        self.assertEqual(config._micro_file_name, "test_micro_manager")
         self.assertEqual(config._macro_mesh_name, "macro-mesh")
         self.assertEqual(config._micro_output_n, 10)
         self.assertDictEqual(config._read_data_names, self.fake_read_data_names)
