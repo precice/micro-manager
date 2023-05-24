@@ -14,7 +14,10 @@ jobs:
     container: precice/precice
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3      
+        uses: actions/checkout@v3
+        with:
+          path: micro-manager
+
       - name: Install sudo for MPI
         run: |
           apt-get -qq update

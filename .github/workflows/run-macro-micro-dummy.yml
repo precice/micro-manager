@@ -16,6 +16,8 @@ jobs:
 
       - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          path: micro-manager
 
       - name: Install Dependencies
         run: |
