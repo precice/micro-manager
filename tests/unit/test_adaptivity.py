@@ -8,7 +8,7 @@ class TestAdaptivity(TestCase):
 
     def setUp(self):
         self._adaptivity_controller = LocalAdaptivityCalculator(
-            Config("./tests/unit/test_adaptivity_config.json"), range(5), 5)
+            Config("./tests/unit/micro-manager-unit-test-adaptivity-config.json"), range(5), 5)
         self._number_of_sims = 5
         self._dt = 0.1
         self._dim = 3
