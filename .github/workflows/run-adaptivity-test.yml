@@ -19,6 +19,7 @@ jobs:
           path: micro-manager
 
       - name: Install dependencies
+        working-directory: micro-manager
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
@@ -26,6 +27,7 @@ jobs:
           pip install setuptools wheel
 
       - name: Install Micro Manager
+        working-directory: micro-manager
         run: pip3 install --user .
 
       - name: Run integration test
@@ -39,8 +41,11 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
+        with:
+          path: micro-manager
 
       - name: Install Dependencies
+        working-directory: micro-manager
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
@@ -48,6 +53,7 @@ jobs:
           pip install setuptools wheel
 
       - name: Install Micro Manager
+        working-directory: micro-manager
         run: pip3 install --user .
 
       - name: Run unit tests
