@@ -30,6 +30,7 @@ class Config:
         self._write_data_names = dict()
 
         self._macro_domain_bounds = None
+        self._ranks_per_axis = None
         self._micro_output_n = 1
         self._diagnostics_data_names = dict()
 
@@ -92,6 +93,11 @@ class Config:
             print("No read data names provided. Micro manager will only write data to preCICE.")
 
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
+
+        try:
+            self._ranks_per_axis = data["simulation_params"]["axiswise_ranks"]
+        except BaseException:
+            print("Domain decomposition is not specified, so the Micro Manager will expect to be run in serial.")
 
         try:
             self._micro_output_n = data["simulation_params"]["micro_output_n"]
@@ -217,6 +223,17 @@ class Config:
             Format in 2D is [x_min, x_max, y_min, y_max, z_min, z_max]
         """
         return self._macro_domain_bounds
+
+    def get_ranks_per_axis(self):
+        """
+        Get the ranks per axis for a parallel simulation
+
+        Returns
+        -------
+        ranks_per_axis : list
+            List containing ranks in the x, y and z axis respectively.
+        """
+        return self._ranks_per_axis
 
     def get_micro_file_name(self):
         """
