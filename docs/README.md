@@ -15,7 +15,7 @@ The Micro Manager is able to couple many micro simulations with one macro simula
 
 - Passing data between micro and macro simulations
 - Running micro simulations in parallel using MPI
-- Adaptively turning micro simulations on and off based on similar micro simulations globally and locally
+- Adaptively activating and deactivating micro simulations based on whether their similar exist
 
 ## Documentation
 
