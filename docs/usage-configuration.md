@@ -5,7 +5,7 @@ keywords: tooling, macro-micro, two-scale
 summary: The Micro Manager uses a JSON file to configure the coupling. The coupled data has to be specified in the preCICE configuration file.
 ---
 
-The Micro Manager is configured at runtime using a JSON file `micro-manager-config.json`. An example configuration file is:
+The Micro Manager is configured at runtime using a JSON file. An example configuration file is
 
 ```json
 {
@@ -27,7 +27,7 @@ The Micro Manager is configured at runtime using a JSON file `micro-manager-conf
 
 There are three main sections in the configuration file, the `coupling_params`, the `simulation_params` and the optional `diagnostics`.
 
-The file containing the python importable micro simulation class is specified in the `micro_file_name` parameter.
+The file containing the Python importable micro simulation class is specified in the `micro_file_name` parameter.
 
 ## Coupling Parameters
 
