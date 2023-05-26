@@ -43,6 +43,7 @@ Parameter | Description
 Parameter | Description
 --- | ---
 `macro_domain_bounds`| Minimum and maximum bounds of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]` in 3D and `[xmin, xmax, ymin, ymax]` in 2D.
+*optional:* `adaptivity_similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants are the relative versions of the `L1` and `L2` norms, dividing the difference by the maximum value of the data.
 *optional:* `micro_output_n`|  Frequency of calling the output functionality of the micro simulation in terms of number of time steps. If not given, `micro_sim.output()` is called every time step.
 *optional:* Domain decomposition parameters | See section on [Domain decomposition](#domain-decomposition). But default, the Micro Manager assumes that it will be run in serial.
 *optional:* Adaptivity parameters | See section on [Adaptivity](#adaptivity). By default, adaptivity is disabled.
