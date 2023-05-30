@@ -123,12 +123,52 @@ class AdaptivityCalculator:
                 'Similarity measure not supported. Currently supported similarity measures are "L1", "L2", "L1rel", "L2rel".')
 
     def _l1(self, data: np.ndarray) -> np.ndarray:
+        """
+        Calculate L1 norm of data
+
+        Parameters
+        ----------
+        data : numpy array
+            Data to be used in similarity distance calculation
+
+        Returns
+        -------
+        similarity_dists : numpy array
+            Updated 2D array having similarity distances between each micro simulation pair
+        """
         return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
 
     def _l2(self, data: np.ndarray) -> np.ndarray:
+        """
+        Calculate L2 norm of data
+
+        Parameters
+        ----------
+        data : numpy array
+            Data to be used in similarity distance calculation
+
+        Returns
+        -------
+        similarity_dists : numpy array
+            Updated 2D array having similarity distances between each micro simulation pair
+        """
         return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=2, axis=-1)
 
     def _l1rel(self, data: np.ndarray) -> np.ndarray:
+        """
+        Calculate L1 norm of relative difference of data.
+        The relative difference is calculated by dividing the difference of two data points by the maximum of the two data points.
+
+        Parameters
+        ----------
+        data : numpy array
+            Data to be used in similarity distance calculation
+
+        Returns
+        -------
+        similarity_dists : numpy array
+            Updated 2D array having similarity distances between each micro simulation pair
+        """
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
         # divide i,j by max(data[i],data[j]) to get relative difference
@@ -136,6 +176,20 @@ class AdaptivityCalculator:
         return np.linalg.norm(relative, ord=1, axis=-1)
 
     def _l2rel(self, data: np.ndarray) -> np.ndarray:
+        """
+        Calculate L2 norm of relative difference of data.
+        The relative difference is calculated by dividing the difference of two data points by the maximum of the two data points.
+
+        Parameters
+        ----------
+        data : numpy array
+            Data to be used in similarity distance calculation
+
+        Returns
+        -------
+        similarity_dists : numpy array
+            Updated 2D array having similarity distances between each micro simulation pair
+        """
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
         # divide i,j by max(data[i],data[j]) to get relative difference
