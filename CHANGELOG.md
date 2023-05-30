@@ -2,7 +2,7 @@
 
 ## latest
 
-- Add support for L2 and relative similarity functions https://github.com/precice/micro-manager/pull/40
+- Add norm-based (L1 and L2) support for functions in similarity distance calculation with absolute and relative variants https://github.com/precice/micro-manager/pull/40
 - New domain decomposition strategy based on user input of number of processors along each axis https://github.com/precice/micro-manager/pull/41
 - Add pickling support for C++ solver dummy https://github.com/precice/micro-manager/pull/30
 - Add C++ solver dummy to show how a C++ micro simulation can be controlled by the Micro Manager https://github.com/precice/micro-manager/pull/22
