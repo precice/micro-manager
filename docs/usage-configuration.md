@@ -43,7 +43,6 @@ Parameter | Description
 Parameter | Description
 --- | ---
 `macro_domain_bounds`| Minimum and maximum bounds of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]` in 3D and `[xmin, xmax, ymin, ymax]` in 2D.
-*optional:* `micro_output_n`|  Frequency of calling the output functionality of the micro simulation in terms of number of time steps. If not given, `micro_sim.output()` is called every time step.
 *optional:* Domain decomposition parameters | See section on [Domain decomposition](#domain-decomposition). But default, the Micro Manager assumes that it will be run in serial.
 *optional:* Adaptivity parameters | See section on [Adaptivity](#adaptivity). By default, adaptivity is disabled.
 
@@ -53,6 +52,7 @@ Parameter | Description
 --- | ---
 `data_from_micro_sims` | A Python dictionary with the names of the data from the micro simulation to be written to VTK files as keys and `"scalar"` or `"vector"` as values. This relies on the [export functionality](configuration-export.html#enabling-exporters) of preCICE and requires the corresponding export tag to be set in the preCICE XML configuration script.
 `output_micro_sim_solve_time` | If `True`, the Manager writes the wall clock time of the `solve()` function of each micro simulation to the VTK output.
+`micro_output_n`|  Frequency of calling the optional output functionality of the micro simulation in terms of number of time steps. If not given, `micro_sim.output()` is called every time step.
 
 An example configuration file can be found in [`examples/micro-manager-config.json`](https://github.com/precice/micro-manager/tree/main/examples/micro-manager-config.json).
 
