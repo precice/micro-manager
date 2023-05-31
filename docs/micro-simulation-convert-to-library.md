@@ -1,6 +1,6 @@
 ---
 title: Convert Your Micro Simulation to Library
-permalink: tooling-micro-manager-usage-code-changes.html
+permalink: tooling-micro-manager-micro-simulation-callable-library.html
 keywords: tooling, macro-micro, two-scale
 summary: You need to create an Python-importable class from your micro simulation code.
 ---
