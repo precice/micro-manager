@@ -22,7 +22,6 @@ The Micro Manager is able to couple many micro simulations with one macro simula
 For a more detailed look, the documentation is split into the following sections:
 
 - [Installation](tooling-micro-manager-installation.html)
-- [Usage](tooling-micro-manager-usage.html)
-  - [Code Changes](tooling-micro-manager-code-changes.html)
-  - [Configuration](tooling-micro-manager-configuration.html)
-  - [Running](tooling-micro-manager-running.html)
+- [Micro simulation as callable library](tooling-micro-manager-micro-simulation-callable-library.html)
+- [Configuration](tooling-micro-manager-configuration.html)
+- [Running](tooling-micro-manager-running.html)
