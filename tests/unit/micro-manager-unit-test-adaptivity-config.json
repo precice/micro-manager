@@ -15,7 +15,7 @@
             "coarsening_constant": 0.3,
             "refining_constant": 0.4,
             "every_implicit_iteration": "False",
-            "_similarity_measure": "L1"
+            "similarity_measure": "L1"
         }
     }
 }
