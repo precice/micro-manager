@@ -7,7 +7,9 @@ summary: A tool to manage many micro simulations and couple them to a macro simu
 
 ## What is this?
 
-The Micro Manager is a tool for solving coupled problems where the coupling is across scales (for example macro-micro). It is developed as a library extension to the coupling library [preCICE](https://www.precice.org/).
+The Micro Manager is a tool for solving coupled problems where the coupling is across scales (for example macro-micro).
+
+![Micro Manager strategy schematic](images/ManagerSolution.pdf)
 
 ## What can it do?
 
