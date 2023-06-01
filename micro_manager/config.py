@@ -101,38 +101,36 @@ class Config:
             print("Domain decomposition is not specified, so the Micro Manager will expect to be run in serial.")
 
         try:
-            if data["simulation_params"]["adaptivity"] == "True":
+            if data["simulation_params"]["adaptivity"]:
                 self._adaptivity = True
-            elif data["simulation_params"]["adaptivity"] == "False":
-                self._adaptivity = False
             else:
-                raise Exception("Adaptivity can be either True or False.")
+                self._adaptivity = False
         except BaseException:
             print("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations in all time steps.")
 
         if self._adaptivity:
-            if data["simulation_params"]["adaptivity_type"] == "local":
+            if data["simulation_params"]["adaptivity"]["type"] == "local":
                 self._adaptivity_type = "local"
-            elif data["simulation_params"]["adaptivity_type"] == "global":
+            elif data["simulation_params"]["adaptivity"]["type"] == "global":
                 self._adaptivity_type = "global"
             else:
                 raise Exception("Adaptivity type can be either local or global.")
 
             exchange_data = {**self._read_data_names, **self._write_data_names}
-            for dname in data["simulation_params"]["adaptivity_data"]:
+            for dname in data["simulation_params"]["adaptivity"]["data"]:
                 self._data_for_adaptivity[dname] = exchange_data[dname]
 
-            self._adaptivity_history_param = data["simulation_params"]["adaptivity_history_param"]
-            self._adaptivity_coarsening_constant = data["simulation_params"]["adaptivity_coarsening_constant"]
-            self._adaptivity_refining_constant = data["simulation_params"]["adaptivity_refining_constant"]
+            self._adaptivity_history_param = data["simulation_params"]["adaptivity"]["history_param"]
+            self._adaptivity_coarsening_constant = data["simulation_params"]["adaptivity"]["coarsening_constant"]
+            self._adaptivity_refining_constant = data["simulation_params"]["adaptivity"]["refining_constant"]
 
-            if "adaptivity_similarity_measure" in data["simulation_params"]:
-                self._adaptivity_similarity_measure = data["simulation_params"]["adaptivity_similarity_measure"]
+            if "similarity_measure" in data["simulation_params"]["adaptivity"]:
+                self._adaptivity_similarity_measure = data["simulation_params"]["adaptivity"]["similarity_measure"]
             else:
                 print("No similarity measure provided, using L1 norm as default")
                 self._adaptivity_similarity_measure = "L1"
 
-            adaptivity_every_implicit_iteration = data["simulation_params"]["adaptivity_every_implicit_iteration"]
+            adaptivity_every_implicit_iteration = data["simulation_params"]["adaptivity"]["every_implicit_iteration"]
 
             if adaptivity_every_implicit_iteration == "True":
                 self._adaptivity_every_implicit_iteration = True
