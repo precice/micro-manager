@@ -39,6 +39,9 @@ class AdaptivityCalculator:
         _similarity_dists = np.copy(similarity_dists)
 
         if data.ndim == 1:
+            # If the adaptivity-data is a scalar for each simulation,
+            # expand the dimension to make it a 2D array to unify the calculation.
+            # The axis is later reduced with a norm.
             data = np.expand_dims(data, axis=1)
 
         data_diff = self._similarity_measure(data)
