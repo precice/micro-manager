@@ -1,11 +1,11 @@
 ---
-title: Installing the Micro Manager
+title: Get the Micro Manager
 permalink: tooling-micro-manager-installation.html
 keywords: tooling, macro-micro, two-scale
 summary: Install the Micro Manager by running `pip install --user micro-manager-precice`.
 ---
 
-## Installation
+## Get the Micro Manager
 
 The Micro Manager is a Python package that can be installed using `pip`. Make sure [preCICE](installation-overview.html) is installed before installing the Micro Manager. The Micro Manager is compatible with preCICE version [2.5.0](https://github.com/precice/precice/releases/tag/v2.5.0).
 

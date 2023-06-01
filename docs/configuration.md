@@ -1,5 +1,5 @@
 ---
-title: Configuration of the Micro Manager
+title: Configure the Micro Manager
 permalink: tooling-micro-manager-configuration.html
 keywords: tooling, macro-micro, two-scale
 summary: The Micro Manager uses a JSON file to configure the coupling. The coupled data has to be specified in the preCICE configuration file.
