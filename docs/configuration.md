@@ -27,7 +27,7 @@ The Micro Manager is configured at runtime using a JSON file. An example configu
 
 There are three main sections in the configuration file, the `coupling_params`, the `simulation_params` and the optional `diagnostics`.
 
-The path to the file containing the Python importable micro simulation class is specified in the `micro_file_name` parameter relative to the current working directory.
+The path to the file containing the Python importable micro simulation class is specified in the `micro_file_name` parameter. If the file is not in the working directory, give the relative path.
 
 ## Coupling Parameters
 
