@@ -43,6 +43,7 @@ class Config:
         self._adaptivity_coarsening_constant = 0.5
         self._adaptivity_refining_constant = 0.5
         self._adaptivity_every_implicit_iteration = False
+        self._adaptivity_similarity_measure = "L1"
 
         self.read_json(config_filename)
 
@@ -122,6 +123,13 @@ class Config:
             self._adaptivity_history_param = data["simulation_params"]["adaptivity"]["history_param"]
             self._adaptivity_coarsening_constant = data["simulation_params"]["adaptivity"]["coarsening_constant"]
             self._adaptivity_refining_constant = data["simulation_params"]["adaptivity"]["refining_constant"]
+
+            if "similarity_measure" in data["simulation_params"]["adaptivity"]:
+                self._adaptivity_similarity_measure = data["simulation_params"]["adaptivity"]["similarity_measure"]
+            else:
+                print("No similarity measure provided, using L1 norm as default")
+                self._adaptivity_similarity_measure = "L1"
+
             adaptivity_every_implicit_iteration = data["simulation_params"]["adaptivity"]["every_implicit_iteration"]
 
             if adaptivity_every_implicit_iteration == "True":
@@ -318,6 +326,15 @@ class Config:
 
         """
         return self._adaptivity_refining_constant
+
+    def get_adaptivity_similarity_measure(self):
+        """
+
+        Returns
+        -------
+
+        """
+        return self._adaptivity_similarity_measure
 
     def is_adaptivity_required_in_every_implicit_iteration(self):
         """

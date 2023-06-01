@@ -14,7 +14,8 @@
             "history_param": 0.5,
             "coarsening_constant": 0.3,
             "refining_constant": 0.4,
-            "every_implicit_iteration": "False"
+            "every_implicit_iteration": "False",
+            "_similarity_measure": "L1"
         }
     }
 }
