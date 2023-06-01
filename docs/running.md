@@ -5,7 +5,7 @@ keywords: tooling, macro-micro, two-scale
 summary: Run the Micro Manager from the terminal with a configuration file as input argument or from a Python script.
 ---
 
-The Micro Manager is run directly from the terminal by providing the configuration file as an input argument in the following way
+The Micro Manager is run directly from the terminal by providing the path to the configuration file as an input argument in the following way
 
 ```bash
 micro_manager micro-manager-config.json

@@ -27,13 +27,13 @@ The Micro Manager is configured at runtime using a JSON file. An example configu
 
 There are three main sections in the configuration file, the `coupling_params`, the `simulation_params` and the optional `diagnostics`.
 
-The file containing the Python importable micro simulation class is specified in the `micro_file_name` parameter.
+The path to the file containing the Python importable micro simulation class is specified in the `micro_file_name` parameter relative to the current working directory.
 
 ## Coupling Parameters
 
 Parameter | Description
 --- | ---
-`config_file_name` |  Path to the preCICE XML configuration file.
+`config_file_name` |  Path to the preCICE XML configuration file from the current working directory.
 `macro_mesh_name` |  Name of the macro mesh as stated in the preCICE configuration.
 `read_data_names` |  A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"`  as values depending on the nature of the data.
 `write_data_names` |  A Python dictionary with the names of the data to be written to preCICE as keys and `"scalar"` or `"vector"`  as values depending on the nature of the data.
