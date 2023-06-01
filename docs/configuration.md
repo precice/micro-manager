@@ -43,6 +43,7 @@ Parameter | Description
 Parameter | Description
 --- | ---
 `macro_domain_bounds`| Minimum and maximum bounds of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]` in 3D and `[xmin, xmax, ymin, ymax]` in 2D.
+*optional:* `adaptivity_similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms.
 *optional:* Domain decomposition parameters | See section on [Domain decomposition](#domain-decomposition). But default, the Micro Manager assumes that it will be run in serial.
 *optional:* Adaptivity parameters | See section on [Adaptivity](#adaptivity). By default, adaptivity is disabled.
 
@@ -71,23 +72,24 @@ For a 2D domain, only two values need to be set `axiswise_ranks`.
 
 ## Adaptivity
 
+{% note %} This feature is optional. {% endnote %}
+
 The Micro Manager can adaptively control micro simulations. The adaptivity strategy is taken from
 
 1. Redeker, Magnus & Eck, Christof. (2013). A fast and accurate adaptive solution strategy for two-scale models with continuous inter-scale dependencies. Journal of Computational Physics. 240. 268-283. [10.1016/j.jcp.2012.12.025](https://doi.org/10.1016/j.jcp.2012.12.025).
 
 2. Bastidas, Manuela & Bringedal, Carina & Pop, Iuliu. (2021). A two-scale iterative scheme for a phase-field model for precipitation and dissolution in porous media. Applied Mathematics and Computation. 396. 125933. [10.1016/j.amc.2020.125933](https://doi.org/10.1016/j.amc.2020.125933).
 
-To turn on adaptivity, the following options need to be set in `simulation_params`:
+To turn on adaptivity, the following options need to be set in `simulation_params` under the sub-heading `adaptivity`:
 
 Parameter | Description
 --- | ---
-`adaptivity` | Set as `True` to turn on adaptivity (`False` by default).
-`adaptivity_type` | Set to either `local` or `global`. The type of adaptivity matters when the Micro Manager is run in parallel. `local` means comparing micro simulations within a local partitioned domain for similarity. `global` means comparing micro simulations from all partitions, so over the entire domain.
-`adaptivity_data` | List of names of data which are to be used to calculate if micro-simulations are similar or not. For example `["temperature", "porosity"]`.
-`adaptivity_history_param` | History parameter $$ \Lambda $$, set as $$ \Lambda >= 0 $$.
-`adaptivity_coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ C_c < 1 $$.
-`adaptivity_refining_constant` | Refining constant $$ C_r $$, set as $$ C_r >= 0 $$.
-`adaptivity_every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
+`type` | Set to either `local` or `global`. The type of adaptivity matters when the Micro Manager is run in parallel. `local` means comparing micro simulations within a local partitioned domain for similarity. `global` means comparing micro simulations from all partitions, so over the entire domain.
+`data` | List of names of data which are to be used to calculate if micro-simulations are similar or not. For example `["temperature", "porosity"]`.
+`history_param` | History parameter $$ \Lambda $$, set as $$ \Lambda >= 0 $$.
+`coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ C_c < 1 $$.
+`refining_constant` | Refining constant $$ C_r $$, set as $$ C_r >= 0 $$.
+`<every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
 
 All variables are chosen from the [second publication](https://doi.org/10.1016/j.amc.2020.125933) mentioned above.
 
@@ -96,13 +98,14 @@ Example of adaptivity configuration
 ```json
 "simulation_params": {
     "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
-    "adaptivity": "True",
-    "adaptivity_type": "local",
-    "adaptivity_data": ["temperature", "porosity"],
-    "adaptivity_history_param": 0.5,
-    "adaptivity_coarsening_constant": 0.3,
-    "adaptivity_refining_constant": 0.4,
-    "adaptivity_every_implicit_iteration": "True"
+    "adaptivity" {
+        "type": "local",
+        "data": ["temperature", "porosity"],
+        "history_param": 0.5,
+        "coarsening_constant": 0.3,
+        "refining_constant": 0.4,
+        "every_implicit_iteration": "True"
+    }
 }
 ```
 
