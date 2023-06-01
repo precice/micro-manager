@@ -8,12 +8,13 @@
     },
     "simulation_params": {
         "macro_domain_bounds": [],
-        "adaptivity": "True",
-        "adaptivity_type": "local",
-        "adaptivity_data": [],
-        "adaptivity_history_param": 0.5,
-        "adaptivity_coarsening_constant": 0.3,
-        "adaptivity_refining_constant": 0.4,
-        "adaptivity_every_implicit_iteration": "False"
+        "adaptivity": {
+            "type": "local",
+            "data": [],
+            "history_param": 0.5,
+            "coarsening_constant": 0.3,
+            "refining_constant": 0.4,
+            "every_implicit_iteration": "False"
+        }
     }
 }
