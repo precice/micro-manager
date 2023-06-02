@@ -1,5 +1,5 @@
 ---
-title: Prepare micro simulation for the coupling
+title: Prepare micro simulation
 permalink: tooling-micro-manager-prepare-micro-simulation.html
 keywords: tooling, macro-micro, two-scale
 summary: You need to create an Python-importable class from your micro simulation code.
