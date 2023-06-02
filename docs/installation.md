@@ -56,3 +56,7 @@ python setup.py install --user
 ## Get the latest development version
 
 If you want to use the latest development version of the Micro Manager, clone the develop[https://github.com/precice/micro-manager/tree/develop] branch and then [build manually using pip](#build-manually-using-pip).
+
+## Next steps
+
+After successfully installing the Micro Manager, proceed to [preparing your micro simulation for the coupling](tooling-micro-manager-prepare-micro-simulation.html).
