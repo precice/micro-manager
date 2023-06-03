@@ -96,7 +96,7 @@ class Config:
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
 
         try:
-            self._ranks_per_axis = data["simulation_params"]["axiswise_ranks"]
+            self._ranks_per_axis = data["simulation_params"]["decomposition"]
         except BaseException:
             print("Domain decomposition is not specified, so the Micro Manager will expect to be run in serial.")
 

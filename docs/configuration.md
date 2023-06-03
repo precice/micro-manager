@@ -117,7 +117,7 @@ Parameter | Description
 `coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ C_c < 1 $$.
 `refining_constant` | Refining constant $$ C_r $$, set as $$ C_r >= 0 $$.
 `every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
-`adaptivity_similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.
+`similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.
 
 Example of adaptivity configuration
 
