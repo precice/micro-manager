@@ -1,20 +1,21 @@
 ---
-title: Convert Your Micro Simulation to Library
-permalink: tooling-micro-manager-micro-simulation-callable-library.html
+title: Prepare micro simulation
+permalink: tooling-micro-manager-prepare-micro-simulation.html
 keywords: tooling, macro-micro, two-scale
-summary: You need to create an Python-importable class from your micro simulation code.
+summary: Create an Python-importable class from your micro simulation code.
 ---
 
-## Steps to convert micro simulation code to a callable library
+The Micro Manager requires that the micro simulation code be in a predefined class structure. As the Micro Manager is written in Python, micro simulation codes written in Python are the easiest to prepare. For micro simulation codes not written in Python, look at the [C++ micro simulation section](#create-an-python-importable-class-from-your-micro-simulation-code-written-in-c) below.
 
-The Micro Manager requires a specific structure of the micro simulation code. Create a class that can be called from Python with the structure given below. The docstring of each function gives information on what it should do and what its input and output should be.
+{% note %} The Micro Manager [solver dummy examples](https://github.com/precice/micro-manager/tree/develop/examples) are minimal code examples with the predefined class structure. We recommend copying the appropriate example and modifying it with your micro simulation code to create a Python-importable class. {% endnote %}
+
+Restructure your micro simulation code into a Python class with the structure given below. The docstring of each function gives information on what it should do and what its input and output should be.
 
 ```python
 class MicroSimulation: # Name is fixed
-
     def __init__(self):
         """
-        Constructor of class MicroSimulation. Initialize all class member variables here.
+        Constructor of class MicroSimulation.
         """
 
     def initialize(self) -> dict:
@@ -24,24 +25,24 @@ class MicroSimulation: # Name is fixed
         Returns
         -------
         data : dict
-            Python dictionary with keys as names of micro data and values as the data at the initial condition
+            Python dictionary with names of micro data as keys and the data as values at the initial condition
         """
 
     def solve(self, macro_data, dt) -> dict:
         """
-        Solve one time step of the micro simulation or for steady-state problems: solve until steady state is reached.
+        Solve one time step of the micro simulation for transient problems or solve until steady state for steady-state problems.
 
         Parameters
         ----------
         macro_data : dict
-            Dictionary with keys as names of macro data and values as the data
+            Dictionary with names of macro data as keys and the data as values
         dt : float
             Time step size
 
         Returns
         -------
         micro_data : dict
-            Dictionary with keys as names of micro data and values as the updated micro data
+            Dictionary with names of micro data as keys and the updated micro data a values
         """
 
     def save_checkpoint(self):
@@ -63,30 +64,24 @@ class MicroSimulation: # Name is fixed
         """
 ```
 
-Skeleton dummy code of a sample MicroSimulation class can be found in the [examples/](https://github.com/precice/micro-manager/tree/main/examples/) directory. There are two variants
+A dummy code of a sample MicroSimulation class can be found in the [examples/python-dummy/micro_dummy.py](https://github.com/precice/micro-manager/blob/develop/examples/python-dummy/micro_dummy.py) directory.
 
-* `examples/python-dummy/`: Dummy micro simulation written in Python
-* `examples/cpp-dummy/`: Dummy micro simulation written in C++ and compiled to a Python library using [pybind11](https://pybind11.readthedocs.io/en/stable/)
+## Create an Python-importable class from your micro simulation code written in C++
 
-### Convert your micro simulation written in C++ to a callable library
+A dummy C++ dummy micro simulation code having a Python-importable class structure is provided in [`examples/cpp-dummy/micro_cpp_dummy.cpp`](https://github.com/precice/micro-manager/blob/develop/examples/cpp-dummy/micro_cpp_dummy.cpp). It uses [pybind11](https://pybind11.readthedocs.io/en/stable/) to enable control and use from Python. Restructuring a C++ micro simulation code has the following steps
 
-A C++ dummy micro simulation is provided in [`examples/cpp-dummy/`](github.com/precice/micro-manager/tree/main/examples/cpp-dummy).
-It uses [pybind11](https://pybind11.readthedocs.io/en/stable/) to compile the C++ code into a library which can be imported in Python. If the micro simulation in C++, [install pybind11](https://pybind11.readthedocs.io/en/stable/installing.html).
-
-Creating a new micro simulation in C++ has the following steps
-
-1. Create a C++ class which implements the functions given [above](#steps-to-convert-micro-simulation-code-to-a-callable-library).
+1. Create a C++ class which implements the functions given in the code snippet above.
 The `solve()` function should have the following signature:
 
     ```cpp
     py::dict MicroSimulation::solve(py::dict macro_data, double dt)
     ```
 
-    [`py::dict`](https://pybind11.readthedocs.io/en/stable/advanced/pycpp/object.html?#instantiating-compound-python-types-from-c) is a Python dictionary which can be used to pass data between Python and C++. You need to cast the data to the correct type before using it in C++ and vice versa. An example is given in the dummy micro simulation.
+    [`py::dict`](https://pybind11.readthedocs.io/en/stable/advanced/pycpp/object.html?#instantiating-compound-python-types-from-c) is a Python dictionary which can be used to pass data between Python and C++. Cast the data to the correct type before using it in C++ and vice versa.
 
 2. Export the C++ class to Python using pybind11. Follow the instructions to exporting classes in the [pybind11 documentation](https://pybind11.readthedocs.io/en/stable/classes.html) or read their [first steps](https://pybind11.readthedocs.io/en/stable/basics.html) to get started.
 
-3. Compile the C++ library including pybind11. For the solverdummy, run
+3. Compile the C++ library including pybind11. For example, for the solverdummy, the command is
 
     ```bash
     c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy$(python3-config --extension-suffix)
@@ -97,4 +92,4 @@ The `solve()` function should have the following signature:
 
 ## Next Steps
 
-With your code converted to a library, you can now [create a coupling configuration](tooling-micro-manager-usage-configuration.html).
+After restructuring your micro simulation code into a Python-importable class structure, [configure the Micro Manager](tooling-micro-manager-usage-configuration.html).
