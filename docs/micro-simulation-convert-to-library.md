@@ -5,7 +5,7 @@ keywords: tooling, macro-micro, two-scale
 summary: Create an Python-importable class from your micro simulation code.
 ---
 
-The Micro Manager requires that the micro simulation code be in a predefined class structure. As the Micro Manager is written in Python, micro simulation codes written in Python are the easiest to prepare. For micro simulation codes not written in Python, look at the [C++ micro simulation section](#convert-your-micro-simulation-written-in-c-to-a-callable-library) below.
+The Micro Manager requires that the micro simulation code be in a predefined class structure. As the Micro Manager is written in Python, micro simulation codes written in Python are the easiest to prepare. For micro simulation codes not written in Python, look at the [C++ micro simulation section](#create-an-python-importable-class-from-your-micro-simulation-code-written-in-c) below.
 
 {% note %} The Micro Manager [solver dummy examples](https://github.com/precice/micro-manager/tree/develop/examples) are minimal code examples with the predefined class structure. We recommend copying the appropriate example and modifying it with your micro simulation code to create a Python-importable class. {% endnote %}
 

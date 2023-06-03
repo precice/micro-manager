@@ -5,6 +5,8 @@ keywords: tooling, macro-micro, two-scale
 summary: Provide a JSON file to configure the Micro Manager.
 ---
 
+{% note %} In the preCICE XML configuration the Micro Manager is a participant with the name `Micro-Manager`. {% endnote %}
+
 The Micro Manager is configured with a JSON file. An example configuration file is
 
 ```json
@@ -56,7 +58,7 @@ Parameter | Description
 `output_micro_sim_solve_time` | If `True`, the Micro Manager writes the wall clock time of the `solve()` function of each micro simulation.
 `micro_output_n`|  Frequency of calling the optional output functionality of the micro simulation in terms of number of time steps. If not given, `micro_sim.output()` is called every time step.
 
-### Additions in the preCICE XML configuration
+### Adding diagnostics in the preCICE XML configuration
 
 If the parameter `data_from_micro_sims` is set, the data to be output needs to be written to preCICE, and an export tag needs to be added for the participant `Micro-Manager`. For example, let us consider the case that the data `porosity`, which is a scalar, needs to be exported. Unless already defined, define the data, and then write it to preCICE. Also, add an export tag. The resulting entries in the XML configuration file look like:
 
@@ -133,7 +135,7 @@ Example of adaptivity configuration
 }
 ```
 
-### Additions in the preCICE XML configuration
+### Adding adaptivity in the preCICE XML configuration
 
 If adaptivity is used, the Micro Manager will attempt to write two scalar data per micro simulation to preCICE, called `active_state` and `active_steps`.
 
