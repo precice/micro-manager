@@ -2,6 +2,7 @@
 Functionality for adaptive initialization and control of micro simulations
 """
 import numpy as np
+from typing import Callable
 
 
 class AdaptivityCalculator:
@@ -14,6 +15,8 @@ class AdaptivityCalculator:
         self._ref_tol = 0.0
         self._global_ids_of_local_sims = global_ids
 
+        self._similarity_measure = self._get_similarity_measure(configurator.get_adaptivity_similarity_measure())
+
     def get_similarity_dists(self, dt: float, similarity_dists: np.ndarray, data: np.ndarray) -> np.ndarray:
         """
         Calculate metric which determines if two micro simulations are similar enough to have one of them deactivated.
@@ -21,7 +24,7 @@ class AdaptivityCalculator:
         Parameters
         ----------
         dt : float
-            Time step
+            Timestep
         similarity_dists : numpy array
             2D array having similarity distances between each micro simulation pair
         data : numpy array
@@ -35,25 +38,13 @@ class AdaptivityCalculator:
         _similarity_dists = np.copy(similarity_dists)
 
         if data.ndim == 1:
-            dim = 0
-        elif data.ndim == 2:
-            _, dim = data.shape
+            # If the adaptivity-data is a scalar for each simulation,
+            # expand the dimension to make it a 2D array to unify the calculation.
+            # The axis is later reduced with a norm.
+            data = np.expand_dims(data, axis=1)
 
-        number_of_sims, _ = _similarity_dists.shape
-
-        for counter_1, id_1 in enumerate(range(number_of_sims)):
-            for counter_2, id_2 in enumerate(range(number_of_sims)):
-                data_diff = 0
-                if id_1 != id_2:
-                    if dim:
-                        for d in range(dim):
-                            data_diff += abs(data[counter_1, d] - data[counter_2, d])
-                    else:
-                        data_diff = abs(data[counter_1] - data[counter_2])
-
-                    _similarity_dists[id_1, id_2] += dt * data_diff
-                else:
-                    _similarity_dists[id_1, id_2] = 0
+        data_diff = self._similarity_measure(data)
+        _similarity_dists += dt * data_diff
 
         return _similarity_dists
 
@@ -106,3 +97,103 @@ class AdaptivityCalculator:
                 if similarity_dists[active_id, active_id_2] < self._coarse_tol:
                     return True
         return False
+
+    def _get_similarity_measure(self, similarity_measure: str) -> Callable[[np.ndarray], np.ndarray]:
+        """
+        Get similarity measure to be used for similarity calculation
+
+        Parameters
+        ----------
+        similarity_measure : str
+            String specifying the similarity measure to be used
+
+        Returns
+        -------
+        similarity_measure : function
+            Function to be used for similarity calculation. Takes data as input and returns similarity measure
+        """
+        if similarity_measure == 'L1':
+            return self._l1
+        elif similarity_measure == 'L2':
+            return self._l2
+        elif similarity_measure == 'L1rel':
+            return self._l1rel
+        elif similarity_measure == 'L2rel':
+            return self._l2rel
+        else:
+            raise ValueError(
+                'Similarity measure not supported. Currently supported similarity measures are "L1", "L2", "L1rel", "L2rel".')
+
+    def _l1(self, data: np.ndarray) -> np.ndarray:
+        """
+        Calculate L1 norm of data
+
+        Parameters
+        ----------
+        data : numpy array
+            Data to be used in similarity distance calculation
+
+        Returns
+        -------
+        similarity_dists : numpy array
+            Updated 2D array having similarity distances between each micro simulation pair
+        """
+        return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
+
+    def _l2(self, data: np.ndarray) -> np.ndarray:
+        """
+        Calculate L2 norm of data
+
+        Parameters
+        ----------
+        data : numpy array
+            Data to be used in similarity distance calculation
+
+        Returns
+        -------
+        similarity_dists : numpy array
+            Updated 2D array having similarity distances between each micro simulation pair
+        """
+        return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=2, axis=-1)
+
+    def _l1rel(self, data: np.ndarray) -> np.ndarray:
+        """
+        Calculate L1 norm of relative difference of data.
+        The relative difference is calculated by dividing the difference of two data points by the maximum of the two data points.
+
+        Parameters
+        ----------
+        data : numpy array
+            Data to be used in similarity distance calculation
+
+        Returns
+        -------
+        similarity_dists : numpy array
+            Updated 2D array having similarity distances between each micro simulation pair
+        """
+        pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
+        # divide by data to get relative difference
+        # divide i,j by max(data[i],data[j]) to get relative difference
+        relative = np.nan_to_num((pointwise_diff / np.maximum(data[np.newaxis, :], data[:, np.newaxis])))
+        return np.linalg.norm(relative, ord=1, axis=-1)
+
+    def _l2rel(self, data: np.ndarray) -> np.ndarray:
+        """
+        Calculate L2 norm of relative difference of data.
+        The relative difference is calculated by dividing the difference of two data points by the maximum of the two data points.
+
+        Parameters
+        ----------
+        data : numpy array
+            Data to be used in similarity distance calculation
+
+        Returns
+        -------
+        similarity_dists : numpy array
+            Updated 2D array having similarity distances between each micro simulation pair
+        """
+        pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
+        # divide by data to get relative difference
+        # divide i,j by max(data[i],data[j]) to get relative difference
+        relative = np.nan_to_num((pointwise_diff / np.maximum(data[np.newaxis, :], data[:, np.newaxis])))
+        return np.linalg.norm(relative, ord=2, axis=-1)

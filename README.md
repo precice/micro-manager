@@ -4,7 +4,7 @@ A tool to facilitate solving two-scale (macro-micro) coupled problems using the 
 
 ## Start Here
 
-The main documentation is on the [preCICE website](https://precice.org/) TODO: Update to link of documentation.
+The main documentation is on the [preCICE website](https://precice.org/tooling-micro-manager-overview.html).
 
 Please report any bugs and issues [here](https://github.com/precice/micro-manager/issues) and give us feedback through [one of our community channels](https://precice.org/community-channels.html).
 
@@ -12,7 +12,7 @@ Please report any bugs and issues [here](https://github.com/precice/micro-manage
 
 The concept and initial design of the Micro Manager has been discussed in
 
-Desai, Ishaan, & Bringedal, Carina & Uekermann, Benjamin. A flexible software approach to simulate two-scale coupled problems. ECCOMAS Congress 2022. [10.23967/eccomas.2022.037](https://doi.org/10.23967/eccomas.2022.037)
+Desai, Ishaan, & Bringedal, Carina & Uekermann, Benjamin. A flexible software approach to simulate two-scale coupled problems. ECCOMAS Congress 2022. [10.23967/eccomas.2022.037](https://doi.org/10.23967/eccomas.2022.037).
 
 The Micro Manager can adaptively control micro simulations. The adaptivity strategy is taken from two publications
 
