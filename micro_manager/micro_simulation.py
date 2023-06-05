@@ -2,6 +2,7 @@
 Functionality to create MicroSimulation class objects which inherit from user provided base_micro_simulation class.
 """
 
+
 def create_micro_problem_class(base_micro_simulation):
     """
     Creates a class MicroSimulation which inherits from the class of the micro simulation.

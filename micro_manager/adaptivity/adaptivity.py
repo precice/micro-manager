@@ -6,7 +6,7 @@ from typing import Callable
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, global_ids) -> None:
+    def __init__(self, configurator, global_ids: list, number_of_sims: int) -> None:
         # Names of data to be used for adaptivity computation
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
@@ -14,6 +14,7 @@ class AdaptivityCalculator:
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
         self._global_ids_of_local_sims = global_ids
+        self._number_of_sims = number_of_sims
 
         self._similarity_measure = self._get_similarity_measure(configurator.get_adaptivity_similarity_measure())
 
@@ -47,6 +48,40 @@ class AdaptivityCalculator:
         _similarity_dists += dt * data_diff
 
         return _similarity_dists
+
+    def update_active_micro_sims(
+            self,
+            similarity_dists: np.ndarray,
+            micro_sim_states: np.ndarray,
+            micro_sims: list) -> np.ndarray:
+        """
+        Update set of active micro simulations. Active micro simulations are compared to each other
+        and if found similar, one of them is deactivated.
+        Parameters
+        ----------
+        similarity_dists : numpy array
+            2D array having similarity distances between each micro simulation pair
+        micro_sim_states : numpy array
+            1D array having state (active or inactive) of each micro simulation
+        micro_sims : list
+            List of objects of class MicroProblem, which are the micro simulations
+        Returns
+        -------
+        _micro_sim_states : numpy array
+            Updated 1D array having state (active or inactive) of each micro simulation
+        """
+        self._coarse_tol = self._coarse_const * self._refine_const * np.amax(similarity_dists)
+
+        _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
+
+        # Update the set of active micro sims
+        for i in range(self._number_of_sims):
+            if _micro_sim_states[i]:  # if sim is active
+                if self._check_for_deactivation(i, similarity_dists, _micro_sim_states):
+                    micro_sims[i].deactivate()
+                    _micro_sim_states[i] = 0
+
+        return _micro_sim_states
 
     def _check_for_activation(
             self,

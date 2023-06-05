@@ -21,6 +21,7 @@ from .domain_decomposition import DomainDecomposer
 
 sys.path.append(os.getcwd())
 
+
 class MicroManager:
     def __init__(self, config_file: str) -> None:
         """
@@ -96,7 +97,7 @@ class MicroManager:
         if self._is_adaptivity_on:
             self._number_of_micro_sims_for_adaptivity = 0
 
-            self._data_for_similarity_calc = dict()
+            self._data_for_adaptivity = dict()
             self._adaptivity_type = self._config.get_adaptivity_type()
 
             self._hist_param = self._config.get_adaptivity_hist_param()
@@ -162,15 +163,12 @@ class MicroManager:
         self._global_number_of_micro_sims = np.sum(nms_all_ranks)
 
         if self._is_adaptivity_on:
-            if self._adaptivity_type == "local":  # Currently only local variant, global variant to follow
-                self._number_of_micro_sims_for_adaptivity = self._local_number_of_micro_sims
-
             for name, is_data_vector in self._adaptivity_data_names.items():
                 if is_data_vector:
-                    self._data_for_similarity_calc[name] = np.zeros(
+                    self._data_for_adaptivity[name] = np.zeros(
                         (self._local_number_of_micro_sims, self._interface.get_dimensions()))
                 else:
-                    self._data_for_similarity_calc[name] = np.zeros((self._local_number_of_micro_sims))
+                    self._data_for_adaptivity[name] = np.zeros((self._local_number_of_micro_sims))
 
         # Create lists of local and global IDs
         sim_id = np.sum(nms_all_ranks[:self._rank])
@@ -180,21 +178,36 @@ class MicroManager:
             sim_id += 1
 
         if self._is_adaptivity_on:
-            self._micro_sims = [None] * self._number_of_micro_sims_for_adaptivity  # DECLARATION
+            self._micro_sims = [None] * self._local_number_of_micro_sims  # DECLARATION
+
+            # Create micro simulation objects
+            for i in range(self._local_number_of_micro_sims):
+                self._micro_sims[i] = create_micro_problem_class(
+                    self._micro_problem)(i, self._global_ids_of_local_sims[i])
+
+            # Create a map of micro simulation global IDs and the ranks on which they are
+            micro_sims_on_this_rank = np.zeros(self._local_number_of_micro_sims)
+            for i in range(self._local_number_of_micro_sims):
+                micro_sims_on_this_rank[i] = self._rank
+
+            self._micro_sim_is_on_rank = np.zeros(self._global_number_of_micro_sims)  # DECLARATION
+            self._comm.Allgather(micro_sims_on_this_rank, self._micro_sim_is_on_rank)
+
             if self._adaptivity_type == "local":
                 self._adaptivity_controller = LocalAdaptivityCalculator(
                     self._config, self._global_ids_of_local_sims, self._local_number_of_micro_sims)
-                # If adaptivity is calculated locally, IDs to iterate over are local
-                for i in range(self._local_number_of_micro_sims):
-                    self._micro_sims[i] = create_micro_problem_class(
-                        self._micro_problem)(i, self._global_ids_of_local_sims[i])
+                self._number_of_micro_sims_for_adaptivity = self._local_number_of_micro_sims
+            elif self._adaptivity_type == "global":
+                self._adaptivity_controller = GlobalAdaptivityCalculator(
+                    self._config,
+                    self._global_ids_of_local_sims,
+                    self._global_number_of_micro_sims,
+                    self._micro_sim_is_on_rank,
+                    self._comm,
+                    self._rank)
+                self._number_of_micro_sims_for_adaptivity = self._global_number_of_micro_sims
 
-                micro_sim_is_on_rank = np.zeros(self._local_number_of_micro_sims)
-                for i in range(self._local_number_of_micro_sims):
-                    micro_sim_is_on_rank[i] = self._rank
-
-                self._micro_sim_is_on_rank = np.zeros(self._global_number_of_micro_sims)  # DECLARATION
-                self._comm.Allgather(micro_sim_is_on_rank, self._micro_sim_is_on_rank)
+            self._micro_sims_active_steps = np.zeros(self._local_number_of_micro_sims)
         else:
             self._micro_sims = []  # DECLARATION
             for i in range(self._local_number_of_micro_sims):
@@ -204,7 +217,6 @@ class MicroManager:
                         i, self._global_ids_of_local_sims[i]))
 
         micro_sims_output = list(range(self._local_number_of_micro_sims))
-        self._micro_sims_active_steps = np.zeros(self._local_number_of_micro_sims)
 
         # Initialize micro simulations if initialize() method exists
         if hasattr(self._micro_problem, 'initialize') and callable(getattr(self._micro_problem, 'initialize')):
@@ -262,7 +274,7 @@ class MicroManager:
 
             if self._is_adaptivity_on:
                 if name in self._adaptivity_macro_data_names:
-                    self._data_for_similarity_calc[name] = read_data[name]
+                    self._data_for_adaptivity[name] = read_data[name]
 
         read_data = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
 
@@ -302,14 +314,13 @@ class MicroManager:
                     self._interface.write_block_scalar_data(
                         self._write_data_ids[dname], [], np.array([]))
 
-    def compute_local_adaptivity(self, local_similarity_dists_nm1: np.ndarray, local_micro_sim_states_nm1: np.ndarray):
+    def compute_local_adaptivity(self, similarity_dists_nm1: np.ndarray, micro_sim_states_nm1: np.ndarray):
         """
-        Compute adaptivity locally based on similarity distances and micro simulation states from t_{n-1}
+        Compute adaptivity locally (within a rank) based on similarity distances and micro simulation states from t_{n-1}
 
         Parameters
         ----------
-
-        local_similarity_dists_nm1 : numpy array
+        similarity_dists_nm1 : numpy array
             2D array having similarity distances between each micro simulation pair at t_{n-1}
         micro_sim_states_nm1 : numpy array
             1D array having state (active or inactive) of each micro simulation at t_{n-1} on this rank
@@ -322,16 +333,69 @@ class MicroManager:
             1D array having state (active or inactive) of each micro simulation at t_{n}
         """
         # Multiply old similarity distance by history term to get current distances
-        local_similarity_dists_n = exp(-self._hist_param * self._dt) * local_similarity_dists_nm1
+        similarity_dists_n = exp(-self._hist_param * self._dt) * similarity_dists_nm1
 
         for name, _ in self._adaptivity_data_names.items():
             # For global adaptivity, similarity distance matrix is calculated globally on every rank
             similarity_dists_n = self._adaptivity_controller.get_similarity_dists(
-                self._dt, similarity_dists_n, self._data_for_similarity_calc[name])
+                self._dt, similarity_dists_n, self._data_for_adaptivity[name])
 
         # Operation done globally if global adaptivity is chosen
-        global_micro_sim_states_n = self._adaptivity_controller.update_micro_sim_states(
-            global_similarity_dists_n, global_micro_sim_states_nm1)         
+        micro_sim_states_n = self._adaptivity_controller.update_micro_sim_states(
+            similarity_dists_n, micro_sim_states_nm1)
+
+        micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(
+            similarity_dists_n, micro_sim_states_nm1, self._micro_sims)
+
+        self._adaptivity_controller.associate_inactive_to_active(
+            similarity_dists_n, micro_sim_states_n, self._micro_sims)
+
+        self._logger.info(
+            "Number of active micro simulations = {}".format(
+                np.count_nonzero(
+                    micro_sim_states_n == 1)))
+        self._logger.info(
+            "Number of inactive micro simulations = {}".format(
+                np.count_nonzero(
+                    micro_sim_states_n == 0)))
+
+        return similarity_dists_n, micro_sim_states_n
+
+    def compute_global_adaptivity(self, similarity_dists_nm1: np.ndarray, micro_sim_states_nm1: np.ndarray):
+        """
+        Compute adaptivity locally (within a rank) based on similarity distances and micro simulation states from t_{n-1}
+
+        Parameters
+        ----------
+        similarity_dists_nm1 : numpy array
+            2D array having similarity distances between each micro simulation pair at t_{n-1}
+        micro_sim_states_nm1 : numpy array
+            1D array having state (active or inactive) of each micro simulation at t_{n-1} on this rank
+
+        Results
+        -------
+        similarity_dists : numpy array
+            2D array having similarity distances between each micro simulation pair at t_{n}
+        micro_sim_states : numpy array
+            1D array having state (active or inactive) of each micro simulation at t_{n}
+        """
+        # Gather adaptivity data from all ranks
+        global_list_data_for_adaptivity = self._comm.allgather(self._data_for_adaptivity)
+
+        # Change adaptivity data from list of dicts to dict of lists
+        global_data_for_adaptivity = {k: [d[k] for d in global_list_data_for_adaptivity]
+                                      for k in global_list_data_for_adaptivity[0]}
+
+        # Multiply old similarity distance by history term to get current distances
+        similarity_dists_n = exp(-self._hist_param * self._dt) * similarity_dists_nm1
+
+        for name, _ in self._adaptivity_data_names.items():
+            # Similarity distance matrix is calculated globally on every rank
+            similarity_dists_n = self._adaptivity_controller.get_similarity_dists(
+                self._dt, similarity_dists_n, global_data_for_adaptivity[name])
+
+        micro_sim_states_n = self._adaptivity_controller.update_active_micro_sims(
+            similarity_dists_n, micro_sim_states_nm1)
 
         micro_sim_states_n = self._adaptivity_controller.update_inactive_micro_sims(
             similarity_dists_n, micro_sim_states_nm1, self._micro_sims)
@@ -389,7 +453,7 @@ class MicroManager:
 
                 for name in self._adaptivity_micro_data_names:
                     # Collect micro sim output for adaptivity
-                    self._data_for_similarity_calc[name][active_id] = micro_sims_output[active_id][name]
+                    self._data_for_adaptivity[name][active_id] = micro_sims_output[active_id][name]
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[active_id]["micro_sim_time"] = end_time - start_time
@@ -404,7 +468,7 @@ class MicroManager:
             if self._is_adaptivity_on:
                 for name in self._adaptivity_micro_data_names:
                     # Collect micro sim output for adaptivity
-                    self._data_for_similarity_calc[name][inactive_id] = micro_sims_output[inactive_id][name]
+                    self._data_for_adaptivity[name][inactive_id] = micro_sims_output[inactive_id][name]
 
                 micro_sims_output[inactive_id]["active_state"] = 0
                 micro_sims_output[inactive_id]["active_steps"] = self._micro_sims_active_steps[inactive_id]
