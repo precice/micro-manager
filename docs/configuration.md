@@ -27,7 +27,7 @@ The Micro Manager is configured with a JSON file. An example configuration file 
 }
 ```
 
-This example configuration file is in [`examples/micro-manager-config.json`](https://github.com/precice/micro-manager/tree/main/examples/micro-manager-config.json).
+This example configuration file is in [`examples/micro-manager-config.json`](https://github.com/precice/micro-manager/tree/develop/examples/micro-manager-config.json).
 
 The path to the file containing the Python importable micro simulation class is specified in the `micro_file_name` parameter. If the file is not in the working directory, give the relative path.
 
@@ -86,7 +86,7 @@ If `output_micro_sim_solve_time` is set, add similar entries for the data `micro
 
 ## Domain decomposition
 
-The Micro Manager can be run in parallel. For a parallel run, set the desired partitions in each axis by setting the `decomposition` parameter. For example, if the domain is 3D and the decomposition needs to be two partitions in x, one partition in y, and sixteen partitions in forz, the setting is
+The Micro Manager can be run in parallel. For a parallel run, set the desired partitions in each axis by setting the `decomposition` parameter. For example, if the domain is 3D and the decomposition needs to be two partitions in x, one partition in y, and sixteen partitions in for z, the setting is
 
 ```json
 "simulation_params": {
@@ -103,7 +103,7 @@ The Micro Manager can adaptively control micro simulations. The adaptivity strat
 
 1. Redeker, Magnus & Eck, Christof. (2013). A fast and accurate adaptive solution strategy for two-scale models with continuous inter-scale dependencies. Journal of Computational Physics. 240. 268-283. [10.1016/j.jcp.2012.12.025](https://doi.org/10.1016/j.jcp.2012.12.025).
 
-2. Bastidas, Manuela & Bringedal, Carina & Pop, Iuliu. (2021). A two-scale iterative scheme for a phase-field model for precipitation and dissolution in porous media. Applied Mathematics and Computation. 396. 125933. [10.1016/j.amc.2020.125933](https://doi.org/10.1016/j.amc.2020.125933).
+2. Bastidas, Manuela & Bringedal, Carina & Pop, Iuliu Sorin. (2021). A two-scale iterative scheme for a phase-field model for precipitation and dissolution in porous media. Applied Mathematics and Computation. 396. 125933. [10.1016/j.amc.2020.125933](https://doi.org/10.1016/j.amc.2020.125933).
 
 All the adaptivity parameters are chosen from the second publication.
 
