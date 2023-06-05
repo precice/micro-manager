@@ -55,7 +55,7 @@ python setup.py install --user
 
 ## Get the latest development version
 
-If you want to use the latest development version of the Micro Manager, clone the develop[https://github.com/precice/micro-manager/tree/develop] branch and then [build manually using pip](#build-manually-using-pip).
+If you want to use the latest development version of the Micro Manager, clone the [develop](https://github.com/precice/micro-manager/tree/develop) branch and then [build manually using pip](#build-manually-using-pip).
 
 ## Next steps
 
