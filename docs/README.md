@@ -24,6 +24,6 @@ The Micro Manager couples many micro simulations with one macro simulation. This
 To use the Micro Manager for a macro-micro coupling, your micro simulation code needs to be in a library format with a specific class name and functions with specific names. For a macro-micro coupled problem, the macro simulation code is coupled to preCICE directly. The section [couple your code](couple-your-code-overview.html) of the preCICE documentation gives more details on coupling existing codes. To setup a macro-micro coupled simulation using the Micro Manager, follow these steps:
 
 - [Installation](tooling-micro-manager-installation.html)
-- [Preparing micro simulation](tooling-micro-manager-micro-simulation-callable-library.html)
+- [Preparing micro simulation](tooling-micro-manager-prepare-micro-simulation.html)
 - [Configuration](tooling-micro-manager-configuration.html)
 - [Running](tooling-micro-manager-running.html)

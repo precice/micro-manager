@@ -28,9 +28,3 @@ The Micro Manager can also be run in parallel, using the same script as stated a
 ```bash
 mpirun -n <number-of-procs> python3 run-micro-manager.py
 ```
-
-A script running the Micro Manager can also be executed in parallel
-
-```bash
-mpirun -n <number-of-procs> run-micro-manager.py
-```
