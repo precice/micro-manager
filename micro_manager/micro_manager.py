@@ -195,13 +195,11 @@ class MicroManager:
 
             if self._adaptivity_type == "local":
                 self._adaptivity_controller = LocalAdaptivityCalculator(
-                    self._config, self._global_ids_of_local_sims, self._local_number_of_micro_sims)
+                    self._config)
                 self._number_of_micro_sims_for_adaptivity = self._local_number_of_micro_sims
             elif self._adaptivity_type == "global":
                 self._adaptivity_controller = GlobalAdaptivityCalculator(
                     self._config,
-                    self._global_ids_of_local_sims,
-                    self._global_number_of_micro_sims,
                     self._micro_sim_is_on_rank,
                     self._comm,
                     self._rank)
@@ -433,8 +431,13 @@ class MicroManager:
             List of dicts in which keys are names of data and the values are the data of the output of the micro
             simulations.
         """
-        active_sim_ids = np.where(micro_sim_states == 1)[0]
-        inactive_sim_ids = np.where(micro_sim_states == 0)[0]
+        if self._adaptivity_type == "local":
+            active_sim_ids = np.where(micro_sim_states == 1)[0]
+            inactive_sim_ids = np.where(micro_sim_states == 0)[0]
+        elif self._adaptivity_type == "global":
+            local_micro_sim_states = micro_sim_states[self._global_ids_of_local_sims[0]                                                      :self._global_ids_of_local_sims[-1]]
+            active_sim_ids = np.where(local_micro_sim_states == 1)[0]
+            inactive_sim_ids = np.where(local_micro_sim_states == 0)[0]
 
         micro_sims_output = list(range(self._local_number_of_micro_sims))
 
@@ -459,11 +462,15 @@ class MicroManager:
                 micro_sims_output[active_id]["micro_sim_time"] = end_time - start_time
 
         # For each inactive simulation, copy data from most similar active simulation
-        for inactive_id in inactive_sim_ids:
-            micro_sims_output[inactive_id] = dict()
-            for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_associated_active_local_id()].items(
-            ):
-                micro_sims_output[inactive_id][dname] = values
+        if self._adaptivity_type == "local":
+            for inactive_id in inactive_sim_ids:
+                micro_sims_output[inactive_id] = dict()
+                for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_associated_active_local_id()].items(
+                ):
+                    micro_sims_output[inactive_id][dname] = values
+        elif self._adaptivity_type == "global":
+            micro_sims_output = self._adaptivity_controller.communicate_data(
+                self._global_ids_of_local_sims, micro_sims_output)
 
             if self._is_adaptivity_on:
                 for name in self._adaptivity_micro_data_names:
