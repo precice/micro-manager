@@ -412,7 +412,36 @@ class MicroManager:
 
         return similarity_dists_n, micro_sim_states_n
 
-    def solve_micro_simulations(self, micro_sims_input: list, micro_sim_states: np.ndarray) -> list:
+    def solve_micro_simulations(self, micro_sims_input: list) -> list:
+        """
+        Solve all micro simulations using the data read from preCICE and assemble the micro simulations outputs in a list of dicts
+        format.
+
+        Parameters
+        ----------
+        micro_sims_input : list
+            List of dicts in which keys are names of data and the values are the data which are required inputs to
+            solve a micro simulation.
+
+        Returns
+        -------
+        micro_sims_output : list
+            List of dicts in which keys are names of data and the values are the data of the output of the micro
+            simulations.
+        """
+        micro_sims_output = list(range(self._local_number_of_micro_sims))
+
+        for count, sim in enumerate(self._micro_sims):
+            start_time = time.time()
+            micro_sims_output[count] = sim.solve(micro_sims_input[count], self._dt)
+            end_time = time.time()
+
+            if self._is_micro_solve_time_required:
+                micro_sims_output[count]["micro_sim_time"] = end_time - start_time
+
+        return micro_sims_output
+
+    def solve_micro_simulations_with_adaptivity(self, micro_sims_input: list, micro_sim_states: np.ndarray) -> list:
         """
         Solve all micro simulations using the data read from preCICE and assemble the micro simulations outputs in a list of dicts
         format.
@@ -431,48 +460,44 @@ class MicroManager:
             List of dicts in which keys are names of data and the values are the data of the output of the micro
             simulations.
         """
-        if self._adaptivity_type == "local":
-            active_sim_ids = np.where(micro_sim_states == 1)[0]
-            inactive_sim_ids = np.where(micro_sim_states == 0)[0]
-        elif self._adaptivity_type == "global":
-            local_micro_sim_states = micro_sim_states[self._global_ids_of_local_sims[0]                                                      :self._global_ids_of_local_sims[-1]]
+        if self._adaptivity_type == "global":
+            local_micro_sim_states = micro_sim_states[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1]]
             active_sim_ids = np.where(local_micro_sim_states == 1)[0]
             inactive_sim_ids = np.where(local_micro_sim_states == 0)[0]
+        elif self._adaptivity_type == "local":
+            active_sim_ids = np.where(micro_sim_states == 1)[0]
+            inactive_sim_ids = np.where(micro_sim_states == 0)[0]
 
         micro_sims_output = list(range(self._local_number_of_micro_sims))
 
         # Solve all active micro simulations
         for active_id in active_sim_ids:
-            # self._logger.info("Solving active micro sim [{}]".format(self._micro_sims[active_id].get_global_id()))
-
             start_time = time.time()
             micro_sims_output[active_id] = self._micro_sims[active_id].solve(micro_sims_input[active_id], self._dt)
             end_time = time.time()
 
-            if self._is_adaptivity_on:
-                # Mark the micro sim as active for export
-                micro_sims_output[active_id]["active_state"] = 1
-                micro_sims_output[active_id]["active_steps"] = self._micro_sims_active_steps[active_id]
+            # Mark the micro sim as active for export
+            micro_sims_output[active_id]["active_state"] = 1
+            micro_sims_output[active_id]["active_steps"] = self._micro_sims_active_steps[active_id]
 
-                for name in self._adaptivity_micro_data_names:
-                    # Collect micro sim output for adaptivity
-                    self._data_for_adaptivity[name][active_id] = micro_sims_output[active_id][name]
+            for name in self._adaptivity_micro_data_names:
+                # Collect micro sim output for adaptivity
+                self._data_for_adaptivity[name][active_id] = micro_sims_output[active_id][name]
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[active_id]["micro_sim_time"] = end_time - start_time
 
         # For each inactive simulation, copy data from most similar active simulation
-        if self._adaptivity_type == "local":
+        if self._adaptivity_type == "global":
+            micro_sims_output = self._adaptivity_controller.communicate_data(
+                self._global_ids_of_local_sims, micro_sims_output)
+        elif self._adaptivity_type == "local":
             for inactive_id in inactive_sim_ids:
                 micro_sims_output[inactive_id] = dict()
                 for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_associated_active_local_id()].items(
                 ):
                     micro_sims_output[inactive_id][dname] = values
-        elif self._adaptivity_type == "global":
-            micro_sims_output = self._adaptivity_controller.communicate_data(
-                self._global_ids_of_local_sims, micro_sims_output)
 
-            if self._is_adaptivity_on:
                 for name in self._adaptivity_micro_data_names:
                     # Collect micro sim output for adaptivity
                     self._data_for_adaptivity[name][inactive_id] = micro_sims_output[inactive_id][name]
@@ -480,10 +505,10 @@ class MicroManager:
                 micro_sims_output[inactive_id]["active_state"] = 0
                 micro_sims_output[inactive_id]["active_steps"] = self._micro_sims_active_steps[inactive_id]
 
-            if self._is_micro_solve_time_required:
-                micro_sims_output[inactive_id]["micro_sim_time"] = 0
+                if self._is_micro_solve_time_required:
+                    micro_sims_output[inactive_id]["micro_sim_time"] = 0
 
-        return micro_sims_output
+        return micro_sims_output        
 
     def solve(self):
         """
@@ -492,12 +517,12 @@ class MicroManager:
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
 
-        micro_sim_states = np.ones((self._local_number_of_micro_sims))  # By default all sims are active
-
         if self._is_adaptivity_on:
+            micro_sim_states = np.ones((self._local_number_of_micro_sims))  # By default all sims are active
             similarity_dists = np.zeros(
                 (self._number_of_micro_sims_for_adaptivity,
                  self._number_of_micro_sims_for_adaptivity))
+
             # Start adaptivity calculation with all sims inactive
             micro_sim_states = np.zeros((self._number_of_micro_sims_for_adaptivity))
 
@@ -525,7 +550,10 @@ class MicroManager:
                 if self._is_adaptivity_on:
                     if not self._is_adaptivity_required_in_every_implicit_iteration:
                         if self._adaptivity_type == "local":
-                            similarity_dists, micro_sim_states = self.compute_adaptivity(
+                            similarity_dists, micro_sim_states = self.compute_local_adaptivity(
+                                similarity_dists, micro_sim_states)
+                        elif self._adaptivity_type == "global":
+                            similarity_dists, micro_sim_states = self.compute_global_adaptivity(
                                 similarity_dists, micro_sim_states)
 
                         # Only do checkpointing if adaptivity is computed once in every time window
@@ -544,13 +572,21 @@ class MicroManager:
 
             if self._is_adaptivity_on:
                 if self._is_adaptivity_required_in_every_implicit_iteration:
-                    similarity_dists, micro_sim_states = self.compute_adaptivity(similarity_dists, micro_sim_states)
+                    if self._adaptivity_type == "local":
+                        similarity_dists, micro_sim_states = self.compute_local_adaptivity(
+                            similarity_dists, micro_sim_states)
+                    elif self._adaptivity_type == "global":
+                        similarity_dists, micro_sim_states = self.compute_global_adaptivity(
+                            similarity_dists, micro_sim_states)
 
                     active_sim_ids = np.where(micro_sim_states == 1)[0]
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
 
-            micro_sims_output = self.solve_micro_simulations(micro_sims_input, micro_sim_states)
+            if self._is_adaptivity_on:
+                micro_sims_output = self.solve_micro_simulations_with_adaptivity(micro_sims_input, micro_sim_states)
+            else:
+                micro_sims_output = self.solve_micro_simulations(micro_sims_input)
 
             self.write_data_to_precice(micro_sims_output)
 

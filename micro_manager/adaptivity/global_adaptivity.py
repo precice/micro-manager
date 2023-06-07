@@ -5,7 +5,7 @@ import sys
 import numpy as np
 import hashlib
 from copy import deepcopy
-from adaptivity import AdaptivityCalculator
+from .adaptivity import AdaptivityCalculator
 
 
 class GlobalAdaptivityCalculator(AdaptivityCalculator):
