@@ -67,7 +67,7 @@ class TestFunctioncalls(TestCase):
         manager._local_number_of_micro_sims = 4
         manager._micro_sims = [MicroSimulation() for _ in range(4)]
         manager._micro_sims_active_steps = np.zeros(4, dtype=np.int32)
-        micro_sims_output = manager.solve_micro_simulations(self.fake_read_data, np.array([True, True, True, True]))
+        micro_sims_output = manager.solve_micro_simulations(self.fake_read_data)
         for data, fake_data in zip(micro_sims_output, self.fake_write_data):
             self.assertEqual(data["micro-scalar-data"], 2)
             self.assertListEqual(data["micro-vector-data"].tolist(),

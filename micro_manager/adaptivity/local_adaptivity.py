@@ -10,7 +10,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(self, configurator) -> None:
         super().__init__(configurator)
 
-    def update_inactive_micro_sims(
+    def update_inactive_sims(
             self,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray,

@@ -48,7 +48,7 @@ class AdaptivityCalculator:
 
         return _similarity_dists
 
-    def update_active_micro_sims(
+    def update_active_sims(
             self,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray,

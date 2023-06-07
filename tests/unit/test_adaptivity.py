@@ -165,7 +165,7 @@ class TestAdaptivity(TestCase):
 
             def get_associated_active_local_id(self):
                 return self._associated_active_local_id
-            
+
             def get_local_id(self):
                 return self._local_id
 

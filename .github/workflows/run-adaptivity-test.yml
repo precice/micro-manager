@@ -31,6 +31,7 @@ jobs:
         run: pip3 install --user .
 
       - name: Run integration test
+        timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube_dummy
         run: python3 unit_cube_macro.py & python3 run_micro_manager.py --config micro-manager-config-adaptivity.json
 
