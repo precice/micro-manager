@@ -161,6 +161,6 @@ The Micro Manager uses the output functionality of preCICE, hence these data set
 </participant>
 ```
 
-## Next Steps
+## Next step
 
 After creating a configuration file you are ready to [run the Micro Manager](tooling-micro-manager-running.html).
