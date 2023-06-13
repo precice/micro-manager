@@ -1,7 +1,6 @@
 """
 Functionality for adaptive control of micro simulations in a global way (all-to-all comparison of micro simulations)
 """
-import sys
 import numpy as np
 import hashlib
 from copy import deepcopy
@@ -23,12 +22,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._rank = rank
         self._send_sims_from_this_rank = dict()
         self._recv_sims_from_ranks = dict()  # keys are global IDs, values are ranks to receive from
-
-    def _create_tag(self, sim_id, src_rank, dest_rank):
-        send_hashtag = hashlib.sha256()
-        send_hashtag.update((str(src_rank) + str(sim_id) + str(dest_rank)).encode('utf-8'))
-        tag = int(send_hashtag.hexdigest()[:6], base=16)
-        return tag
 
     def update_inactive_sims(
             self,
@@ -85,22 +78,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     self._send_sims_from_this_rank[global_id] = rank
         # ----------
 
-        # Asynchronous receive operations
-        recv_reqs = []
-        for global_id, recv_rank in self._recv_sims_from_ranks.items():
-            tag = self._create_tag(global_id, recv_rank, self._rank)
-            recv_reqs.append(self._comm.irecv(source=recv_rank, tag=tag))
-
-        # Asynchronous send operations
-        send_reqs = []
-        for global_id, send_rank in self._send_sims_from_this_rank.items():
-            tag = self._create_tag(global_id, self._rank, send_rank)
-            local_id = self._global_ids.index(global_id)
-            req = self._comm.isend(micro_sims[global_id], dest=send_rank, tag=tag)
-            send_reqs.append(req)
-
-        # Wait for all non-blocking communications to complete
-        self._comm.waitall(send_reqs)
+        recv_reqs = self._p2p_comm(self._send_sims_from_this_rank, self._recv_sims_from_ranks, micro_sims)
 
         # Use received micro sims to activate the currently inactive sims on this rank
         for req in recv_reqs:
@@ -118,22 +96,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         """
         _micro_output = np.copy(micro_output)
 
-        # Asynchronous receive operations
-        recv_reqs = []
-        for global_id, recv_rank in self._recv_sims_from_ranks.items():
-            tag = self._create_tag(global_id, recv_rank, self._rank)
-            recv_reqs.append(self._comm.irecv(source=recv_rank, tag=tag))
-
-        # Asynchronous send operations
-        send_reqs = []
-        for global_id, send_rank in self._send_sims_from_this_rank.items():
-            tag = self._create_tag(global_id, self._rank, send_rank)
-            local_id = global_ids.index(global_id)
-            req = self._comm.isend(_micro_output[local_id], dest=send_rank, tag=tag)
-            send_reqs.append(req)
-
-        # Wait for all non-blocking communications to complete
-        self._comm.waitall(send_reqs)
+        recv_reqs = self._p2p_comm(self._send_sims_from_this_rank, self._recv_sims_from_ranks, _micro_output)
 
         global_ids_of_recv_data = list(self._recv_sims_from_ranks.keys())
         # Use received micro sims to activate the currently inactive sims on this rank
@@ -142,3 +105,31 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             _micro_output[local_id] = req.wait()
 
         return _micro_output
+
+    def _create_tag(self, sim_id, src_rank, dest_rank):
+        send_hashtag = hashlib.sha256()
+        send_hashtag.update((str(src_rank) + str(sim_id) + str(dest_rank)).encode('utf-8'))
+        tag = int(send_hashtag.hexdigest()[:6], base=16)
+        return tag
+
+    def _p2p_comm(self, send_map, recv_map, data):
+        """
+        """
+        # Asynchronous receive operations
+        recv_reqs = []
+        for global_id, recv_rank in recv_map.items():
+            tag = self._create_tag(global_id, recv_rank, self._rank)
+            recv_reqs.append(self._comm.irecv(source=recv_rank, tag=tag))
+
+        # Asynchronous send operations
+        send_reqs = []
+        for global_id, send_rank in send_map.items():
+            tag = self._create_tag(global_id, self._rank, send_rank)
+            local_id = self._global_ids.index(global_id)
+            req = self._comm.isend(data[local_id], dest=send_rank, tag=tag)
+            send_reqs.append(req)
+
+        # Wait for all non-blocking communications to complete
+        self._comm.waitall(send_reqs)
+
+        return recv_reqs
