@@ -90,6 +90,6 @@ The `solve()` function should have the following signature:
     This will create a shared library `micro_dummy.so` which can be directly imported in Python.
     For more information on compiling C++ libraries, see the [pybind11 documentation](https://pybind11.readthedocs.io/en/stable/compiling.html).
 
-## Next Steps
+## Next step
 
-After restructuring your micro simulation code into a Python-importable class structure, [configure the Micro Manager](tooling-micro-manager-usage-configuration.html).
+After restructuring your micro simulation code into a Python-importable class structure, [configure the Micro Manager](tooling-micro-manager-configuration.html).

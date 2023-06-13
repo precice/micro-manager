@@ -31,23 +31,21 @@ Ensure that the following dependencies are installed:
 * [numpy](https://numpy.org/install/)
 * [mpi4py](https://mpi4py.readthedocs.io/en/stable/install.html)
 
-#### Clone this repository
+#### Clone the Micro Manager
 
 ```bash
 git clone https://github.com/precice/micro-manager.git
 ```
 
-#### Build manually using pip
+#### Install manually
 
-Go to the directory `micro-manager/` and run
+To install using `pip`, go to the directory `micro-manager/` and run
 
 ```bash
 pip install --user .
 ```
 
-#### Build manually using Python
-
-Go to the project directory `micro-manager/` and run
+To install using Python, go to the project directory `micro-manager/` and run
 
 ```bash
 python setup.py install --user
@@ -55,8 +53,8 @@ python setup.py install --user
 
 ## Get the latest development version
 
-If you want to use the latest development version of the Micro Manager, clone the [develop](https://github.com/precice/micro-manager/tree/develop) branch and then [build manually using pip](#build-manually-using-pip).
+If you want to use the latest development version of the Micro Manager, clone the [develop](https://github.com/precice/micro-manager/tree/develop) branch and then [build manually using pip](#install-manually).
 
-## Next steps
+## Next step
 
 After successfully installing the Micro Manager, proceed to [preparing your micro simulation for the coupling](tooling-micro-manager-prepare-micro-simulation.html).
