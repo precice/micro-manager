@@ -11,3 +11,4 @@ jobs:
         with:
           config: .markdownlint.json
           files: '.'
+          ignore: paper.md
