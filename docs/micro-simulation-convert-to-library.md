@@ -2,6 +2,7 @@
 title: Prepare micro simulation
 permalink: tooling-micro-manager-prepare-micro-simulation.html
 keywords: tooling, macro-micro, two-scale
+toc: off
 summary: Create an Python-importable class from your micro simulation code.
 ---
 
