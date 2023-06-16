@@ -34,39 +34,36 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
         number_of_sims = _micro_sim_states.size
-       
-        inactive_to_associated_active_map = dict()  # keys are associated global active IDs, values are global inactive IDs which are to be activated
+
         send_sims_to_ranks_local = dict()  # keys are global IDs, values are rank to send to
 
-        # Fill dicts send_sims_from_this_rank and recv_sims_from_ranks. Names are self explanatory.
+        # Create a map between inactive sims on this rank and their globally associated simulations
         for global_id in range(number_of_sims):
             if not _micro_sim_states[global_id]:  # if id is inactive
                 if self._check_for_activation(global_id, similarity_dists, _micro_sim_states):
                     _micro_sim_states[global_id] = 1
 
-                    if global_id in self._global_ids:  # Local scope from here on
-                        local_id = self._global_ids.index(global_id)
-                        associated_active_global_id = micro_sims[local_id].get_associated_active_global_id()
+        inactive_local_ids = np.where(micro_sim_states[self._global_ids[0]:self._global_ids[-1]] == 0)[0]
 
-                        # Store the associated link in the map
-                        inactive_to_associated_active_map[associated_active_global_id] = [
-                            local_id, micro_sims[local_id].get_global_id()]
+        for inactive_local_id in inactive_local_ids:
+            assoc_active_global_id = micro_sims[inactive_local_id].get_associated_active_global_id()
 
-                        # Effectively kill the micro sim object associated to the inactive ID
-                        micro_sims[local_id] = None
+            # Kill the inactive micro sim object
+            micro_sims[inactive_local_id] = None
 
-                        # Get the rank on which the associated active simulation is
-                        recv_rank = self._micro_sim_is_on_rank[associated_active_global_id]
+            # Get the rank on which the associated active simulation is
+            recv_rank = self._micro_sim_is_on_rank[assoc_active_global_id]
 
-                        # If simulation is to be copied from this rank, just do it directly
-                        if recv_rank == self._rank:
-                            associated_active_local_id = self._global_ids.index(associated_active_global_id)
-                            micro_sims[local_id] = deepcopy(micro_sims[associated_active_local_id])
-                        else:
-                            # Gather information about which sims to receive from where
-                            self._recv_sims_from_ranks[associated_active_global_id] = recv_rank
-                            # Gather information about which sims to send where, but from the receiving perspective
-                            send_sims_to_ranks_local[associated_active_global_id] = self._rank
+            assoc_active_local_id = self._global_ids.index(assoc_active_global_id)
+
+            # If associated simulation is on this rank, copy it directly
+            if recv_rank == self._rank:
+                micro_sims[inactive_local_id] = deepcopy(micro_sims[assoc_active_local_id])
+            else:
+                # Add simulation and its rank to receive map
+                self._recv_sims_from_ranks[assoc_active_global_id] = recv_rank
+                # Add simulation and this rank to local sending map
+                send_sims_to_ranks_local[assoc_active_global_id] = [self._rank]
 
         # ----- Gather information about which sims to send where, from the sending perspective -----
         send_sims_to_ranks_list = self._comm.allgather(send_sims_to_ranks_local)
@@ -74,7 +71,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         for d in send_sims_to_ranks_list:
             for global_id, rank in d.items():
                 if self._micro_sim_is_on_rank[global_id] == self._rank:
-                    self._send_sims_from_this_rank[global_id] = rank
+                    self._send_sims_from_this_rank[global_id].append(rank)
         # ----------
 
         recv_reqs = self._p2p_comm(self._send_sims_from_this_rank, self._recv_sims_from_ranks, micro_sims)
@@ -83,14 +80,14 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         for req in recv_reqs:
             active_sim = req.wait()
             global_id = active_sim.get_global_id()
-            inactive_sim_data = inactive_to_associated_active_map[global_id]
+            inactive_sim_data = inactive_to_active_map_nm1[global_id]
             micro_sims[inactive_sim_data[0]] = deepcopy(active_sim)
             micro_sims[inactive_sim_data[0]].set_local_id(inactive_sim_data[0])
             micro_sims[inactive_sim_data[0]].set_global_id(inactive_sim_data[1])
 
         return _micro_sim_states
 
-    def communicate_data(self, global_ids, micro_output):
+    def communicate_micro_output(self, global_ids, micro_output):
         """
         """
         _micro_output = np.copy(micro_output)
@@ -104,6 +101,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             _micro_output[local_id] = req.wait()
 
         return _micro_output
+
+    def _get_association_map
 
     def _create_tag(self, sim_id, src_rank, dest_rank):
         send_hashtag = hashlib.sha256()

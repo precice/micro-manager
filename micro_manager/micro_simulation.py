@@ -53,21 +53,15 @@ def create_micro_problem_class(base_micro_simulation):
         def is_active(self) -> bool:
             return self._is_active
 
-        def is_associated_to_active_sim(self, similar_active_local_id: int, similar_active_global_id: int) -> None:
+        def is_associated_to_active_sim(self, similar_active_id: int) -> None:
             assert not self._is_active, "Micro simulation {} is active and hence cannot be associated to another active simulation".format(
                 self._global_id)
-            self._associated_active_local_id = similar_active_local_id
-            self._associated_active_global_id = similar_active_global_id
+            self._associated_active_id = similar_active_id
 
-        def get_associated_active_local_id(self) -> int:
+        def get_associated_active_id(self) -> int:
             assert not self._is_active, "Micro simulation {} is active and hence cannot have an associated active local ID".format(
                 self._global_id)
-            return self._associated_active_local_id
-
-        def get_associated_active_global_id(self) -> int:
-            assert not self._is_active, "Micro simulation {} is active and hence cannot have an associated active global ID".format(
-                self._global_id)
-            return self._associated_active_global_id
+            return self._associated_active_id
 
         def is_associated_to_inactive_sim(self, similar_inactive_local_id: int,
                                           similar_inactive_global_id: int) -> None:

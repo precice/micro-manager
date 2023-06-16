@@ -100,20 +100,19 @@ class AdaptivityCalculator:
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        active_sim_ids = np.where(micro_sim_states == 1)[0]
-        inactive_sim_ids = np.where(micro_sim_states == 0)[0]
+        active_ids = np.where(micro_sim_states == 1)[0]
+        inactive_ids = np.where(micro_sim_states == 0)[0]
 
         # Associate inactive micro sims to active micro sims
-        for inactive_id in inactive_sim_ids:
+        for inactive_id in inactive_ids:
             dist_min = sys.float_info.max
-            for active_id in active_sim_ids:
+            for active_id in active_ids:
                 # Find most similar active sim for every inactive sim
                 if similarity_dists[inactive_id, active_id] < dist_min:
                     associated_active_id = active_id
                     dist_min = similarity_dists[inactive_id, active_id]
 
-            micro_sims[inactive_id].is_associated_to_active_sim(
-                micro_sims[associated_active_id].get_local_id(), micro_sims[associated_active_id].get_global_id())
+            micro_sims[inactive_id].is_associated_to_active_sim(associated_active_id)
 
     def _check_for_activation(
             self,
