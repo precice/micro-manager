@@ -495,7 +495,7 @@ class MicroManager:
         elif self._adaptivity_type == "local":
             for inactive_id in inactive_sim_ids:
                 micro_sims_output[inactive_id] = dict()
-                for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_associated_active_local_id()].items(
+                for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_associated_active_id()].items(
                 ):
                     micro_sims_output[inactive_id][dname] = values
 
