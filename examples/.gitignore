@@ -1,7 +1,7 @@
 # preCICE related files
 *.log
 *events.json
-precice-run/
+precice-events/
 
 # PyCharm related files
 .idea

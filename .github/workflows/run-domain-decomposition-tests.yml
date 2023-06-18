@@ -11,7 +11,7 @@ jobs:
   domain_decomposition_integration_test:
     name: Run domain decomposition integration tests
     runs-on: ubuntu-latest
-    container: precice/precice
+    container: precice/precice:develop
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -36,6 +36,7 @@ jobs:
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           su -c "python -m pip install --upgrade pip" precice
           su -c "pip install setuptools wheel twine" precice
+          su -c "pip install git+https://github.com/precice/python-bindings.git@develop" precice
 
       - name: Install micro-manager
         working-directory: micro-manager
@@ -59,7 +60,7 @@ jobs:
   domain_decomposition_unit_tests:
     name: Run domain decomposition unit tests
     runs-on: ubuntu-latest
-    container: precice/precice
+    container: precice/precice:develop
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -73,6 +74,7 @@ jobs:
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           python -m pip install --upgrade pip
           pip install setuptools wheel
+          pip install git+https://github.com/precice/python-bindings.git@develop
 
       - name: Install Micro Manager
         working-directory: micro-manager

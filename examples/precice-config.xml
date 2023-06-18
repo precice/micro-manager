@@ -1,12 +1,11 @@
 <?xml version="1.0"?>
 
-<precice-configuration>
+<precice-configuration dimensions="3" experimental="true">
 
     <log>
 	<sink type="stream" output="stdout"  filter= "%Severity% > debug" enabled="true" />
     </log>
   
-  <solver-interface experimental="true" dimensions="3">
     
     <data:scalar name="macro-scalar-data"/>
     <data:vector name="macro-vector-data"/>
@@ -23,7 +22,7 @@
     </mesh>
 
     <participant name="Macro-dummy">
-      <use-mesh name="macro-mesh" provide="yes"/>
+      <provide-mesh name="macro-mesh"/>
       <read-data name="micro-scalar-data" mesh="macro-mesh"/>
       <read-data name="micro-vector-data" mesh="macro-mesh"/>
       <write-data name="macro-scalar-data" mesh="macro-mesh"/>
@@ -31,7 +30,7 @@
     </participant>
 
     <participant name="Micro-Manager">
-      <use-mesh name="macro-mesh" from="Macro-dummy" direct-access="true" safety-factor="0.0"/>
+      <receive-mesh name="macro-mesh" from="Macro-dummy" direct-access="true" safety-factor="0.0"/>
       <read-data name="macro-scalar-data" mesh="macro-mesh"/>
       <read-data name="macro-vector-data" mesh="macro-mesh"/>
       <write-data name="micro-scalar-data" mesh="macro-mesh"/>
@@ -46,13 +45,12 @@
        <max-time value="3.0"/>
        <time-window-size value="1.0"/>
        <max-iterations value="5"/>
-       <exchange data="micro-scalar-data" mesh="macro-mesh" from="Micro-Manager" to="Macro-dummy" initialize="yes"/>
-       <exchange data="micro-vector-data" mesh="macro-mesh" from="Micro-Manager" to="Macro-dummy" initialize="yes"/>
+       <exchange data="micro-scalar-data" mesh="macro-mesh" from="Micro-Manager" to="Macro-dummy" initialize="no"/>
+       <exchange data="micro-vector-data" mesh="macro-mesh" from="Micro-Manager" to="Macro-dummy" initialize="no"/>
        <exchange data="macro-scalar-data" mesh="macro-mesh" from="Macro-dummy" to="Micro-Manager"/>
        <exchange data="macro-vector-data" mesh="macro-mesh" from="Macro-dummy" to="Micro-Manager"/>
        <relative-convergence-measure limit="1e-5" data="macro-scalar-data" mesh="macro-mesh"/>
        <relative-convergence-measure limit="1e-5" data="micro-scalar-data" mesh="macro-mesh"/>
     </coupling-scheme:serial-implicit>
 
-  </solver-interface>
 </precice-configuration>

@@ -11,7 +11,7 @@ jobs:
   adaptivity_integration_test:
     name: Run adaptivity integration test
     runs-on: ubuntu-latest
-    container: precice/precice
+    container: precice/precice:develop
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -25,6 +25,7 @@ jobs:
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           python -m pip install --upgrade pip
           pip install setuptools wheel
+          pip install git+https://github.com/precice/python-bindings.git@develop
 
       - name: Install Micro Manager
         working-directory: micro-manager
@@ -37,7 +38,7 @@ jobs:
   adaptivity_unit_tests:
     name: Run adaptivity unit tests
     runs-on: ubuntu-latest
-    container: precice/precice
+    container: precice/precice:develop
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -51,6 +52,7 @@ jobs:
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           python -m pip install --upgrade pip
           pip install setuptools wheel
+          pip install git+https://github.com/precice/python-bindings.git@develop
 
       - name: Install Micro Manager
         working-directory: micro-manager

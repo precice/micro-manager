@@ -10,7 +10,7 @@ on:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
-    container: precice/precice
+    container: precice/precice:develop
     steps:
       - uses: actions/checkout@v3
         with:
