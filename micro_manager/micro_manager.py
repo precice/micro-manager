@@ -211,8 +211,7 @@ class MicroManager:
             for i in range(self._local_number_of_micro_sims):
                 self._micro_sims[i] = (
                     create_micro_problem_class(
-                        self._micro_problem)(
-                        i, self._global_ids_of_local_sims[i]))
+                        self._micro_problem)(self._global_ids_of_local_sims[i]))
 
         micro_sims_output = list(range(self._local_number_of_micro_sims))
 
@@ -533,9 +532,8 @@ class MicroManager:
 
             # All inactive sims are associated to the one active sim
             for i in range(1, self._number_of_micro_sims_for_adaptivity):
-                self._micro_sims[i].is_associated_to_active_sim(0, self._global_ids_of_local_sims[0])
-            self._micro_sims[0].is_associated_to_inactive_sims(range(
-                1, self._number_of_micro_sims_for_adaptivity), self._global_ids_of_local_sims[1:self._local_number_of_micro_sims - 1])
+                self._micro_sims[i].is_associated_to_active_sim(self._global_ids_of_local_sims[0])
+            self._micro_sims[0].is_associated_to_inactive_sims(self._global_ids_of_local_sims[1:self._local_number_of_micro_sims - 1])
 
         similarity_dists_cp = None
         micro_sim_states_cp = None
