@@ -118,11 +118,11 @@ class MicroManager:
     def initialize(self) -> None:
         """
         This function does the following things:
-        - If the Micro Manager has been executed in parallel, it decomposes the domain as uniformly as possible.
-        - Initializes preCICE.
-        - Gets the macro mesh information from preCICE.
-        - Creates all micro simulation objects and initializes them if an initialization procedure is available.
-        - Writes initial data to preCICE.
+        - Decomposes the domain if the Micro Manager is executed in parallel
+        - Initializes preCICE
+        - Gets the macro mesh information from preCICE
+        - Creates all micro simulation objects and initializes them if an initialization procedure is available
+        - Writes initial data to preCICE
         """
         # Decompose the macro-domain and set the mesh access region for each
         # partition in preCICE
