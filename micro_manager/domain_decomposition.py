@@ -1,5 +1,5 @@
 """
-Functionality to partition the macro domain according to the user provided partitions in each axis
+Functionality to partition the macro domain according to partitions in each axis provided by the user
 """
 
 import numpy as np
@@ -21,11 +21,11 @@ class DomainDecomposer:
         macro_bounds : list
             List containing upper and lower bounds of the macro domain.
             Format in 2D is [x_min, x_max, y_min, y_max]
-            Format in 2D is [x_min, x_max, y_min, y_max, z_min, z_max]
+            Format in 3D is [x_min, x_max, y_min, y_max, z_min, z_max]
         ranks_per_axis : list
             List containing axis wise ranks for a parallel run
             Format in 2D is [ranks_x, ranks_y]
-            Format in 2D is [ranks_x, ranks_y, ranks_z]
+            Format in 3D is [ranks_x, ranks_y, ranks_z]
 
         Returns
         -------
