@@ -4,14 +4,68 @@ Functionality for adaptive control of micro simulations locally within a rank (o
 import sys
 import numpy as np
 from copy import deepcopy
+from math import exp
 from .adaptivity import AdaptivityCalculator
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator) -> None:
-        super().__init__(configurator)
+    def __init__(self, configurator, logger) -> None:
+        super().__init__(configurator, logger)
 
-    def update_active_sims(
+    def compute_adaptivity(
+            self,
+            dt,
+            micro_sims,
+            similarity_dists_nm1: np.ndarray,
+            micro_sim_states_nm1: np.ndarray,
+            data_for_adaptivity: dict):
+        """
+        Compute adaptivity locally (within a rank) based on similarity distances and micro simulation states
+
+        Parameters
+        ----------
+        similarity_dists_nm1 : numpy array
+            2D array having similarity distances between each micro simulation pair
+        micro_sim_states_nm1 : numpy array
+            1D array having state (active or inactive) of each micro simulation on this rank
+
+        Results
+        -------
+        similarity_dists : numpy array
+            2D array having similarity distances between each micro simulation pair
+        micro_sim_states : numpy array
+            1D array having state (active or inactive) of each micro simulation
+        """
+        # Multiply old similarity distance by history term to get current distances
+        similarity_dists_n = exp(-self._hist_param * dt) * similarity_dists_nm1
+
+        for name, _ in self._adaptivity_data_names.items():
+            # For global adaptivity, similarity distance matrix is calculated globally on every rank
+            similarity_dists_n = self._get_similarity_dists(
+                dt, similarity_dists_n, data_for_adaptivity[name])
+
+        # Operation done globally if global adaptivity is chosen
+        micro_sim_states_n = self._update_active_sims(
+            similarity_dists_n, micro_sim_states_nm1, micro_sims)
+
+        micro_sim_states_n = self._update_inactive_sims(
+            similarity_dists_n, micro_sim_states_nm1, micro_sims)
+
+        self._associate_inactive_to_active(
+            similarity_dists_n, micro_sim_states_n, micro_sims)
+
+        self._logger.info(
+            "Number of active micro simulations = {}".format(
+                np.count_nonzero(
+                    micro_sim_states_n == 1)))
+        self._logger.info(
+            "Number of inactive micro simulations = {}".format(
+                np.count_nonzero(
+                    micro_sim_states_n == 0)))
+
+        return similarity_dists_n, micro_sim_states_n
+
+    def _update_active_sims(
             self,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray,
@@ -46,7 +100,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         return _micro_sim_states
 
-    def update_inactive_sims(
+    def _update_inactive_sims(
             self,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray,
@@ -94,7 +148,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         return _micro_sim_states
 
-    def associate_inactive_to_active(
+    def _associate_inactive_to_active(
             self,
             similarity_dists: np.ndarray,
             micro_sim_states: np.ndarray,

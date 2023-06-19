@@ -7,17 +7,22 @@ from typing import Callable
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator) -> None:
+    def __init__(self, configurator, logger) -> None:
         # Names of data to be used for adaptivity computation
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
+        self._hist_param = configurator.get_adaptivity_hist_param()
+        self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
+
+        self._logger = logger
+
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
 
         self._similarity_measure = self._get_similarity_measure(configurator.get_adaptivity_similarity_measure())
 
-    def get_similarity_dists(self, dt: float, similarity_dists: np.ndarray, data: np.ndarray) -> np.ndarray:
+    def _get_similarity_dists(self, dt: float, similarity_dists: np.ndarray, data: np.ndarray) -> np.ndarray:
         """
         Calculate metric which determines if two micro simulations are similar enough to have one of them deactivated.
 
