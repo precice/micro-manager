@@ -183,7 +183,7 @@ class MicroManager:
             # Create micro simulation objects
             for i in range(self._local_number_of_micro_sims):
                 self._micro_sims[i] = create_micro_problem_class(
-                    self._micro_problem)(i, self._global_ids_of_local_sims[i])
+                    self._micro_problem)(self._global_ids_of_local_sims[i])
 
             # Create a map of micro simulation global IDs and the ranks on which they are
             micro_sims_on_this_rank = np.zeros(self._local_number_of_micro_sims)
