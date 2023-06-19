@@ -76,7 +76,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         for i in range(number_of_sims):
             if not _micro_sim_states[i]:  # if id is inactive
                 if self._check_for_activation(i, similarity_dists, _micro_sim_states):
-                    associated_active_local_id = micro_sims[i].get_associated_active_local_id()
+                    associated_active_local_id = micro_sims[i].get_associated_active_id()
 
                     # Get local and global ID of inactive simulation, to set it to the copied simulation later
                     global_id = micro_sims[i].get_global_id()

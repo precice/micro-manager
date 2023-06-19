@@ -314,21 +314,21 @@ class MicroManager:
 
     def compute_local_adaptivity(self, similarity_dists_nm1: np.ndarray, micro_sim_states_nm1: np.ndarray):
         """
-        Compute adaptivity locally (within a rank) based on similarity distances and micro simulation states from t_{n-1}
+        Compute adaptivity locally (within a rank) based on similarity distances and micro simulation states
 
         Parameters
         ----------
         similarity_dists_nm1 : numpy array
-            2D array having similarity distances between each micro simulation pair at t_{n-1}
+            2D array having similarity distances between each micro simulation pair
         micro_sim_states_nm1 : numpy array
-            1D array having state (active or inactive) of each micro simulation at t_{n-1} on this rank
+            1D array having state (active or inactive) of each micro simulation on this rank
 
         Results
         -------
         similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair at t_{n}
+            2D array having similarity distances between each micro simulation pair
         micro_sim_states : numpy array
-            1D array having state (active or inactive) of each micro simulation at t_{n}
+            1D array having state (active or inactive) of each micro simulation
         """
         # Multiply old similarity distance by history term to get current distances
         similarity_dists_n = exp(-self._hist_param * self._dt) * similarity_dists_nm1
@@ -361,21 +361,21 @@ class MicroManager:
 
     def compute_global_adaptivity(self, similarity_dists_nm1: np.ndarray, micro_sim_states_nm1: np.ndarray):
         """
-        Compute adaptivity locally (within a rank) based on similarity distances and micro simulation states from t_{n-1}
+        Compute adaptivity globally based on similarity distances and micro simulation states
 
         Parameters
         ----------
         similarity_dists_nm1 : numpy array
-            2D array having similarity distances between each micro simulation pair at t_{n-1}
+            2D array having similarity distances between each micro simulation pair
         micro_sim_states_nm1 : numpy array
-            1D array having state (active or inactive) of each micro simulation at t_{n-1} on this rank
+            1D array having state (active or inactive) of each micro simulation on this rank
 
         Results
         -------
         similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair at t_{n}
+            2D array having similarity distances between each micro simulation pair
         micro_sim_states : numpy array
-            1D array having state (active or inactive) of each micro simulation at t_{n}
+            1D array having state (active or inactive) of each micro simulation
         """
         # Gather adaptivity data from all ranks
         global_list_data_for_adaptivity = self._comm.allgather(self._data_for_adaptivity)

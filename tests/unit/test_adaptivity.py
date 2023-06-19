@@ -129,7 +129,7 @@ class TestAdaptivity(TestCase):
             def set_global_id(self, global_id):
                 pass
 
-            def get_associated_active_local_id(self):
+            def get_associated_active_id(self):
                 return 1
 
         dummy_micro_sims = []
@@ -155,32 +155,27 @@ class TestAdaptivity(TestCase):
                 similarity_dists[i, j] = self._dt * similarity_dist
 
         class MicroSimulation():
-            def __init__(self, local_id, global_id):
-                self._local_id = local_id
+            def __init__(self, global_id):
                 self._global_id = global_id
 
-            def is_associated_to_active_sim(self, local_id, global_id):
-                self._associated_active_local_id = local_id
-                self._associated_active_global_id = global_id
+            def is_associated_to_active_sim(self, global_id):
+                self._associated_active_id = global_id
 
-            def get_associated_active_local_id(self):
-                return self._associated_active_local_id
-
-            def get_local_id(self):
-                return self._local_id
+            def get_associated_active_id(self):
+                return self._associated_active_id
 
             def get_global_id(self):
                 return self._global_id
 
         dummy_micro_sims = []
         for i in range(self._number_of_sims):
-            dummy_micro_sims.append(MicroSimulation(i, i))
+            dummy_micro_sims.append(MicroSimulation(i))
 
         self._adaptivity_controller.associate_inactive_to_active(similarity_dists, micro_sim_states, dummy_micro_sims)
 
-        self.assertEqual(dummy_micro_sims[0].get_associated_active_local_id(), 2)
-        self.assertEqual(dummy_micro_sims[1].get_associated_active_local_id(), 2)
-        self.assertEqual(dummy_micro_sims[3].get_associated_active_local_id(), 4)
+        self.assertEqual(dummy_micro_sims[0].get_associated_active_id(), 2)
+        self.assertEqual(dummy_micro_sims[1].get_associated_active_id(), 2)
+        self.assertEqual(dummy_micro_sims[3].get_associated_active_id(), 4)
 
     def test_adaptivity_norms(self):
         calc = AdaptivityCalculator(Config('micro-manager-unit-test-adaptivity-config.json'))

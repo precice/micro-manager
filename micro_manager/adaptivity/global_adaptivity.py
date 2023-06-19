@@ -21,7 +21,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._global_ids = global_ids
         self._comm = comm
         self._rank = rank
-        self._active_to_inactive_map = dict()  # keys are active global IDs, values are lists of local and global IDs of associated inactive sims on this rank
+        # keys are active global IDs, values are lists of local and global IDs of associated inactive sims on this rank
+        self._active_to_inactive_map = dict()
         self._send_sims_from_this_rank = dict()  # keys are global IDs of sims to send, values are ranks to send the sims to
         self._recv_sims_from_ranks = dict()  # keys are global IDs to receive, values are ranks to receive from
 
@@ -145,6 +146,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
+        self._active_to_inactive_map.clear()  # Clear the dictionary for new entires in this timestep
 
         active_ids = np.where(micro_sim_states == 1)[0]
         inactive_ids = np.where(micro_sim_states == 0)[0]
@@ -161,7 +163,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             if self._sim_is_on_this_rank[inactive_id]:
                 local_id = self._global_ids.index(inactive_id)
                 micro_sims[local_id].is_associated_to_active_sim(associated_active_id)
-            
+
                 if isinstance(self._active_to_inactive_map[associated_active_id], list):
                     self._active_to_inactive_map[associated_active_id].append([local_id, inactive_id])
                 else:
