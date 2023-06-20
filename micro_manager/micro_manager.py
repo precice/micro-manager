@@ -474,7 +474,6 @@ class MicroManager:
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
 
-            if self._is_adaptivity_on:
                 micro_sims_output = self.solve_micro_simulations_with_adaptivity(micro_sims_input, micro_sim_states)
             else:
                 micro_sims_output = self.solve_micro_simulations(micro_sims_input)

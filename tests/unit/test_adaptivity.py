@@ -9,7 +9,7 @@ class TestAdaptivity(TestCase):
 
     def setUp(self):
         self._adaptivity_controller = LocalAdaptivityCalculator(
-            Config("micro-manager-unit-test-adaptivity-config.json"))
+            Config("micro-manager-unit-test-adaptivity-config.json"), 0)
         self._number_of_sims = 5
         self._dt = 0.1
         self._dim = 3
@@ -57,13 +57,13 @@ class TestAdaptivity(TestCase):
                 expected_similarity_dists[i, j] = self._dt * similarity_dist
 
         actual_similarity_dists = np.zeros((self._number_of_sims, self._number_of_sims))
-        actual_similarity_dists = self._adaptivity_controller.get_similarity_dists(
+        actual_similarity_dists = self._adaptivity_controller._get_similarity_dists(
             self._dt, actual_similarity_dists, self._micro_scalar_data)
-        actual_similarity_dists = self._adaptivity_controller.get_similarity_dists(
+        actual_similarity_dists = self._adaptivity_controller._get_similarity_dists(
             self._dt, actual_similarity_dists, self._micro_vector_data)
-        actual_similarity_dists = self._adaptivity_controller.get_similarity_dists(
+        actual_similarity_dists = self._adaptivity_controller._get_similarity_dists(
             self._dt, actual_similarity_dists, self._macro_scalar_data)
-        actual_similarity_dists = self._adaptivity_controller.get_similarity_dists(
+        actual_similarity_dists = self._adaptivity_controller._get_similarity_dists(
             self._dt, actual_similarity_dists, self._macro_vector_data)
 
         self.assertTrue(np.array_equal(expected_similarity_dists, actual_similarity_dists))
@@ -92,7 +92,7 @@ class TestAdaptivity(TestCase):
         for i in range(self._number_of_sims):
             dummy_micro_sims.append(MicroSimulation())
 
-        actual_micro_sim_states = self._adaptivity_controller.update_active_sims(
+        actual_micro_sim_states = self._adaptivity_controller._update_active_sims(
             similarity_dists, actual_micro_sim_states, dummy_micro_sims)
 
         self.assertTrue(np.array_equal(expected_micro_sim_states, actual_micro_sim_states))
@@ -117,14 +117,8 @@ class TestAdaptivity(TestCase):
             def activate(self):
                 pass
 
-            def get_local_id(self):
-                return 1
-
             def get_global_id(self):
                 return 1
-
-            def set_local_id(self, local_id):
-                pass
 
             def set_global_id(self, global_id):
                 pass
@@ -136,7 +130,7 @@ class TestAdaptivity(TestCase):
         for i in range(self._number_of_sims):
             dummy_micro_sims.append(MicroSimulation())
 
-        actual_micro_sim_states = self._adaptivity_controller.update_inactive_sims(
+        actual_micro_sim_states = self._adaptivity_controller._update_inactive_sims(
             similarity_dists, actual_micro_sim_states, dummy_micro_sims)
 
         self.assertTrue(np.array_equal(expected_micro_sim_states, actual_micro_sim_states))
@@ -171,14 +165,14 @@ class TestAdaptivity(TestCase):
         for i in range(self._number_of_sims):
             dummy_micro_sims.append(MicroSimulation(i))
 
-        self._adaptivity_controller.associate_inactive_to_active(similarity_dists, micro_sim_states, dummy_micro_sims)
+        self._adaptivity_controller._associate_inactive_to_active(similarity_dists, micro_sim_states, dummy_micro_sims)
 
         self.assertEqual(dummy_micro_sims[0].get_associated_active_id(), 2)
         self.assertEqual(dummy_micro_sims[1].get_associated_active_id(), 2)
         self.assertEqual(dummy_micro_sims[3].get_associated_active_id(), 4)
 
     def test_adaptivity_norms(self):
-        calc = AdaptivityCalculator(Config('micro-manager-unit-test-adaptivity-config.json'))
+        calc = AdaptivityCalculator(Config('micro-manager-unit-test-adaptivity-config.json'), 0)
 
         fake_data = np.array([[1], [2], [3]])
         self.assertTrue(np.allclose(calc._l1(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])))
