@@ -15,6 +15,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
     This class provides functionality to compute adaptivity globally, i.e. by comparing micro simulation from all processes.
     All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
     """
+
     def __init__(
             self,
             configurator,
@@ -51,7 +52,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             1D array having state (active or inactive) of each micro simulation on this rank
         data_for_adaptivity : dict
             Dictionary with keys as names of data to be used in the similarity calculation, and values as the respective data for the micro simulations
-            
+
         Results
         -------
         similarity_dists : numpy array
@@ -105,7 +106,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             1D array having state (active or inactive) of each micro simulation on this rank
         micro_output : list
             List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
-        
+
         Returns
         -------
         _micro_output : list
@@ -113,13 +114,17 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         """
         _micro_output = np.copy(micro_output)
 
-        inactive_local_ids = np.where(micro_sim_states[self._global_ids[0]:self._global_ids[-1]+1] == 0)[0]
+        inactive_local_ids = np.where(micro_sim_states[self._global_ids[0]:self._global_ids[-1] + 1] == 0)[0]
 
-        active_to_inactive_map = dict()  # Keys are global IDs of active simulations associated to inactive simulations on this rank. Values are global IDs of the inactive simulations.
-        
+        # Keys are global IDs of active simulations associated to inactive
+        # simulations on this rank. Values are global IDs of the inactive
+        # simulations.
+        active_to_inactive_map = dict()
+
         for i in inactive_local_ids:
             assoc_active_id = micro_sims[i].get_associated_active_id()
-            if not self._is_sim_on_this_rank[assoc_active_id]:  # Gather global IDs of associated active simulations not on this rank for communication
+            # Gather global IDs of associated active simulations not on this rank for communication
+            if not self._is_sim_on_this_rank[assoc_active_id]:
                 if assoc_active_id in active_to_inactive_map:
                     active_to_inactive_map[assoc_active_id].append(i)
                 else:
@@ -228,11 +233,11 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 # Kill the inactive micro sim object
                 micro_sims[to_be_activated_local_id] = None
 
-                if self._is_sim_on_this_rank[assoc_active_id]: # Associated active simulation is on the same rank
+                if self._is_sim_on_this_rank[assoc_active_id]:  # Associated active simulation is on the same rank
                     assoc_active_local_id = self._global_ids.index(assoc_active_id)
                     micro_sims[to_be_activated_local_id] = deepcopy(micro_sims[assoc_active_local_id])
                     micro_sims[to_be_activated_local_id].set_global_id(assoc_active_id)
-                else: # Associated active simulation is not on this rank
+                else:  # Associated active simulation is not on this rank
                     if assoc_active_id in to_be_activated_map:
                         to_be_activated_map[assoc_active_id].append((to_be_activated_local_id, i))
                     else:

@@ -367,8 +367,10 @@ class MicroManager:
             simulations.
         """
         if self._adaptivity_type == "global":
-            active_sim_ids = np.where(micro_sim_states[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1]+1] == 1)[0]
-            inactive_sim_ids = np.where(micro_sim_states[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1]+1] == 0)[0]
+            active_sim_ids = np.where(
+                micro_sim_states[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1] == 1)[0]
+            inactive_sim_ids = np.where(
+                micro_sim_states[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1] == 0)[0]
         elif self._adaptivity_type == "local":
             active_sim_ids = np.where(micro_sim_states == 1)[0]
             inactive_sim_ids = np.where(micro_sim_states == 0)[0]
