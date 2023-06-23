@@ -8,16 +8,14 @@
     },
     "simulation_params": {
         "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
+        "decomposition": [2, 1, 1],
         "adaptivity": {
-            "type": "local",
+            "type": "global",
             "data": ["macro-scalar-data", "macro-vector-data"],
             "history_param": 0.5,
             "coarsening_constant": 0.3,
             "refining_constant": 0.4,
             "every_implicit_iteration": "True"
         }
-    },
-    "diagnostics": {
-      "output_micro_sim_solve_time": "True"
     }
 }
