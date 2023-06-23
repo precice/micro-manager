@@ -24,7 +24,7 @@ def main():
     write_data_names = {"macro-scalar-data": 0, "macro-vector-data": 1}
 
     # Coupling mesh - unit cube with 5 points in each direction
-    np_axis = 5
+    np_axis = 2
     x_coords, y_coords, z_coords = np.meshgrid(
         np.linspace(0, 1, np_axis),
         np.linspace(0, 1, np_axis),

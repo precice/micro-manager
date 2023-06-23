@@ -93,14 +93,12 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return similarity_dists_n, micro_sim_states_n
 
-    def communicate_micro_output(self, global_ids: list, micro_sims: list, micro_sim_states: np.ndarray, micro_output: list) -> list:
+    def communicate_micro_output(self, micro_sims: list, micro_sim_states: np.ndarray, micro_output: list) -> list:
         """
         Communicate micro output from active simulation to their associated inactive simulations. P2P communication is done.
 
         Parameters
         ----------
-        global_ids : list
-            Global IDs of simulations on this rank.
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         micro_sim_states_nm1 : numpy array
@@ -117,25 +115,31 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         inactive_local_ids = np.where(micro_sim_states[self._global_ids[0]:self._global_ids[-1]+1] == 0)[0]
 
-        assoc_active_ids = []
+        active_to_inactive_map = dict()  # Keys are global IDs of active simulations associated to inactive simulations on this rank. Values are global IDs of the inactive simulations.
+        
         for i in inactive_local_ids:
             assoc_active_id = micro_sims[i].get_associated_active_id()
             if not self._is_sim_on_this_rank[assoc_active_id]:  # Gather global IDs of associated active simulations not on this rank for communication
-                assoc_active_ids.append(micro_sims[i].get_associated_active_id())
+                if assoc_active_id in active_to_inactive_map:
+                    active_to_inactive_map[assoc_active_id].append(i)
+                else:
+                    active_to_inactive_map[assoc_active_id] = [i]
             else:  # If associated active simulation is on this rank, copy the output directly
                 _micro_output[i] = _micro_output[self._global_ids.index(assoc_active_id)]
 
-        send_sims_from_this_rank, recv_sims_from_ranks = self._get_send_and_recv_maps_for_activation(assoc_active_ids)
+        assoc_active_ids = list(active_to_inactive_map.keys())
 
-        recv_reqs = self._p2p_comm(send_sims_from_this_rank, recv_sims_from_ranks, _micro_output)
+        recv_reqs = self._p2p_comm(assoc_active_ids, _micro_output)
 
-        global_ids_of_recv_data = list(recv_sims_from_ranks.keys())
-        # Use received micro sims to activate the currently inactive sims on this rank
+        print("Rank {} - active to inactive map: {}".format(self._rank, active_to_inactive_map))
+
+        # Add received output of active sims to inactive sims on this rank
         for count, req in enumerate(recv_reqs):
-            local_id = global_ids.index(global_ids_of_recv_data[count])
-            _micro_output[local_id] = req.wait()
+            output = req.wait()
+            for local_id in active_to_inactive_map[assoc_active_ids[count]]:
+                _micro_output[local_id] = output
 
-        #print("_micro_output at the END: {}".format(_micro_output))
+        print("Rank {} _micro_output after communication: {}".format(self._rank, _micro_output))
 
         return _micro_output
 
@@ -214,7 +218,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         # Keys are global IDs of active sims not on this rank, values are tuples of local and
         # global IDs of inactive sims associated to the active sims which are on this rank
         to_be_activated_map = dict()
-        assoc_global_ids_not_on_this_rank = []
 
         for i in to_be_activated_ids:
             # Handle activation of simulations on this rank
@@ -230,17 +233,12 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     micro_sims[to_be_activated_local_id] = deepcopy(micro_sims[assoc_active_local_id])
                     micro_sims[to_be_activated_local_id].set_global_id(assoc_active_id)
                 else: # Associated active simulation is not on this rank
-                    if isinstance(to_be_activated_map[assoc_active_id], list):
+                    if assoc_active_id in to_be_activated_map:
                         to_be_activated_map[assoc_active_id].append((to_be_activated_local_id, i))
                     else:
-                        to_be_activated_map[assoc_active_id] = (to_be_activated_local_id, i)
+                        to_be_activated_map[assoc_active_id] = [(to_be_activated_local_id, i)]
 
-                    assoc_global_ids_not_on_this_rank.append(assoc_active_id)
-
-        send_sims_from_this_rank, recv_sims_from_ranks = self._get_send_and_recv_maps_for_activation(
-            assoc_global_ids_not_on_this_rank)
-
-        recv_reqs = self._p2p_comm(send_sims_from_this_rank, recv_sims_from_ranks, micro_sims)
+        recv_reqs = self._p2p_comm(list(to_be_activated_map.keys()), micro_sims)
 
         # Use received micro sims to activate the required simulations
         for req in recv_reqs:
@@ -288,7 +286,13 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             if self._is_sim_on_this_rank[inactive_id]:
                 micro_sims[self._global_ids.index(inactive_id)].is_associated_to_active_sim(associated_active_id)
 
-    def _get_send_and_recv_maps_for_activation(self, assoc_active_ids: list) -> tuple:
+    def _create_tag(self, sim_id, src_rank, dest_rank):
+        send_hashtag = hashlib.sha256()
+        send_hashtag.update((str(src_rank) + str(sim_id) + str(dest_rank)).encode('utf-8'))
+        tag = int(send_hashtag.hexdigest()[:6], base=16)
+        return tag
+
+    def _p2p_comm(self, assoc_active_ids: list, data):
         """
         This function created sending and receiving maps for p2p communication.
 
@@ -296,64 +300,45 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         assoc_active_ids : list
             Global IDs of active simulations which are not on this rank and are associated to the inactive simulations on this rank
-
-        Returns
-        -------
-        send_sims_from_this_rank : dict
-            Dict where the keys are global IDs of simulations to send and values are ranks to send the simulations to
-        recv_sims_from_ranks : dict
-            Dict where keys are global IDs of simulations to receive and values are ranks to receive the simulations from
         """
-        send_sims_to_ranks_local = dict()  # keys are global IDs, values are rank to send to
-        send_sims_to_ranks = dict()  # keys are global IDs of sims to send, values are ranks to send the sims to
-        recv_sim_from_rank = dict()  # keys are global IDs to receive, values are ranks to receive from
-    
+        send_map_local = dict()  # keys are global IDs, values are rank to send to
+        send_map = dict()  # keys are global IDs of sims to send, values are ranks to send the sims to
+        recv_map = dict()  # keys are global IDs to receive, values are ranks to receive from
+
         for i in assoc_active_ids:
             # Add simulation and its rank to receive map
-            recv_sim_from_rank[i] = self._rank_of_sim[i]
+            recv_map[i] = int(self._rank_of_sim[i])
             # Add simulation and this rank to local sending map
-            send_sims_to_ranks_local[i] = self._rank
+            send_map_local[i] = self._rank
 
-        print("Rank: {} recv_sim_from_rank: {}, send_sims_to_ranks_local: {}".format(self._rank, recv_sim_from_rank, send_sims_to_ranks_local))
-        # ----- Gather information about which sims to send where, from the sending perspective -----
-        send_sims_to_ranks_list = self._comm.allgather(send_sims_to_ranks_local)
+        # Gather information about which sims to send where, from the sending perspective
+        send_map_list = self._comm.allgather(send_map_local)
 
-        print("Rank: {} send_sims_to_ranks_list: {}".format(self._rank, send_sims_to_ranks_list))
-
-        for d in send_sims_to_ranks_list:
+        for d in send_map_list:
             for i, rank in d.items():
                 if self._is_sim_on_this_rank[i]:
-                    if isinstance(send_sims_to_ranks[i], list):
-                        send_sims_to_ranks[i].append(rank)
+                    if i in send_map:
+                        send_map[i].append(rank)
                     else:
-                        send_sims_to_ranks[i] = [rank]
+                        send_map[i] = [rank]
 
-        return send_sims_to_ranks, recv_sim_from_rank
-
-    def _create_tag(self, sim_id, src_rank, dest_rank):
-        send_hashtag = hashlib.sha256()
-        send_hashtag.update((str(src_rank) + str(sim_id) + str(dest_rank)).encode('utf-8'))
-        tag = int(send_hashtag.hexdigest()[:6], base=16)
-        return tag
-
-    def _p2p_comm(self, send_map, recv_map, data):
-        """
-        """
         # Asynchronous send operations
         send_reqs = []
-        for global_id, send_rank in send_map.items():
-            tag = self._create_tag(global_id, self._rank, send_rank)
+        for global_id, send_ranks in send_map.items():
             local_id = self._global_ids.index(global_id)
-            req = self._comm.isend(data[local_id], dest=send_rank, tag=tag)
-            send_reqs.append(req)
+            for send_rank in send_ranks:
+                tag = self._create_tag(global_id, self._rank, send_rank)
+                req = self._comm.isend(data[local_id], dest=send_rank, tag=tag)
+                send_reqs.append(req)
 
         # Asynchronous receive operations
         recv_reqs = []
         for global_id, recv_rank in recv_map.items():
             tag = self._create_tag(global_id, recv_rank, self._rank)
-            recv_reqs.append(self._comm.irecv(source=recv_rank, tag=tag))
+            req = self._comm.irecv(source=recv_rank, tag=tag)
+            recv_reqs.append(req)
 
-        # Wait for all non-blocking communications to complete
+        # Wait for all non-blocking communication to complete
         MPI.Request.Waitall(send_reqs)
 
         return recv_reqs

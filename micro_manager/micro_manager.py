@@ -395,7 +395,7 @@ class MicroManager:
         # For each inactive simulation, copy data from most similar active simulation
         if self._adaptivity_type == "global":
             micro_sims_output = self._adaptivity_controller.communicate_micro_output(
-                self._global_ids_of_local_sims, self._micro_sims, micro_sim_states, micro_sims_output)
+                self._micro_sims, micro_sim_states, micro_sims_output)
 
         elif self._adaptivity_type == "local":
             for inactive_id in inactive_sim_ids:
