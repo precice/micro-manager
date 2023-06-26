@@ -94,7 +94,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return similarity_dists_n, micro_sim_states_n
 
-    def communicate_micro_output(self, micro_sims: list, micro_sim_states: np.ndarray, micro_output: list) -> list:
+    def communicate_micro_output(self, micro_sims: list, micro_sim_states: np.ndarray, micro_output: list) -> None:
         """
         Communicate micro output from active simulation to their associated inactive simulations. P2P communication is done.
 
@@ -106,14 +106,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             1D array having state (active or inactive) of each micro simulation on this rank
         micro_output : list
             List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
-
-        Returns
-        -------
-        _micro_output : list
-            List of dicts having individual output of each simulation. Inactive simulation entries are now filled.
         """
-        _micro_output = np.copy(micro_output)
-
         inactive_local_ids = np.where(micro_sim_states[self._global_ids[0]:self._global_ids[-1] + 1] == 0)[0]
 
         # Keys are global IDs of active simulations associated to inactive
@@ -130,23 +123,17 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 else:
                     active_to_inactive_map[assoc_active_id] = [i]
             else:  # If associated active simulation is on this rank, copy the output directly
-                _micro_output[i] = _micro_output[self._global_ids.index(assoc_active_id)]
+                micro_output[i] = deepcopy(micro_output[self._global_ids.index(assoc_active_id)])
 
         assoc_active_ids = list(active_to_inactive_map.keys())
 
-        recv_reqs = self._p2p_comm(assoc_active_ids, _micro_output)
-
-        print("Rank {} - active to inactive map: {}".format(self._rank, active_to_inactive_map))
+        recv_reqs = self._p2p_comm(assoc_active_ids, micro_output)
 
         # Add received output of active sims to inactive sims on this rank
         for count, req in enumerate(recv_reqs):
             output = req.wait()
             for local_id in active_to_inactive_map[assoc_active_ids[count]]:
-                _micro_output[local_id] = output
-
-        print("Rank {} _micro_output after communication: {}".format(self._rank, _micro_output))
-
-        return _micro_output
+                micro_output[local_id] = deepcopy(output)
 
     def _update_active_sims(
             self,

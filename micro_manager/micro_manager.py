@@ -11,6 +11,7 @@ from mpi4py import MPI
 import numpy as np
 import logging
 import time
+from copy import deepcopy
 
 from .config import Config
 from .micro_simulation import create_micro_problem_class
@@ -132,8 +133,6 @@ class MicroManager:
             coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(self._macro_bounds, self._ranks_per_axis)
         else:
             coupling_mesh_bounds = self._macro_bounds
-
-        print("Rank: {}, coupling_mesh_bounds: {}".format(self._rank, coupling_mesh_bounds))
 
         self._interface.set_mesh_access_region(self._macro_mesh_id, coupling_mesh_bounds)
 
@@ -335,7 +334,7 @@ class MicroManager:
             List of dicts in which keys are names of data and the values are the data of the output of the micro
             simulations.
         """
-        micro_sims_output = list(range(self._local_number_of_micro_sims))
+        micro_sims_output = [None] * self._local_number_of_micro_sims
 
         for count, sim in enumerate(self._micro_sims):
             start_time = time.time()
@@ -387,35 +386,29 @@ class MicroManager:
             micro_sims_output[active_id]["active_state"] = 1
             micro_sims_output[active_id]["active_steps"] = self._micro_sims_active_steps[active_id]
 
-            for name in self._adaptivity_micro_data_names:
-                # Collect micro sim output for adaptivity
-                self._data_for_adaptivity[name][active_id] = micro_sims_output[active_id][name]
-
             if self._is_micro_solve_time_required:
                 micro_sims_output[active_id]["micro_sim_time"] = end_time - start_time
 
         # For each inactive simulation, copy data from most similar active simulation
         if self._adaptivity_type == "global":
-            micro_sims_output = self._adaptivity_controller.communicate_micro_output(
-                self._micro_sims, micro_sim_states, micro_sims_output)
-
+            self._adaptivity_controller.communicate_micro_output(self._micro_sims, micro_sim_states, micro_sims_output)
         elif self._adaptivity_type == "local":
             for inactive_id in inactive_sim_ids:
-                micro_sims_output[inactive_id] = dict()
-                for dname, values in micro_sims_output[self._micro_sims[inactive_id].get_associated_active_id()].items(
-                ):
-                    micro_sims_output[inactive_id][dname] = values
+                micro_sims_output[inactive_id] = deepcopy(
+                    micro_sims_output[self._micro_sims[inactive_id].get_associated_active_id()])
 
+        # Resolve micro sim output data for inactive simulations
         for inactive_id in inactive_sim_ids:
-            for name in self._adaptivity_micro_data_names:
-                # Collect micro sim output for adaptivity
-                self._data_for_adaptivity[name][inactive_id] = micro_sims_output[inactive_id][name]
-
             micro_sims_output[inactive_id]["active_state"] = 0
             micro_sims_output[inactive_id]["active_steps"] = self._micro_sims_active_steps[inactive_id]
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[inactive_id]["micro_sim_time"] = 0
+
+        # Collect micro sim output for adaptivity
+        for i in micro_sim_states[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1]:
+            for name in self._adaptivity_micro_data_names:
+                self._data_for_adaptivity[name][i] = micro_sims_output[i][name]
 
         return micro_sims_output
 
@@ -432,7 +425,7 @@ class MicroManager:
                  self._number_of_micro_sims_for_adaptivity))
 
             # Start adaptivity calculation with all sims inactive
-            micro_sim_states = np.zeros((self._number_of_micro_sims_for_adaptivity))
+            micro_sim_states = np.zeros((self._number_of_micro_sims_for_adaptivity), dtype=np.intc)
 
             # If all sims are inactive, activate the first one (a random choice)
             micro_sim_states[0] = 1
