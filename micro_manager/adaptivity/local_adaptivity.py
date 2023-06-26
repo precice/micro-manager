@@ -55,13 +55,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             similarity_dists_n, micro_sim_states_n, micro_sims)
 
         self._logger.info(
-            "Number of active micro simulations = {}".format(
-                np.count_nonzero(
-                    micro_sim_states_n == 1)))
-        self._logger.info(
-            "Number of inactive micro simulations = {}".format(
-                np.count_nonzero(
-                    micro_sim_states_n == 0)))
+            "{} active simulations, {} inactive simulations".format(
+                np.count_nonzero(micro_sim_states_n == 1), np.count_nonzero(micro_sim_states_n == 0)))
 
         return similarity_dists_n, micro_sim_states_n
 
@@ -89,10 +84,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._coarse_tol = self._coarse_const * self._refine_const * np.amax(similarity_dists)
 
         _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
-        local_number_of_sims = _micro_sim_states.size
 
         # Update the set of active micro sims
-        for i in range(local_number_of_sims):
+        for i in range(_micro_sim_states.size):
             if _micro_sim_states[i]:  # if sim is active
                 if self._check_for_deactivation(i, similarity_dists, _micro_sim_states):
                     micro_sims[i].deactivate()
@@ -124,10 +118,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._ref_tol = self._refine_const * np.amax(similarity_dists)
 
         _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
-        number_of_sims = _micro_sim_states.size
 
         # Update the set of inactive micro sims
-        for i in range(number_of_sims):
+        for i in range(_micro_sim_states.size):
             if not _micro_sim_states[i]:  # if id is inactive
                 if self._check_for_activation(i, similarity_dists, _micro_sim_states):
                     associated_active_local_id = micro_sims[i].get_associated_active_id()

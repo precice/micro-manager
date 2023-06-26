@@ -465,7 +465,7 @@ class MicroManager:
                         micro_sim_states_cp = np.copy(micro_sim_states)
                         micro_sims_cp = self._micro_sims.copy()
 
-                    active_sim_ids = np.where(micro_sim_states == 1)[0]
+                    active_sim_ids = np.where(micro_sim_states[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1] == 1)[0]
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
 
