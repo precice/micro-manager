@@ -86,11 +86,11 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._logger.info(
             "Number of active micro simulations = {}".format(
                 np.count_nonzero(
-                    micro_sim_states_n == 1)))
+                    micro_sim_states_n[self._global_ids[0]:self._global_ids[-1] + 1] == 1)))
         self._logger.info(
             "Number of inactive micro simulations = {}".format(
                 np.count_nonzero(
-                    micro_sim_states_n == 0)))
+                    micro_sim_states_n[self._global_ids[0]:self._global_ids[-1] + 1] == 0)))
 
         return similarity_dists_n, micro_sim_states_n
 
