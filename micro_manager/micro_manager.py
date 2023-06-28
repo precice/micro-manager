@@ -449,8 +449,8 @@ class MicroManager:
 
         while self._interface.is_coupling_ongoing():
             if self._interface.is_action_required(precice.action_write_iteration_checkpoint()):
-                for micro_sim in self._micro_sims:
-                    sim_states_cp.append(micro_sim.get_state())
+                for i in range(self._local_number_of_sims):
+                    sim_states_cp[i] = self._micro_sims[i].get_state()
                 t_checkpoint = t
                 n_checkpoint = n
 
@@ -465,10 +465,10 @@ class MicroManager:
                         sim_is_associated_to_cp = np.copy(sim_is_associated_to)
 
                     if self._adaptivity_type == "local":
-                        active_sim_ids = np.where(is_sim_active == 1)[0]
+                        active_sim_ids = np.where(is_sim_active == True)[0]
                     elif self._adaptivity_type == "global":
                         active_sim_ids = np.where(
-                            is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1])[0]
+                            is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1] == True)[0]
 
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
@@ -484,10 +484,10 @@ class MicroManager:
                         self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
 
                     if self._adaptivity_type == "local":
-                        active_sim_ids = np.where(is_sim_active == 1)[0]
+                        active_sim_ids = np.where(is_sim_active == True)[0]
                     elif self._adaptivity_type == "global":
                         active_sim_ids = np.where(
-                            is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1])[0]
+                            is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1] == True)[0]
 
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
