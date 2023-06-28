@@ -3,7 +3,6 @@ Functionality for adaptive control of micro simulations locally within a rank (o
 """
 import sys
 import numpy as np
-from copy import deepcopy
 from math import exp
 from .adaptivity import AdaptivityCalculator
 
@@ -17,88 +16,64 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             dt,
             micro_sims,
             similarity_dists_nm1: np.ndarray,
-            micro_sim_states_nm1: np.ndarray,
+            is_sim_active_nm1: np.ndarray,
+            sim_is_associated_to_nm1: np.ndarray,
             data_for_adaptivity: dict):
         """
         Compute adaptivity locally (within a rank) based on similarity distances and micro simulation states
 
         Parameters
         ----------
+        dt : float
+            Current time step
+        micro_sims : list
+            TODO
         similarity_dists_nm1 : numpy array
             2D array having similarity distances between each micro simulation pair
-        micro_sim_states_nm1 : numpy array
-            1D array having state (active or inactive) of each micro simulation on this rank
+        is_sim_active_nm1 : numpy array
+            1D array having True if sim is active, False if sim is inactive
+        sim_is_associated_to_nm1 : numpy array
+            1D array with values of associated simulations of inactive simulations. Active simulations have None
+        data_for_adaptivity : dict
+            TODO
 
         Results
         -------
         similarity_dists : numpy array
             2D array having similarity distances between each micro simulation pair
-        micro_sim_states : numpy array
-            1D array having state (active or inactive) of each micro simulation
+        is_sim_active : numpy array
+            1D array, True is sim is active, False if sim is inactive
         """
         # Multiply old similarity distance by history term to get current distances
-        similarity_dists_n = exp(-self._hist_param * dt) * similarity_dists_nm1
+        similarity_dists = exp(-self._hist_param * dt) * similarity_dists_nm1
 
         for name, _ in self._adaptivity_data_names.items():
             # For global adaptivity, similarity distance matrix is calculated globally on every rank
-            similarity_dists_n = self._get_similarity_dists(
-                dt, similarity_dists_n, data_for_adaptivity[name])
+            similarity_dists = self._get_similarity_dists(
+                dt, similarity_dists, data_for_adaptivity[name])
 
         # Operation done globally if global adaptivity is chosen
-        micro_sim_states_n = self._update_active_sims(
-            similarity_dists_n, micro_sim_states_nm1, micro_sims)
+        is_sim_active = self._update_active_sims(
+            similarity_dists, is_sim_active_nm1)
 
-        micro_sim_states_n = self._update_inactive_sims(
-            similarity_dists_n, micro_sim_states_nm1, micro_sims)
+        is_sim_active, sim_is_associated_to = self._update_inactive_sims(
+            similarity_dists, is_sim_active_nm1, sim_is_associated_to_nm1, micro_sims)
 
-        self._associate_inactive_to_active(
-            similarity_dists_n, micro_sim_states_n, micro_sims)
+        sim_is_associated_to = self._associate_inactive_to_active(
+            similarity_dists, is_sim_active, sim_is_associated_to)
 
         self._logger.info(
             "{} active simulations, {} inactive simulations".format(
-                np.count_nonzero(micro_sim_states_n == 1), np.count_nonzero(micro_sim_states_n == 0)))
+                np.count_nonzero(is_sim_active), np.count_nonzero(is_sim_active == False)))
 
-        return similarity_dists_n, micro_sim_states_n
-
-    def _update_active_sims(
-            self,
-            similarity_dists: np.ndarray,
-            micro_sim_states: np.ndarray,
-            micro_sims: list) -> np.ndarray:
-        """
-        Update set of active micro simulations. Active micro simulations are compared to each other
-        and if found similar, one of them is deactivated.
-        Parameters
-        ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
-        micro_sim_states : numpy array
-            1D array having state (active or inactive) of each micro simulation
-        micro_sims : list
-            List of objects of class MicroProblem, which are the micro simulations
-        Returns
-        -------
-        _micro_sim_states : numpy array
-            Updated 1D array having state (active or inactive) of each micro simulation
-        """
-        self._coarse_tol = self._coarse_const * self._refine_const * np.amax(similarity_dists)
-
-        _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
-
-        # Update the set of active micro sims
-        for i in range(_micro_sim_states.size):
-            if _micro_sim_states[i]:  # if sim is active
-                if self._check_for_deactivation(i, similarity_dists, _micro_sim_states):
-                    micro_sims[i].deactivate()
-                    _micro_sim_states[i] = 0
-
-        return _micro_sim_states
+        return similarity_dists, is_sim_active, sim_is_associated_to
 
     def _update_inactive_sims(
             self,
             similarity_dists: np.ndarray,
-            micro_sim_states: np.ndarray,
-            micro_sims: list) -> np.ndarray:
+            is_sim_active: np.ndarray,
+            sim_is_associated_to: np.ndarray,
+            micro_sims: list) -> tuple:
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
         and if it is not similar to any of them, it is activated.
@@ -106,69 +81,32 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         similarity_dists : numpy array
             2D array having similarity distances between each micro simulation pair
-        micro_sim_states : numpy array
+        is_sim_active : numpy array
             1D array having state (active or inactive) of each micro simulation
+        sim_is_associated_to : numpy array
+            1D array with values of associated simulations of inactive simulations. Active simulations have None
         micro_sims : list
-            List of objects of class MicroProblem, which are the micro simulations
+            TODO
+
         Returns
         -------
-        _micro_sim_states : numpy array
+        _is_sim_active : numpy array
             Updated 1D array having state (active or inactive) of each micro simulation
+        _sim_is_associated_to : numpy array
+            1D array with values of associated simulations of inactive simulations. Active simulations have None
         """
         self._ref_tol = self._refine_const * np.amax(similarity_dists)
 
-        _micro_sim_states = np.copy(micro_sim_states)  # Input micro_sim_states is not longer used after this point
+        _is_sim_active = np.copy(is_sim_active)  # Input is_sim_active is not longer used after this point
+        _sim_is_associated_to = np.copy(sim_is_associated_to)
 
         # Update the set of inactive micro sims
-        for i in range(_micro_sim_states.size):
-            if not _micro_sim_states[i]:  # if id is inactive
-                if self._check_for_activation(i, similarity_dists, _micro_sim_states):
-                    associated_active_local_id = micro_sims[i].get_associated_active_id()
+        for i in range(_is_sim_active.size):
+            if not _is_sim_active[i]:  # if id is inactive
+                if self._check_for_activation(i, similarity_dists, _is_sim_active):
+                    associated_active_local_id = _sim_is_associated_to[i]
+                    micro_sims[i].set_state(micro_sims[associated_active_local_id].get_state())
+                    _is_sim_active[i] = True
+                    _sim_is_associated_to[i] = -2  # Active sim cannot have an associated sim
 
-                    # Get local and global ID of inactive simulation, to set it to the copied simulation later
-                    global_id = micro_sims[i].get_global_id()
-
-                    # Copy state from associated active simulation with get_state and
-                    # set_state if available else deepcopy
-                    if hasattr(micro_sims[associated_active_local_id], 'get_state') and \
-                            hasattr(micro_sims[associated_active_local_id], 'set_state'):
-                        micro_sims[i].set_state(*micro_sims[associated_active_local_id].get_state())
-                    else:
-                        micro_sims[i] = None
-                        micro_sims[i] = deepcopy(micro_sims[associated_active_local_id])
-                        micro_sims[i].set_global_id(global_id)
-                    _micro_sim_states[i] = 1
-
-        return _micro_sim_states
-
-    def _associate_inactive_to_active(
-            self,
-            similarity_dists: np.ndarray,
-            micro_sim_states: np.ndarray,
-            micro_sims: list) -> None:
-        """
-        Associate inactive micro simulations to most similar active micro simulation.
-
-        Parameters
-        ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
-        micro_sim_states : numpy array
-            1D array having state (active or inactive) of each micro simulation
-        micro_sims : list
-            List of objects of class MicroProblem, which are the micro simulations
-        """
-
-        active_ids = np.where(micro_sim_states == 1)[0]
-        inactive_ids = np.where(micro_sim_states == 0)[0]
-
-        # Associate inactive micro sims to active micro sims
-        for inactive_id in inactive_ids:
-            dist_min = sys.float_info.max
-            for active_id in active_ids:
-                # Find most similar active sim for every inactive sim
-                if similarity_dists[inactive_id, active_id] < dist_min:
-                    associated_active_id = active_id
-                    dist_min = similarity_dists[inactive_id, active_id]
-
-            micro_sims[inactive_id].is_associated_to_active_sim(associated_active_id)
+        return _is_sim_active, _sim_is_associated_to

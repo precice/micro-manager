@@ -53,6 +53,78 @@ class AdaptivityCalculator:
 
         return _similarity_dists
 
+    def _update_active_sims(
+            self,
+            similarity_dists: np.ndarray,
+            is_sim_active: np.ndarray) -> np.ndarray:
+        """
+        Update set of active micro simulations. Active micro simulations are compared to each other
+        and if found similar, one of them is deactivated.
+
+        Parameters
+        ----------
+        similarity_dists : numpy array
+            2D array having similarity distances between each micro simulation pair
+        is_sim_active : numpy array
+            1D array having state (active or inactive) of each micro simulation
+
+        Returns
+        -------
+        _is_sim_active : numpy array
+            Updated 1D array having state (active or inactive) of each micro simulation
+        """
+        self._coarse_tol = self._coarse_const * self._refine_const * np.amax(similarity_dists)
+
+        _is_sim_active = np.copy(is_sim_active)  # Input is_sim_active is not longer used after this point
+
+        # Update the set of active micro sims
+        for i in range(_is_sim_active.size):
+            if _is_sim_active[i]:  # if sim is active
+                if self._check_for_deactivation(i, similarity_dists, _is_sim_active):
+                    _is_sim_active[i] = False
+
+        return _is_sim_active
+
+    def _associate_inactive_to_active(
+            self,
+            similarity_dists: np.ndarray,
+            is_sim_active: np.ndarray,
+            sim_is_associated_to: np.ndarray) -> np.ndarray:
+        """
+        Associate inactive micro simulations to most similar active micro simulation.
+
+        Parameters
+        ----------
+        similarity_dists : numpy array
+            2D array having similarity distances between each micro simulation pair
+        is_sim_active : numpy array
+            1D array having state (active or inactive) of each micro simulation
+        sim_is_associated_to : numpy array
+            1D array with values of associated simulations of inactive simulations. Active simulations have None
+
+        Returns
+        -------
+        _sim_is_associated_to : numpy array
+            1D array with values of associated simulations of inactive simulations. Active simulations have None
+        """
+        active_ids = np.where(is_sim_active)[0]
+        inactive_ids = np.where(is_sim_active == False)[0]
+
+        _sim_is_associated_to = np.copy(sim_is_associated_to)
+
+        # Associate inactive micro sims to active micro sims
+        for inactive_id in inactive_ids:
+            dist_min = sys.float_info.max
+            for active_id in active_ids:
+                # Find most similar active sim for every inactive sim
+                if similarity_dists[inactive_id, active_id] < dist_min:
+                    associated_active_id = active_id
+                    dist_min = similarity_dists[inactive_id, active_id]
+
+            _sim_is_associated_to[inactive_id] = associated_active_id
+
+        return _sim_is_associated_to
+
     def _check_for_activation(
             self,
             inactive_id: int,
