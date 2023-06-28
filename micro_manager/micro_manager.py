@@ -506,7 +506,7 @@ class MicroManager:
 
             # Revert all micro simulations to checkpoints if required
             if self._interface.is_action_required(precice.action_read_iteration_checkpoint()):
-                for i in self._local_number_of_sims:
+                for i in range(self._local_number_of_sims):
                     self._micro_sims[i].set_state(sim_states_cp[i])
                 n = n_checkpoint
                 t = t_checkpoint
