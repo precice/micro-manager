@@ -1,11 +1,9 @@
 """
 Functionality for adaptive control of micro simulations in a global way (all-to-all comparison of micro simulations)
 """
-import sys
 import numpy as np
 import hashlib
 from copy import deepcopy
-from math import exp
 from mpi4py import MPI
 from .adaptivity import AdaptivityCalculator
 
@@ -71,16 +69,11 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             data_as_list = self._comm.allgather(data_for_adaptivity[name])
             global_data_for_adaptivity[name] = np.concatenate((data_as_list[:]), axis=0)
 
-        # Multiply old similarity distance by history term to get current distances
-        similarity_dists = exp(-self._hist_param * dt) * similarity_dists_nm1
-
         for name in self._adaptivity_data_names.keys():
             # Similarity distance matrix is calculated globally on every rank
-            similarity_dists = self._get_similarity_dists(
-                dt, similarity_dists, global_data_for_adaptivity[name])
+            similarity_dists = self._get_similarity_dists(dt, similarity_dists_nm1, global_data_for_adaptivity[name])
 
-        is_sim_active = self._update_active_sims(
-            similarity_dists, is_sim_active_nm1)
+        is_sim_active = self._update_active_sims(similarity_dists, is_sim_active_nm1)
 
         is_sim_active, sim_is_associated_to = self._update_inactive_sims(
             similarity_dists, is_sim_active_nm1, sim_is_associated_to_nm1, micro_sims)

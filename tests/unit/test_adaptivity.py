@@ -1,7 +1,8 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
-from micro_manager.adaptivity.local_adaptivity import LocalAdaptivityCalculator
 from micro_manager.adaptivity.adaptivity import AdaptivityCalculator
+from micro_manager.adaptivity.local_adaptivity import LocalAdaptivityCalculator
+from micro_manager.adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 from micro_manager.config import Config
 import numpy as np
 
@@ -9,11 +10,6 @@ import numpy as np
 class TestLocalAdaptivity(TestCase):
 
     def setUp(self):
-        self._adaptivity_controller = LocalAdaptivityCalculator(configurator=MagicMock(), logger=MagicMock())
-        self._adaptivity_controller._refine_const = 0.4
-        self._adaptivity_controller._coarse_const = 0.3
-        self._adaptivity_controller._hist_param = 0.5
-        self._adaptivity_controller._adaptivity_data_names = ["macro-scalar-data", "macro-vector-data"]
         self._number_of_sims = 5
         self._dt = 0.1
         self._dim = 3
@@ -49,8 +45,7 @@ class TestLocalAdaptivity(TestCase):
         self._coarse_const = 0.5
         self._coarse_tol = 0.2
 
-    def test_get_similarity_dists(self):
-        expected_similarity_dists = np.zeros((self._number_of_sims, self._number_of_sims))
+        self._similarity_dists = np.zeros((self._number_of_sims, self._number_of_sims))
         for i in range(self._number_of_sims):
             for j in range(self._number_of_sims):
                 similarity_dist = abs(self._micro_scalar_data[i] - self._micro_scalar_data[j])
@@ -58,33 +53,43 @@ class TestLocalAdaptivity(TestCase):
                 for d in range(self._dim):
                     similarity_dist += abs(self._micro_vector_data[i, d] - self._micro_vector_data[j, d])
                     similarity_dist += abs(self._macro_vector_data[i, d] - self._macro_vector_data[j, d])
-                expected_similarity_dists[i, j] = self._dt * similarity_dist
+                self._similarity_dists[i, j] = self._dt * similarity_dist
 
-        actual_similarity_dists = np.zeros((self._number_of_sims, self._number_of_sims))
-        actual_similarity_dists = self._adaptivity_controller._get_similarity_dists(
-            self._dt, actual_similarity_dists, self._micro_scalar_data)
-        actual_similarity_dists = self._adaptivity_controller._get_similarity_dists(
-            self._dt, actual_similarity_dists, self._micro_vector_data)
-        actual_similarity_dists = self._adaptivity_controller._get_similarity_dists(
-            self._dt, actual_similarity_dists, self._macro_scalar_data)
-        actual_similarity_dists = self._adaptivity_controller._get_similarity_dists(
-            self._dt, actual_similarity_dists, self._macro_vector_data)
-
-        self.assertTrue(np.array_equal(expected_similarity_dists, actual_similarity_dists))
-
-    def test_update_active_sims(self):
-        # Third and fifth micro sim are active, rest are inactive
-        expected_is_sim_active = np.array([False, False, True, False, True])
+    def test_get_similarity_dists(self):
+        """
+        Test base functionality of calculating the similarity distance matrix
+        """
+        configurator = MagicMock()
+        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
+        adaptivity_controller = AdaptivityCalculator(configurator, logger=MagicMock())
+        adaptivity_controller._hist_param = 0.5
+        adaptivity_controller._adaptivity_data_names = ["macro-scalar-data", "macro-vector-data"]
+        adaptivity_controller._get_similarity_measure = MagicMock(return_value=adaptivity_controller._l2rel)
 
         similarity_dists = np.zeros((self._number_of_sims, self._number_of_sims))
-        for i in range(self._number_of_sims):
-            for j in range(self._number_of_sims):
-                similarity_dist = abs(self._micro_scalar_data[i] - self._micro_scalar_data[j])
-                similarity_dist += abs(self._macro_scalar_data[i] - self._macro_scalar_data[j])
-                for d in range(self._dim):
-                    similarity_dist += abs(self._micro_vector_data[i, d] - self._micro_vector_data[j, d])
-                    similarity_dist += abs(self._macro_vector_data[i, d] - self._macro_vector_data[j, d])
-                similarity_dists[i, j] = self._dt * similarity_dist
+        
+        similarity_dists = adaptivity_controller._get_similarity_dists(
+            self._dt, similarity_dists, self._micro_scalar_data)
+        similarity_dists = adaptivity_controller._get_similarity_dists(
+            self._dt, similarity_dists, self._micro_vector_data)
+        similarity_dists = adaptivity_controller._get_similarity_dists(
+            self._dt, similarity_dists, self._macro_scalar_data)
+        similarity_dists = adaptivity_controller._get_similarity_dists(
+            self._dt, similarity_dists, self._macro_vector_data)
+
+        self.assertTrue(np.array_equal(self._similarity_dists, similarity_dists))
+
+    def test_update_active_sims(self):
+        """
+        Test base functionality of updating active simulations
+        """
+        adaptivity_controller = AdaptivityCalculator(configurator=MagicMock(), logger=MagicMock())
+        adaptivity_controller._refine_const = 0.4
+        adaptivity_controller._coarse_const = 0.3
+        adaptivity_controller._adaptivity_data_names = ["macro-scalar-data", "macro-vector-data"]
+
+        # Third and fifth micro sim are active, rest are inactive
+        expected_is_sim_active = np.array([False, False, True, False, True])
 
         actual_is_sim_active = np.array([1, 1, 1, 1, 1])  # Activate all micro sims before calling functionality
 
@@ -92,11 +97,11 @@ class TestLocalAdaptivity(TestCase):
             pass
 
         dummy_micro_sims = []
-        for i in range(self._number_of_sims):
+        for _ in range(self._number_of_sims):
             dummy_micro_sims.append(MicroSimulation())
 
-        actual_is_sim_active = self._adaptivity_controller._update_active_sims(
-            similarity_dists, actual_is_sim_active)
+        actual_is_sim_active = adaptivity_controller._update_active_sims(
+            self._similarity_dists, actual_is_sim_active)
 
         self.assertTrue(np.array_equal(expected_is_sim_active, actual_is_sim_active))
 

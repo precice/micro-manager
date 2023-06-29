@@ -1,9 +1,7 @@
 """
 Functionality for adaptive control of micro simulations locally within a rank (or the entire domain if the Micro Manager is run in serial)
 """
-import sys
 import numpy as np
-from math import exp
 from .adaptivity import AdaptivityCalculator
 
 
@@ -44,17 +42,12 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         is_sim_active : numpy array
             1D array, True is sim is active, False if sim is inactive
         """
-        # Multiply old similarity distance by history term to get current distances
-        similarity_dists = exp(-self._hist_param * dt) * similarity_dists_nm1
-
         for name, _ in self._adaptivity_data_names.items():
             # For global adaptivity, similarity distance matrix is calculated globally on every rank
-            similarity_dists = self._get_similarity_dists(
-                dt, similarity_dists, data_for_adaptivity[name])
+            similarity_dists = self._get_similarity_dists(dt, similarity_dists_nm1, data_for_adaptivity[name])
 
         # Operation done globally if global adaptivity is chosen
-        is_sim_active = self._update_active_sims(
-            similarity_dists, is_sim_active_nm1)
+        is_sim_active = self._update_active_sims(similarity_dists, is_sim_active_nm1)
 
         is_sim_active, sim_is_associated_to = self._update_inactive_sims(
             similarity_dists, is_sim_active_nm1, sim_is_associated_to_nm1, micro_sims)

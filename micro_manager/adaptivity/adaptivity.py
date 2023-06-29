@@ -3,6 +3,7 @@ Functionality for adaptive initialization and control of micro simulations
 """
 import sys
 import numpy as np
+from math import exp
 from typing import Callable
 
 
@@ -29,7 +30,7 @@ class AdaptivityCalculator:
         Parameters
         ----------
         dt : float
-            Timestep
+            Current time step
         similarity_dists : numpy array
             2D array having similarity distances between each micro simulation pair
         data : numpy array
@@ -40,7 +41,8 @@ class AdaptivityCalculator:
         similarity_dists : numpy array
             Updated 2D array having similarity distances between each micro simulation pair
         """
-        _similarity_dists = np.copy(similarity_dists)
+        # Multiply old similarity distance by history term to get current distances
+        similarity_dists_old = exp(-self._hist_param * dt) * similarity_dists
 
         if data.ndim == 1:
             # If the adaptivity-data is a scalar for each simulation,
@@ -49,9 +51,9 @@ class AdaptivityCalculator:
             data = np.expand_dims(data, axis=1)
 
         data_diff = self._similarity_measure(data)
-        _similarity_dists += dt * data_diff
 
-        return _similarity_dists
+        return similarity_dists_old + dt * data_diff
+
 
     def _update_active_sims(
             self,
