@@ -42,9 +42,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         is_sim_active : numpy array
             1D array, True is sim is active, False if sim is inactive
         """
-        for name, _ in self._adaptivity_data_names.items():
-            # For global adaptivity, similarity distance matrix is calculated globally on every rank
-            similarity_dists = self._get_similarity_dists(dt, similarity_dists_nm1, data_for_adaptivity[name])
+        similarity_dists = self._get_similarity_dists(dt, similarity_dists_nm1, data_for_adaptivity)
 
         # Operation done globally if global adaptivity is chosen
         is_sim_active = self._update_active_sims(similarity_dists, is_sim_active_nm1)

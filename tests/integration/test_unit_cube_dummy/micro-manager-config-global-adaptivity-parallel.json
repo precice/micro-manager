@@ -11,7 +11,7 @@
         "decomposition": [2, 1, 1],
         "adaptivity": {
             "type": "global",
-            "data": ["macro-scalar-data", "macro-vector-data"],
+            "data": ["macro-scalar-data", "micro-vector-data"],
             "history_param": 0.5,
             "coarsening_constant": 0.3,
             "refining_constant": 0.4,

@@ -5,6 +5,7 @@ import numpy as np
 import hashlib
 from copy import deepcopy
 from mpi4py import MPI
+from typing import Dict
 from .adaptivity import AdaptivityCalculator
 
 
@@ -13,13 +14,12 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
     This class provides functionality to compute adaptivity globally, i.e. by comparing micro simulation from all processes.
     All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
     """
-
     def __init__(
             self,
             configurator,
             logger,
             is_sim_on_this_rank: list,
-            rank_of_sim,
+            rank_of_sim: np.ndarray,
             global_ids: list,
             comm,
             rank: int) -> None:
@@ -69,9 +69,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             data_as_list = self._comm.allgather(data_for_adaptivity[name])
             global_data_for_adaptivity[name] = np.concatenate((data_as_list[:]), axis=0)
 
-        for name in self._adaptivity_data_names.keys():
-            # Similarity distance matrix is calculated globally on every rank
-            similarity_dists = self._get_similarity_dists(dt, similarity_dists_nm1, global_data_for_adaptivity[name])
+        # Similarity distance matrix is calculated globally on every rank
+        similarity_dists = self._get_similarity_dists(dt, similarity_dists_nm1, global_data_for_adaptivity)
 
         is_sim_active = self._update_active_sims(similarity_dists, is_sim_active_nm1)
 
@@ -116,7 +115,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         # Keys are global IDs of active simulations associated to inactive
         # simulations on this rank. Values are global IDs of the inactive
         # simulations.
-        active_to_inactive_map = dict()
+        active_to_inactive_map: Dict[int, list] = dict()
 
         for i in inactive_local_ids:
             assoc_active_id = local_sim_is_associated_to[i]
@@ -144,7 +143,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             similarity_dists: np.ndarray,
             is_sim_active: np.ndarray,
             sim_is_associated_to: np.ndarray,
-            micro_sims: list) -> np.ndarray:
+            micro_sims: list) -> tuple:
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
         and if it is not similar to any of them, it is activated.
@@ -181,14 +180,13 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     if self._is_sim_on_this_rank[i]:
                         to_be_activated_ids.append(i)
 
+        print("is_sim_active: {}, to_be_activated: {}".format(_is_sim_active, to_be_activated_ids))
+
         local_sim_is_associated_to = _sim_is_associated_to[self._global_ids[0]:self._global_ids[-1] + 1]
 
-        # Keys are global IDs of active sims not on this rank, values are tuples of local and
+        # Keys are global IDs of active sims not on this rank, values are lists of local and
         # global IDs of inactive sims associated to the active sims which are on this rank
-        to_be_activated_map = dict()
-
-        print("Rank {} - local_sim_is_associated_to: {}".format(self._rank, local_sim_is_associated_to))
-        print("Rank {} - to_be_activated_ids: {}".format(self._rank, to_be_activated_ids))
+        to_be_activated_map: Dict[int, list] = dict()
 
         for i in to_be_activated_ids:
             # Only handle activation of simulations on this rank -- LOCAL SCOPE HERE ON
@@ -228,7 +226,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         tag = int(send_hashtag.hexdigest()[:6], base=16)
         return tag
 
-    def _p2p_comm(self, assoc_active_ids: list, data):
+    def _p2p_comm(self, assoc_active_ids: list, data: list) -> list:
         """
         This function created sending and receiving maps for p2p communication.
 
@@ -237,13 +235,13 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         assoc_active_ids : list
             Global IDs of active simulations which are not on this rank and are associated to the inactive simulations on this rank
         """
-        send_map_local = dict()  # keys are global IDs, values are rank to send to
-        send_map = dict()  # keys are global IDs of sims to send, values are ranks to send the sims to
-        recv_map = dict()  # keys are global IDs to receive, values are ranks to receive from
+        send_map_local: Dict[int, int] = dict()  # keys are global IDs, values are rank to send to
+        send_map: Dict[int, list] = dict()  # keys are global IDs of sims to send, values are ranks to send the sims to
+        recv_map: Dict[int, int] = dict()  # keys are global IDs to receive, values are ranks to receive from
 
         for i in assoc_active_ids:
             # Add simulation and its rank to receive map
-            recv_map[i] = int(self._rank_of_sim[i])
+            recv_map[i] = self._rank_of_sim[i]
             # Add simulation and this rank to local sending map
             send_map_local[i] = self._rank
 

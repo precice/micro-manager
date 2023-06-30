@@ -23,7 +23,7 @@ class AdaptivityCalculator:
 
         self._similarity_measure = self._get_similarity_measure(configurator.get_adaptivity_similarity_measure())
 
-    def _get_similarity_dists(self, dt: float, similarity_dists: np.ndarray, data: np.ndarray) -> np.ndarray:
+    def _get_similarity_dists(self, dt: float, similarity_dists: np.ndarray, data: dict) -> np.ndarray:
         """
         Calculate metric which determines if two micro simulations are similar enough to have one of them deactivated.
 
@@ -33,7 +33,7 @@ class AdaptivityCalculator:
             Current time step
         similarity_dists : numpy array
             2D array having similarity distances between each micro simulation pair
-        data : numpy array
+        data : dict
             Data to be used in similarity distance calculation
 
         Returns
@@ -41,19 +41,20 @@ class AdaptivityCalculator:
         similarity_dists : numpy array
             Updated 2D array having similarity distances between each micro simulation pair
         """
-        # Multiply old similarity distance by history term to get current distances
-        similarity_dists_old = exp(-self._hist_param * dt) * similarity_dists
+        _similarity_dists = np.copy(similarity_dists)
 
-        if data.ndim == 1:
-            # If the adaptivity-data is a scalar for each simulation,
-            # expand the dimension to make it a 2D array to unify the calculation.
-            # The axis is later reduced with a norm.
-            data = np.expand_dims(data, axis=1)
+        data_diff = np.zeros_like(_similarity_dists)
+        for name in self._adaptivity_data_names:
+            data_vals = data[name]
+            if data_vals.ndim == 1:
+                # If the adaptivity-data is a scalar for each simulation,
+                # expand the dimension to make it a 2D array to unify the calculation.
+                # The axis is later reduced with a norm.
+                data_vals = np.expand_dims(data_vals, axis=1)
 
-        data_diff = self._similarity_measure(data)
+            data_diff += self._similarity_measure(data_vals)
 
-        return similarity_dists_old + dt * data_diff
-
+        return exp(-self._hist_param * dt) * _similarity_dists + dt * data_diff
 
     def _update_active_sims(
             self,
@@ -131,7 +132,7 @@ class AdaptivityCalculator:
             self,
             inactive_id: int,
             similarity_dists: np.ndarray,
-            micro_sim_states: np.ndarray) -> bool:
+            is_sim_active: np.ndarray) -> bool:
         """
         Function to check if an inactive simulation needs to be activated
 
@@ -141,10 +142,10 @@ class AdaptivityCalculator:
             ID of inactive simulation which is checked for activation
         similarity_dists : numpy array
             2D array having similarity distances between each micro simulation pair
-        micro_sim_states : numpy array
+        is_sim_active : numpy array
             1D array having state (active or inactive) of each micro simulation
         """
-        active_sim_ids = np.where(micro_sim_states == 1)[0]
+        active_sim_ids = np.where(is_sim_active)[0]
 
         dists = similarity_dists[inactive_id, active_sim_ids]
 
@@ -155,7 +156,7 @@ class AdaptivityCalculator:
             self,
             active_id: int,
             similarity_dists: np.ndarray,
-            micro_sim_states: np.ndarray) -> bool:
+            is_sim_active: np.ndarray) -> bool:
         """
         Function to check if an active simulation needs to be deactivated
 
@@ -165,10 +166,10 @@ class AdaptivityCalculator:
             ID of active simulation which is checked for deactivation
         similarity_dists : numpy array
             2D array having similarity distances between each micro simulation pair
-        micro_sim_states : numpy array
+        is_sim_active : numpy array
             1D array having state (active or inactive) of each micro simulation
         """
-        active_sim_ids = np.where(micro_sim_states == 1)[0]
+        active_sim_ids = np.where(is_sim_active)[0]
 
         for active_id_2 in active_sim_ids:
             if active_id != active_id_2:  # don't compare active sim to itself
