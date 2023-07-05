@@ -12,6 +12,8 @@ def main():
     n = n_checkpoint = 0
     t = t_checkpoint = 0
 
+    t_end = 10
+
     # preCICE setup
     interface = precice.Interface("macro-cube", "precice-config.xml", 0, 1)
 
@@ -37,8 +39,7 @@ def main():
     write_scalar_data = np.zeros(nv)
     write_vector_data = np.zeros((nv, interface.get_dimensions()))
 
-    scalar_value = 1.0
-    vector_value = [2.0, 3.0, 4.0]
+    # Define unit cube coordinates
     for z in range(np_axis):
         for y in range(np_axis):
             for x in range(np_axis):
@@ -46,6 +47,14 @@ def main():
                 coords[n, 0] = x_coords[x, y, z]
                 coords[n, 1] = y_coords[x, y, z]
                 coords[n, 2] = z_coords[x, y, z]
+
+    # Define initial data to write to preCICE
+    scalar_value = 1.0
+    vector_value = [2.0, 3.0, 4.0]
+    for z in range(np_axis):
+        for y in range(np_axis):
+            for x in range(np_axis):
+                n = x + y * np_axis + z * np_axis * np_axis
                 write_scalar_data[n] = scalar_value
                 write_vector_data[n, 0] = vector_value[0]
                 write_vector_data[n, 1] = vector_value[1]
@@ -98,6 +107,19 @@ def main():
         # Set the read data as the write data with an increment
         write_scalar_data = read_scalar_data + 1
         write_vector_data = read_vector_data + 1
+
+        # Define new data to write to preCICE midway through the simulation
+        if t == t_end / 2:
+            scalar_value = 1.0
+            vector_value = [2.0, 3.0, 4.0]
+            for z in range(np_axis):
+                for y in range(np_axis):
+                    for x in range(np_axis):
+                        n = x + y * np_axis + z * np_axis * np_axis
+                        write_scalar_data[n] = scalar_value
+                        write_vector_data[n, 0] = vector_value[0]
+                        write_vector_data[n, 1] = vector_value[1]
+                        write_vector_data[n, 2] = vector_value[2]
 
         # Write data to preCICE
         for name, dim in write_data_names.items():
