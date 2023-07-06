@@ -146,7 +146,7 @@ class TestLocalAdaptivity(TestCase):
         self.assertTrue(np.array_equal(expected_sim_is_associated_to, sim_is_associated_to))
 
     def test_adaptivity_norms(self):
-        calc = AdaptivityCalculator(Config('micro-manager-unit-test-adaptivity-config.json'), 0)
+        calc = AdaptivityCalculator(Config('micro-manager-config.json'), 0)
 
         fake_data = np.array([[1], [2], [3]])
         self.assertTrue(np.allclose(calc._l1(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])))

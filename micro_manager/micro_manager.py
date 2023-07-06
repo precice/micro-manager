@@ -12,6 +12,7 @@ import numpy as np
 import logging
 import time
 from copy import deepcopy
+from typing import Dict
 
 from .config import Config
 from .micro_simulation import create_micro_problem_class
@@ -188,7 +189,7 @@ class MicroManager:
                     micro_problem)(self._global_ids_of_local_sims[i])
 
             # Create a map of micro simulation global IDs and the ranks on which they are
-            micro_sims_on_this_rank = np.zeros(self._local_number_of_sims)
+            micro_sims_on_this_rank = np.zeros(self._local_number_of_sims, dtype=np.intc)
             for i in range(self._local_number_of_sims):
                 micro_sims_on_this_rank[i] = self._rank
 
@@ -265,14 +266,17 @@ class MicroManager:
         local_read_data : list
             List of dicts in which keys are names of data being read and the values are the data from preCICE.
         """
-        read_data = dict()
+        read_data: Dict[str, list] = dict()
         for name in self._read_data_names.keys():
             read_data[name] = []
+
+        print("read_data 1: {}".format(read_data))
 
         for name, is_data_vector in self._read_data_names.items():
             if is_data_vector:
                 read_data.update({name: self._interface.read_block_vector_data(
                     self._read_data_ids[name], self._mesh_vertex_ids)})
+                print("After scalar data update: {}".format(read_data))
             else:
                 read_data.update({name: self._interface.read_block_scalar_data(
                     self._read_data_ids[name], self._mesh_vertex_ids)})
@@ -281,9 +285,9 @@ class MicroManager:
                 if name in self._adaptivity_macro_data_names:
                     self._data_for_adaptivity[name] = read_data[name]
 
-        read_data = [dict(zip(read_data, t)) for t in zip(*read_data.values())]
+        print("read_data 2: {}".format(read_data))
 
-        return read_data
+        return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
 
     def write_data_to_precice(self, micro_sims_output: list) -> None:
         """
@@ -294,7 +298,7 @@ class MicroManager:
         micro_sims_output : list
             List of dicts in which keys are names of data and the values are the data to be written to preCICE.
         """
-        write_data = dict()
+        write_data: Dict[str, list] = dict()
         if not self._is_rank_empty:
             for name in micro_sims_output[0]:
                 write_data[name] = []

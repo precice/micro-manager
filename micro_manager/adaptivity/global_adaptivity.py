@@ -14,6 +14,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
     This class provides functionality to compute adaptivity globally, i.e. by comparing micro simulation from all processes.
     All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
     """
+
     def __init__(
             self,
             configurator,
