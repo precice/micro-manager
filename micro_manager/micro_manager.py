@@ -26,7 +26,7 @@ sys.path.append(os.getcwd())
 class MicroManager:
     def __init__(self, config_file: str) -> None:
         """
-        Constructor of MicroManager class.
+        Constructor
 
         Parameters
         ----------
@@ -112,6 +112,10 @@ class MicroManager:
 
             self._is_adaptivity_required_in_every_implicit_iteration = self._config.is_adaptivity_required_in_every_implicit_iteration()
             self._micro_sims_active_steps = None
+
+    # **************
+    # Public methods
+    # **************
 
     def initialize(self) -> None:
         """
@@ -250,12 +254,126 @@ class MicroManager:
 
         # Write initial data if required
         if self._interface.is_action_required(precice.action_write_initial_data()):
-            self.write_data_to_precice(micro_sims_output)
+            self._write_data_to_precice(micro_sims_output)
             self._interface.mark_action_fulfilled(precice.action_write_initial_data())
 
         self._interface.initialize_data()
 
-    def read_data_from_precice(self) -> list:
+    def solve(self):
+        """
+        This function handles the coupling time loop, including checkpointing and output.
+        """
+        t, n = 0, 0
+        t_checkpoint, n_checkpoint = 0, 0
+
+        if self._is_adaptivity_on:
+            similarity_dists = np.zeros(
+                (self._number_of_micro_sims_for_adaptivity,
+                 self._number_of_micro_sims_for_adaptivity))
+
+            # Start adaptivity calculation with all sims inactive
+            is_sim_active = np.array([False] * self._number_of_micro_sims_for_adaptivity)
+
+            # Activate the first one (a random choice)
+            is_sim_active[0] = True
+
+            # Associate all sims to the one active sim
+            sim_is_associated_to = np.zeros((self._number_of_micro_sims_for_adaptivity), dtype=np.intc)
+            sim_is_associated_to[0] = -2  # An active sim does not have an associated sim
+
+        similarity_dists_cp = None
+        is_sim_active_cp = None
+        sim_is_associated_to_cp = None
+        sim_states_cp = [None] * self._local_number_of_sims
+
+        while self._interface.is_coupling_ongoing():
+            if self._interface.is_action_required(precice.action_write_iteration_checkpoint()):
+                for i in range(self._local_number_of_sims):
+                    sim_states_cp[i] = self._micro_sims[i].get_state()
+                t_checkpoint = t
+                n_checkpoint = n
+
+                if self._is_adaptivity_on:
+                    if not self._is_adaptivity_required_in_every_implicit_iteration:
+                        similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
+                            self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
+
+                        # Only do checkpointing if adaptivity is computed once in every time window
+                        similarity_dists_cp = np.copy(similarity_dists)
+                        is_sim_active_cp = np.copy(is_sim_active)
+                        sim_is_associated_to_cp = np.copy(sim_is_associated_to)
+
+                    if self._adaptivity_type == "local":
+                        active_sim_ids = np.where(is_sim_active)[0]
+                    elif self._adaptivity_type == "global":
+                        active_sim_ids = np.where(
+                            is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1])[0]
+
+                    for active_id in active_sim_ids:
+                        self._micro_sims_active_steps[active_id] += 1
+
+                self._interface.mark_action_fulfilled(
+                    precice.action_write_iteration_checkpoint())
+
+            micro_sims_input = self._read_data_from_precice()
+
+            if self._is_adaptivity_on:
+                if self._is_adaptivity_required_in_every_implicit_iteration:
+                    similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
+                        self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
+
+                    if self._adaptivity_type == "local":
+                        active_sim_ids = np.where(is_sim_active)[0]
+                    elif self._adaptivity_type == "global":
+                        active_sim_ids = np.where(
+                            is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1])[0]
+
+                    for active_id in active_sim_ids:
+                        self._micro_sims_active_steps[active_id] += 1
+
+                micro_sims_output = self._solve_micro_simulations_with_adaptivity(
+                    micro_sims_input, is_sim_active, sim_is_associated_to)
+            else:
+                micro_sims_output = self._solve_micro_simulations(micro_sims_input)
+
+            self._write_data_to_precice(micro_sims_output)
+
+            self._dt = self._interface.advance(self._dt)
+
+            t += self._dt
+            n += 1
+
+            # Revert all micro simulations to checkpoints if required
+            if self._interface.is_action_required(precice.action_read_iteration_checkpoint()):
+                for i in range(self._local_number_of_sims):
+                    self._micro_sims[i].set_state(sim_states_cp[i])
+                n = n_checkpoint
+                t = t_checkpoint
+
+                if self._is_adaptivity_on:
+                    if not self._is_adaptivity_required_in_every_implicit_iteration:
+                        similarity_dists = np.copy(similarity_dists_cp)
+                        is_sim_active = np.copy(is_sim_active_cp)
+                        sim_is_associated_to = np.copy(sim_is_associated_to_cp)
+
+                self._interface.mark_action_fulfilled(
+                    precice.action_read_iteration_checkpoint())
+            else:  # Time window has converged, now micro output can be generated
+                self._logger.info("Micro simulations {} - {} have converged at t = {}".format(
+                    self._micro_sims[0].get_global_id(), self._micro_sims[-1].get_global_id(), t))
+
+                if self._micro_sims_have_output:
+                    if n % self._micro_n_out == 0:
+                        for micro_sim in self._micro_sims:
+                            micro_sim.output()
+
+        self._interface.finalize()
+
+    # ***************
+    # Private methods
+    # ***************
+
+    def _read_data_from_precice(self) -> list:
         """
         Read data from preCICE. Depending on initial definition of whether a data is scalar or vector, the appropriate
         preCICE API command is called.
@@ -283,7 +401,7 @@ class MicroManager:
 
         return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
 
-    def write_data_to_precice(self, micro_sims_output: list) -> None:
+    def _write_data_to_precice(self, micro_sims_output: list) -> None:
         """
         Write output of micro simulations to preCICE.
 
@@ -317,7 +435,7 @@ class MicroManager:
                     self._interface.write_block_scalar_data(
                         self._write_data_ids[dname], [], np.array([]))
 
-    def solve_micro_simulations(self, micro_sims_input: list) -> list:
+    def _solve_micro_simulations(self, micro_sims_input: list) -> list:
         """
         Solve all micro simulations using the data read from preCICE and assemble the micro simulations outputs in a list of dicts
         format.
@@ -346,7 +464,7 @@ class MicroManager:
 
         return micro_sims_output
 
-    def solve_micro_simulations_with_adaptivity(
+    def _solve_micro_simulations_with_adaptivity(
             self,
             micro_sims_input: list,
             is_sim_active: np.ndarray,
@@ -417,116 +535,6 @@ class MicroManager:
                 self._data_for_adaptivity[name][i] = micro_sims_output[i][name]
 
         return micro_sims_output
-
-    def solve(self):
-        """
-        This function handles the coupling time loop, including checkpointing and output.
-        """
-        t, n = 0, 0
-        t_checkpoint, n_checkpoint = 0, 0
-
-        if self._is_adaptivity_on:
-            similarity_dists = np.zeros(
-                (self._number_of_micro_sims_for_adaptivity,
-                 self._number_of_micro_sims_for_adaptivity))
-
-            # Start adaptivity calculation with all sims inactive
-            is_sim_active = np.array([False] * self._number_of_micro_sims_for_adaptivity)
-
-            # Activate the first one (a random choice)
-            is_sim_active[0] = True
-
-            # Associate all sims to the one active sim
-            sim_is_associated_to = np.zeros((self._number_of_micro_sims_for_adaptivity), dtype=np.intc)
-            sim_is_associated_to[0] = -2  # An active sim does not have an associated sim
-
-        similarity_dists_cp = None
-        is_sim_active_cp = None
-        sim_is_associated_to_cp = None
-        sim_states_cp = [None] * self._local_number_of_sims
-
-        while self._interface.is_coupling_ongoing():
-            if self._interface.is_action_required(precice.action_write_iteration_checkpoint()):
-                for i in range(self._local_number_of_sims):
-                    sim_states_cp[i] = self._micro_sims[i].get_state()
-                t_checkpoint = t
-                n_checkpoint = n
-
-                if self._is_adaptivity_on:
-                    if not self._is_adaptivity_required_in_every_implicit_iteration:
-                        similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
-                            self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
-
-                        # Only do checkpointing if adaptivity is computed once in every time window
-                        similarity_dists_cp = np.copy(similarity_dists)
-                        is_sim_active_cp = np.copy(is_sim_active)
-                        sim_is_associated_to_cp = np.copy(sim_is_associated_to)
-
-                    if self._adaptivity_type == "local":
-                        active_sim_ids = np.where(is_sim_active)[0]
-                    elif self._adaptivity_type == "global":
-                        active_sim_ids = np.where(
-                            is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1])[0]
-
-                    for active_id in active_sim_ids:
-                        self._micro_sims_active_steps[active_id] += 1
-
-                self._interface.mark_action_fulfilled(
-                    precice.action_write_iteration_checkpoint())
-
-            micro_sims_input = self.read_data_from_precice()
-
-            if self._is_adaptivity_on:
-                if self._is_adaptivity_required_in_every_implicit_iteration:
-                    similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
-                        self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
-
-                    if self._adaptivity_type == "local":
-                        active_sim_ids = np.where(is_sim_active)[0]
-                    elif self._adaptivity_type == "global":
-                        active_sim_ids = np.where(
-                            is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1])[0]
-
-                    for active_id in active_sim_ids:
-                        self._micro_sims_active_steps[active_id] += 1
-
-                micro_sims_output = self.solve_micro_simulations_with_adaptivity(
-                    micro_sims_input, is_sim_active, sim_is_associated_to)
-            else:
-                micro_sims_output = self.solve_micro_simulations(micro_sims_input)
-
-            self.write_data_to_precice(micro_sims_output)
-
-            self._dt = self._interface.advance(self._dt)
-
-            t += self._dt
-            n += 1
-
-            # Revert all micro simulations to checkpoints if required
-            if self._interface.is_action_required(precice.action_read_iteration_checkpoint()):
-                for i in range(self._local_number_of_sims):
-                    self._micro_sims[i].set_state(sim_states_cp[i])
-                n = n_checkpoint
-                t = t_checkpoint
-
-                if self._is_adaptivity_on:
-                    if not self._is_adaptivity_required_in_every_implicit_iteration:
-                        similarity_dists = np.copy(similarity_dists_cp)
-                        is_sim_active = np.copy(is_sim_active_cp)
-                        sim_is_associated_to = np.copy(sim_is_associated_to_cp)
-
-                self._interface.mark_action_fulfilled(
-                    precice.action_read_iteration_checkpoint())
-            else:  # Time window has converged, now micro output can be generated
-                self._logger.info("Micro simulations {} - {} have converged at t = {}".format(
-                    self._micro_sims[0].get_global_id(), self._micro_sims[-1].get_global_id(), t))
-
-                if self._micro_sims_have_output:
-                    if n % self._micro_n_out == 0:
-                        for micro_sim in self._micro_sims:
-                            micro_sim.output()
-
-        self._interface.finalize()
 
 
 def main():
