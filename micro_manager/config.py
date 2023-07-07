@@ -4,7 +4,6 @@ Configuration module of the Micro Manager
 
 import json
 import os
-import sys
 
 
 class Config:
@@ -276,70 +275,94 @@ class Config:
 
     def turn_on_adaptivity(self):
         """
+        Boolean stating whether adaptivity is ot or not.
 
         Returns
         -------
+        adaptivity : bool
+            True is adaptivity settings are done, False otherwise.
 
         """
         return self._adaptivity
 
     def get_adaptivity_type(self):
         """
+        String stating type of adaptivity computation, either "local" or "global".
 
         Returns
         -------
+        adaptivity_type : str
+            Either "local" or "global" depending on the type of adaptivity computation
         """
         return self._adaptivity_type
 
     def get_data_for_adaptivity(self):
         """
+        Get names of data to be used for similarity distance calculation in adaptivity
 
         Returns
         -------
-
+        data_for_adaptivity : dict_like
+            A dictionary containing the names of the data to be used in adaptivity as keys and information on whether
+            the data are scalar or vector as values.
         """
         return self._data_for_adaptivity
 
     def get_adaptivity_hist_param(self):
         """
+        Get adaptivity history parameter.
+        More details: https://precice.org/tooling-micro-manager-configuration.html#adaptivity
 
         Returns
         -------
-
+        adaptivity_hist_param : float
+            Adaptivity history parameter
         """
         return self._adaptivity_history_param
 
     def get_adaptivity_coarsening_const(self):
         """
+        Get adaptivity coarsening constant.
+        More details: https://precice.org/tooling-micro-manager-configuration.html#adaptivity
 
         Returns
         -------
-
+        adaptivity_coarsening_constant : float
+            Adaptivity coarsening constant
         """
         return self._adaptivity_coarsening_constant
 
     def get_adaptivity_refining_const(self):
         """
+        Get adaptivity refining constant.
+        More details: https://precice.org/tooling-micro-manager-configuration.html#adaptivity
 
         Returns
         -------
-
+        adaptivity_refining_constant : float
+            Adaptivity refining constant
         """
         return self._adaptivity_refining_constant
 
     def get_adaptivity_similarity_measure(self):
         """
+        Get measure to be used to calculate similarity between pairs of simulations.
+        More details: https://precice.org/tooling-micro-manager-configuration.html#adaptivity
 
         Returns
         -------
-
+        adaptivity_similarity_measure : str
+            String of measure to be used in calculating similarity between pairs of simulations.
         """
         return self._adaptivity_similarity_measure
 
     def is_adaptivity_required_in_every_implicit_iteration(self):
         """
+        Check if adaptivity needs to be calculated in every time iteration or every time window.
 
         Returns
         -------
+        adaptivity_every_implicit_iteration : bool
+            True if adaptivity needs to be calculated in every time iteration, False otherwise.
         """
         return self._adaptivity_every_implicit_iteration

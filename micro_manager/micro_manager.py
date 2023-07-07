@@ -1,6 +1,15 @@
 #!/usr/bin/env python3
 """
-Micro Manager: a tool to initialize and adaptively control micro simulations and couple them via preCICE to a macro simulation
+Micro Manager is a tool to initialize and adaptively control micro simulations and couple them via preCICE to a macro simulation.
+This files the class MicroManager which has the following callable public methods:
+
+- initialize
+- solve
+
+This file is directly executable as it consists of a main() function. Upon execution, an object of the class MicroManager is created using a given JSON file,
+and the initialize and solve methods are called.
+
+Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
 """
 
 import argparse
@@ -119,15 +128,14 @@ class MicroManager:
 
     def initialize(self) -> None:
         """
-        This function does the following things:
+        Initialize the Micro Manager.
         - Decomposes the domain if the Micro Manager is executed in parallel
         - Initializes preCICE
         - Gets the macro mesh information from preCICE
         - Creates all micro simulation objects and initializes them if an initialization procedure is available
         - Writes initial data to preCICE
         """
-        # Decompose the macro-domain and set the mesh access region for each
-        # partition in preCICE
+        # Decompose the macro-domain and set the mesh access region for each partition in preCICE
         assert len(self._macro_bounds) / \
             2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of incorrect dimension"
         if self._is_parallel:
@@ -138,7 +146,7 @@ class MicroManager:
 
         self._interface.set_mesh_access_region(self._macro_mesh_id, coupling_mesh_bounds)
 
-        # initialize preCICE
+        # Initialize preCICE
         self._dt = self._interface.initialize()
 
         self._mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(self._macro_mesh_id)
@@ -259,9 +267,12 @@ class MicroManager:
 
         self._interface.initialize_data()
 
-    def solve(self):
+    def solve(self) -> None:
         """
-        This function handles the coupling time loop, including checkpointing and output.
+        Solve the problem using preCICE.
+        - Handle checkpointing is implicit coupling is done.
+        - Read data from preCICE, solve micro simulations, and write data to preCICE
+        - If adaptivity is on, compute micro simulations adaptively.
         """
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
@@ -287,6 +298,7 @@ class MicroManager:
         sim_states_cp = [None] * self._local_number_of_sims
 
         while self._interface.is_coupling_ongoing():
+            # Write a checkpoint
             if self._interface.is_action_required(precice.action_write_iteration_checkpoint()):
                 for i in range(self._local_number_of_sims):
                     sim_states_cp[i] = self._micro_sims[i].get_state()
@@ -298,7 +310,8 @@ class MicroManager:
                         similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
                             self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
 
-                        # Only do checkpointing if adaptivity is computed once in every time window
+                        # Only checkpoint the adaptivity configuration if adaptivity is computed
+                        # once in every time window
                         similarity_dists_cp = np.copy(similarity_dists)
                         is_sim_active_cp = np.copy(is_sim_active)
                         sim_is_associated_to_cp = np.copy(sim_is_associated_to)
@@ -343,13 +356,14 @@ class MicroManager:
             t += self._dt
             n += 1
 
-            # Revert all micro simulations to checkpoints if required
+            # Revert micro simulations to their last checkpoints if required
             if self._interface.is_action_required(precice.action_read_iteration_checkpoint()):
                 for i in range(self._local_number_of_sims):
                     self._micro_sims[i].set_state(sim_states_cp[i])
                 n = n_checkpoint
                 t = t_checkpoint
 
+                # If adaptivity is computed only once per time window, the states of sims need to be reset too
                 if self._is_adaptivity_on:
                     if not self._is_adaptivity_required_in_every_implicit_iteration:
                         similarity_dists = np.copy(similarity_dists_cp)
@@ -364,8 +378,8 @@ class MicroManager:
 
                 if self._micro_sims_have_output:
                     if n % self._micro_n_out == 0:
-                        for micro_sim in self._micro_sims:
-                            micro_sim.output()
+                        for sim in self._micro_sims:
+                            sim.output()
 
         self._interface.finalize()
 
@@ -375,8 +389,7 @@ class MicroManager:
 
     def _read_data_from_precice(self) -> list:
         """
-        Read data from preCICE. Depending on initial definition of whether a data is scalar or vector, the appropriate
-        preCICE API command is called.
+        Read data from preCICE.
 
         Returns
         -------
@@ -401,31 +414,31 @@ class MicroManager:
 
         return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
 
-    def _write_data_to_precice(self, micro_sims_output: list) -> None:
+    def _write_data_to_precice(self, data: list) -> None:
         """
-        Write output of micro simulations to preCICE.
+        Write data to preCICE.
 
         Parameters
         ----------
-        micro_sims_output : list
+        data : list
             List of dicts in which keys are names of data and the values are the data to be written to preCICE.
         """
-        write_data: Dict[str, list] = dict()
+        data_dict: Dict[str, list] = dict()
         if not self._is_rank_empty:
-            for name in micro_sims_output[0]:
-                write_data[name] = []
+            for name in data[0]:
+                data_dict[name] = []
 
-            for output_dict in micro_sims_output:
+            for output_dict in data:
                 for name, values in output_dict.items():
-                    write_data[name].append(values)
+                    data_dict[name].append(values)
 
             for dname, is_data_vector in self._write_data_names.items():
                 if is_data_vector:
                     self._interface.write_block_vector_data(
-                        self._write_data_ids[dname], self._mesh_vertex_ids, write_data[dname])
+                        self._write_data_ids[dname], self._mesh_vertex_ids, data_dict[dname])
                 else:
                     self._interface.write_block_scalar_data(
-                        self._write_data_ids[dname], self._mesh_vertex_ids, write_data[dname])
+                        self._write_data_ids[dname], self._mesh_vertex_ids, data_dict[dname])
         else:
             for dname, is_data_vector in self._write_data_names.items():
                 if is_data_vector:
@@ -437,8 +450,7 @@ class MicroManager:
 
     def _solve_micro_simulations(self, micro_sims_input: list) -> list:
         """
-        Solve all micro simulations using the data read from preCICE and assemble the micro simulations outputs in a list of dicts
-        format.
+        Solve all micro simulations and assemble the micro simulations outputs in a list of dicts format.
 
         Parameters
         ----------
@@ -470,8 +482,7 @@ class MicroManager:
             is_sim_active: np.ndarray,
             sim_is_associated_to: np.ndarray) -> list:
         """
-        Solve all micro simulations using the data read from preCICE and assemble the micro simulations outputs in a list of dicts
-        format.
+        Solve all micro simulations and assemble the micro simulations outputs in a list of dicts format.
 
         Parameters
         ----------
@@ -529,7 +540,7 @@ class MicroManager:
             if self._is_micro_solve_time_required:
                 micro_sims_output[inactive_id]["micro_sim_time"] = 0
 
-        # Collect micro sim output for adaptivity
+        # Collect micro sim output for adaptivity calculation
         for i in range(self._local_number_of_sims):
             for name in self._adaptivity_micro_data_names:
                 self._data_for_adaptivity[name][i] = micro_sims_output[i][name]

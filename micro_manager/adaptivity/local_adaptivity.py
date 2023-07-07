@@ -1,5 +1,7 @@
 """
-Functionality for adaptive control of micro simulations locally within a rank (or the entire domain if the Micro Manager is run in serial)
+Class LocalAdaptivityCalculator provides methods to adaptively control of micro simulations
+in a local way. If the Micro Manager is run in parallel, simulations on one rank are compared to
+each other. A global comparison is not done.
 """
 import numpy as np
 from .adaptivity import AdaptivityCalculator
@@ -7,6 +9,16 @@ from .adaptivity import AdaptivityCalculator
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(self, configurator, logger) -> None:
+        """
+        Class constructor.
+
+        Parameters
+        ----------
+        configurator : object of class Config
+            Object which has getter functions to get parameters defined in the configuration file.
+        logger : object of logging
+            Logger defined from the standard package logging
+        """
         super().__init__(configurator, logger)
 
     def compute_adaptivity(
@@ -18,29 +30,30 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             sim_is_associated_to_nm1: np.ndarray,
             data_for_adaptivity: dict):
         """
-        Compute adaptivity locally (within a rank) based on similarity distances and micro simulation states
+        Compute adaptivity locally (within a rank).
 
         Parameters
         ----------
         dt : float
             Current time step
         micro_sims : list
-            TODO
+            List containing simulation objects
         similarity_dists_nm1 : numpy array
-            2D array having similarity distances between each micro simulation pair
+            2D array having similarity distances between each micro simulation pair.
         is_sim_active_nm1 : numpy array
-            1D array having True if sim is active, False if sim is inactive
+            1D array having True if sim is active, False if sim is inactive.
         sim_is_associated_to_nm1 : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
+            1D array with values of associated simulations of inactive simulations. Active simulations have None.
         data_for_adaptivity : dict
-            TODO
+            A dictionary containing the names of the data to be used in adaptivity as keys and information on whether
+            the data are scalar or vector as values.
 
-        Results
+        Returns
         -------
         similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
+            2D array having similarity distances between each micro simulation pair.
         is_sim_active : numpy array
-            1D array, True is sim is active, False if sim is inactive
+            1D array, True is sim is active, False if sim is inactive.
         """
         similarity_dists = self._get_similarity_dists(dt, similarity_dists_nm1, data_for_adaptivity)
 
@@ -68,16 +81,17 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
         and if it is not similar to any of them, it is activated.
+
         Parameters
         ----------
         similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
+            2D array having similarity distances between each micro simulation pair.
         is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation
+            1D array having state (active or inactive) of each micro simulation.
         sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
+            1D array with values of associated simulations of inactive simulations. Active simulations have None.
         micro_sims : list
-            TODO
+            List containing micro simulation objects.
 
         Returns
         -------

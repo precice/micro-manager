@@ -9,7 +9,15 @@ from typing import Callable
 
 class AdaptivityCalculator:
     def __init__(self, configurator, logger) -> None:
-        # Names of data to be used for adaptivity computation
+        """
+        Class constructor.
+
+        Parameters
+        ----------
+        configurator : object of class Config
+            Object which has getter functions to get parameters defined in the configuration file.
+        logger : Logger defined from the standard package logging
+        """
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
         self._hist_param = configurator.get_adaptivity_hist_param()
@@ -134,16 +142,21 @@ class AdaptivityCalculator:
             similarity_dists: np.ndarray,
             is_sim_active: np.ndarray) -> bool:
         """
-        Function to check if an inactive simulation needs to be activated
+        Check if an inactive simulation needs to be activated.
 
         Parameters
         ----------
         inactive_id : int
-            ID of inactive simulation which is checked for activation
+            ID of inactive simulation which is checked for activation.
         similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
+            2D array having similarity distances between each micro simulation pair.
         is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation
+            1D array having state (active or inactive) of each micro simulation.
+
+        Return
+        ------
+        tag : bool
+            True if the inactive simulation needs to be activated, False otherwise.
         """
         active_sim_ids = np.where(is_sim_active)[0]
 
@@ -158,16 +171,21 @@ class AdaptivityCalculator:
             similarity_dists: np.ndarray,
             is_sim_active: np.ndarray) -> bool:
         """
-        Function to check if an active simulation needs to be deactivated
+        Check if an active simulation needs to be deactivated.
 
         Parameters
         ----------
         active_id : int
-            ID of active simulation which is checked for deactivation
+            ID of active simulation which is checked for deactivation.
         similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
+            2D array having similarity distances between each micro simulation pair.
         is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation
+            1D array having state (active or inactive) of each micro simulation.
+
+        Return
+        ------
+        tag : bool
+            True if the active simulation needs to be deactivated, False otherwise.
         """
         active_sim_ids = np.where(is_sim_active)[0]
 

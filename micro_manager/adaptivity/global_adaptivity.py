@@ -1,5 +1,9 @@
 """
-Functionality for adaptive control of micro simulations in a global way (all-to-all comparison of micro simulations)
+Class GlobalAdaptivityCalculator provides methods to adaptively control of micro simulations
+in a global way. If the Micro Manager is run in parallel, an all-to-all comparison of simulations
+on each rank is done.
+
+Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
 import numpy as np
 import hashlib
@@ -10,11 +14,6 @@ from .adaptivity import AdaptivityCalculator
 
 
 class GlobalAdaptivityCalculator(AdaptivityCalculator):
-    """
-    This class provides functionality to compute adaptivity globally, i.e. by comparing micro simulation from all processes.
-    All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
-    """
-
     def __init__(
             self,
             configurator,
@@ -24,6 +23,26 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             global_ids: list,
             comm,
             rank: int) -> None:
+        """
+        Class constructor.
+
+        Parameters
+        ----------
+        configurator : object of class Config
+            Object which has getter functions to get parameters defined in the configuration file.
+        logger : object of logging
+            Logger defined from the standard package logging
+        is_sim_on_this_rank : list
+            List of booleans. True if simulation is on this rank, False otherwise.
+        rank_of_sim : numpy array
+            1D array consisting of rank on which the simulation lives.
+        global_ids : list
+            List of global IDs of simulations living on this rank.
+        comm : MPI.COMM_WORLD
+            Global communicator of MPI.
+        rank : int
+            MPI rank.
+        """
         super().__init__(configurator, logger)
         self._is_sim_on_this_rank = is_sim_on_this_rank
         self._rank_of_sim = rank_of_sim
@@ -45,7 +64,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         Parameters
         ----------
         dt : float
-            TODO
+            Current time step of the macro-micro coupled problem
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         similarity_dists_nm1 : numpy array
@@ -96,7 +115,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             sim_is_associated_to: np.ndarray,
             micro_output: list) -> None:
         """
-        Communicate micro output from active simulation to their associated inactive simulations. P2P communication is done.
+        Communicate micro output from active simulation to their associated inactive simulations.
+        Process to process (p2p) communication is done.
 
         Parameters
         ----------
@@ -181,8 +201,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     if self._is_sim_on_this_rank[i]:
                         to_be_activated_ids.append(i)
 
-        print("is_sim_active: {}, to_be_activated: {}".format(_is_sim_active, to_be_activated_ids))
-
         local_sim_is_associated_to = _sim_is_associated_to[self._global_ids[0]:self._global_ids[-1] + 1]
 
         # Keys are global IDs of active sims not on this rank, values are lists of local and
@@ -221,7 +239,24 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return _is_sim_active, _sim_is_associated_to
 
-    def _create_tag(self, sim_id, src_rank, dest_rank):
+    def _create_tag(self, sim_id: int, src_rank: int, dest_rank: int) -> int:
+        """
+        For a given simulations ID, source rank, and destination rank, a unique tag is created.
+
+        Parameters
+        ----------
+        sim_id : int
+            Global ID of a simulation.
+        src_rank : int
+            Rank on which the simulation lives
+        dest_rank : int
+            Rank to which data of a simulation is to be sent to.
+
+        Returns
+        -------
+        tag : int
+            Unique tag.
+        """
         send_hashtag = hashlib.sha256()
         send_hashtag.update((str(src_rank) + str(sim_id) + str(dest_rank)).encode('utf-8'))
         tag = int(send_hashtag.hexdigest()[:6], base=16)
@@ -229,12 +264,20 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
     def _p2p_comm(self, assoc_active_ids: list, data: list) -> list:
         """
-        This function created sending and receiving maps for p2p communication.
+        Handle process to process communication for a given set of associated active IDs and data.
 
         Parameters
         ----------
         assoc_active_ids : list
-            Global IDs of active simulations which are not on this rank and are associated to the inactive simulations on this rank
+            Global IDs of active simulations which are not on this rank and are associated to
+            the inactive simulations on this rank.
+        data : list
+            Complete data from which parts are to be sent and received.
+
+        Returns
+        -------
+        recv_reqs : list
+            List of MPI requests of receive operations.
         """
         send_map_local: Dict[int, int] = dict()  # keys are global IDs, values are rank to send to
         send_map: Dict[int, list] = dict()  # keys are global IDs of sims to send, values are ranks to send the sims to
