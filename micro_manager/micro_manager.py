@@ -15,7 +15,7 @@ from copy import deepcopy
 from typing import Dict
 
 from .config import Config
-from .micro_simulation import create_micro_problem_class
+from .micro_simulation import create_simulation_class
 from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
 from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 from .domain_decomposition import DomainDecomposer
@@ -83,10 +83,10 @@ class MicroManager:
 
         self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
-        self._local_number_of_sims = None
-        self._global_number_of_micro_sims = None
+        self._local_number_of_sims = 0
+        self._global_number_of_micro_sims = 0
         self._is_rank_empty = False
-        self._dt = None
+        self._dt = 0
         self._mesh_vertex_ids = None  # IDs of macro vertices as set by preCICE
         self._micro_n_out = self._config.get_micro_output_n()
 
@@ -95,7 +95,7 @@ class MicroManager:
         if self._is_adaptivity_on:
             self._number_of_micro_sims_for_adaptivity = 0
 
-            self._data_for_adaptivity = dict()
+            self._data_for_adaptivity: Dict[str, np.ndarray] = dict()
             self._adaptivity_type = self._config.get_adaptivity_type()
 
             self._adaptivity_data_names = self._config.get_data_for_adaptivity()
@@ -175,6 +175,7 @@ class MicroManager:
             sim_id += 1
 
         self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
+        micro_sims_output = [None] * self._local_number_of_sims
 
         micro_problem = getattr(
             __import__(
@@ -185,7 +186,7 @@ class MicroManager:
         if self._is_adaptivity_on:
             # Create micro simulation objects
             for i in range(self._local_number_of_sims):
-                self._micro_sims[i] = create_micro_problem_class(
+                self._micro_sims[i] = create_simulation_class(
                     micro_problem)(self._global_ids_of_local_sims[i])
 
             # Create a map of micro simulation global IDs and the ranks on which they are
@@ -220,9 +221,7 @@ class MicroManager:
         else:
             for i in range(self._local_number_of_sims):
                 self._micro_sims[i] = (
-                    create_micro_problem_class(micro_problem)(self._global_ids_of_local_sims[i]))
-
-        micro_sims_output = list(range(self._local_number_of_sims))
+                    create_simulation_class(micro_problem)(self._global_ids_of_local_sims[i]))
 
         # Initialize micro simulations if initialize() method exists
         if hasattr(micro_problem, 'initialize') and callable(getattr(micro_problem, 'initialize')):
@@ -270,13 +269,10 @@ class MicroManager:
         for name in self._read_data_names.keys():
             read_data[name] = []
 
-        print("read_data 1: {}".format(read_data))
-
         for name, is_data_vector in self._read_data_names.items():
             if is_data_vector:
                 read_data.update({name: self._interface.read_block_vector_data(
                     self._read_data_ids[name], self._mesh_vertex_ids)})
-                print("After scalar data update: {}".format(read_data))
             else:
                 read_data.update({name: self._interface.read_block_scalar_data(
                     self._read_data_ids[name], self._mesh_vertex_ids)})
@@ -284,8 +280,6 @@ class MicroManager:
             if self._is_adaptivity_on:
                 if name in self._adaptivity_macro_data_names:
                     self._data_for_adaptivity[name] = read_data[name]
-
-        print("read_data 2: {}".format(read_data))
 
         return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
 
