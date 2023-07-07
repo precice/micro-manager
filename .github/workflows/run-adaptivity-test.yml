@@ -31,9 +31,15 @@ jobs:
         working-directory: micro-manager
         run: pip3 install --user .
 
-      - name: Run integration test
+      - name: Run integration test with local adaptivity
+        timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube_dummy
-        run: python3 unit_cube_macro.py & python3 run_micro_manager.py --config micro-manager-config-adaptivity.json
+        run: python3 unit_cube_macro.py & python3 run_micro_manager.py --config micro-manager-config-local-adaptivity.json
+
+      - name: Run integration test serially with global adaptivity
+        timeout-minutes: 3
+        working-directory: micro-manager/tests/integration/test_unit_cube_dummy
+        run: python3 unit_cube_macro.py & python3 run_micro_manager.py --config micro-manager-config-global-adaptivity.json
 
   adaptivity_unit_tests:
     name: Run adaptivity unit tests
