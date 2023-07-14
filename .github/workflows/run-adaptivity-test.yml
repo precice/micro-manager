@@ -8,8 +8,8 @@ on:
     branches:
       - "*"
 jobs:  
-  adaptivity_integration_test:
-    name: Run adaptivity integration test
+  integration_test:
+    name: Run integration test
     runs-on: ubuntu-latest
     container: precice/precice
     steps:
@@ -40,8 +40,8 @@ jobs:
         working-directory: micro-manager/tests/integration/test_unit_cube
         run: python3 unit_cube.py & python3 run_micro_manager.py --config micro-manager-config-global-adaptivity.json
 
-  adaptivity_unit_tests_serial:
-    name: Run adaptivity unit tests (serial variants)
+  unit_tests_serial:
+    name: Run unit tests (serial variants)
     runs-on: ubuntu-latest
     container: precice/precice
     steps:
@@ -66,8 +66,8 @@ jobs:
         working-directory: micro-manager/tests/unit
         run: python3 -m unittest test_adaptivity_serial.py
 
-  adaptivity_unit_tests_parallel:
-    name: Run adaptivity unit tests (parallel variants)
+  unit_tests_parallel:
+    name: Run unit tests (parallel variants)
     runs-on: ubuntu-latest
     container: precice/precice
     steps:

@@ -54,7 +54,7 @@ class DomainDecomposer:
         for d in range(self._dims):
             dx.append(abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / ranks_per_axis[d])
 
-        rank_in_axis: list[int] = [None] * self._dims
+        rank_in_axis: list[int] = [0] * self._dims
         if ranks_per_axis[0] == 1:  # if serial in x axis
             rank_in_axis[0] = 0
         else:

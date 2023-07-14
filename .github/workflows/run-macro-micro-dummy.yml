@@ -8,8 +8,8 @@ on:
     branches:
       - "*"
 jobs:  
-  run_macro_micro_dummy:
-    name: Run macro-micro dummy
+  run_dummy:
+    name: Run dummy
     runs-on: ubuntu-latest
     container: precice/precice
     steps:
