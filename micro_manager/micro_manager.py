@@ -35,12 +35,12 @@ sys.path.append(os.getcwd())
 class MicroManager:
     def __init__(self, config_file: str) -> None:
         """
-        Constructor
+        Constructor.
 
         Parameters
         ----------
         config_file : string
-            Name of the JSON configuration file (to be provided by the user)
+            Name of the JSON configuration file (provided by the user).
         """
         self._comm = MPI.COMM_WORLD
         self._rank = self._comm.Get_rank()
@@ -128,12 +128,12 @@ class MicroManager:
 
     def initialize(self) -> None:
         """
-        Initialize the Micro Manager.
-        - Decomposes the domain if the Micro Manager is executed in parallel
-        - Initializes preCICE
-        - Gets the macro mesh information from preCICE
-        - Creates all micro simulation objects and initializes them if an initialization procedure is available
-        - Writes initial data to preCICE
+        Initialize the Micro Manager by performing the following tasks:
+        - Decompose the domain if the Micro Manager is executed in parallel.
+        - Initialize preCICE.
+        - Gets the macro mesh information from preCICE.
+        - Create all micro simulation objects and initialize them if an initialize() method is available.
+        - If required, write initial data to preCICE.
         """
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
         assert len(self._macro_bounds) / \
@@ -225,8 +225,8 @@ class MicroManager:
                     self._is_sim_on_this_rank,
                     self._rank_of_sim,
                     self._global_ids_of_local_sims,
-                    self._comm,
-                    self._rank)
+                    self._rank,
+                    self._comm)
                 self._number_of_micro_sims_for_adaptivity = self._global_number_of_micro_sims
 
             self._micro_sims_active_steps = np.zeros(self._local_number_of_sims)

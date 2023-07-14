@@ -6,10 +6,10 @@ from micro_manager.adaptivity.global_adaptivity import GlobalAdaptivityCalculato
 from micro_manager.config import Config
 import numpy as np
 from math import exp
+from mpi4py import MPI
 
 
 class TestLocalAdaptivity(TestCase):
-
     def setUp(self):
         self._number_of_sims = 5
         self._dt = 0.1
@@ -60,7 +60,7 @@ class TestLocalAdaptivity(TestCase):
 
     def test_get_similarity_dists(self):
         """
-        Test base functionality of calculating the similarity distance matrix
+        Test functionality of calculating the similarity distance matrix in class AdaptivityCalculator.
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value='L1')
@@ -90,13 +90,13 @@ class TestLocalAdaptivity(TestCase):
 
     def test_update_active_sims(self):
         """
-        Test base functionality of updating active simulations
+        Test functionality of updating active simulations in class AdaptivityCalculator.
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         adaptivity_controller = AdaptivityCalculator(configurator, logger=MagicMock())
-        adaptivity_controller._refine_const = 0.4
-        adaptivity_controller._coarse_const = 0.3
+        adaptivity_controller._refine_const = self._refine_const
+        adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = ["macro-scalar-data", "macro-vector-data"]
 
         # Third and fifth micro sim are active, rest are inactive
@@ -116,12 +116,39 @@ class TestLocalAdaptivity(TestCase):
 
         self.assertTrue(np.array_equal(expected_is_sim_active, is_sim_active))
 
+    def test_adaptivity_norms(self):
+        """
+        Test functionality for calculating similarity criteria between pairs of simulations using different norms in class AdaptivityCalculator.
+        """
+        calc = AdaptivityCalculator(Config('micro-manager-config.json'), 0)
+
+        fake_data = np.array([[1], [2], [3]])
+        self.assertTrue(np.allclose(calc._l1(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])))
+        # norm taken over last axis -> same as before
+        self.assertTrue(np.allclose(calc._l2(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])))
+        self.assertTrue(np.allclose(calc._l1rel(fake_data), np.array(
+            [[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]])))
+        self.assertTrue(np.allclose(calc._l2rel(fake_data), np.array(
+            [[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]])))
+
+        fake_2d_data = np.array([[1, 2], [3, 4]])
+        self.assertTrue(np.allclose(calc._l1(fake_2d_data), np.array([[0, 4], [4, 0]])))
+        self.assertTrue(np.allclose(calc._l2(fake_2d_data), np.array([[0, np.sqrt((1 - 3)**2 + (2 - 4)**2)],
+                                                                      [np.sqrt((1 - 3)**2 + (2 - 4)**2), 0]])))
+        self.assertTrue(np.allclose(calc._l1rel(fake_2d_data), np.array(
+            [[0, abs((1 - 3) / max(1, 3) + (2 - 4) / max(2, 4))], [abs((1 - 3) / max(1, 3) + (2 - 4) / max(2, 4)), 0]])))
+        self.assertTrue(np.allclose(calc._l2rel(fake_2d_data), np.array([[0, np.sqrt(
+            (1 - 3)**2 / max(1, 3)**2 + (2 - 4)**2 / max(2, 4)**2)], [np.sqrt((1 - 3)**2 / max(1, 3)**2 + (2 - 4)**2 / max(2, 4)**2), 0]])))
+
     def test_associate_active_to_inactive(self):
+        """
+        Test functionality to associate inactive sims to active ones, in the class AdaptivityCalculator.
+        """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        adaptivity_controller = LocalAdaptivityCalculator(configurator, logger=MagicMock())
-        adaptivity_controller._refine_const = 0.4
-        adaptivity_controller._coarse_const = 0.3
+        adaptivity_controller = AdaptivityCalculator(configurator, logger=MagicMock())
+        adaptivity_controller._refine_const = self._refine_const
+        adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = ["macro-scalar-data", "macro-vector-data"]
 
         is_sim_active = np.array([True, False, False, True, False])
@@ -145,33 +172,15 @@ class TestLocalAdaptivity(TestCase):
 
         self.assertTrue(np.array_equal(expected_sim_is_associated_to, sim_is_associated_to))
 
-    def test_adaptivity_norms(self):
-        calc = AdaptivityCalculator(Config('micro-manager-config.json'), 0)
-
-        fake_data = np.array([[1], [2], [3]])
-        self.assertTrue(np.allclose(calc._l1(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])))
-        # norm taken over last axis -> same as before
-        self.assertTrue(np.allclose(calc._l2(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])))
-        self.assertTrue(np.allclose(calc._l1rel(fake_data), np.array(
-            [[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]])))
-        self.assertTrue(np.allclose(calc._l2rel(fake_data), np.array(
-            [[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]])))
-
-        fake_2d_data = np.array([[1, 2], [3, 4]])
-        self.assertTrue(np.allclose(calc._l1(fake_2d_data), np.array([[0, 4], [4, 0]])))
-        self.assertTrue(np.allclose(calc._l2(fake_2d_data), np.array([[0, np.sqrt((1 - 3)**2 + (2 - 4)**2)],
-                                                                      [np.sqrt((1 - 3)**2 + (2 - 4)**2), 0]])))
-        self.assertTrue(np.allclose(calc._l1rel(fake_2d_data), np.array(
-            [[0, abs((1 - 3) / max(1, 3) + (2 - 4) / max(2, 4))], [abs((1 - 3) / max(1, 3) + (2 - 4) / max(2, 4)), 0]])))
-        self.assertTrue(np.allclose(calc._l2rel(fake_2d_data), np.array([[0, np.sqrt(
-            (1 - 3)**2 / max(1, 3)**2 + (2 - 4)**2 / max(2, 4)**2)], [np.sqrt((1 - 3)**2 / max(1, 3)**2 + (2 - 4)**2 / max(2, 4)**2), 0]])))
-
     def test_update_inactive_sims_local_adaptivity(self):
+        """
+        Test functionality to update inactive simulations in a particular setting, for a local adaptivity setting.
+        """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         adaptivity_controller = LocalAdaptivityCalculator(configurator, logger=MagicMock())
-        adaptivity_controller._refine_const = 0.4
-        adaptivity_controller._coarse_const = 0.3
+        adaptivity_controller._refine_const = self._refine_const
+        adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = ["macro-scalar-data", "macro-vector-data"]
 
         # Third and fifth micro sim are active, rest are deactivate
@@ -213,68 +222,3 @@ class TestLocalAdaptivity(TestCase):
 
         self.assertTrue(np.array_equal(expected_is_sim_active, is_sim_active))
         self.assertTrue(np.array_equal(expected_sim_is_associated_to, sim_is_associated_to))
-
-    def test_update_inactive_sims_global_adaptivity(self):
-        is_sim_on_this_rank = [False, False, False, True, True]  # from the perspective of rank 0
-        rank_of_sim = [0, 0, 0, 1, 1]
-        global_ids = [0, 1, 2, 3, 4]
-        configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        adaptivity_controller = GlobalAdaptivityCalculator(
-            configurator,
-            MagicMock(),
-            is_sim_on_this_rank,
-            rank_of_sim,
-            global_ids,
-            comm=MagicMock(),
-            rank=1)
-        adaptivity_controller._refine_const = 0.4
-        adaptivity_controller._coarse_const = 0.3
-
-        # Third and fifth micro sim are active, rest are deactivate
-        expected_is_sim_active = np.array([True, False, False, True, False])
-        expected_sim_is_associated_to = np.array([-2, 0, 0, -2, 3])
-
-        is_sim_active = np.array([True, False, False, False, False])
-        sim_is_associated_to = np.array([-2, 0, 0, 0, 3])
-
-        class MicroSimulation():
-            def get_global_id(self):
-                return 1
-
-            def set_global_id(self, global_id):
-                pass
-
-            def set_state(self, state):
-                pass
-
-            def get_state(self):
-                pass
-
-        class fake_MPI_request():
-            def __init__(self, state, global_id) -> None:
-                self._state = state
-                self._global_id = global_id
-
-            def wait(self):
-                return self._state, self._global_id
-
-        fake_requests = [fake_MPI_request(None, 0)]
-
-        adaptivity_controller._p2p_comm = MagicMock(return_value=fake_requests)
-
-        dummy_micro_sims = []
-        for i in range(self._number_of_sims):
-            dummy_micro_sims.append(MicroSimulation())
-
-        is_sim_active, sim_is_associated_to = adaptivity_controller._update_inactive_sims(
-            self._similarity_dists, is_sim_active, sim_is_associated_to, dummy_micro_sims)
-
-        self.assertTrue(np.array_equal(expected_is_sim_active, is_sim_active))
-        self.assertTrue(np.array_equal(expected_sim_is_associated_to, sim_is_associated_to))
-
-    def test_communicate_micro_output(self):
-        pass
-
-    def test_p2p_comm(self):
-        pass

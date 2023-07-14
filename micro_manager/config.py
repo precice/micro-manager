@@ -1,5 +1,5 @@
 """
-Configuration module of the Micro Manager
+Class Config provides functionality to read a JSON file and pass the values to the Micro Manager.
 """
 
 import json

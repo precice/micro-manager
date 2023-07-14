@@ -1,5 +1,5 @@
 """
-Functionality to partition the macro domain according to partitions in each axis provided by the user
+Class DomainDecomposer provides the method decompose_macro_domain which returns partitioned bounds
 """
 
 import numpy as np
@@ -7,6 +7,20 @@ import numpy as np
 
 class DomainDecomposer:
     def __init__(self, logger, dims, rank, size) -> None:
+        """
+        Class constructor.
+
+        Parameters
+        ----------
+        logger : object of logging
+            Logger defined from the standard package logging.
+        dims : int
+            Dimensions of the problem.
+        rank : int
+            MPI rank.
+        size : int
+            Total number of MPI processes.
+        """
         self._logger = logger
         self._rank = rank
         self._size = size
