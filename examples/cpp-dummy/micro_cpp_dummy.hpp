@@ -26,5 +26,5 @@ public:
 private:
     double _micro_scalar_data;
     std::vector<double> _micro_vector_data;
-    double _checkpoint;
+    double _state;
 };
