@@ -29,32 +29,31 @@ class MicroSimulation: # Name is fixed
             Python dictionary with names of micro data as keys and the data as values at the initial condition
         """
 
-    def solve(self, macro_data, dt) -> dict:
+    def solve(self, macro_data: dict, dt: float) -> dict:
         """
         Solve one time step of the micro simulation for transient problems or solve until steady state for steady-state problems.
 
         Parameters
         ----------
         macro_data : dict
-            Dictionary with names of macro data as keys and the data as values
+            Dictionary with names of macro data as keys and the data as values.
         dt : float
-            Time step size
+            Current time step size.
 
         Returns
         -------
         micro_data : dict
-            Dictionary with names of micro data as keys and the updated micro data a values
+            Dictionary with names of micro data as keys and the updated micro data a values.
         """
 
-    def save_checkpoint(self):
+    def set_state(self, state):
         """
-        Save the state of the micro simulation. *Required for implicit coupling*.
-        Save the state internally.
+        Set the state of the micro simulation.
         """
 
-    def reload_checkpoint(self):
+    def get_state(self):
         """
-        Revert the micro simulation to a previously saved state. *Required for implicit coupling*.
+        Return the state of the micro simulation.
         """
 
     def output(self):

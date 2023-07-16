@@ -13,12 +13,12 @@ class MicroSimulation:
         self._dims = 3
         self._micro_scalar_data = None
         self._micro_vector_data = None
-        self._checkpoint = None
+        self._state = None
 
     def initialize(self):
         self._micro_scalar_data = 0
         self._micro_vector_data = []
-        self._checkpoint = 0
+        self._state = 0
 
     def solve(self, macro_data, dt):
         assert dt != 0
@@ -31,7 +31,7 @@ class MicroSimulation:
                 "micro-vector-data": self._micro_vector_data.copy()}
 
     def set_state(self, state):
-        self._checkpoint = state
+        self._state = state
 
     def get_state(self):
-        return self._checkpoint
+        return self._state

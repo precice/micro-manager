@@ -13,7 +13,7 @@
 #include "micro_cpp_dummy.hpp"
 
 // Constructor
-MicroSimulation::MicroSimulation() : _micro_scalar_data(0), _checkpoint(0) {}
+MicroSimulation::MicroSimulation() : _micro_scalar_data(0), _state(0) {}
 
 // Initialize
 void MicroSimulation::initialize()
@@ -21,7 +21,7 @@ void MicroSimulation::initialize()
     std::cout << "Initialize micro problem\n";
     _micro_scalar_data = 0;
     _micro_vector_data.clear();
-    _checkpoint = 0;
+    _state = 0;
 }
 
 // Solve
@@ -57,13 +57,13 @@ py::dict MicroSimulation::solve(py::dict macro_data, double dt)
 void MicroSimulation::set_state(py::list state)
 {
     _micro_scalar_data = state[0].cast<double>();
-    _checkpoint = state[1].cast<double>();
+    _state = state[1].cast<double>();
 }
 
 // This function needs to return variables which can fully define the state of a micro simulation
 py::list MicroSimulation::get_state() const
 {
-    std::vector<double> state{_micro_scalar_data, _checkpoint};
+    std::vector<double> state{_micro_scalar_data, _state};
     py::list state_python = py::cast(state);
     return state_python;
 }

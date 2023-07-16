@@ -1,5 +1,9 @@
 """
-Functionality for adaptive control of micro simulations in a global way (all-to-all comparison of micro simulations)
+Class GlobalAdaptivityCalculator provides methods to adaptively control of micro simulations
+in a global way. If the Micro Manager is run in parallel, an all-to-all comparison of simulations
+on each rank is done.
+
+Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
 import numpy as np
 import hashlib
@@ -10,11 +14,6 @@ from .adaptivity import AdaptivityCalculator
 
 
 class GlobalAdaptivityCalculator(AdaptivityCalculator):
-    """
-    This class provides functionality to compute adaptivity globally, i.e. by comparing micro simulation from all processes.
-    All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
-    """
-
     def __init__(
             self,
             configurator,
@@ -22,8 +21,28 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             is_sim_on_this_rank: list,
             rank_of_sim: np.ndarray,
             global_ids: list,
-            comm,
-            rank: int) -> None:
+            rank: int,
+            comm) -> None:
+        """
+        Class constructor.
+
+        Parameters
+        ----------
+        configurator : object of class Config
+            Object which has getter functions to get parameters defined in the configuration file.
+        logger : object of logging
+            Logger defined from the standard package logging
+        is_sim_on_this_rank : list
+            List of booleans. True if simulation is on this rank, False otherwise.
+        rank_of_sim : numpy array
+            1D array consisting of rank on which the simulation lives.
+        global_ids : list
+            List of global IDs of simulations living on this rank.
+        rank : int
+            MPI rank.
+        comm : MPI.COMM_WORLD
+            Global communicator of MPI.
+        """
         super().__init__(configurator, logger)
         self._is_sim_on_this_rank = is_sim_on_this_rank
         self._rank_of_sim = rank_of_sim
@@ -45,7 +64,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         Parameters
         ----------
         dt : float
-            TODO
+            Current time step of the macro-micro coupled problem
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         similarity_dists_nm1 : numpy array
@@ -70,7 +89,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             data_as_list = self._comm.allgather(data_for_adaptivity[name])
             global_data_for_adaptivity[name] = np.concatenate((data_as_list[:]), axis=0)
 
-        # Similarity distance matrix is calculated globally on every rank
         similarity_dists = self._get_similarity_dists(dt, similarity_dists_nm1, global_data_for_adaptivity)
 
         is_sim_active = self._update_active_sims(similarity_dists, is_sim_active_nm1)
@@ -96,7 +114,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             sim_is_associated_to: np.ndarray,
             micro_output: list) -> None:
         """
-        Communicate micro output from active simulation to their associated inactive simulations. P2P communication is done.
+        Communicate micro output from active simulation to their associated inactive simulations.
+        Process to process (p2p) communication is done.
 
         Parameters
         ----------
@@ -105,7 +124,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         is_sim_active : numpy array
             1D array having state (active or inactive) of each micro simulation on this rank
         sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
+            1D array with values of associated simulations of inactive simulations. Active simulations have -2
         micro_output : list
             List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
         """
@@ -120,7 +139,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         for i in inactive_local_ids:
             assoc_active_id = local_sim_is_associated_to[i]
-            # Gather global IDs of associated active simulations not on this rank for communication
+            # Gather global IDs of associated active simulations not on this rank
             if not self._is_sim_on_this_rank[assoc_active_id]:
                 if assoc_active_id in active_to_inactive_map:
                     active_to_inactive_map[assoc_active_id].append(i)
@@ -171,6 +190,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         _is_sim_active = np.copy(is_sim_active)  # Input is_sim_active is not longer used after this point
         _sim_is_associated_to = np.copy(sim_is_associated_to)
+        _sim_is_associated_to_updated = np.copy(sim_is_associated_to)
 
         # Check inactive simulations for activation and collect IDs of those to be activated
         to_be_activated_ids = []  # Global IDs to be activated
@@ -178,10 +198,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             if not _is_sim_active[i]:  # if id is inactive
                 if self._check_for_activation(i, similarity_dists, _is_sim_active):
                     _is_sim_active[i] = True
+                    _sim_is_associated_to_updated[i] = -2  # Active sim cannot have an associated sim
                     if self._is_sim_on_this_rank[i]:
                         to_be_activated_ids.append(i)
-
-        print("is_sim_active: {}, to_be_activated: {}".format(_is_sim_active, to_be_activated_ids))
 
         local_sim_is_associated_to = _sim_is_associated_to[self._global_ids[0]:self._global_ids[-1] + 1]
 
@@ -198,7 +217,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 if self._is_sim_on_this_rank[assoc_active_id]:  # Associated active simulation is on the same rank
                     assoc_active_local_id = self._global_ids.index(assoc_active_id)
                     micro_sims[to_be_activated_local_id].set_state(micro_sims[assoc_active_local_id].get_state())
-                    _sim_is_associated_to[i] = -2  # Active sim cannot have an associated sim
                 else:  # Associated active simulation is not on this rank
                     if assoc_active_id in to_be_activated_map:
                         to_be_activated_map[assoc_active_id].append(to_be_activated_local_id)
@@ -217,11 +235,27 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             local_ids = to_be_activated_map[global_id]
             for local_id in local_ids:
                 micro_sims[local_id].set_state(state)
-                _sim_is_associated_to[self._global_ids[local_id]] = -2  # Active sim cannot have an associated sim
 
-        return _is_sim_active, _sim_is_associated_to
+        return _is_sim_active, _sim_is_associated_to_updated
 
-    def _create_tag(self, sim_id, src_rank, dest_rank):
+    def _create_tag(self, sim_id: int, src_rank: int, dest_rank: int) -> int:
+        """
+        For a given simulations ID, source rank, and destination rank, a unique tag is created.
+
+        Parameters
+        ----------
+        sim_id : int
+            Global ID of a simulation.
+        src_rank : int
+            Rank on which the simulation lives
+        dest_rank : int
+            Rank to which data of a simulation is to be sent to.
+
+        Returns
+        -------
+        tag : int
+            Unique tag.
+        """
         send_hashtag = hashlib.sha256()
         send_hashtag.update((str(src_rank) + str(sim_id) + str(dest_rank)).encode('utf-8'))
         tag = int(send_hashtag.hexdigest()[:6], base=16)
@@ -229,12 +263,20 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
     def _p2p_comm(self, assoc_active_ids: list, data: list) -> list:
         """
-        This function created sending and receiving maps for p2p communication.
+        Handle process to process communication for a given set of associated active IDs and data.
 
         Parameters
         ----------
         assoc_active_ids : list
-            Global IDs of active simulations which are not on this rank and are associated to the inactive simulations on this rank
+            Global IDs of active simulations which are not on this rank and are associated to
+            the inactive simulations on this rank.
+        data : list
+            Complete data from which parts are to be sent and received.
+
+        Returns
+        -------
+        recv_reqs : list
+            List of MPI requests of receive operations.
         """
         send_map_local: Dict[int, int] = dict()  # keys are global IDs, values are rank to send to
         send_map: Dict[int, list] = dict()  # keys are global IDs of sims to send, values are ranks to send the sims to
