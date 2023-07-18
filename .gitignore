@@ -12,3 +12,6 @@ dist
 
 # vscode
 .vscode
+
+# Tests output
+*.log

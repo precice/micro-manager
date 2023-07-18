@@ -1,5 +1,5 @@
 """
-Functionality to partition the macro domain according to the user provided partitions in each axis
+Class DomainDecomposer provides the method decompose_macro_domain which returns partitioned bounds
 """
 
 import numpy as np
@@ -7,6 +7,20 @@ import numpy as np
 
 class DomainDecomposer:
     def __init__(self, logger, dims, rank, size) -> None:
+        """
+        Class constructor.
+
+        Parameters
+        ----------
+        logger : object of logging
+            Logger defined from the standard package logging.
+        dims : int
+            Dimensions of the problem.
+        rank : int
+            MPI rank.
+        size : int
+            Total number of MPI processes.
+        """
         self._logger = logger
         self._rank = rank
         self._size = size
@@ -21,11 +35,11 @@ class DomainDecomposer:
         macro_bounds : list
             List containing upper and lower bounds of the macro domain.
             Format in 2D is [x_min, x_max, y_min, y_max]
-            Format in 2D is [x_min, x_max, y_min, y_max, z_min, z_max]
+            Format in 3D is [x_min, x_max, y_min, y_max, z_min, z_max]
         ranks_per_axis : list
             List containing axis wise ranks for a parallel run
             Format in 2D is [ranks_x, ranks_y]
-            Format in 2D is [ranks_x, ranks_y, ranks_z]
+            Format in 3D is [ranks_x, ranks_y, ranks_z]
 
         Returns
         -------
@@ -40,7 +54,7 @@ class DomainDecomposer:
         for d in range(self._dims):
             dx.append(abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / ranks_per_axis[d])
 
-        rank_in_axis: list[int] = [None] * self._dims
+        rank_in_axis: list[int] = [0] * self._dims
         if ranks_per_axis[0] == 1:  # if serial in x axis
             rank_in_axis[0] = 0
         else:
