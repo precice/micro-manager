@@ -133,10 +133,11 @@ class MicroManager:
         - If required, write initial data to preCICE.
         """
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
-        assert len(self._macro_bounds) / \
-            2 == self._participant.get_mesh_dimensions(self._macro_mesh_name), "Provided macro mesh bounds are of incorrect dimension"
+        assert len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(
+            self._macro_mesh_name), "Provided macro mesh bounds are of incorrect dimension"
         if self._is_parallel:
-            domain_decomposer = DomainDecomposer(self._logger, self._participant.get_dimensions(), self._rank, self._size)
+            domain_decomposer = DomainDecomposer(
+                self._logger, self._participant.get_dimensions(), self._rank, self._size)
             coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(self._macro_bounds, self._ranks_per_axis)
         else:
             coupling_mesh_bounds = self._macro_bounds
@@ -173,7 +174,8 @@ class MicroManager:
             for name, is_data_vector in self._adaptivity_data_names.items():
                 if is_data_vector:
                     self._data_for_similarity_calc[name] = np.zeros(
-                        (self._local_number_of_micro_sims, self._participant.get_data_dimensions(self._macro_mesh_name, name)))
+                        (self._local_number_of_micro_sims, self._participant.get_data_dimensions(
+                            self._macro_mesh_name, name)))
                 else:
                     self._data_for_adaptivity[name] = np.zeros((self._local_number_of_sims))
 
@@ -247,7 +249,9 @@ class MicroManager:
                     micro_sims_output[i] = dict()
                     for name, is_data_vector in self._write_data_names.items():
                         if is_data_vector:
-                            micro_sims_output[i][name] = np.zeros(self._participant.get_data_dimensions(self._macro_mesh_name, name))
+                            micro_sims_output[i][name] = np.zeros(
+                                self._participant.get_data_dimensions(
+                                    self._macro_mesh_name, name))
                         else:
                             micro_sims_output[i][name] = 0.0
 
