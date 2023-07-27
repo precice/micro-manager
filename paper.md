@@ -1,21 +1,34 @@
 ---
-title: 'Micro Manager: '
+title: 'Micro Manager: a tool for adaptive and flexible macro-micro coupling'
 tags:
   - Python
 authors:
   - name: Ishaan Desai
-    orcid: 0000-0000-0000-0000
+    orcid: 0000-0002-2552-7509
+    equal-contrib: true
+    affiliation: 1
+  - name: Erik Scheurer
+    affiliation: 1
+  - name: Carina Bringedal
+    orcid: 0000-0003-0495-2634
+    equal-contrib: true
+    affiliation: 2
+  - name: Benjamin Uekermann
+    orcid: 0000-0002-1314-9969
     equal-contrib: true
     affiliation: 1
 affiliations:
  - name: Institute for Parallel and Distributed Systems, Universit of Stuttgart, Germany
    index: 1
-date: 30 June 2023
+ - name: Department of Computer science, Electrical engineering and Mathematical sciences, Western Norway University of Applied Sciences, Norway
+   index: 2
+date: 31 July 2023
 bibliography: paper.bib
 
 ---
 
 # Summary
+
 
 
 # Statement of need
