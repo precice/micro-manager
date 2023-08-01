@@ -27,7 +27,6 @@ jobs:
           apt-get -qq install sudo
           python -m pip install --upgrade pip
           pip install setuptools wheel twine
-          pip install git+https://github.com/precice/python-bindings.git@develop
 
       - name: Install micro-manager
         working-directory: micro-manager
