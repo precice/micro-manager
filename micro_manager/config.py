@@ -12,7 +12,7 @@ class Config:
     the config class in https://github.com/precice/fenics-adapter/tree/develop/fenicsadapter
     """
 
-    def __init__(self, config_filename):
+    def __init__(self, logger, config_filename):
         """
         Constructor of the Config class.
 
@@ -21,6 +21,8 @@ class Config:
         config_filename : string
             Name of the JSON configuration file
         """
+        self._logger = logger
+
         self._micro_file_name = None
 
         self._config_file_name = None
@@ -77,7 +79,7 @@ class Config:
                 else:
                     raise Exception("Write data dictionary as a value other than 'scalar' or 'vector'")
         except BaseException:
-            print("No write data names provided. Micro manager will only read data from preCICE.")
+            self._logger.info("No write data names provided. Micro manager will only read data from preCICE.")
 
         try:
             self._read_data_names = data["coupling_params"]["read_data_names"]
@@ -90,14 +92,14 @@ class Config:
                 else:
                     raise Exception("Read data dictionary as a value other than 'scalar' or 'vector'")
         except BaseException:
-            print("No read data names provided. Micro manager will only write data to preCICE.")
+            self._logger.info("No read data names provided. Micro manager will only write data to preCICE.")
 
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
 
         try:
             self._ranks_per_axis = data["simulation_params"]["decomposition"]
         except BaseException:
-            print("Domain decomposition is not specified, so the Micro Manager will expect to be run in serial.")
+            self._logger.info("Domain decomposition is not specified, so the Micro Manager will expect to be run in serial.")
 
         try:
             if data["simulation_params"]["adaptivity"]:
@@ -105,7 +107,7 @@ class Config:
             else:
                 self._adaptivity = False
         except BaseException:
-            print("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations in all time steps.")
+            self._logger.info("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations in all time steps.")
 
         if self._adaptivity:
             if data["simulation_params"]["adaptivity"]["type"] == "local":
@@ -126,7 +128,7 @@ class Config:
             if "similarity_measure" in data["simulation_params"]["adaptivity"]:
                 self._adaptivity_similarity_measure = data["simulation_params"]["adaptivity"]["similarity_measure"]
             else:
-                print("No similarity measure provided, using L1 norm as default")
+                self._logger.info("No similarity measure provided, using L1 norm as default")
                 self._adaptivity_similarity_measure = "L1"
 
             adaptivity_every_implicit_iteration = data["simulation_params"]["adaptivity"]["every_implicit_iteration"]
@@ -137,7 +139,7 @@ class Config:
                 self._adaptivity_every_implicit_iteration = False
 
             if not self._adaptivity_every_implicit_iteration:
-                print("Micro Manager will compute adaptivity once at the start of every time window")
+                self._logger.info("Micro Manager will compute adaptivity once at the start of every time window")
 
             self._write_data_names["active_state"] = False
             self._write_data_names["active_steps"] = False
@@ -153,12 +155,12 @@ class Config:
                 else:
                     raise Exception("Diagnostics data dictionary as a value other than 'scalar' or 'vector'")
         except BaseException:
-            print("No diagnostics data is defined. Micro Manager will not output any diagnostics data.")
+            self._logger.info("No diagnostics data is defined. Micro Manager will not output any diagnostics data.")
 
         try:
             self._micro_output_n = data["diagnostics"]["micro_output_n"]
         except BaseException:
-            print("Output interval of micro simulations not specified, if output is available then it will be called "
+            self._logger.info("Output interval of micro simulations not specified, if output is available then it will be called "
                   "in every time window.")
 
         try:
@@ -166,7 +168,7 @@ class Config:
                 self._output_micro_sim_time = True
                 self._write_data_names["micro_sim_time"] = False
         except BaseException:
-            print("Micro manager will not output time required to solve each micro simulation in each time step.")
+            self._logger.info("Micro manager will not output time required to solve each micro simulation in each time step.")
 
     def get_config_file_name(self):
         """
