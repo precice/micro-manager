@@ -99,7 +99,8 @@ class Config:
         try:
             self._ranks_per_axis = data["simulation_params"]["decomposition"]
         except BaseException:
-            self._logger.info("Domain decomposition is not specified, so the Micro Manager will expect to be run in serial.")
+            self._logger.info(
+                "Domain decomposition is not specified, so the Micro Manager will expect to be run in serial.")
 
         try:
             if data["simulation_params"]["adaptivity"]:
@@ -107,7 +108,8 @@ class Config:
             else:
                 self._adaptivity = False
         except BaseException:
-            self._logger.info("Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations in all time steps.")
+            self._logger.info(
+                "Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations in all time steps.")
 
         if self._adaptivity:
             if data["simulation_params"]["adaptivity"]["type"] == "local":
@@ -160,15 +162,17 @@ class Config:
         try:
             self._micro_output_n = data["diagnostics"]["micro_output_n"]
         except BaseException:
-            self._logger.info("Output interval of micro simulations not specified, if output is available then it will be called "
-                  "in every time window.")
+            self._logger.info(
+                "Output interval of micro simulations not specified, if output is available then it will be called "
+                "in every time window.")
 
         try:
             if data["diagnostics"]["output_micro_sim_solve_time"]:
                 self._output_micro_sim_time = True
                 self._write_data_names["micro_sim_time"] = False
         except BaseException:
-            self._logger.info("Micro manager will not output time required to solve each micro simulation in each time step.")
+            self._logger.info(
+                "Micro manager will not output time required to solve each micro simulation in each time step.")
 
     def get_config_file_name(self):
         """
