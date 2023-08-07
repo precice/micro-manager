@@ -148,7 +148,8 @@ class MicroManager:
         self._participant.initialize()
         self._dt = self._participant.get_max_time_step_size()
 
-        self._mesh_vertex_ids, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(self._macro_mesh_name)
+        self._mesh_vertex_ids, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
+            self._macro_mesh_name)
         self._local_number_of_micro_sims, _ = mesh_vertex_coords.shape
         self._logger.info("Number of local micro simulations = {}".format(self._local_number_of_micro_sims))
 
