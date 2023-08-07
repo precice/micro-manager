@@ -1,6 +1,5 @@
 import os
 from setuptools import setup, find_packages
-import warnings
 
 # from https://stackoverflow.com/a/9079062
 import sys
@@ -18,7 +17,7 @@ setup(
     description='micro-manager-precice is a package which facilitates two-scale macro-micro coupled simulations using preCICE',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/precice/micro-manager',
+    url='https://precice.org/tooling-micro-manager-overview.html',
     entry_points={
         'console_scripts': ['micro_manager=micro_manager.micro_manager:main']},
     author='Ishaan Desai',
