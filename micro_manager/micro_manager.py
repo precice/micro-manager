@@ -62,7 +62,7 @@ class MicroManager:
         self._micro_sims_have_output = False
 
         self._logger.info("Provided configuration file: {}".format(config_file))
-        self._config = Config(config_file)
+        self._config = Config(self._logger, config_file)
 
         # Define the preCICE Participant
         self._participant = precice.Participant(

@@ -2,11 +2,9 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 from micro_manager.adaptivity.adaptivity import AdaptivityCalculator
 from micro_manager.adaptivity.local_adaptivity import LocalAdaptivityCalculator
-from micro_manager.adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 from micro_manager.config import Config
 import numpy as np
 from math import exp
-from mpi4py import MPI
 
 
 class TestLocalAdaptivity(TestCase):

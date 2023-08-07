@@ -7,7 +7,7 @@ import numpy as np
 class TestDomainDecomposition(TestCase):
     def setUp(self) -> None:
         self._logger = MagicMock()
-        self._macro_bounds_3d = [-1, 1, -2, 2, -2, 8]
+        self._macro_bounds_3d = [-1, 1, -2, 2, -2, 8]  # Cuboid which is not symmetric around origin
 
     def test_rank5_outof_10_3d(self):
         """

@@ -1,5 +1,6 @@
 import numpy as np
 from unittest import TestCase
+from unittest.mock import MagicMock
 import micro_manager
 
 
@@ -35,6 +36,9 @@ class TestFunctioncalls(TestCase):
         self.macro_bounds = [0.0, 25.0, 0.0, 25.0, 0.0, 25.0]
 
     def test_micromanager_constructor(self):
+        """
+        Test if the constructor of the MicroManager class passes correct values to member variables.
+        """
         manager = micro_manager.MicroManager('micro-manager-config.json')
 
         self.assertListEqual(manager._macro_bounds, self.macro_bounds)
@@ -43,6 +47,9 @@ class TestFunctioncalls(TestCase):
         self.assertEqual(manager._micro_n_out, 10)
 
     def test_initialize(self):
+        """
+        Test if the initialize function of the MicroManager class initializes member variables to correct values
+        """
         manager = micro_manager.MicroManager('micro-manager-config.json')
 
         manager.initialize()
@@ -57,6 +64,9 @@ class TestFunctioncalls(TestCase):
         self.assertDictEqual(self.fake_write_data_names, manager._write_data_names)
 
     def test_read_write_data_from_precice(self):
+        """
+        Test if the internal functions _read_data_from_precice and _write_data_to_precice work as expected.
+        """
         manager = micro_manager.MicroManager('micro-manager-config.json')
 
         manager._write_data_to_precice(self.fake_write_data)
@@ -68,6 +78,9 @@ class TestFunctioncalls(TestCase):
                                  fake_data["macro-vector-data"].tolist())
 
     def test_solve_mico_sims(self):
+        """
+        Test if the internal function _solve_micro_simulations works as expected.
+        """
         manager = micro_manager.MicroManager('micro-manager-config.json')
         manager._local_number_of_sims = 4
         manager._micro_sims = [MicroSimulation() for _ in range(4)]
@@ -81,7 +94,10 @@ class TestFunctioncalls(TestCase):
                                  (fake_data["micro-vector-data"] + 1).tolist())
 
     def test_config(self):
-        config = micro_manager.Config('micro-manager-config.json')
+        """
+        Test if the functions in the Config class work.
+        """
+        config = micro_manager.Config(MagicMock(), 'micro-manager-config.json')
 
         self.assertEqual(config._config_file_name.split("/")[-1], "dummy-config.xml")
         self.assertEqual(config._micro_file_name, "test_micro_manager")
