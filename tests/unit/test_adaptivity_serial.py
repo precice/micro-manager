@@ -118,7 +118,8 @@ class TestLocalAdaptivity(TestCase):
         """
         Test functionality for calculating similarity criteria between pairs of simulations using different norms in class AdaptivityCalculator.
         """
-        calc = AdaptivityCalculator(Config('micro-manager-config.json'), 0)
+        logger = MagicMock()
+        calc = AdaptivityCalculator(Config(logger, 'micro-manager-config.json'), logger)
 
         fake_data = np.array([[1], [2], [3]])
         self.assertTrue(np.allclose(calc._l1(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])))
