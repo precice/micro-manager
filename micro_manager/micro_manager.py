@@ -133,11 +133,10 @@ class MicroManager:
         - If required, write initial data to preCICE.
         """
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
-        assert len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(
-            self._macro_mesh_name), "Provided macro mesh bounds are of incorrect dimension"
+        assert len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(self._macro_mesh_name), "Provided macro mesh bounds are of incorrect dimension"
         if self._is_parallel:
             domain_decomposer = DomainDecomposer(
-                self._logger, self._participant.get_dimensions(), self._rank, self._size)
+                self._logger, self._participant.get_mesh_dimensions(self._macro_mesh_name), self._rank, self._size)
             coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(self._macro_bounds, self._ranks_per_axis)
         else:
             coupling_mesh_bounds = self._macro_bounds
@@ -150,7 +149,9 @@ class MicroManager:
 
         self._mesh_vertex_ids, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
             self._macro_mesh_name)
+        print("mesh_vertex_coords: {}".format(mesh_vertex_coords))
         self._local_number_of_micro_sims, _ = mesh_vertex_coords.shape
+        print("self._local_number_of_micro_sims: {}".format(self._local_number_of_micro_sims))
         self._logger.info("Number of local micro simulations = {}".format(self._local_number_of_micro_sims))
 
         if self._local_number_of_sims == 0:
