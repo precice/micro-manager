@@ -144,10 +144,6 @@ class MicroManager:
 
         self._participant.set_mesh_access_region(self._macro_mesh_name, coupling_mesh_bounds)
 
-        # initialize preCICE
-        self._participant.initialize()
-        self._dt = self._participant.get_max_time_step_size()
-
         self._mesh_vertex_ids, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
             self._macro_mesh_name)
         self._local_number_of_sims, _ = mesh_vertex_coords.shape
@@ -266,6 +262,10 @@ class MicroManager:
         self._micro_sims_have_output = False
         if hasattr(micro_problem, 'output') and callable(getattr(micro_problem, 'output')):
             self._micro_sims_have_output = True
+
+        # initialize preCICE
+        self._participant.initialize()
+        self._dt = self._participant.get_max_time_step_size()
 
     def solve(self) -> None:
         """
