@@ -48,9 +48,14 @@ class Participant:
     def get_mesh_vertex_ids_and_coordinates(self, mesh_name):
         return np.array([0, 1, 2, 3]), np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
 
-    def write_data(self, data_name, vertex_ids, data):
+    def write_data(self, mesh_name, data_name, vertex_ids, data):
         if data_name == "micro-scalar-data":
             self.read_write_scalar_buffer = data
+        elif data_name == "micro-vector-data":
+            self.read_write_vector_buffer = data
 
-    def read_data(self, data_name, vertex_ids):
-        return self.read_write_scalar_buffer
+    def read_data(self, mesh_name, data_name, vertex_ids, relative_read_time):
+        if data_name == "macro-scalar-data":
+            return self.read_write_scalar_buffer
+        elif data_name == "macro-vector-data":
+            return self.read_write_vector_buffer

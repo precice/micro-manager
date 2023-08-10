@@ -149,10 +149,8 @@ class MicroManager:
 
         self._mesh_vertex_ids, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
             self._macro_mesh_name)
-        print("mesh_vertex_coords: {}".format(mesh_vertex_coords))
-        self._local_number_of_micro_sims, _ = mesh_vertex_coords.shape
-        print("self._local_number_of_micro_sims: {}".format(self._local_number_of_micro_sims))
-        self._logger.info("Number of local micro simulations = {}".format(self._local_number_of_micro_sims))
+        self._local_number_of_sims, _ = mesh_vertex_coords.shape
+        self._logger.info("Number of local micro simulations = {}".format(self._local_number_of_sims))
 
         if self._local_number_of_sims == 0:
             if self._is_parallel:
@@ -175,8 +173,8 @@ class MicroManager:
         if self._is_adaptivity_on:
             for name, is_data_vector in self._adaptivity_data_names.items():
                 if is_data_vector:
-                    self._data_for_similarity_calc[name] = np.zeros(
-                        (self._local_number_of_micro_sims, self._participant.get_data_dimensions(
+                    self._data_for_adaptivity[name] = np.zeros(
+                        (self._local_number_of_sims, self._participant.get_data_dimensions(
                             self._macro_mesh_name, name)))
                 else:
                     self._data_for_adaptivity[name] = np.zeros((self._local_number_of_sims))
@@ -259,7 +257,7 @@ class MicroManager:
 
         # Write initial data if required
         if self._participant.requires_initial_data():
-            self.write_data_to_precice(micro_sims_output)
+            self._write_data_to_precice(micro_sims_output)
 
         self._logger.info("Micro simulations with global IDs {} - {} initialized.".format(
             self._global_ids_of_local_sims[0], self._global_ids_of_local_sims[-1]))
@@ -420,13 +418,13 @@ class MicroManager:
             for name in data[0]:
                 data_dict[name] = []
 
-            for output_dict in data:
-                for name, values in output_dict.items():
+            for d in data:
+                for name, values in d.items():
                     data_dict[name].append(values)
 
             for dname in self._write_data_names.keys():
                 self._participant.write_data(
-                    self._macro_mesh_name, dname, self._mesh_vertex_ids, data[dname])
+                    self._macro_mesh_name, dname, self._mesh_vertex_ids, data_dict[dname])
         else:
             for dname in self._write_data_names.keys():
                 self._participant.write_data(self._macro_mesh_name, dname, [], np.array([]))
