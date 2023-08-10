@@ -133,7 +133,8 @@ class MicroManager:
         - If required, write initial data to preCICE.
         """
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
-        assert len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(self._macro_mesh_name), "Provided macro mesh bounds are of incorrect dimension"
+        assert len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(
+            self._macro_mesh_name), "Provided macro mesh bounds are of incorrect dimension"
         if self._is_parallel:
             domain_decomposer = DomainDecomposer(
                 self._logger, self._participant.get_mesh_dimensions(self._macro_mesh_name), self._rank, self._size)
