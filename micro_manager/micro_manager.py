@@ -144,6 +144,10 @@ class MicroManager:
 
         self._participant.set_mesh_access_region(self._macro_mesh_name, coupling_mesh_bounds)
 
+        # initialize preCICE
+        self._participant.initialize()
+        self._dt = self._participant.get_max_time_step_size()
+
         self._mesh_vertex_ids, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
             self._macro_mesh_name)
         self._local_number_of_sims, _ = mesh_vertex_coords.shape
@@ -232,40 +236,12 @@ class MicroManager:
                 self._micro_sims[i] = (
                     create_simulation_class(micro_problem)(self._global_ids_of_local_sims[i]))
 
-        # Initialize micro simulations if initialize() method exists
-        if hasattr(micro_problem, 'initialize') and callable(getattr(micro_problem, 'initialize')):
-            for i in range(self._local_number_of_sims):
-                micro_sims_output[i] = self._micro_sims[i].initialize()
-                if micro_sims_output[i] is not None:
-                    if self._is_micro_solve_time_required:
-                        micro_sims_output[i]["micro_sim_time"] = 0.0
-                    if self._is_adaptivity_on:
-                        micro_sims_output[i]["active_state"] = 0
-                        micro_sims_output[i]["active_steps"] = 0
-                else:
-                    micro_sims_output[i] = dict()
-                    for name, is_data_vector in self._write_data_names.items():
-                        if is_data_vector:
-                            micro_sims_output[i][name] = np.zeros(
-                                self._participant.get_data_dimensions(
-                                    self._macro_mesh_name, name))
-                        else:
-                            micro_sims_output[i][name] = 0.0
-
-        # Write initial data if required
-        if self._participant.requires_initial_data():
-            self._write_data_to_precice(micro_sims_output)
-
-        self._logger.info("Micro simulations with global IDs {} - {} initialized.".format(
+        self._logger.info("Micro simulations with global IDs {} - {} created.".format(
             self._global_ids_of_local_sims[0], self._global_ids_of_local_sims[-1]))
 
         self._micro_sims_have_output = False
         if hasattr(micro_problem, 'output') and callable(getattr(micro_problem, 'output')):
             self._micro_sims_have_output = True
-
-        # initialize preCICE
-        self._participant.initialize()
-        self._dt = self._participant.get_max_time_step_size()
 
     def solve(self) -> None:
         """

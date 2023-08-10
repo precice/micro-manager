@@ -15,15 +15,6 @@
 // Constructor
 MicroSimulation::MicroSimulation() : _micro_scalar_data(0), _state(0) {}
 
-// Initialize
-void MicroSimulation::initialize()
-{
-    std::cout << "Initialize micro problem\n";
-    _micro_scalar_data = 0;
-    _micro_vector_data.clear();
-    _state = 0;
-}
-
 // Solve
 py::dict MicroSimulation::solve(py::dict macro_data, double dt)
 {

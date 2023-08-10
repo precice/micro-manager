@@ -15,7 +15,6 @@ class MicroSimulation
 {
 public:
     MicroSimulation();
-    void initialize();
     // solve takes a python dict data, and the timestep dt as inputs, and returns a python dict
     py::dict solve(py::dict macro_write_data, double dt);
     MicroSimulation __deepcopy__(py::dict memo);
