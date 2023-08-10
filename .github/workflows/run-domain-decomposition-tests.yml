@@ -27,9 +27,6 @@ jobs:
       - name: Use mpi4py
         uses: mpi4py/setup-mpi@v1
 
-      - name: Add user precice
-        run: useradd -m -s /bin/bash precice
-
       - name: Install Dependencies
         working-directory: micro-manager
         run: |

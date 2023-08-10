@@ -1,12 +1,11 @@
 <?xml version="1.0"?>
 
-<precice-configuration dimensions="3" experimental="true">
+<precice-configuration experimental="true">
 
     <log>
 	<sink type="stream" output="stdout"  filter= "%Severity% > debug" enabled="true" />
     </log>
   
-    
     <data:scalar name="macro-scalar-data"/>
     <data:vector name="macro-vector-data"/>
     <data:scalar name="micro-scalar-data"/>
@@ -15,7 +14,7 @@
     <data:scalar name="active_state"/>
     <data:scalar name="active_steps"/>
 
-    <mesh name="macro-mesh">
+    <mesh name="macro-mesh" dimensions="3">
        <use-data name="macro-scalar-data"/>
        <use-data name="macro-vector-data"/>
        <use-data name="micro-scalar-data"/>
@@ -44,7 +43,7 @@
       <write-data name="active_steps" mesh="macro-mesh"/>
     </participant>
 
-    <m2n:sockets from="Micro-Manager" to="Macro-dummy"/>
+    <m2n:sockets acceptor="Micro-Manager" connector="Macro-dummy"/>
 
     <coupling-scheme:serial-implicit>
        <participants first="Macro-dummy" second="Micro-Manager"/>
