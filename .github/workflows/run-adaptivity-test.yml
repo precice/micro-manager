@@ -40,7 +40,9 @@ jobs:
       - name: Run integration test serially with global adaptivity
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube
-        run: python3 unit_cube.py & python3 run_micro_manager.py --config micro-manager-config-global-adaptivity.json
+        run: |
+          export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+          python3 unit_cube.py & python3 run_micro_manager.py --config micro-manager-config-global-adaptivity.json
 
   unit_tests_serial:
     name: Run unit tests (serial variants)
