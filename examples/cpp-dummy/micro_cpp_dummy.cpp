@@ -65,7 +65,6 @@ PYBIND11_MODULE(micro_dummy, m) {
 
     py::class_<MicroSimulation>(m, "MicroSimulation")
         .def(py::init())
-        .def("initialize", &MicroSimulation::initialize)
         .def("solve", &MicroSimulation::solve)
         .def("get_state", &MicroSimulation::get_state)
         .def("set_state", &MicroSimulation::set_state)
