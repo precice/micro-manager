@@ -68,7 +68,7 @@ def main():
 
     participant.initialize()
 
-    read_data = []
+    read_data = [None, None]
     dt = participant.get_max_time_step_size()
 
     # time loop
