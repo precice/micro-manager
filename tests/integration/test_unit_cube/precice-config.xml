@@ -1,13 +1,11 @@
 <?xml version="1.0"?>
 
-<precice-configuration>
+<precice-configuration experimental="true" dimensions="3">
 
-    <log>
+  <log>
 	<sink type="stream" output="stdout"  filter= "%Severity% > debug" enabled="true" />
-    </log>
-  
-  <solver-interface experimental="true" dimensions="3">
-    
+  </log>
+     
     <data:scalar name="macro-scalar-data"/>
     <data:vector name="macro-vector-data"/>
     <data:scalar name="micro-scalar-data"/>
@@ -46,7 +44,7 @@
       <export:vtu directory="output"/>
     </participant>
 
-    <m2n:sockets from="Micro-Manager" to="macro-cube"/>
+    <m2n:sockets acceptor="Micro-Manager" connector="macro-cube"/>
 
     <coupling-scheme:serial-explicit>
        <participants first="Micro-Manager" second="macro-cube"/>
@@ -54,9 +52,8 @@
        <time-window-size value="1"/>
        <exchange data="micro-scalar-data" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube"/>
        <exchange data="micro-vector-data" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube"/>
-       <exchange data="macro-scalar-data" mesh="macro-cube-mesh" from="macro-cube" to="Micro-Manager" initialize="yes"/>
-       <exchange data="macro-vector-data" mesh="macro-cube-mesh" from="macro-cube" to="Micro-Manager" initialize="yes"/>
+       <exchange data="macro-scalar-data" mesh="macro-cube-mesh" from="macro-cube" to="Micro-Manager"/>
+       <exchange data="macro-vector-data" mesh="macro-cube-mesh" from="macro-cube" to="Micro-Manager"/>
     </coupling-scheme:serial-explicit>
 
-  </solver-interface>
 </precice-configuration>

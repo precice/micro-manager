@@ -44,8 +44,8 @@
        <max-time value="3.0"/>
        <time-window-size value="1.0"/>
        <max-iterations value="5"/>
-       <exchange data="micro-scalar-data" mesh="macro-mesh" from="Micro-Manager" to="Macro-dummy" initialize="no"/>
-       <exchange data="micro-vector-data" mesh="macro-mesh" from="Micro-Manager" to="Macro-dummy" initialize="no"/>
+       <exchange data="micro-scalar-data" mesh="macro-mesh" from="Micro-Manager" to="Macro-dummy"/>
+       <exchange data="micro-vector-data" mesh="macro-mesh" from="Micro-Manager" to="Macro-dummy"/>
        <exchange data="macro-scalar-data" mesh="macro-mesh" from="Macro-dummy" to="Micro-Manager"/>
        <exchange data="macro-vector-data" mesh="macro-mesh" from="Macro-dummy" to="Micro-Manager"/>
        <relative-convergence-measure limit="1e-5" data="macro-scalar-data" mesh="macro-mesh"/>
