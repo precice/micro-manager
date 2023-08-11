@@ -25,7 +25,7 @@
     </mesh>
 
     <participant name="macro-cube">
-      <use-mesh name="macro-cube-mesh" provide="yes"/>
+      <provide-mesh name="macro-cube-mesh"/>
       <read-data name="micro-scalar-data" mesh="macro-cube-mesh"/>
       <read-data name="micro-vector-data" mesh="macro-cube-mesh"/>
       <write-data name="macro-scalar-data" mesh="macro-cube-mesh"/>
@@ -33,7 +33,7 @@
     </participant>
 
     <participant name="Micro-Manager">
-      <use-mesh name="macro-cube-mesh" from="macro-cube" direct-access="true" safety-factor="0"/>
+      <receive-mesh name="macro-cube-mesh" from="macro-cube" direct-access="true" safety-factor="0"/>
       <read-data name="macro-scalar-data" mesh="macro-cube-mesh"/>
       <read-data name="macro-vector-data" mesh="macro-cube-mesh"/>
       <write-data name="micro-scalar-data" mesh="macro-cube-mesh"/>

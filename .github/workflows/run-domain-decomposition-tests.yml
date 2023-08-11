@@ -42,16 +42,15 @@ jobs:
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration
         run: |
-          chown -R precice test_unit_cube/
           cd test_unit_cube/
-          su -c "mpiexec -n 2 python3 run_micro_manager.py --config micro-manager-config-parallel-1.json & python3 unit_cube.py" precice
+          mpiexec -n 2 python3 run_micro_manager.py --config micro-manager-config-parallel-1.json & python3 unit_cube.py
       
       - name: Run integration test (variant 2)
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration
         run: |
           cd test_unit_cube/
-          su -c "mpiexec -n 6 --oversubscribe python3 run_micro_manager.py --config micro-manager-config-parallel-2.json & python3 unit_cube.py" precice
+          mpiexec -n 6 --oversubscribe python3 run_micro_manager.py --config micro-manager-config-parallel-2.json & python3 unit_cube.py
 
   unit_tests:
     name: Run unit tests
