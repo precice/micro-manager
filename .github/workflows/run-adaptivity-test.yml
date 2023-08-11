@@ -1,4 +1,4 @@
-name: Test adaptivity
+name: Test for functions in classes AdaptivityCalculator, LocalAdaptivityCalculator, GlobalAdaptivityCalculator
 on:
   push:
     branches:
@@ -8,8 +8,8 @@ on:
     branches:
       - "*"
 jobs:  
-  integration_test:
-    name: Run integration test
+  adaptivity_integration_tests:
+    name: Run adaptivity integration tests
     runs-on: ubuntu-latest
     container: precice/precice:develop
     steps:
@@ -37,15 +37,15 @@ jobs:
           export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
           python3 unit_cube.py & python3 run_micro_manager.py --config micro-manager-config-local-adaptivity.json
 
-      - name: Run integration test serially with global adaptivity
+      - name: Run integration test with global adaptivity
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube
         run: |
           export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
           python3 unit_cube.py & python3 run_micro_manager.py --config micro-manager-config-global-adaptivity.json
 
-  unit_tests_serial:
-    name: Run unit tests (serial variants)
+  adaptivity_unit_tests_serial:
+    name: Run adaptivity unit tests in serial
     runs-on: ubuntu-latest
     container: precice/precice:develop
     steps:
@@ -70,10 +70,10 @@ jobs:
         working-directory: micro-manager/tests/unit
         run: python3 -m unittest test_adaptivity_serial.py
 
-  unit_tests_parallel:
-    name: Run unit tests in parallel
+  adaptivity_unit_tests_parallel:
+    name: Run adaptivity unit tests in parallel
     runs-on: ubuntu-latest
-    container: precice/precice
+    container: precice/precice:develop
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3

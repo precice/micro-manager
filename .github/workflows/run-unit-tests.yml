@@ -1,4 +1,4 @@
-name: Run unit tests
+name: Run unit tests for functions in micro_manager.py
 on:
   push:
     branches:
