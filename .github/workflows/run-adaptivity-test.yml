@@ -71,7 +71,7 @@ jobs:
         run: python3 -m unittest test_adaptivity_serial.py
 
   unit_tests_parallel:
-    name: Run unit tests (parallel variants)
+    name: Run unit tests in parallel
     runs-on: ubuntu-latest
     container: precice/precice
     steps:
@@ -89,21 +89,18 @@ jobs:
       - name: Use mpi4py
         uses: mpi4py/setup-mpi@v1
 
-      - name: Add user precice
-        run: useradd -m -s /bin/bash precice
-
       - name: Install Dependencies
         working-directory: micro-manager
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
-          su -c "python -m pip install --upgrade pip" precice
-          su -c "pip install setuptools wheel twine" precice
+          python -m pip install --upgrade pip
+          pip install setuptools wheel twine
 
       - name: Install Micro Manager
         working-directory: micro-manager
-        run: su -c "pip3 install --user ." precice
+        run: pip3 install --user .
 
       - name: Run unit tests
         working-directory: micro-manager/tests/unit
-        run: su -c "mpiexec -n 2 python3 -m unittest test_adaptivity_parallel.py" precice
+        run: mpiexec -n 2 --allow-run-as-root python3 -m unittest test_adaptivity_parallel.py
