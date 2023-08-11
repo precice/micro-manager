@@ -146,7 +146,6 @@ class MicroManager:
 
         # initialize preCICE
         self._participant.initialize()
-        self._dt = self._participant.get_max_time_step_size()
 
         self._mesh_vertex_ids, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
             self._macro_mesh_name)
@@ -188,7 +187,6 @@ class MicroManager:
             sim_id += 1
 
         self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
-        micro_sims_output = [None] * self._local_number_of_sims
 
         micro_problem = getattr(
             __import__(
@@ -242,6 +240,9 @@ class MicroManager:
         self._micro_sims_have_output = False
         if hasattr(micro_problem, 'output') and callable(getattr(micro_problem, 'output')):
             self._micro_sims_have_output = True
+
+        # Get dt value so that first adaptivity computation can be done
+        self._dt = self._participant.get_max_time_step_size()
 
     def solve(self) -> None:
         """
@@ -324,7 +325,9 @@ class MicroManager:
 
             self._write_data_to_precice(micro_sims_output)
 
-            self._dt = self._participant.advance(self._dt)
+            self._participant.advance(self._dt)
+
+            self._dt = self._participant.get_max_time_step_size()
 
             t += self._dt
             n += 1
