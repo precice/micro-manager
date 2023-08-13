@@ -1,8 +1,8 @@
 # Tests
 
-This folder contains everything needed for testing. The tests are split into two categories:
+This folder contains everything related to testing. The tests are split into two categories:
 
-* `unit` contains unit tests that only check independent functions and modules.
+* `unit` contains unit tests that only check independent functions and modules. These tests do not use preCICE. Instead a mocked `precice.py` is used.
 * `integration` contains an integration test which uses preCICE and a Micro Manager.
 
 ## Unit tests

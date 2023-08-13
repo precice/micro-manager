@@ -116,6 +116,8 @@ class Config:
                 self._adaptivity_type = "local"
             elif data["simulation_params"]["adaptivity"]["type"] == "global":
                 self._adaptivity_type = "global"
+                self._logger.warning(
+                    "Global adaptivity is still experimental. We recommend using it for small (<50 macro vertices) cases only.")
             else:
                 raise Exception("Adaptivity type can be either local or global.")
 

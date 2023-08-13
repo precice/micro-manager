@@ -93,7 +93,7 @@ class MicroManager:
         self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
         self._local_number_of_sims = 0
-        self._global_number_of_micro_sims = 0
+        self._global_number_of_sims = 0
         self._is_rank_empty = False
         self._dt = 0
         self._mesh_vertex_ids = None  # IDs of macro vertices as set by preCICE
@@ -102,7 +102,7 @@ class MicroManager:
         self._is_adaptivity_on = self._config.turn_on_adaptivity()
 
         if self._is_adaptivity_on:
-            self._number_of_micro_sims_for_adaptivity = 0
+            self._number_of_sims_for_adaptivity = 0
 
             self._data_for_adaptivity: Dict[str, np.ndarray] = dict()
             self._adaptivity_type = self._config.get_adaptivity_type()
@@ -169,7 +169,7 @@ class MicroManager:
         self._comm.Allgather(np.array(self._local_number_of_sims), nms_all_ranks)
 
         # Get global number of micro simulations
-        self._global_number_of_micro_sims = np.sum(nms_all_ranks)
+        self._global_number_of_sims = np.sum(nms_all_ranks)
 
         if self._is_adaptivity_on:
             for name, is_data_vector in self._adaptivity_data_names.items():
@@ -206,18 +206,18 @@ class MicroManager:
             for i in range(self._local_number_of_sims):
                 micro_sims_on_this_rank[i] = self._rank
 
-            self._rank_of_sim = np.zeros(self._global_number_of_micro_sims, dtype=np.intc)  # DECLARATION
+            self._rank_of_sim = np.zeros(self._global_number_of_sims, dtype=np.intc)  # DECLARATION
             self._comm.Allgather(micro_sims_on_this_rank, self._rank_of_sim)
 
-            self._is_sim_on_this_rank = [False] * self._global_number_of_micro_sims  # DECLARATION
-            for i in range(self._global_number_of_micro_sims):
+            self._is_sim_on_this_rank = [False] * self._global_number_of_sims  # DECLARATION
+            for i in range(self._global_number_of_sims):
                 if self._rank_of_sim[i] == self._rank:
                     self._is_sim_on_this_rank[i] = True
 
             if self._adaptivity_type == "local":
                 self._adaptivity_controller = LocalAdaptivityCalculator(
                     self._config, self._logger)
-                self._number_of_micro_sims_for_adaptivity = self._local_number_of_sims
+                self._number_of_sims_for_adaptivity = self._local_number_of_sims
             elif self._adaptivity_type == "global":
                 self._adaptivity_controller = GlobalAdaptivityCalculator(
                     self._config,
@@ -227,7 +227,7 @@ class MicroManager:
                     self._global_ids_of_local_sims,
                     self._rank,
                     self._comm)
-                self._number_of_micro_sims_for_adaptivity = self._global_number_of_micro_sims
+                self._number_of_sims_for_adaptivity = self._global_number_of_sims
 
             self._micro_sims_active_steps = np.zeros(self._local_number_of_sims)
         else:
@@ -279,17 +279,17 @@ class MicroManager:
 
         if self._is_adaptivity_on:
             similarity_dists = np.zeros(
-                (self._number_of_micro_sims_for_adaptivity,
-                 self._number_of_micro_sims_for_adaptivity))
+                (self._number_of_sims_for_adaptivity,
+                 self._number_of_sims_for_adaptivity))
 
             # Start adaptivity calculation with all sims inactive
-            is_sim_active = np.array([False] * self._number_of_micro_sims_for_adaptivity)
+            is_sim_active = np.array([False] * self._number_of_sims_for_adaptivity)
 
             # Activate the first one (a random choice)
             is_sim_active[0] = True
 
             # Associate all sims to the one active sim
-            sim_is_associated_to = np.zeros((self._number_of_micro_sims_for_adaptivity), dtype=np.intc)
+            sim_is_associated_to = np.zeros((self._number_of_sims_for_adaptivity), dtype=np.intc)
             sim_is_associated_to[0] = -2  # An active sim does not have an associated sim
 
         similarity_dists_cp = None

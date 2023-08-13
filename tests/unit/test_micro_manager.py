@@ -55,7 +55,7 @@ class TestFunctioncalls(TestCase):
         manager.initialize()
 
         self.assertEqual(manager._dt, 0.1)  # from Interface.initialize
-        self.assertEqual(manager._global_number_of_micro_sims, 4)
+        self.assertEqual(manager._global_number_of_sims, 4)
         self.assertListEqual(manager._macro_bounds, self.macro_bounds)
         self.assertListEqual(manager._mesh_vertex_ids.tolist(), [0, 1, 2, 3])
         self.assertEqual(len(manager._micro_sims), 4)
