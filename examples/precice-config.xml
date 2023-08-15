@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<precice-configuration dimensions="3" experimental="true">
+<precice-configuration experimental="true">
 
     <log>
 	<sink type="stream" output="stdout"  filter= "%Severity% > debug" enabled="true" />
@@ -12,7 +12,7 @@
     <data:vector name="micro-vector-data"/>
     <data:scalar name="micro_sim_time"/>
 
-    <mesh name="macro-mesh">
+    <mesh name="macro-mesh" dimensions="3">
        <use-data name="macro-scalar-data"/>
        <use-data name="macro-vector-data"/>
        <use-data name="micro-scalar-data"/>

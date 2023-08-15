@@ -1,6 +1,6 @@
 <?xml version="1.0"?>
 
-<precice-configuration experimental="true" dimensions="3">
+<precice-configuration experimental="true">
 
   <log>
 	<sink type="stream" output="stdout"  filter= "%Severity% > debug" enabled="true" />
@@ -14,7 +14,7 @@
     <data:scalar name="active_state"/>
     <data:scalar name="active_steps"/>
 
-    <mesh name="macro-cube-mesh">
+    <mesh name="macro-cube-mesh" dimensions="3">
        <use-data name="macro-scalar-data"/>
        <use-data name="macro-vector-data"/>
        <use-data name="micro-scalar-data"/>
