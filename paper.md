@@ -49,7 +49,7 @@ The micro simulation software needs to be converted to a callable library so tha
 
 The Micro Manager is configured via a JSON file and it can be run directly from the command line or its public methods can be called in a user-written Python file. It can run micro simulations in parallel using MPI [@mpi4py]. For real scenarios, the number of micro simulations can be very high and each micro simulation can be computationally expensive. The Micro Manager is able to adaptively activate and deactivate micro simulations depending on whether their similar counterparts exist. The adaptivity strategy is from [@Bastidas_two_scale, @Redeker_adaptivity]. The user can choose between a *local* and *global* adaptivity scheme \autoref{fig:ManagerSolution}, both of which are described in detail in the documentation [@MicroManager_documentation].
 
-![Macro simulation with two materials coupled via preCICE to a set of micro simulations controlled by the Micro Manager. Micro simulations are run adaptively: highlighted ones are active, rest are inactive.\label{fig:ManagerSolution}](ManagerSolution_material.png)
+![Macro simulation with two materials coupled via preCICE to a set of micro simulations controlled by the Micro Manager. Micro simulations are run adaptively: highlighted ones are active, rest are inactive.\label{fig:ManagerSolution}](ManagerSolution_material.png){ width=80% }
 
 The user is able to set up a two-scale coupled simulation by modifying an existing micro simulation software into a callable library and configuring the Micro Manager. preCICE and the Micro Manager handle the coupling and the high-performance computing aspects of the set up so that domain experts can concentrate on the macro and micro-scale models.
 
