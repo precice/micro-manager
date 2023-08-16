@@ -5,22 +5,19 @@ tags:
 authors:
   - name: Ishaan Desai
     orcid: 0000-0002-2552-7509
-    equal-contrib: true
     affiliation: 1
   - name: Erik Scheurer
     affiliation: 1
   - name: Carina Bringedal
     orcid: 0000-0003-0495-2634
-    equal-contrib: true
     affiliation: 2
   - name: Benjamin Uekermann
     orcid: 0000-0002-1314-9969
-    equal-contrib: true
     affiliation: 1
 affiliations:
  - name: Institute for Parallel and Distributed Systems, University of Stuttgart, Germany
    index: 1
- - name: Department of Computer science, Electrical engineering and Mathematical sciences, Western Norway University of Applied Sciences, Norway
+ - name: Department of Computer Science, Electrical Engineering and Mathematical Sciences, Western Norway University of Applied Sciences, Norway
    index: 2
 date: 31 August 2023
 bibliography: paper.bib
@@ -30,8 +27,8 @@ bibliography: paper.bib
 
 The Micro Manager facilitates coupling between simulation softwares which solve problems at different physical scales. Broadly speaking, simulation-based analysis is an effective tool to gain insights in real-world scenarios without incurring the high cost of prototyping and testing.
 Complex simulations are oftentimes broken down into simpler components which are resolved by tailor-made software.
-Such complex simulations can be of multi-physics nature, meaning different physics is solved in different parts of the domain.
-To do such multi-physics simulations, we can couple different softwares together in a black-box manner. In some scenarios, the coupling is not just between different physics, but also physical scales.
+Such complex simulations can be of multi-physics nature, meaning different physics solved in different parts of the domain.
+To do such multi-physics simulations, we can couple different softwares together in a black-box manner. In some scenarios, the coupling is not just between different physics, but also different physical scales.
 The Micro Manager, together with the coupling library preCICE [@preCICE_v2], enables such a multiscale, multi-physics coupling.
 In two-scale coupled scenarios, the coarse scale can be referred to as a macro scale, and the fine scale can be the micro scale. The name *Micro Manager* is derived from its core functionality of controlling a set of micro scale simulations and coupling them to one macro scale simulation via preCICE.
 
@@ -50,7 +47,9 @@ We introduce the concept of the Micro Manager in [@Desai2022micromanager]. The M
 
 The micro simulation software needs to be converted to a callable library so that the Micro Manager can control it. The way to do this is described in the documentation [@MicroManager_documentation]. In the documentation, we demonstrate how to convert a Python or a C++ software into a callable library. Additionally, we show a working tutorial of a two-scale heat conduction problem where both the macro and micro scales are solved using the finite element library Nutils [@Nutils7].
 
-The Micro Manager is configured via a JSON file and it can be run directly from the command line or its public methods can be called in a user-written Python file. It can run micro simulations in parallel using MPI [@mpi4py]. For real scenarios, the number of micro simulations can be very high and each micro simulation can be computationally expensive. The Micro Manager is able to adaptively activate and deactivate micro simulations depending on whether their similar counterparts exist. The adaptivity strategy is from [@Bastidas_two_scale, @Redeker_adaptivity]. The user can choose between a *local* and *global* adaptivity scheme, both of which are described in detail in the documentation [@MicroManager_documentation].
+The Micro Manager is configured via a JSON file and it can be run directly from the command line or its public methods can be called in a user-written Python file. It can run micro simulations in parallel using MPI [@mpi4py]. For real scenarios, the number of micro simulations can be very high and each micro simulation can be computationally expensive. The Micro Manager is able to adaptively activate and deactivate micro simulations depending on whether their similar counterparts exist. The adaptivity strategy is from [@Bastidas_two_scale, @Redeker_adaptivity]. The user can choose between a *local* and *global* adaptivity scheme \autoref{fig:ManagerSolution}, both of which are described in detail in the documentation [@MicroManager_documentation].
+
+![Macro simulation with two materials coupled via preCICE to a set of micro simulations controlled by the Micro Manager. Micro simulations are run adaptively: highlighted ones are active, rest are inactive.\label{fig:ManagerSolution}](ManagerSolution.png)
 
 The user is able to set up a two-scale coupled simulation by modifying an existing micro simulation software into a callable library and configuring the Micro Manager. preCICE and the Micro Manager handle the coupling and the high-performance computing aspects of the set up so that domain experts can concentrate on the macro and micro-scale models.
 
