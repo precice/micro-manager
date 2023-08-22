@@ -29,7 +29,7 @@ bibliography: paper.bib
 The Micro Manager facilitates coupling between simulation softwares which solve problems at different physical scales. Broadly speaking, simulation-based analysis is an effective tool to gain insights in real-world scenarios without incurring the high cost of prototyping and testing.
 Complex simulations are oftentimes broken down into simpler components which are resolved by tailor-made software.
 Such complex simulations can be of multiphysics nature, meaning different physics are solved in different parts of the domain.
-To do such multiphysics simulations, we can couple different softwares together. preCICE [@preCICE_v2] is an open-source coupling library for partitioned multiphysics simulations. Sometimes the coupling is not just between different physics, but also different physical scales, which is oftentimes referred to as multiscale coupling.
+To do such multiphysics simulations, we can couple different softwares together. preCICE [@preCICE_v2:2022] is an open-source coupling library for partitioned multiphysics simulations. Sometimes the coupling is not just between different physics, but also different physical scales, which is oftentimes referred to as multiscale coupling.
 The Micro Manager, together with preCICE, is capable of handling a multiphysics and multiscale coupling.
 In two-scale coupled scenarios, the coarse scale can be referred to as the macro scale, and the fine scale as the micro scale. The name *Micro Manager* is derived from its core functionality of controlling a set of micro-scale simulations and coupling them to one macro-scale simulation via preCICE.
 
