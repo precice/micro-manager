@@ -47,14 +47,14 @@ preCICE is already able to couple simulations on the same scale, and together wi
 
 # Software
 
-In @Desai2022micromanager we use the Micro Manager to solve a two-scale heat conduction problem, where both the macro and micro scales are solved using the finite element library Nutils [@Nutils7].
-The micro simulation software needs to be converted to a callable library so that the Micro Manager can control it. The way to do this is described in the documentation [@MicroManager_documentation]. In the documentation, we demonstrate how to convert a Python or a C++ software into a callable library.
+In @Desai2022micromanager, we use the Micro Manager to solve a two-scale heat conduction problem, where both the macro and micro scales are solved using the finite element library Nutils [@Nutils7].
+The micro-scale simulation needs to be converted to a callable library so that the Micro Manager can control it. In the [documentation](https://precice.org/tooling-micro-manager-prepare-micro-simulation.html), we demonstrate how to convert a Python or a C++ program into a callable library. The macro-scale simulation is coupled directly to preCICE.
 
-The Micro Manager is configured via a JSON file and it can be run directly from the command line or its public methods can be called in a user-written Python file. It can run micro simulations in parallel using MPI [@mpi4py]. For real scenarios, the number of micro simulations can be very high and each micro simulation can be computationally expensive. The Micro Manager is able to adaptively activate and deactivate micro simulations depending on whether their similar counterparts exist. The adaptivity strategy is from @Redeker_adaptivity and @Bastidas_two_scale. The user can choose between a *local* and *global* adaptivity scheme, both of which are described in detail in the documentation [@MicroManager_documentation].
+The Micro Manager is configured via a [JSON](https://www.json.org/json-en.html) file. It can run micro simulations in parallel using MPI [@mpi4py]. For realistic multiscale scenarios, the number of micro simulations can be very high and each micro simulation can be computationally expensive. The Micro Manager is able to adaptively activate and deactivate micro simulations depending on whether their similar counterparts exist. The adaptivity strategy is from @Redeker_adaptivity and @Bastidas_two_scale. In the configuration, the user can choose between a *local* and *global* adaptivity scheme, both of which are described in detail in the [documentation](https://precice.org/tooling-micro-manager-configuration.html#adaptivity).
 
 The user is able to set up a two-scale coupled simulation by modifying an existing micro simulation software into a callable library and configuring the Micro Manager. preCICE and the Micro Manager handle the coupling and the high-performance computing aspects of the set up so that domain experts can concentrate on the macro and micro-scale models.
 
-# Availability
+# Availability & Use
 
 The Micro Manager is written in Python and hosted on [GitHub](https://github.com/precice/micro-manager). New versions are released and packaged for [PyPI](https://pypi.org/project/micro-manager-precice/). We recommend installing the Micro Manager via pip and running it directly on the command line or by calling its public methods. It is designed to work on all major Linux distributions which have Python 3.x support.
 
