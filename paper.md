@@ -36,7 +36,7 @@ In two-scale coupled scenarios, the coarse scale can be referred to as the macro
 # Statement of need
 
 For multiscale simulations, the physics on different scales are essentially separate problems, which are evaluated using dedicated software. To understand how the scales affect each other, both scales need to be solved simultaneously while being coupled in a bi-directional manner.
-Two-scale coupled simulations have already been done in several application areas, such as, porous media  [@Bringedal_precipitation_dissolution, @Bringedal_reactive_porous_media], computational mechanics [@Fritzen_adaptivity] and biomechanics [@Lambers_liver_multiscale].
+Two-scale coupled simulations have already been done in several application areas, such as, porous media  [@Bringedal_precipitation_dissolution; @Bringedal_reactive_porous_media], computational mechanics [@Fritzen_adaptivity] and biomechanics [@Lambers_liver_multiscale].
 For each of these applications, the coupling software is implemented from scratch. Such software implementations typically involve communication between the scales, coupling schemes, and other case-specific technical solutions.
 [@Groen_multiscale_survey] states that the field of generic multiscale coupling software is still maturing. Already-existing multiscale coupling software such as MUSCLE [@MUSCLE3], MUI [@MUI], and AMUSE [@Amuse] are all tailored to particular multiscale computing patterns.
 The Micro Manager reuses functionality from preCICE to make generic two-scale coupling possible.
