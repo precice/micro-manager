@@ -241,7 +241,6 @@ class MicroManager:
         if hasattr(micro_problem, 'output') and callable(getattr(micro_problem, 'output')):
             self._micro_sims_have_output = True
 
-        # Get dt value so that first adaptivity computation can be done
         self._dt = self._participant.get_max_time_step_size()
 
     def solve(self) -> None:
@@ -326,7 +325,6 @@ class MicroManager:
             self._write_data_to_precice(micro_sims_output)
 
             self._participant.advance(self._dt)
-
             self._dt = self._participant.get_max_time_step_size()
 
             t += self._dt
@@ -376,7 +374,7 @@ class MicroManager:
 
         for name in self._read_data_names.keys():
             read_data.update({name: self._participant.read_data(
-                self._macro_mesh_name, name, self._mesh_vertex_ids, 1.)})
+                self._macro_mesh_name, name, self._mesh_vertex_ids, self._dt)})
 
             if self._is_adaptivity_on:
                 if name in self._adaptivity_macro_data_names:
