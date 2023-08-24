@@ -36,15 +36,19 @@ In two-scale coupled scenarios, the coarse scale can be referred to as the macro
 # Statement of need
 
 Two-scale coupled simulations have already been done in several application areas, such as, porous media  [@Bringedal_precipitation_dissolution; @Bringedal_reactive_porous_media], computational mechanics [@Fritzen_adaptivity] and biomechanics [@Lambers_liver_multiscale].
-For each of these applications, the coupling software is implemented from scratch. Such software implementations typically involve communication between the scales, coupling schemes, and other case-specific technical solutions.
+For each of these applications, the coupling software is implemented from scratch. Such implementations typically involve communication between the scales, coupling schemes, and other case-specific technical solutions.
+preCICE handles these aspects of the coupling and hides them from the user.
+The Micro Manager is a thin software layer on top of preCICE, which allows preCICE to handle a particular class of multiscale coupling problems.
 @Groen_multiscale_survey states that the field of generic multiscale coupling software is still maturing. Already-existing multiscale coupling software such as [MUSCLE3](https://github.com/multiscale/muscle3) [@MUSCLE3], [MUI](https://github.com/MxUI/MUI) [@MUI], and [AMUSE](https://github.com/amusecode/amuse) [@Amuse] are all tailored to particular multiscale computing patterns.
-The Micro Manager reuses functionality from preCICE to make generic two-scale coupling possible. preCICE is already coupled to many widely-used solvers, like OpenFOAM, FEniCS, deal.II and more, which allows for additionally flexibility in setting up two-scale coupled problems.
+The main goal is to isolate functionality related to multiscale coupling from the generic coupling functionality of preCICE.
+
+The Micro Manager reuses functionality from preCICE to make generic two-scale coupling possible. preCICE is already coupled to many widely-used solvers, like OpenFOAM, FEniCS, deal.II and more, and this wide applicability is carried over for multiscale problems.
 According to @Alowayyed_multiscale_exascale, our solution falls into the heterogeneous multiscale computing pattern. For this pattern, high-performance computing (HPC) software is still rare [@Alowayyed_multiscale_exascale]. Application-tailored softwares for multiscale simulations with massively parallel capabilities such as @Natale_RAS_cancer exist, but they do not propose a general software solution.
-preCICE is already able to couple simulations on the same scale, and together with the Micro Manager, we are able to couple one macro-scale simulation with several micro-scale simulations (\autoref{fig:ManagerSolution}).
+preCICE scales on ten-thousands of MPI rank [@preCICE_HPC] and the Micro Manager is capable of adaptively (\autoref{fig:ManagerSolution}) running micro simulations in parallel. We are proposing a software solution which can potentially solve large two-scale coupled problems efficiently.
 
-![Macro simulation with two materials coupled via preCICE to a set of micro simulations controlled by the Micro Manager. Lower left micro simulation shows a representative micro structure with two materials. Micro simulations are run adaptively: highlighted ones are active, rest are inactive.\label{fig:ManagerSolution}](ManagerSolution.png)
+![Macro simulation with homogenous mixture of two materials (green and grey) and void (white) is coupled via preCICE to a set of micro simulations controlled by the Micro Manager. The enlarged micro simulation shows a representative micro structure with the two materials. Micro simulations are run adaptively: highlighted ones are active, rest are inactive.\label{fig:ManagerSolution}](ManagerSolution.png)
 
-# Software
+# Functionality & Use
 
 In @Desai2022micromanager, we use the Micro Manager to solve a two-scale heat conduction problem, where both the macro and micro scales are solved using the finite element library Nutils [@Nutils7].
 The micro-scale simulation needs to be converted to a callable library so that the Micro Manager can control it. In the [documentation](https://precice.org/tooling-micro-manager-prepare-micro-simulation.html), we demonstrate how to convert a Python or a C++ program into a callable library. The macro-scale simulation is coupled directly to preCICE.
@@ -52,8 +56,6 @@ The micro-scale simulation needs to be converted to a callable library so that t
 The Micro Manager is configured via a [JSON](https://www.json.org/json-en.html) file. It can run micro simulations in parallel using MPI [@mpi4py]. For realistic multiscale scenarios, the number of micro simulations can be very high and each micro simulation can be computationally expensive. The Micro Manager is able to adaptively activate and deactivate micro simulations depending on whether their similar counterparts exist [@Redeker_adaptivity and @Bastidas_two_scale]. In the configuration, the user can choose between a *local* and *global* adaptivity scheme, both of which are described in the [documentation](https://precice.org/tooling-micro-manager-configuration.html#adaptivity).
 
 The user is able to set up a two-scale coupled simulation by modifying an existing micro simulation software into a callable library and configuring the Micro Manager. preCICE and the Micro Manager handle the coupling and the high-performance computing aspects of the set up so that domain experts can concentrate on the macro and micro-scale models.
-
-# Availability & Use
 
 The Micro Manager is written in Python and hosted on [GitHub](https://github.com/precice/micro-manager). New versions are released and packaged for [PyPI](https://pypi.org/project/micro-manager-precice/). We recommend installing the Micro Manager via pip and running it directly on the command line or by calling its public methods. It is designed to work on all major Linux distributions which have Python 3.x support.
 
