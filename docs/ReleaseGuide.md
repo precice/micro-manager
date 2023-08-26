@@ -8,7 +8,7 @@ The release of the `micro-manager` repository is made directly from a release br
 
 2. If it is a real release, [open a Pull Request `main` <-- `micro-manager-v1.2.3`](https://github.com/precice/micro-manager/compare/main...main) named after the version (i.e. `Release v1.2.3`) and briefly describe the new features of the release in the PR description.
 
-3. Bump the version in the `CHANGELOG.md` on `micro-manager-v1.2.3`.
+3. Bump the version in the `CHANGELOG.md` and in `setup.py` on `micro-manager-v1.2.3`.
 
 4. [Draft a new release](https://github.com/precice/micro-manager/releases/new) in the `Releases` section of the repository page in a web browser. The release tag needs to be the exact version number (i.e.`v1.2.3` or `v1.2.3rc1`, compare to [existing tags](https://github.com/precice/micro-manager/tags)). Use `@target:main`. Release title is also the version number (i.e. `v1.2.3` or `v1.2.3rc1`, compare to [existing releases](https://github.com/precice/micro-manager/tags)).
 
