@@ -13,7 +13,7 @@ with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='micro-manager-precice',
-    version='v0.2.1',
+    version='v0.3.0rc2',
     description='micro-manager-precice is a package which facilitates two-scale macro-micro coupled simulations using preCICE',
     long_description=long_description,
     long_description_content_type='text/markdown',
