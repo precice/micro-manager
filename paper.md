@@ -35,7 +35,7 @@ We refer to the coarse scale as the macro scale, and the fine scale as the micro
 
 # Statement of need
 
-Two-scale coupled simulations have already been done in several application areas, such as, porous media  [e.g. @Bringedal_precipitation_dissolution; @Bringedal_reactive_porous_media], computational mechanics [e.g. @Fritzen_adaptivity] and biomechanics [e.g. @Lambers_liver_multiscale].
+Two-scale coupled simulations have already been done in several application areas, such as, porous media  [e.g. @Bastidas_two_scale; @Gaerttner_two_scale], computational mechanics [e.g. @Fritzen_adaptivity] and biomechanics [e.g. @Lambers_liver_multiscale].
 For each of these publications, the coupling software is implemented from scratch. Such implementations typically involve communication between the scales, coupling schemes, and other case-specific technical solutions.
 For coupled problems on a single scale, preCICE handles these coupling aspects.
 The Micro Manager is a thin layer on top of preCICE, which enables preCICE to couple problems across two scales.
