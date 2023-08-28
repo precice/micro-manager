@@ -6,11 +6,11 @@ The release of the `micro-manager` repository is made directly from a release br
 
 1. Create a branch called `micro-manager-v1.2.3` from the latest commit of the `develop` branch.
 
-2. [Open a Pull Request `main` <-- `micro-manager-v1.2.3`](https://github.com/precice/micro-manager/compare/main...main) named after the version (i.e. `Release v1.2.3`) and briefly describe the new features of the release in the PR description.
+2. If it is a real release, [open a Pull Request `main` <-- `micro-manager-v1.2.3`](https://github.com/precice/micro-manager/compare/main...main) named after the version (i.e. `Release v1.2.3`) and briefly describe the new features of the release in the PR description.
 
-3. Bump the version in the `CHANGELOG.md` on `micro-manager-v1.2.3`.
+3. Bump the version in the `CHANGELOG.md` and in `setup.py` on `micro-manager-v1.2.3`.
 
-4. [Draft a New Release](https://github.com/precice/micro-manager/releases/new) in the `Releases` section of the repository page in a web browser. The release tag needs to be the exact version number (i.e.`v1.2.3` or `v1.2.3rc1`, compare to [existing tags](https://github.com/precice/micro-manager/tags)). Use `@target:main`. Release title is also the version number (i.e. `v1.2.3` or `v1.2.3rc1`, compare to [existing releases](https://github.com/precice/micro-manager/tags)).
+4. [Draft a new release](https://github.com/precice/micro-manager/releases/new) in the `Releases` section of the repository page in a web browser. The release tag needs to be the exact version number (i.e.`v1.2.3` or `v1.2.3rc1`, compare to [existing tags](https://github.com/precice/micro-manager/tags)). Use `@target:main`. Release title is also the version number (i.e. `v1.2.3` or `v1.2.3rc1`, compare to [existing releases](https://github.com/precice/micro-manager/tags)).
 
     * *Note:* If it is a pre-release then the option *This is a pre-release* needs to be selected at the bottom of the page. Use `@target:micro-manager-v1.2.3` for a pre-release, since we will never merge a pre-release into `main`.
     * Use the `Auto-generate release notes` feature.

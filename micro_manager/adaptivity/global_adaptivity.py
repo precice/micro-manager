@@ -312,7 +312,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         recv_reqs = []
         for global_id, recv_rank in recv_map.items():
             tag = self._create_tag(global_id, recv_rank, self._rank)
-            req = self._comm.irecv(source=recv_rank, tag=tag)
+            bufsize = 1 << 30  # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
+            req = self._comm.irecv(bufsize, source=recv_rank, tag=tag)
             recv_reqs.append(req)
 
         # Wait for all non-blocking communication to complete
