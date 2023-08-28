@@ -1,0 +1,105 @@
+name: Test adaptivity
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - "*"
+jobs:  
+  integration_test:
+    name: Run integration test
+    runs-on: ubuntu-latest
+    container: precice/precice
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          path: micro-manager
+
+      - name: Install dependencies
+        working-directory: micro-manager
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
+          python -m pip install --upgrade pip
+          pip install setuptools wheel
+
+      - name: Install Micro Manager
+        working-directory: micro-manager
+        run: pip3 install --user .
+
+      - name: Run integration test with local adaptivity
+        timeout-minutes: 3
+        working-directory: micro-manager/tests/integration/test_unit_cube
+        run: python3 unit_cube.py & python3 run_micro_manager.py --config micro-manager-config-local-adaptivity.json
+
+      - name: Run integration test serially with global adaptivity
+        timeout-minutes: 3
+        working-directory: micro-manager/tests/integration/test_unit_cube
+        run: python3 unit_cube.py & python3 run_micro_manager.py --config micro-manager-config-global-adaptivity.json
+
+  unit_tests_serial:
+    name: Run unit tests (serial variants)
+    runs-on: ubuntu-latest
+    container: precice/precice
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          path: micro-manager
+
+      - name: Install Dependencies
+        working-directory: micro-manager
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
+          python -m pip install --upgrade pip
+          pip install setuptools wheel
+
+      - name: Install Micro Manager
+        working-directory: micro-manager
+        run: pip3 install --user .
+
+      - name: Run unit tests
+        working-directory: micro-manager/tests/unit
+        run: python3 -m unittest test_adaptivity_serial.py
+
+  unit_tests_parallel:
+    name: Run unit tests (parallel variants)
+    runs-on: ubuntu-latest
+    container: precice/precice
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v3
+        with:
+          path: micro-manager
+
+      - name: Install sudo for MPI
+        working-directory: micro-manager
+        run: |
+          apt-get -qq update
+          apt-get -qq install sudo
+
+      - name: Use mpi4py
+        uses: mpi4py/setup-mpi@v1
+
+      - name: Add user precice
+        run: useradd -m -s /bin/bash precice
+
+      - name: Install Dependencies
+        working-directory: micro-manager
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
+          su -c "python -m pip install --upgrade pip" precice
+          su -c "pip install setuptools wheel twine" precice
+
+      - name: Install Micro Manager
+        working-directory: micro-manager
+        run: su -c "pip3 install --user ." precice
+
+      - name: Run unit tests
+        working-directory: micro-manager/tests/unit
+        run: su -c "mpiexec -n 2 python3 -m unittest test_adaptivity_parallel.py" precice

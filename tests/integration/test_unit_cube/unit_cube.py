@@ -9,27 +9,58 @@ def main():
     """
     Dummy macro simulation which is coupled to a set of micro simulations via preCICE and the Micro Manager
     """
-    nv = 25  # number of vertices
-
     n = n_checkpoint = 0
     t = t_checkpoint = 0
 
+    t_end = 10
+
     # preCICE setup
-    interface = precice.Interface("Macro-dummy", "precice-config.xml", 0, 1)
+    interface = precice.Interface("macro-cube", "precice-config.xml", 0, 1)
 
     # define coupling meshes
-    read_mesh_name = write_mesh_name = "macro-mesh"
+    read_mesh_name = write_mesh_name = "macro-cube-mesh"
     read_mesh_id = interface.get_mesh_id(read_mesh_name)
     read_data_names = {"micro-scalar-data": 0, "micro-vector-data": 1}
 
     write_mesh_id = interface.get_mesh_id(write_mesh_name)
     write_data_names = {"macro-scalar-data": 0, "macro-vector-data": 1}
 
-    # Coupling mesh
+    # Coupling mesh - unit cube with 5 points in each direction
+    np_axis = 2
+    x_coords, y_coords, z_coords = np.meshgrid(
+        np.linspace(0, 1, np_axis),
+        np.linspace(0, 1, np_axis),
+        np.linspace(0, 1, np_axis)
+    )
+
+    nv = np_axis ** interface.get_dimensions()
     coords = np.zeros((nv, interface.get_dimensions()))
-    for x in range(nv):
-        for d in range(interface.get_dimensions()):
-            coords[x, d] = x
+
+    write_scalar_data = np.zeros(nv)
+    write_vector_data = np.zeros((nv, interface.get_dimensions()))
+
+    # Define unit cube coordinates
+    for z in range(np_axis):
+        for y in range(np_axis):
+            for x in range(np_axis):
+                n = x + y * np_axis + z * np_axis * np_axis
+                coords[n, 0] = x_coords[x, y, z]
+                coords[n, 1] = y_coords[x, y, z]
+                coords[n, 2] = z_coords[x, y, z]
+
+    # Define initial data to write to preCICE
+    scalar_value = 1.0
+    vector_value = [2.0, 3.0, 4.0]
+    for z in range(np_axis):
+        for y in range(np_axis):
+            for x in range(np_axis):
+                n = x + y * np_axis + z * np_axis * np_axis
+                write_scalar_data[n] = scalar_value
+                write_vector_data[n, 0] = vector_value[0]
+                write_vector_data[n, 1] = vector_value[1]
+                write_vector_data[n, 2] = vector_value[2]
+        scalar_value += 1
+        vector_value = [x + 1 for x in vector_value]
 
     # Define Gauss points on entire domain as coupling mesh
     vertex_ids = interface.set_mesh_vertices(read_mesh_id, coords)
@@ -46,14 +77,7 @@ def main():
     # initialize preCICE
     dt = interface.initialize()
 
-    write_scalar_data = np.zeros(nv)
-    write_vector_data = np.zeros((nv, interface.get_dimensions()))
-
-    for i in range(nv):
-        write_scalar_data[i] = i
-        for d in range(interface.get_dimensions()):
-            write_vector_data[i, d] = i
-
+    # Set initial data to write to preCICE
     if interface.is_action_required(precice.action_write_initial_data()):
         for name, dim in write_data_names.items():
             if dim == 0:
@@ -73,18 +97,31 @@ def main():
             n_checkpoint = n
             interface.mark_action_fulfilled(precice.action_write_iteration_checkpoint())
 
-        # Read porosity and apply
+        # Read data from preCICE
         for name, dim in read_data_names.items():
             if dim == 0:
                 read_scalar_data = interface.read_block_scalar_data(read_data_ids[name], vertex_ids)
             elif dim == 1:
                 read_vector_data = interface.read_block_vector_data(read_data_ids[name], vertex_ids)
 
-        write_scalar_data[:] = read_scalar_data[:]
-        for i in range(nv):
-            for d in range(interface.get_dimensions()):
-                write_vector_data[i, d] = read_vector_data[i, d]
+        # Set the read data as the write data with an increment
+        write_scalar_data = read_scalar_data + 1
+        write_vector_data = read_vector_data + 1
 
+        # Define new data to write to preCICE midway through the simulation
+        if t == t_end / 2:
+            scalar_value = 1.0
+            vector_value = [2.0, 3.0, 4.0]
+            for z in range(np_axis):
+                for y in range(np_axis):
+                    for x in range(np_axis):
+                        n = x + y * np_axis + z * np_axis * np_axis
+                        write_scalar_data[n] = scalar_value
+                        write_vector_data[n, 0] = vector_value[0]
+                        write_vector_data[n, 1] = vector_value[1]
+                        write_vector_data[n, 2] = vector_value[2]
+
+        # Write data to preCICE
         for name, dim in write_data_names.items():
             if dim == 0:
                 interface.write_block_scalar_data(write_data_ids[name], vertex_ids, write_scalar_data)

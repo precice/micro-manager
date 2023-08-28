@@ -4,7 +4,14 @@ __pycache__
 
 # Building artifacts
 build
+micro_manager_precice.egg-info/
 micro_manager.egg-info/
 
 # Packaging artifacts
 dist
+
+# vscode
+.vscode
+
+# Tests output
+*.log
