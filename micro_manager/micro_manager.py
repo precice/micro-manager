@@ -64,26 +64,23 @@ class MicroManager:
         self._logger.info("Provided configuration file: {}".format(config_file))
         self._config = Config(self._logger, config_file)
 
-        # Define the preCICE interface
-        self._interface = precice.Interface(
+        # Define the preCICE Participant
+        self._participant = precice.Participant(
             "Micro-Manager",
             self._config.get_config_file_name(),
             self._rank,
             self._size)
 
-        self._macro_mesh_id = self._interface.get_mesh_id(self._config.get_macro_mesh_name())
+        micro_file_name = self._config.get_micro_file_name()
+        self._micro_problem = getattr(__import__(micro_file_name, fromlist=["MicroSimulation"]), "MicroSimulation")
 
-        # Data names and ids of data written to preCICE
+        self._macro_mesh_name = self._config.get_macro_mesh_name()
+
+        # Data names of data written to preCICE
         self._write_data_names = self._config.get_write_data_names()
-        self._write_data_ids = dict()
-        for name in self._write_data_names.keys():
-            self._write_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
-        # Data names and ids of data read from preCICE
+        # Data names of data read from preCICE
         self._read_data_names = self._config.get_read_data_names()
-        self._read_data_ids = dict()
-        for name in self._read_data_names.keys():
-            self._read_data_ids[name] = self._interface.get_data_id(name, self._macro_mesh_id)
 
         self._macro_bounds = self._config.get_macro_domain_bounds()
 
@@ -136,20 +133,22 @@ class MicroManager:
         - If required, write initial data to preCICE.
         """
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
-        assert len(self._macro_bounds) / \
-            2 == self._interface.get_dimensions(), "Provided macro mesh bounds are of incorrect dimension"
+        assert len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(
+            self._macro_mesh_name), "Provided macro mesh bounds are of incorrect dimension"
         if self._is_parallel:
-            domain_decomposer = DomainDecomposer(self._logger, self._interface.get_dimensions(), self._rank, self._size)
+            domain_decomposer = DomainDecomposer(
+                self._logger, self._participant.get_mesh_dimensions(self._macro_mesh_name), self._rank, self._size)
             coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(self._macro_bounds, self._ranks_per_axis)
         else:
             coupling_mesh_bounds = self._macro_bounds
 
-        self._interface.set_mesh_access_region(self._macro_mesh_id, coupling_mesh_bounds)
+        self._participant.set_mesh_access_region(self._macro_mesh_name, coupling_mesh_bounds)
 
-        # Initialize preCICE
-        self._dt = self._interface.initialize()
+        # initialize preCICE
+        self._participant.initialize()
 
-        self._mesh_vertex_ids, mesh_vertex_coords = self._interface.get_mesh_vertices_and_ids(self._macro_mesh_id)
+        self._mesh_vertex_ids, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
+            self._macro_mesh_name)
         self._local_number_of_sims, _ = mesh_vertex_coords.shape
         self._logger.info("Number of local micro simulations = {}".format(self._local_number_of_sims))
 
@@ -175,7 +174,8 @@ class MicroManager:
             for name, is_data_vector in self._adaptivity_data_names.items():
                 if is_data_vector:
                     self._data_for_adaptivity[name] = np.zeros(
-                        (self._local_number_of_sims, self._interface.get_dimensions()))
+                        (self._local_number_of_sims, self._participant.get_data_dimensions(
+                            self._macro_mesh_name, name)))
                 else:
                     self._data_for_adaptivity[name] = np.zeros((self._local_number_of_sims))
 
@@ -187,7 +187,6 @@ class MicroManager:
             sim_id += 1
 
         self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
-        micro_sims_output = [None] * self._local_number_of_sims
 
         micro_problem = getattr(
             __import__(
@@ -235,37 +234,14 @@ class MicroManager:
                 self._micro_sims[i] = (
                     create_simulation_class(micro_problem)(self._global_ids_of_local_sims[i]))
 
-        # Initialize micro simulations if initialize() method exists
-        if hasattr(micro_problem, 'initialize') and callable(getattr(micro_problem, 'initialize')):
-            for i in range(self._local_number_of_sims):
-                micro_sims_output[i] = self._micro_sims[i].initialize()
-                if micro_sims_output[i] is not None:
-                    if self._is_micro_solve_time_required:
-                        micro_sims_output[i]["micro_sim_time"] = 0.0
-                    if self._is_adaptivity_on:
-                        micro_sims_output[i]["active_state"] = 0
-                        micro_sims_output[i]["active_steps"] = 0
-                else:
-                    micro_sims_output[i] = dict()
-                    for name, is_data_vector in self._write_data_names.items():
-                        if is_data_vector:
-                            micro_sims_output[i][name] = np.zeros(self._interface.get_dimensions())
-                        else:
-                            micro_sims_output[i][name] = 0.0
-
-        self._logger.info("Micro simulations with global IDs {} - {} initialized.".format(
+        self._logger.info("Micro simulations with global IDs {} - {} created.".format(
             self._global_ids_of_local_sims[0], self._global_ids_of_local_sims[-1]))
 
         self._micro_sims_have_output = False
         if hasattr(micro_problem, 'output') and callable(getattr(micro_problem, 'output')):
             self._micro_sims_have_output = True
 
-        # Write initial data if required
-        if self._interface.is_action_required(precice.action_write_initial_data()):
-            self._write_data_to_precice(micro_sims_output)
-            self._interface.mark_action_fulfilled(precice.action_write_initial_data())
-
-        self._interface.initialize_data()
+        self._dt = self._participant.get_max_time_step_size()
 
     def solve(self) -> None:
         """
@@ -297,9 +273,9 @@ class MicroManager:
         sim_is_associated_to_cp = None
         sim_states_cp = [None] * self._local_number_of_sims
 
-        while self._interface.is_coupling_ongoing():
+        while self._participant.is_coupling_ongoing():
             # Write a checkpoint
-            if self._interface.is_action_required(precice.action_write_iteration_checkpoint()):
+            if self._participant.requires_writing_checkpoint():
                 for i in range(self._local_number_of_sims):
                     sim_states_cp[i] = self._micro_sims[i].get_state()
                 t_checkpoint = t
@@ -325,9 +301,6 @@ class MicroManager:
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
 
-                self._interface.mark_action_fulfilled(
-                    precice.action_write_iteration_checkpoint())
-
             micro_sims_input = self._read_data_from_precice()
 
             if self._is_adaptivity_on:
@@ -351,13 +324,14 @@ class MicroManager:
 
             self._write_data_to_precice(micro_sims_output)
 
-            self._dt = self._interface.advance(self._dt)
+            self._participant.advance(self._dt)
+            self._dt = self._participant.get_max_time_step_size()
 
             t += self._dt
             n += 1
 
             # Revert micro simulations to their last checkpoints if required
-            if self._interface.is_action_required(precice.action_read_iteration_checkpoint()):
+            if self._participant.requires_reading_checkpoint():
                 for i in range(self._local_number_of_sims):
                     self._micro_sims[i].set_state(sim_states_cp[i])
                 n = n_checkpoint
@@ -370,8 +344,6 @@ class MicroManager:
                         is_sim_active = np.copy(is_sim_active_cp)
                         sim_is_associated_to = np.copy(sim_is_associated_to_cp)
 
-                self._interface.mark_action_fulfilled(
-                    precice.action_read_iteration_checkpoint())
             else:  # Time window has converged, now micro output can be generated
                 self._logger.info("Micro simulations {} - {} have converged at t = {}".format(
                     self._micro_sims[0].get_global_id(), self._micro_sims[-1].get_global_id(), t))
@@ -381,7 +353,7 @@ class MicroManager:
                         for sim in self._micro_sims:
                             sim.output()
 
-        self._interface.finalize()
+        self._participant.finalize()
 
     # ***************
     # Private methods
@@ -400,13 +372,9 @@ class MicroManager:
         for name in self._read_data_names.keys():
             read_data[name] = []
 
-        for name, is_data_vector in self._read_data_names.items():
-            if is_data_vector:
-                read_data.update({name: self._interface.read_block_vector_data(
-                    self._read_data_ids[name], self._mesh_vertex_ids)})
-            else:
-                read_data.update({name: self._interface.read_block_scalar_data(
-                    self._read_data_ids[name], self._mesh_vertex_ids)})
+        for name in self._read_data_names.keys():
+            read_data.update({name: self._participant.read_data(
+                self._macro_mesh_name, name, self._mesh_vertex_ids, self._dt)})
 
             if self._is_adaptivity_on:
                 if name in self._adaptivity_macro_data_names:
@@ -428,25 +396,16 @@ class MicroManager:
             for name in data[0]:
                 data_dict[name] = []
 
-            for output_dict in data:
-                for name, values in output_dict.items():
+            for d in data:
+                for name, values in d.items():
                     data_dict[name].append(values)
 
-            for dname, is_data_vector in self._write_data_names.items():
-                if is_data_vector:
-                    self._interface.write_block_vector_data(
-                        self._write_data_ids[dname], self._mesh_vertex_ids, data_dict[dname])
-                else:
-                    self._interface.write_block_scalar_data(
-                        self._write_data_ids[dname], self._mesh_vertex_ids, data_dict[dname])
+            for dname in self._write_data_names.keys():
+                self._participant.write_data(
+                    self._macro_mesh_name, dname, self._mesh_vertex_ids, data_dict[dname])
         else:
-            for dname, is_data_vector in self._write_data_names.items():
-                if is_data_vector:
-                    self._interface.write_block_vector_data(
-                        self._write_data_ids[dname], [], np.array([]))
-                else:
-                    self._interface.write_block_scalar_data(
-                        self._write_data_ids[dname], [], np.array([]))
+            for dname in self._write_data_names.keys():
+                self._participant.write_data(self._macro_mesh_name, dname, [], np.array([]))
 
     def _solve_micro_simulations(self, micro_sims_input: list) -> list:
         """

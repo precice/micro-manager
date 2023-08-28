@@ -15,15 +15,6 @@
 // Constructor
 MicroSimulation::MicroSimulation() : _micro_scalar_data(0), _state(0) {}
 
-// Initialize
-void MicroSimulation::initialize()
-{
-    std::cout << "Initialize micro problem\n";
-    _micro_scalar_data = 0;
-    _micro_vector_data.clear();
-    _state = 0;
-}
-
 // Solve
 py::dict MicroSimulation::solve(py::dict macro_data, double dt)
 {
@@ -74,7 +65,6 @@ PYBIND11_MODULE(micro_dummy, m) {
 
     py::class_<MicroSimulation>(m, "MicroSimulation")
         .def(py::init())
-        .def("initialize", &MicroSimulation::initialize)
         .def("solve", &MicroSimulation::solve)
         .def("get_state", &MicroSimulation::get_state)
         .def("set_state", &MicroSimulation::set_state)
