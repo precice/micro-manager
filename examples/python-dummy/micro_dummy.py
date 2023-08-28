@@ -15,11 +15,6 @@ class MicroSimulation:
         self._micro_vector_data = None
         self._state = None
 
-    def initialize(self):
-        self._micro_scalar_data = 0
-        self._micro_vector_data = []
-        self._state = 0
-
     def solve(self, macro_data, dt):
         assert dt != 0
         self._micro_vector_data = []

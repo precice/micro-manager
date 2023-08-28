@@ -26,7 +26,7 @@ setup(
     packages=find_packages(
         exclude=['examples']),
     install_requires=[
-        'pyprecice==2.5.0.4',
+        'pyprecice>=3.0.0.0dev2',
         'numpy>=1.13.3',
         'mpi4py'],
     test_suite='tests',

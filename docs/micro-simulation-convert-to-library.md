@@ -19,16 +19,6 @@ class MicroSimulation: # Name is fixed
         Constructor of class MicroSimulation.
         """
 
-    def initialize(self) -> dict:
-        """
-        Initialize the micro simulation. This function is *optional*.
-
-        Returns
-        -------
-        data : dict
-            Python dictionary with names of micro data as keys and the data as values at the initial condition
-        """
-
     def solve(self, macro_data: dict, dt: float) -> dict:
         """
         Solve one time step of the micro simulation for transient problems or solve until steady state for steady-state problems.
