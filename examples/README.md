@@ -47,7 +47,3 @@ python cpp-dummy/run_micro_manager.py
 
 When changing the C++ solverdummy to your own solver, make sure to change the `PYBIND11_MODULE` in `micro_cpp_dummy.cpp` to the name that you want to compile to.
 For example, if you want to import the module as `my_solver`, change the line to `PYBIND11_MODULE(my_solver, m) {`. Then, change the `micro_file_name` in `micro-manager-config.json` to `my_solver`.
-
-### Adaptivity
-
-For the case of adaptivity, the deepcopy function also has to be implemented for the C++ class. An example is provided in the `cpp-dummy` directory.
