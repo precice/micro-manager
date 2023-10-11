@@ -84,7 +84,7 @@ class AdaptivityCalculator:
         _is_sim_active : numpy array
             Updated 1D array having state (active or inactive) of each micro simulation
         """
-        self._coarse_tol = self._coarse_const * self._refine_const * np.amax(similarity_dists)
+        self._coarse_tol = self._coarse_const * self._refine_const * np.amax(similarity_dists)# adapt the constant factor here
 
         _is_sim_active = np.copy(is_sim_active)  # Input is_sim_active is not longer used after this point
 
