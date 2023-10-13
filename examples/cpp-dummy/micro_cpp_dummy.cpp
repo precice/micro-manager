@@ -47,14 +47,15 @@ py::dict MicroSimulation::solve(py::dict macro_data, double dt)
 // This function needs to set the complete state of a micro simulation
 void MicroSimulation::set_state(py::list state)
 {
-    _micro_scalar_data = state[0].cast<double>();
-    _state = state[1].cast<double>();
+    _sim_id = state[0].cast<int>()
+    _micro_scalar_data = state[1].cast<double>();
+    _state = state[2].cast<double>();
 }
 
 // This function needs to return variables which can fully define the state of a micro simulation
 py::list MicroSimulation::get_state() const
 {
-    std::vector<double> state{_micro_scalar_data, _state};
+    std::vector<double> state{_sim_id, _micro_scalar_data, _state};
     py::list state_python = py::cast(state);
     return state_python;
 }
@@ -73,11 +74,11 @@ PYBIND11_MODULE(micro_dummy, m) {
                 return ms.get_state();
             },
             [](py::list t) { // __setstate__
-                if (t.size() != 2)
+                if (t.size() != 3)
                     throw std::runtime_error("Invalid state!");
 
                 /* Create a new C++ instance */
-                MicroSimulation ms;
+                MicroSimulation ms(0);
 
                 ms.set_state(t);
 
