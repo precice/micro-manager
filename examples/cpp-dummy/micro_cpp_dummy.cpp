@@ -13,7 +13,7 @@
 #include "micro_cpp_dummy.hpp"
 
 // Constructor
-MicroSimulation::MicroSimulation() : _micro_scalar_data(0), _state(0) {}
+MicroSimulation::MicroSimulation(int sim_id) : _sim_id(sim_id), _micro_scalar_data(0), _state(0) {}
 
 // Solve
 py::dict MicroSimulation::solve(py::dict macro_data, double dt)
