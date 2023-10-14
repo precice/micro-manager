@@ -116,7 +116,7 @@ class MicroManager:
                 if name in self._write_data_names:
                     self._adaptivity_micro_data_names[name] = is_data_vector
 
-            self._is_adaptivity_required_in_every_implicit_iteration = self._config.is_adaptivity_required_in_every_implicit_iteration()
+            self._adaptivity_in_every_implicit_step = self._config.is_adaptivity_required_in_every_implicit_iteration()
             self._micro_sims_active_steps = None
 
     # **************
@@ -282,7 +282,7 @@ class MicroManager:
                 n_checkpoint = n
 
                 if self._is_adaptivity_on:
-                    if not self._is_adaptivity_required_in_every_implicit_iteration:
+                    if not self._adaptivity_in_every_implicit_step:
                         similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
                             self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
 
@@ -304,7 +304,7 @@ class MicroManager:
             micro_sims_input = self._read_data_from_precice()
 
             if self._is_adaptivity_on:
-                if self._is_adaptivity_required_in_every_implicit_iteration:
+                if self._adaptivity_in_every_implicit_step:
                     similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
                         self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
 
@@ -339,7 +339,7 @@ class MicroManager:
 
                 # If adaptivity is computed only once per time window, the states of sims need to be reset too
                 if self._is_adaptivity_on:
-                    if not self._is_adaptivity_required_in_every_implicit_iteration:
+                    if not self._adaptivity_in_every_implicit_step:
                         similarity_dists = np.copy(similarity_dists_cp)
                         is_sim_active = np.copy(is_sim_active_cp)
                         sim_is_associated_to = np.copy(sim_is_associated_to_cp)
