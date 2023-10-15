@@ -27,10 +27,4 @@ def create_simulation_class(micro_simulation_class):
         def get_global_id(self) -> int:
             return self._global_id
 
-        def set_global_id(self, global_id) -> None:
-            # TODO: Simulation objects have been initialized with a global ID, which
-            # we can no longer change, so change global ID here is problematic and
-            # will create a mismatch.
-            self._global_id = global_id
-
     return Simulation
