@@ -1,4 +1,4 @@
-name: Test for functions in classes AdaptivityCalculator, LocalAdaptivityCalculator, GlobalAdaptivityCalculator
+name: Test adaptivity functionality
 on:
   push:
     branches:
