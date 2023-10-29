@@ -49,7 +49,7 @@ preCICE scales on tens of thousands of MPI ranks [@preCICE_HPC] and the Micro Ma
 
 # Functionality & Use
 
-In @Desai2022micromanager, we use the Micro Manager to solve a two-scale heat conduction problem, where both the macro and micro scales are solved using the finite element library Nutils [@Nutils7].
+In @Desai2022micromanager, we use the Micro Manager to solve a two-scale heat conduction problem, where both the macro and micro scales are solved using the finite element library Nutils [@Nutils7]. @Kschidock2023DuMuxMacroMicro shows the flexibility of preCICE and the Micro Manager by solving the same problem using DuMu^x^ [@Koch2021DuMux].
 The micro-scale simulation needs to be converted to a callable library so that the Micro Manager can control it. In the [documentation](https://precice.org/tooling-micro-manager-prepare-micro-simulation.html), we demonstrate how to convert a Python or a C++ program into a callable library. The macro-scale simulation is coupled directly to preCICE. This coupling is black-box; hence, the macro-scale simulation has no knowledge of the macro-micro coupling or the Micro Manager.
 
 The Micro Manager is configured via a [JSON](https://www.json.org/json-en.html) file. It can run micro simulations in parallel using MPI [@mpi4py]. For realistic multiscale scenarios, the number of micro simulations can be very high, and each micro simulation can be computationally expensive. The Micro Manager is able to adaptively activate and deactivate micro simulations depending on whether their similar counterparts exist [@Redeker_adaptivity].
