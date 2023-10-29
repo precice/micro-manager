@@ -149,6 +149,8 @@ class MicroManager:
 
         self._mesh_vertex_ids, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
             self._macro_mesh_name)
+        assert (mesh_vertex_coords.size != 0), "Macro mesh has no vertices."
+
         self._local_number_of_sims, _ = mesh_vertex_coords.shape
         self._logger.info("Number of local micro simulations = {}".format(self._local_number_of_sims))
 
