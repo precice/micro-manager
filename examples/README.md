@@ -1,17 +1,24 @@
 # Solverdummies
 
-The `solverdummies` are minimal working examples for using the preCICE Micro Manager with different languages. At the moment, there are examples for Python, and C++. They can be coupled with any other solver, for example the `macro-dummy.py` in this directory.
+The `solverdummies` are minimal working examples for using the preCICE Micro Manager with different languages. At the moment, there are examples for Python, and C++. They can be coupled with any other solver, for example the `macro_dummy.py` in this directory.
 
 ## Python
 
 To run the Python solverdummies, run the following commands in the `examples/` directory in **two different terminals**:
 
 ```bash
-python macro-dummy.py
-python python-dummy/run_micro_manager.py
+python macro_dummy.py
+python python-dummy/run_micro_manager.py --config micro-manager-config.json
 ```
 
 Note that running `micro_manager micro-manager-config.json` from the terminal will not work, as the path in the configuration file is relative to the current working directory. See [#36](https://github.com/precice/micro-manager/issues/36) for more information.
+
+To run the Python solverdummies with adaptivity run the following commands in the `examples/` directory in **two different terminals**:
+
+```bash
+python macro_dummy.py
+python python-dummy/run_micro_manager.py --config micro-manager-adaptivity-config.json
+```
 
 ## C++
 
@@ -42,7 +49,14 @@ Then, run the following commands in the `examples/` directory, in **two differen
 
 ```bash
 python macro_dummy.py
-python cpp-dummy/run_micro_manager.py
+python cpp-dummy/run_micro_manager.py --config micro-manager-config.json
+```
+
+To run the C++ solverdummies with adaptivity run the following commands in the `examples/` directory in **two different terminals**:
+
+```bash
+python macro_dummy.py
+python cpp-dummy/run_micro_manager.py --config micro-manager-adaptivity-config.json
 ```
 
 When changing the C++ solverdummy to your own solver, make sure to change the `PYBIND11_MODULE` in `micro_cpp_dummy.cpp` to the name that you want to compile to.
