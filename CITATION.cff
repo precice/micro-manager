@@ -1,0 +1,46 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Desai
+  given-names: Ishaan
+  orcid: "https://orcid.org/0000-0002-2552-7509"
+- family-names: Scheurer
+  given-names: Erik
+  orcid: "https://orcid.org/0009-0000-9396-2994"
+- family-names: Bringedal
+  given-names: Carina
+  orcid: "https://orcid.org/0000-0003-0495-2634"
+- family-names: Uekermann
+  given-names: Benjamin
+  orcid: "https://orcid.org/0000-0002-1314-9969"
+doi: 10.18419/darus-3764
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Desai
+    given-names: Ishaan
+    orcid: "https://orcid.org/0000-0002-2552-7509"
+  - family-names: Scheurer
+    given-names: Erik
+    orcid: "https://orcid.org/0009-0000-9396-2994"
+  - family-names: Bringedal
+    given-names: Carina
+    orcid: "https://orcid.org/0000-0003-0495-2634"
+  - family-names: Uekermann
+    given-names: Benjamin
+    orcid: "https://orcid.org/0000-0002-1314-9969"
+  date-published: 2023-11-07
+  doi: 10.21105/joss.05842
+  issn: 2475-9066
+  issue: 91
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 5842
+  title: "Micro Manager: a Python package for adaptive and flexible
+    two-scale coupling"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.05842"
+  volume: 8
+title: "Micro Manager: a Python package for adaptive and flexible
+  two-scale coupling"
