@@ -12,6 +12,8 @@
     <img src="https://github.com/precice/micro-manager/actions/workflows/pythonpublish.yml/badge.svg" alt="Upload Python Package">
 </a>
 
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.05842/status.svg)](https://doi.org/10.21105/joss.05842)
+
 A tool to facilitate solving two-scale (macro-micro) coupled problems using the coupling library [preCICE](https://www.precice.org/).
 
 The main documentation is rendered on the [preCICE website](https://precice.org/tooling-micro-manager-overview.html).
