@@ -35,15 +35,15 @@ We refer to the coarse scale as the macro scale, and the fine scale as the micro
 
 # Statement of need
 
-Two-scale coupled simulations have already been done in several application areas, such as porous media  [e.g. @Bastidas_two_scale; @Gaerttner_two_scale], computational mechanics [e.g. @Fritzen_adaptivity] and biomechanics [e.g. @Lambers_liver_multiscale].
+Two-scale coupled simulations have already been done in several application areas, such as porous media  [e.g., @Bastidas_two_scale; @Gaerttner_two_scale], computational mechanics [e.g., @Fritzen_adaptivity] and biomechanics [e.g., @Lambers_liver_multiscale].
 For each of these publications, the coupling software is implemented from scratch. Such implementations typically involve communication between the scales, coupling schemes, and other case-specific technical solutions.
 For coupled problems on a single scale, preCICE handles these coupling aspects.
 The Micro Manager is a thin layer on top of preCICE, which enables preCICE to couple problems across two scales.
 Compared to existing multiscale coupling software such as [MUSCLE3](https://github.com/multiscale/muscle3) [@MUSCLE3], [MUI](https://github.com/MxUI/MUI) [@MUI], and [AMUSE](https://github.com/amusecode/amuse) [@Amuse], the Micro Manager is an add-on package to the general coupling library preCICE and not a stand-alone coupling solution.
 
-For single-scale simulations, many widely-used solvers such as OpenFOAM, FEniCS, deal.II and more, are already coupled using preCICE. Additionally, preCICE has a steadily growing community [@preCICE_v2]. Using the Micro Manager, we expose these advantages of using preCICE for multiscale scenarios.
+For single-scale simulations, many widely-used solvers such as OpenFOAM, FEniCS, deal.II, and more are already coupled using preCICE. Additionally, preCICE has a steadily growing community [@preCICE_v2]. Using the Micro Manager, we expose these advantages of using preCICE for multiscale scenarios.
 According to @Alowayyed_multiscale_exascale, our solution falls into the heterogeneous multiscale computing pattern. For this pattern, high-performance computing (HPC) software is still rare [@Alowayyed_multiscale_exascale]. Application-tailored software packages for multiscale simulations with massively parallel capabilities, such as the one by @Natale_RAS_cancer, exist, but they do not propose a general software solution.
-preCICE scales on tens of thousands of MPI ranks [@preCICE_HPC] and the Micro Manager is capable of adaptively (\autoref{fig:ManagerSolution}) running micro simulations in parallel. We are proposing a software solution which could potentially solve large two-scale coupled problems efficiently, while building on existing single-scale know-how.
+preCICE scales on tens of thousands of MPI ranks [@preCICE_HPC] and the Micro Manager is capable of adaptively (\autoref{fig:ManagerSolution}) running micro simulations in parallel. We are proposing a software solution that could potentially solve large two-scale coupled problems efficiently, while building on existing single-scale know-how.
 
 ![Macro simulation with an averaged view of the materials (illustrated by stripes) is coupled via preCICE to a set of micro simulations controlled by the Micro Manager. The enlarged micro simulation shows a representative micro structure with the different materials. Micro simulations are run adaptively: highlighted ones are active, rest are inactive.\label{fig:ManagerSolution}](ManagerSolution.png)
 
@@ -56,7 +56,7 @@ The Micro Manager is configured via a [JSON](https://www.json.org/json-en.html) 
 
 In addition to the two-scale heat conduction problem in @Desai2022micromanager, the Micro Manager has already been used in multiscale models of the human liver in which a lobule-scale continuum-biomechanical model is coupled to many cell-scale models [@Otlinghaus2022Liver].
 
-The Micro Manager is written in Python and hosted on [GitHub](https://github.com/precice/micro-manager). New versions are released and packaged for [PyPI](https://pypi.org/project/micro-manager-precice/). We recommend installing the Micro Manager via pip and running it directly on the command line or by calling its public methods. It is designed to work on all major Linux distributions which have Python 3.x support.
+The Micro Manager is written in Python and hosted on [GitHub](https://github.com/precice/micro-manager). New versions are released and packaged for [PyPI](https://pypi.org/project/micro-manager-precice/). We recommend installing the Micro Manager via pip and running it directly on the command line or by calling its public methods. It is designed to work on all major Linux distributions that have Python 3.x support.
 
 # Acknowledgements
 
