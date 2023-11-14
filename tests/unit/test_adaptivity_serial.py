@@ -102,13 +102,6 @@ class TestLocalAdaptivity(TestCase):
 
         is_sim_active = np.array([True, True, True, True, True])  # Activate all micro sims before calling functionality
 
-        class MicroSimulation():
-            pass
-
-        dummy_micro_sims = []
-        for _ in range(self._number_of_sims):
-            dummy_micro_sims.append(MicroSimulation())
-
         is_sim_active = adaptivity_controller._update_active_sims(
             self._similarity_dists, is_sim_active)
 
@@ -152,17 +145,6 @@ class TestLocalAdaptivity(TestCase):
 
         is_sim_active = np.array([True, False, False, True, False])
         expected_sim_is_associated_to = np.array([-2, 0, 0, -2, 3])
-
-        class MicroSimulation():
-            def __init__(self, global_id):
-                self._global_id = global_id
-
-            def get_global_id(self):
-                return self._global_id
-
-        dummy_micro_sims = []
-        for i in range(self._number_of_sims):
-            dummy_micro_sims.append(MicroSimulation(i))
 
         sim_is_associated_to = np.array([-2, -2, -2, -2, -2])
 
