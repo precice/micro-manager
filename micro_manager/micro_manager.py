@@ -260,15 +260,18 @@ class MicroManager:
                 (self._number_of_sims_for_adaptivity,
                  self._number_of_sims_for_adaptivity))
 
-            # Start adaptivity calculation with all sims inactive
-            is_sim_active = np.array([False] * self._number_of_sims_for_adaptivity)
+            # Start adaptivity calculation with all sims as active
+            is_sim_active = np.array([True] * self._number_of_sims_for_adaptivity)
 
             # Activate the first one (a random choice)
-            is_sim_active[0] = True
+            # is_sim_active[0] = True
 
             # Associate all sims to the one active sim
-            sim_is_associated_to = np.zeros((self._number_of_sims_for_adaptivity), dtype=np.intc)
-            sim_is_associated_to[0] = -2  # An active sim does not have an associated sim
+            #sim_is_associated_to = np.zeros((self._number_of_sims_for_adaptivity), dtype=np.intc)
+            #sim_is_associated_to[0] = -2  # An active sim does not have an associated sim
+
+            # Associate all sims to the one active sim
+            sim_is_associated_to = np.full((self._number_of_sims_for_adaptivity), -2, dtype=np.intc)
 
         similarity_dists_cp = None
         is_sim_active_cp = None
