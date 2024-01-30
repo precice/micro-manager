@@ -4,6 +4,7 @@ Class Config provides functionality to read a JSON file and pass the values to t
 
 import json
 import os
+from warnings import warn
 
 
 class Config:
@@ -122,6 +123,10 @@ class Config:
             exchange_data = {**self._read_data_names, **self._write_data_names}
             for dname in data["simulation_params"]["adaptivity"]["data"]:
                 self._data_for_adaptivity[dname] = exchange_data[dname]
+
+            if self._data_for_adaptivity.keys() == self._write_data_names.keys():
+                warn("Only micro simulation data is used for similarity computation in adaptivity. This would lead to the"\ 
+                     "same set of active and inactive simulations for the entire simulation time.")
 
             self._adaptivity_history_param = data["simulation_params"]["adaptivity"]["history_param"]
             self._adaptivity_coarsening_constant = data["simulation_params"]["adaptivity"]["coarsening_constant"]
