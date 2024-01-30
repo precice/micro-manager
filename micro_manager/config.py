@@ -125,7 +125,7 @@ class Config:
                 self._data_for_adaptivity[dname] = exchange_data[dname]
 
             if self._data_for_adaptivity.keys() == self._write_data_names.keys():
-                warn("Only micro simulation data is used for similarity computation in adaptivity. This would lead to the"\ 
+                warn("Only micro simulation data is used for similarity computation in adaptivity. This would lead to the"
                      "same set of active and inactive simulations for the entire simulation time.")
 
             self._adaptivity_history_param = data["simulation_params"]["adaptivity"]["history_param"]
