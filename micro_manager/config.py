@@ -126,7 +126,8 @@ class Config:
 
             if self._data_for_adaptivity.keys() == self._write_data_names.keys():
                 warn("Only micro simulation data is used for similarity computation in adaptivity. This would lead to the"
-                     "same set of active and inactive simulations for the entire simulation time.")
+                     " same set of active and inactive simulations for the entire simulation time. If this is not intended,"
+                     " please include macro simulation data as well.")
 
             self._adaptivity_history_param = data["simulation_params"]["adaptivity"]["history_param"]
             self._adaptivity_coarsening_constant = data["simulation_params"]["adaptivity"]["coarsening_constant"]
