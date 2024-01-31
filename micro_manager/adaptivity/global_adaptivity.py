@@ -61,9 +61,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             if self._rank_of_sim[i] == self._rank:
                 self._is_sim_on_this_rank[i] = True
 
-        print("Rank {}: is_sim_on_this_rank = {}".format(self._rank, self._is_sim_on_this_rank))
-        print("Rank {}: rank_of_sim = {}".format(self._rank, self._rank_of_sim))
-
     def compute_adaptivity(
             self,
             dt: float,

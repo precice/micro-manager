@@ -99,7 +99,7 @@ class TestGlobalAdaptivity(TestCase):
         adaptivity_controller = GlobalAdaptivityCalculator(
             configurator,
             MagicMock(),
-            6,
+            5,
             global_ids,
             rank=self._rank,
             comm=self._comm)
