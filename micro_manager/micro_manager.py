@@ -119,11 +119,129 @@ class MicroManager:
             self._adaptivity_in_every_implicit_step = self._config.is_adaptivity_required_in_every_implicit_iteration()
             self._micro_sims_active_steps = None
 
+        self._initialize()
+
     # **************
     # Public methods
     # **************
 
-    def initialize(self) -> None:
+    def solve(self) -> None:
+        """
+        Solve the problem using preCICE.
+        - Handle checkpointing is implicit coupling is done.
+        - Read data from preCICE, solve micro simulations, and write data to preCICE
+        - If adaptivity is on, compute micro simulations adaptively.
+        """
+        t, n = 0, 0
+        t_checkpoint, n_checkpoint = 0, 0
+
+        if self._is_adaptivity_on:
+            similarity_dists = np.zeros(
+                (self._number_of_sims_for_adaptivity,
+                 self._number_of_sims_for_adaptivity))
+
+            # Start adaptivity calculation with all sims inactive
+            is_sim_active = np.array([False] * self._number_of_sims_for_adaptivity)
+
+            # Activate the first one (a random choice)
+            is_sim_active[0] = True
+
+            # Associate all sims to the one active sim
+            sim_is_associated_to = np.zeros((self._number_of_sims_for_adaptivity), dtype=np.intc)
+            sim_is_associated_to[0] = -2  # An active sim does not have an associated sim
+
+        similarity_dists_cp = None
+        is_sim_active_cp = None
+        sim_is_associated_to_cp = None
+        sim_states_cp = [None] * self._local_number_of_sims
+
+        while self._participant.is_coupling_ongoing():
+            # Write a checkpoint
+            if self._participant.requires_writing_checkpoint():
+                for i in range(self._local_number_of_sims):
+                    sim_states_cp[i] = self._micro_sims[i].get_state()
+                t_checkpoint = t
+                n_checkpoint = n
+
+                if self._is_adaptivity_on:
+                    if not self._adaptivity_in_every_implicit_step:
+                        similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
+                            self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
+
+                        # Only checkpoint the adaptivity configuration if adaptivity is computed
+                        # once in every time window
+                        similarity_dists_cp = np.copy(similarity_dists)
+                        is_sim_active_cp = np.copy(is_sim_active)
+                        sim_is_associated_to_cp = np.copy(sim_is_associated_to)
+
+                    if self._adaptivity_type == "local":
+                        active_sim_ids = np.where(is_sim_active)[0]
+                    elif self._adaptivity_type == "global":
+                        active_sim_ids = np.where(
+                            is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1])[0]
+
+                    for active_id in active_sim_ids:
+                        self._micro_sims_active_steps[active_id] += 1
+
+            micro_sims_input = self._read_data_from_precice()
+
+            if self._is_adaptivity_on:
+                if self._adaptivity_in_every_implicit_step:
+                    similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
+                        self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
+
+                    if self._adaptivity_type == "local":
+                        active_sim_ids = np.where(is_sim_active)[0]
+                    elif self._adaptivity_type == "global":
+                        active_sim_ids = np.where(
+                            is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1])[0]
+
+                    for active_id in active_sim_ids:
+                        self._micro_sims_active_steps[active_id] += 1
+
+                micro_sims_output = self._solve_micro_simulations_with_adaptivity(
+                    micro_sims_input, is_sim_active, sim_is_associated_to)
+            else:
+                micro_sims_output = self._solve_micro_simulations(micro_sims_input)
+
+            self._write_data_to_precice(micro_sims_output)
+
+            self._participant.advance(self._dt)
+            self._dt = self._participant.get_max_time_step_size()
+
+            t += self._dt
+            n += 1
+
+            # Revert micro simulations to their last checkpoints if required
+            if self._participant.requires_reading_checkpoint():
+                for i in range(self._local_number_of_sims):
+                    self._micro_sims[i].set_state(sim_states_cp[i])
+                n = n_checkpoint
+                t = t_checkpoint
+
+                # If adaptivity is computed only once per time window, the states of sims need to be reset too
+                if self._is_adaptivity_on:
+                    if not self._adaptivity_in_every_implicit_step:
+                        similarity_dists = np.copy(similarity_dists_cp)
+                        is_sim_active = np.copy(is_sim_active_cp)
+                        sim_is_associated_to = np.copy(sim_is_associated_to_cp)
+
+            else:  # Time window has converged, now micro output can be generated
+                self._logger.info("Micro simulations {} - {} have converged at t = {}".format(
+                    self._micro_sims[0].get_global_id(), self._micro_sims[-1].get_global_id(), t))
+
+                if self._micro_sims_have_output:
+                    if n % self._micro_n_out == 0:
+                        for sim in self._micro_sims:
+                            sim.output()
+
+        self._participant.finalize()
+
+    # ***************
+    # Private methods
+    # ***************
+
+    def _initialize(self) -> None:
         """
         Initialize the Micro Manager by performing the following tasks:
         - Decompose the domain if the Micro Manager is executed in parallel.
@@ -244,122 +362,6 @@ class MicroManager:
             self._micro_sims_have_output = True
 
         self._dt = self._participant.get_max_time_step_size()
-
-    def solve(self) -> None:
-        """
-        Solve the problem using preCICE.
-        - Handle checkpointing is implicit coupling is done.
-        - Read data from preCICE, solve micro simulations, and write data to preCICE
-        - If adaptivity is on, compute micro simulations adaptively.
-        """
-        t, n = 0, 0
-        t_checkpoint, n_checkpoint = 0, 0
-
-        if self._is_adaptivity_on:
-            similarity_dists = np.zeros(
-                (self._number_of_sims_for_adaptivity,
-                 self._number_of_sims_for_adaptivity))
-
-            # Start adaptivity calculation with all sims inactive
-            is_sim_active = np.array([False] * self._number_of_sims_for_adaptivity)
-
-            # Activate the first one (a random choice)
-            is_sim_active[0] = True
-
-            # Associate all sims to the one active sim
-            sim_is_associated_to = np.zeros((self._number_of_sims_for_adaptivity), dtype=np.intc)
-            sim_is_associated_to[0] = -2  # An active sim does not have an associated sim
-
-        similarity_dists_cp = None
-        is_sim_active_cp = None
-        sim_is_associated_to_cp = None
-        sim_states_cp = [None] * self._local_number_of_sims
-
-        while self._participant.is_coupling_ongoing():
-            # Write a checkpoint
-            if self._participant.requires_writing_checkpoint():
-                for i in range(self._local_number_of_sims):
-                    sim_states_cp[i] = self._micro_sims[i].get_state()
-                t_checkpoint = t
-                n_checkpoint = n
-
-                if self._is_adaptivity_on:
-                    if not self._adaptivity_in_every_implicit_step:
-                        similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
-                            self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
-
-                        # Only checkpoint the adaptivity configuration if adaptivity is computed
-                        # once in every time window
-                        similarity_dists_cp = np.copy(similarity_dists)
-                        is_sim_active_cp = np.copy(is_sim_active)
-                        sim_is_associated_to_cp = np.copy(sim_is_associated_to)
-
-                    if self._adaptivity_type == "local":
-                        active_sim_ids = np.where(is_sim_active)[0]
-                    elif self._adaptivity_type == "global":
-                        active_sim_ids = np.where(
-                            is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1])[0]
-
-                    for active_id in active_sim_ids:
-                        self._micro_sims_active_steps[active_id] += 1
-
-            micro_sims_input = self._read_data_from_precice()
-
-            if self._is_adaptivity_on:
-                if self._adaptivity_in_every_implicit_step:
-                    similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
-                        self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
-
-                    if self._adaptivity_type == "local":
-                        active_sim_ids = np.where(is_sim_active)[0]
-                    elif self._adaptivity_type == "global":
-                        active_sim_ids = np.where(
-                            is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1])[0]
-
-                    for active_id in active_sim_ids:
-                        self._micro_sims_active_steps[active_id] += 1
-
-                micro_sims_output = self._solve_micro_simulations_with_adaptivity(
-                    micro_sims_input, is_sim_active, sim_is_associated_to)
-            else:
-                micro_sims_output = self._solve_micro_simulations(micro_sims_input)
-
-            self._write_data_to_precice(micro_sims_output)
-
-            self._participant.advance(self._dt)
-            self._dt = self._participant.get_max_time_step_size()
-
-            t += self._dt
-            n += 1
-
-            # Revert micro simulations to their last checkpoints if required
-            if self._participant.requires_reading_checkpoint():
-                for i in range(self._local_number_of_sims):
-                    self._micro_sims[i].set_state(sim_states_cp[i])
-                n = n_checkpoint
-                t = t_checkpoint
-
-                # If adaptivity is computed only once per time window, the states of sims need to be reset too
-                if self._is_adaptivity_on:
-                    if not self._adaptivity_in_every_implicit_step:
-                        similarity_dists = np.copy(similarity_dists_cp)
-                        is_sim_active = np.copy(is_sim_active_cp)
-                        sim_is_associated_to = np.copy(sim_is_associated_to_cp)
-
-            else:  # Time window has converged, now micro output can be generated
-                self._logger.info("Micro simulations {} - {} have converged at t = {}".format(
-                    self._micro_sims[0].get_global_id(), self._micro_sims[-1].get_global_id(), t))
-
-                if self._micro_sims_have_output:
-                    if n % self._micro_n_out == 0:
-                        for sim in self._micro_sims:
-                            sim.output()
-
-        self._participant.finalize()
-
-    # ***************
-    # Private methods
-    # ***************
 
     def _read_data_from_precice(self) -> list:
         """
@@ -522,8 +524,6 @@ def main():
         config_file_path = os.getcwd() + "/" + config_file_path
 
     manager = MicroManager(config_file_path)
-
-    manager.initialize()
 
     manager.solve()
 

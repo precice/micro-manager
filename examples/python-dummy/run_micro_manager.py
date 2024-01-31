@@ -11,6 +11,4 @@ args = parser.parse_args()
 
 manager = MicroManager(args.config)
 
-manager.initialize()
-
 manager.solve()
