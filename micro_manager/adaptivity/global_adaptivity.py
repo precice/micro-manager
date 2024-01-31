@@ -53,12 +53,16 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             micro_sims_on_this_rank[i] = self._rank
 
         self._rank_of_sim = np.zeros(global_number_of_sims, dtype=np.intc)  # DECLARATION
-        self._comm.Allgather(micro_sims_on_this_rank, self._rank_of_sim)
+
+        self._comm.Allgatherv(micro_sims_on_this_rank, self._rank_of_sim)
 
         self._is_sim_on_this_rank = [False] * global_number_of_sims  # DECLARATION
         for i in range(global_number_of_sims):
             if self._rank_of_sim[i] == self._rank:
                 self._is_sim_on_this_rank[i] = True
+
+        print("Rank {}: is_sim_on_this_rank = {}".format(self._rank, self._is_sim_on_this_rank))
+        print("Rank {}: rank_of_sim = {}".format(self._rank, self._rank_of_sim))
 
     def compute_adaptivity(
             self,
