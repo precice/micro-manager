@@ -98,7 +98,6 @@ class TestGlobalAdaptivity(TestCase):
             expected_sim_output = [output_1, output_0]
 
         is_sim_active = np.array([False, False, True, True, False])
-        rank_of_sim = [0, 0, 0, 1, 1]
         sim_is_associated_to = [3, 3, -2, -2, 2]
 
         configurator = MagicMock()
@@ -106,11 +105,13 @@ class TestGlobalAdaptivity(TestCase):
         adaptivity_controller = GlobalAdaptivityCalculator(
             configurator,
             MagicMock(),
-            is_sim_on_this_rank,
-            rank_of_sim,
+            5,
             global_ids,
             rank=self._rank,
             comm=self._comm)
+
+        adaptivity_controller._rank_of_sim = [0, 0, 0, 1, 1]
+        adaptivity_controller._is_sim_on_this_rank = is_sim_on_this_rank
 
         adaptivity_controller.communicate_micro_output(is_sim_active, sim_is_associated_to, sim_output)
 

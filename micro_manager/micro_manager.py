@@ -314,25 +314,15 @@ class MicroManager:
                 fromlist=["MicroSimulation"]),
             "MicroSimulation")
 
+        # Create micro simulation objects
+        for i in range(self._local_number_of_sims):
+            self._micro_sims[i] = create_simulation_class(
+                micro_problem)(self._global_ids_of_local_sims[i])
+
+        self._logger.info("Micro simulations with global IDs {} - {} created.".format(
+            self._global_ids_of_local_sims[0], self._global_ids_of_local_sims[-1]))
+
         if self._is_adaptivity_on:
-            # Create micro simulation objects
-            for i in range(self._local_number_of_sims):
-                self._micro_sims[i] = create_simulation_class(
-                    micro_problem)(self._global_ids_of_local_sims[i])
-
-            # Create a map of micro simulation global IDs and the ranks on which they are
-            micro_sims_on_this_rank = np.zeros(self._local_number_of_sims, dtype=np.intc)
-            for i in range(self._local_number_of_sims):
-                micro_sims_on_this_rank[i] = self._rank
-
-            self._rank_of_sim = np.zeros(self._global_number_of_sims, dtype=np.intc)  # DECLARATION
-            self._comm.Allgather(micro_sims_on_this_rank, self._rank_of_sim)
-
-            self._is_sim_on_this_rank = [False] * self._global_number_of_sims  # DECLARATION
-            for i in range(self._global_number_of_sims):
-                if self._rank_of_sim[i] == self._rank:
-                    self._is_sim_on_this_rank[i] = True
-
             if self._adaptivity_type == "local":
                 self._adaptivity_controller = LocalAdaptivityCalculator(
                     self._config, self._logger)
@@ -341,21 +331,13 @@ class MicroManager:
                 self._adaptivity_controller = GlobalAdaptivityCalculator(
                     self._config,
                     self._logger,
-                    self._is_sim_on_this_rank,
-                    self._rank_of_sim,
+                    self._global_number_of_sims,
                     self._global_ids_of_local_sims,
                     self._rank,
                     self._comm)
                 self._number_of_sims_for_adaptivity = self._global_number_of_sims
 
             self._micro_sims_active_steps = np.zeros(self._local_number_of_sims)
-        else:
-            for i in range(self._local_number_of_sims):
-                self._micro_sims[i] = (
-                    create_simulation_class(micro_problem)(self._global_ids_of_local_sims[i]))
-
-        self._logger.info("Micro simulations with global IDs {} - {} created.".format(
-            self._global_ids_of_local_sims[0], self._global_ids_of_local_sims[-1]))
 
         self._micro_sims_have_output = False
         if hasattr(micro_problem, 'output') and callable(getattr(micro_problem, 'output')):
