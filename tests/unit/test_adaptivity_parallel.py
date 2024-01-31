@@ -17,14 +17,11 @@ class TestGlobalAdaptivity(TestCase):
         Run this test in parallel using MPI with 2 ranks.
         """
         if self._rank == 0:
-            is_sim_on_this_rank = [True, True, True, False, False]
             global_ids = [0, 1, 2]
         elif self._rank == 1:
-            is_sim_on_this_rank = [False, False, False, True, True]
             global_ids = [3, 4]
 
         is_sim_active = np.array([False, False, True, True, False])
-        rank_of_sim = [0, 0, 0, 1, 1]
         sim_is_associated_to = [3, 3, -2, -2, 2]
         expected_is_sim_active = np.array([True, False, True, True, True])
         expected_sim_is_associated_to = [-2, 3, -2, -2, -2]
@@ -34,8 +31,7 @@ class TestGlobalAdaptivity(TestCase):
         adaptivity_controller = GlobalAdaptivityCalculator(
             configurator,
             MagicMock(),
-            is_sim_on_this_rank,
-            rank_of_sim,
+            5,
             global_ids,
             rank=self._rank,
             comm=self._comm)
@@ -87,18 +83,15 @@ class TestGlobalAdaptivity(TestCase):
         output_1 = {"data1.1": 10.0, "data1.2": [10.0, 20.0]}
 
         if self._rank == 0:
-            is_sim_on_this_rank = [True, True, True, False, False]
             global_ids = [0, 1, 2]
             sim_output = [None, None, output_0]
             expected_sim_output = [output_1, output_1, output_0]
         elif self._rank == 1:
-            is_sim_on_this_rank = [False, False, False, True, True]
             global_ids = [3, 4]
             sim_output = [output_1, None]
             expected_sim_output = [output_1, output_0]
 
         is_sim_active = np.array([False, False, True, True, False])
-        rank_of_sim = [0, 0, 0, 1, 1]
         sim_is_associated_to = [3, 3, -2, -2, 2]
 
         configurator = MagicMock()
@@ -106,8 +99,7 @@ class TestGlobalAdaptivity(TestCase):
         adaptivity_controller = GlobalAdaptivityCalculator(
             configurator,
             MagicMock(),
-            is_sim_on_this_rank,
-            rank_of_sim,
+            5,
             global_ids,
             rank=self._rank,
             comm=self._comm)
