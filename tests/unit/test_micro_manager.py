@@ -46,13 +46,11 @@ class TestFunctioncalls(TestCase):
         self.assertDictEqual(self.fake_write_data_names, manager._write_data_names)
         self.assertEqual(manager._micro_n_out, 10)
 
-    def test_initialize(self):
+    def test_initialization(self):
         """
         Test if the initialize function of the MicroManager class initializes member variables to correct values
         """
         manager = micro_manager.MicroManager('micro-manager-config.json')
-
-        manager.initialize()
 
         self.assertEqual(manager._dt, 0.1)  # from Interface.initialize
         self.assertEqual(manager._global_number_of_sims, 4)
