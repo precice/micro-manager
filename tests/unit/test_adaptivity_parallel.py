@@ -87,7 +87,7 @@ class TestGlobalAdaptivity(TestCase):
             sim_output = [None, None, output_0]
             expected_sim_output = [output_1, output_1, output_0]
         elif self._rank == 1:
-            global_ids = [3, 4, 5]
+            global_ids = [3, 4]
             sim_output = [output_1, None]
             expected_sim_output = [output_1, output_0]
 
