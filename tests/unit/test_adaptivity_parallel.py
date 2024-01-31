@@ -110,7 +110,6 @@ class TestGlobalAdaptivity(TestCase):
             rank=self._rank,
             comm=self._comm)
 
-        adaptivity_controller._rank_of_sim = [0, 0, 0, 1, 1]
         adaptivity_controller._is_sim_on_this_rank = is_sim_on_this_rank
 
         adaptivity_controller.communicate_micro_output(is_sim_active, sim_is_associated_to, sim_output)
