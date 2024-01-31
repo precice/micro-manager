@@ -22,6 +22,7 @@ import logging
 import time
 from copy import deepcopy
 from typing import Dict
+from warnings import warn
 
 from .config import Config
 from .micro_simulation import create_simulation_class
@@ -140,15 +141,21 @@ class MicroManager:
                 (self._number_of_sims_for_adaptivity,
                  self._number_of_sims_for_adaptivity))
 
-            # Start adaptivity calculation with all sims inactive
-            is_sim_active = np.array([False] * self._number_of_sims_for_adaptivity)
+            # Start adaptivity calculation with all sims active
+            is_sim_active = np.array([True] * self._number_of_sims_for_adaptivity)
 
-            # Activate the first one (a random choice)
-            is_sim_active[0] = True
+            # Active sims do not have an associated sim
+            sim_is_associated_to = np.full((self._number_of_sims_for_adaptivity), -2, dtype=np.intc)
 
-            # Associate all sims to the one active sim
-            sim_is_associated_to = np.zeros((self._number_of_sims_for_adaptivity), dtype=np.intc)
-            sim_is_associated_to[0] = -2  # An active sim does not have an associated sim
+            if not self._initialization_is_none:
+                similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
+                    self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._initial_micro_output)
+
+                if self._adaptivity_type == "local":
+                    active_sim_ids = np.where(is_sim_active)[0]
+                elif self._adaptivity_type == "global":
+                    active_sim_ids = np.where(
+                        is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1])[0]
 
         similarity_dists_cp = None
         is_sim_active_cp = None
@@ -338,6 +345,20 @@ class MicroManager:
                 self._number_of_sims_for_adaptivity = self._global_number_of_sims
 
             self._micro_sims_active_steps = np.zeros(self._local_number_of_sims)
+
+        self._initial_micro_output = [None] * self._local_number_of_sims  # DECLARATION
+        self._initialization_is_none = False
+
+        # Call micro simulation initialization if initialize() method exists
+        if hasattr(micro_problem, 'initialize') and callable(getattr(micro_problem, 'initialize')):
+            for i in range(self._local_number_of_sims):
+                self._initial_micro_output[i] = self._micro_sims[i].initialize()
+                if self._initial_micro_output[i] is None:
+                    if self._rank == 0:
+                        warn("The initialize() call of the Micro simulation has not returned any initial data."
+                             " The initialize call is stopped.")
+                        self._initialization_is_none = True
+                        break
 
         self._micro_sims_have_output = False
         if hasattr(micro_problem, 'output') and callable(getattr(micro_problem, 'output')):
