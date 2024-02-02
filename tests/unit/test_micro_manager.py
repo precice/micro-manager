@@ -5,7 +5,7 @@ import micro_manager
 
 
 class MicroSimulation:
-    def __init__(self):
+    def __init__(self, sim_id):
         self.very_important_value = 0
 
     def initialize(self):
@@ -83,7 +83,7 @@ class TestFunctioncalls(TestCase):
         """
         manager = micro_manager.MicroManager('micro-manager-config.json')
         manager._local_number_of_sims = 4
-        manager._micro_sims = [MicroSimulation() for _ in range(4)]
+        manager._micro_sims = [MicroSimulation(i) for i in range(4)]
         manager._micro_sims_active_steps = np.zeros(4, dtype=np.int32)
 
         micro_sims_output = manager._solve_micro_simulations(self.fake_read_data)

@@ -21,13 +21,10 @@ def create_simulation_class(micro_simulation_class):
     """
     class Simulation(micro_simulation_class):
         def __init__(self, global_id):
-            micro_simulation_class.__init__(self)
+            micro_simulation_class.__init__(self, global_id)
             self._global_id = global_id
 
         def get_global_id(self) -> int:
             return self._global_id
-
-        def set_global_id(self, global_id) -> None:
-            self._global_id = global_id
 
     return Simulation
