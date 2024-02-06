@@ -13,7 +13,7 @@
 #include "micro_cpp_dummy.hpp"
 
 // Constructor
-MicroSimulation::MicroSimulation() : _micro_scalar_data(0), _state(0) {}
+MicroSimulation::MicroSimulation(int sim_id) : _sim_id(sim_id), _micro_scalar_data(0), _state(0) {}
 
 // Solve
 py::dict MicroSimulation::solve(py::dict macro_data, double dt)
@@ -64,7 +64,7 @@ PYBIND11_MODULE(micro_dummy, m) {
     m.doc() = "pybind11 micro dummy plugin";
 
     py::class_<MicroSimulation>(m, "MicroSimulation")
-        .def(py::init())
+        .def(py::init<int>())
         .def("solve", &MicroSimulation::solve)
         .def("get_state", &MicroSimulation::get_state)
         .def("set_state", &MicroSimulation::set_state)
@@ -77,7 +77,7 @@ PYBIND11_MODULE(micro_dummy, m) {
                     throw std::runtime_error("Invalid state!");
 
                 /* Create a new C++ instance */
-                MicroSimulation ms;
+                MicroSimulation ms(0);
 
                 ms.set_state(t);
 
