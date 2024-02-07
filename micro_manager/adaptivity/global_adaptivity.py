@@ -105,10 +105,14 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         is_sim_active = self._update_active_sims(similarity_dists, is_sim_active_nm1)
 
         is_sim_active, sim_is_associated_to = self._update_inactive_sims(
-            similarity_dists, is_sim_active_nm1, sim_is_associated_to_nm1, micro_sims)
+            similarity_dists, is_sim_active, sim_is_associated_to_nm1, micro_sims)
+
+        print("sim_is_associated_to: {}".format(sim_is_associated_to))
 
         sim_is_associated_to = self._associate_inactive_to_active(
             similarity_dists, is_sim_active, sim_is_associated_to)
+
+        print("sim_is_associated_to: {}".format(sim_is_associated_to))
 
         self._logger.info(
             "{} active simulations, {} inactive simulations".format(
