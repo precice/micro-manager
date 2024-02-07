@@ -147,9 +147,11 @@ class MicroManager:
             # Active sims do not have an associated sim
             sim_is_associated_to = np.full((self._number_of_sims_for_adaptivity), -2, dtype=np.intc)
 
-            if not self._initialization_is_none:
+            # If micro simulations have been initialized, compute adaptivity based on initial data
+            if self._micro_sims_init:
+                # Compute adaptivity based on initial data of micro sims
                 similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
-                    self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._initial_micro_output)
+                    self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
 
                 if self._adaptivity_type == "local":
                     active_sim_ids = np.where(is_sim_active)[0]
@@ -346,19 +348,30 @@ class MicroManager:
 
             self._micro_sims_active_steps = np.zeros(self._local_number_of_sims)
 
-        self._initial_micro_output = [None] * self._local_number_of_sims  # DECLARATION
-        self._initialization_is_none = False
+        self._micro_sims_init = False  # DECLARATION
 
-        # Call micro simulation initialization if initialize() method exists
+        # Get initial data from micro simulations if initialize() method exists
         if hasattr(micro_problem, 'initialize') and callable(getattr(micro_problem, 'initialize')):
-            for i in range(self._local_number_of_sims):
-                self._initial_micro_output[i] = self._micro_sims[i].initialize()
-                if self._initial_micro_output[i] is None:
+            if self._is_adaptivity_on:
+                self._micro_sims_init = True
+                initial_micro_output = self._micro_sims[0].initialize()  # Get initial data from first simulation
+                if initial_micro_output is None:  # Check if the detected initialize() method returns any data
                     if self._rank == 0:
                         warn("The initialize() call of the Micro simulation has not returned any initial data."
                              " The initialize call is stopped.")
-                        self._initialization_is_none = True
-                        break
+                        self._micro_sims_init = False
+                else:
+                    # Save initial data from first micro simulation as we anyway have it
+                    for name in self._adaptivity_micro_data_names:
+                        self._data_for_adaptivity[name][i] = initial_micro_output[name]
+
+                    # Gather initial data from the rest of the micro simulations
+                    for i in range(1, self._local_number_of_sims):
+                        initial_micro_output = self._micro_sims[i].initialize()
+                        for name in self._adaptivity_micro_data_names:
+                            self._data_for_adaptivity[name][i] = initial_micro_output[name]
+            else:
+                print("Micro simulation has the method initialize(), but it is not called, because adaptivity is off.")
 
         self._micro_sims_have_output = False
         if hasattr(micro_problem, 'output') and callable(getattr(micro_problem, 'output')):

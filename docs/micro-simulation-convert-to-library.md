@@ -24,6 +24,16 @@ class MicroSimulation: # Name is fixed
             ID of the simulation instance, that the Micro Manager has set for it.
         """
 
+    def initialize(self) -> dict:
+        """
+        Initialize the micro simulation and return initial data which will be used in computing adaptivity before the first time step.
+
+        Returns
+        -------
+        initial_data : dict
+            Dictionary with names of initial data as keys and the initial data itself as values.
+        """
+
     def solve(self, macro_data: dict, dt: float) -> dict:
         """
         Solve one time step of the micro simulation for transient problems or solve until steady state for steady-state problems.
