@@ -135,6 +135,10 @@ class MicroManager:
         """
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
+        similarity_dists_cp = None
+        is_sim_active_cp = None
+        sim_is_associated_to_cp = None
+        sim_states_cp = [None] * self._local_number_of_sims
 
         if self._is_adaptivity_on:
             similarity_dists = np.zeros(
@@ -152,17 +156,6 @@ class MicroManager:
                 # Compute adaptivity based on initial data of micro sims
                 similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
                     self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
-
-                if self._adaptivity_type == "local":
-                    active_sim_ids = np.where(is_sim_active)[0]
-                elif self._adaptivity_type == "global":
-                    active_sim_ids = np.where(
-                        is_sim_active[self._global_ids_of_local_sims[0]:self._global_ids_of_local_sims[-1] + 1])[0]
-
-        similarity_dists_cp = None
-        is_sim_active_cp = None
-        sim_is_associated_to_cp = None
-        sim_states_cp = [None] * self._local_number_of_sims
 
         while self._participant.is_coupling_ongoing():
             # Write a checkpoint
