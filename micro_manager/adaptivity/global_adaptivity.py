@@ -18,8 +18,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             self,
             configurator,
             logger,
-            is_sim_on_this_rank: list,
-            rank_of_sim: np.ndarray,
+            global_number_of_sims: float,
             global_ids: list,
             rank: int,
             comm) -> None:
@@ -32,10 +31,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Object which has getter functions to get parameters defined in the configuration file.
         logger : object of logging
             Logger defined from the standard package logging
-        is_sim_on_this_rank : list
+        global_number_of_sims : float
             List of booleans. True if simulation is on this rank, False otherwise.
-        rank_of_sim : numpy array
-            1D array consisting of rank on which the simulation lives.
         global_ids : list
             List of global IDs of simulations living on this rank.
         rank : int
@@ -44,11 +41,25 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Global communicator of MPI.
         """
         super().__init__(configurator, logger)
-        self._is_sim_on_this_rank = is_sim_on_this_rank
-        self._rank_of_sim = rank_of_sim
         self._global_ids = global_ids
         self._comm = comm
         self._rank = rank
+
+        local_number_of_sims = len(global_ids)
+
+        # Create a map of micro simulation global IDs and the ranks on which they are
+        micro_sims_on_this_rank = np.zeros(local_number_of_sims, dtype=np.intc)
+        for i in range(local_number_of_sims):
+            micro_sims_on_this_rank[i] = self._rank
+
+        self._rank_of_sim = np.zeros(global_number_of_sims, dtype=np.intc)  # DECLARATION
+
+        self._comm.Allgatherv(micro_sims_on_this_rank, self._rank_of_sim)
+
+        self._is_sim_on_this_rank = [False] * global_number_of_sims  # DECLARATION
+        for i in range(global_number_of_sims):
+            if self._rank_of_sim[i] == self._rank:
+                self._is_sim_on_this_rank[i] = True
 
     def compute_adaptivity(
             self,
@@ -94,10 +105,14 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         is_sim_active = self._update_active_sims(similarity_dists, is_sim_active_nm1)
 
         is_sim_active, sim_is_associated_to = self._update_inactive_sims(
-            similarity_dists, is_sim_active_nm1, sim_is_associated_to_nm1, micro_sims)
+            similarity_dists, is_sim_active, sim_is_associated_to_nm1, micro_sims)
+
+        print("sim_is_associated_to: {}".format(sim_is_associated_to))
 
         sim_is_associated_to = self._associate_inactive_to_active(
             similarity_dists, is_sim_active, sim_is_associated_to)
+
+        print("sim_is_associated_to: {}".format(sim_is_associated_to))
 
         self._logger.info(
             "{} active simulations, {} inactive simulations".format(

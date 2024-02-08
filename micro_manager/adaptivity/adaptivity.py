@@ -8,6 +8,7 @@ from math import exp
 from typing import Callable
 import re
 import xml.etree.ElementTree as ET
+from warnings import warn
 
 
 class AdaptivityCalculator:
@@ -172,9 +173,15 @@ class AdaptivityCalculator:
             self._coarse_const = self._get_adaptive_similarity_const(self._coarse_const_input)
         if self._adaptive_refine_const:
             self._refine_const = self._get_adaptive_similarity_const(self._refine_const_input)
-        self._coarse_tol = self._coarse_const * self._refine_const * \
-            np.amax(similarity_dists)
 
+        max_similarity_dist = np.amax(similarity_dists)
+
+        if max_similarity_dist == 0.0:
+            warn("All similarity distances are zero, probably because all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number.")
+            self._coarse_tol = sys.float_info.min
+        else:
+            self._coarse_tol = self._coarse_const * self._refine_const * max_similarity_dist
+            
         _is_sim_active = np.copy(is_sim_active)  # Input is_sim_active is not longer used after this point
 
         # Update the set of active micro sims

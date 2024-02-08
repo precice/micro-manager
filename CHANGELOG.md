@@ -2,6 +2,13 @@
 
 ## latest
 
+- Pass an ID to the micro simulation object so that it is aware of its own uniqueness https://github.com/precice/micro-manager/pull/66
+- Resolve bug which led to an error when global adaptivity was used with unequal number of simulations on each rank https://github.com/precice/micro-manager/pull/78
+- Make the `initialize()` method of the MicroManager class private https://github.com/precice/micro-manager/pull/77
+- Add reference paper via a CITATION.cff file https://github.com/precice/micro-manager/commit/6c08889c658c889d6ab5d0867802522585abcee5
+- Add JOSS DOI badge https://github.com/precice/micro-manager/commit/2e3c2a4c77732f56a957abbad9e4d0cb64029725
+- Update pyprecice API calls to their newer variants https://github.com/precice/micro-manager/pull/51
+
 ## v0.3.0
 
 - Add global variant to adaptivity (still experimental) https://github.com/precice/micro-manager/pull/42
