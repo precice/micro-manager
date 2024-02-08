@@ -88,8 +88,8 @@ class AdaptivityCalculator:
         max_similarity_dist = np.amax(similarity_dists)
 
         if max_similarity_dist == 0.0:
-            warn("All similarity distances are zero, probably because all the data for adaptivity is the same. Coarsening tolerance will be manually set to 0.1.")
-            self._coarse_tol = 0.1
+            warn("All similarity distances are zero, probably because all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number.")
+            self._coarse_tol = sys.float_info.min
         else:
             self._coarse_tol = self._coarse_const * self._refine_const * max_similarity_dist
 
