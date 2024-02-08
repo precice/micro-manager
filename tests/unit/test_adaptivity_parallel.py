@@ -125,7 +125,8 @@ class TestGlobalAdaptivity(TestCase):
         for i in global_ids:
             dummy_micro_sims.append(MicroSimulation(i))
 
-        _, is_sim_active, sim_is_associated_to = adaptivity_controller.compute_adaptivity(0.1, dummy_micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, data_for_adaptivity)
+        _, is_sim_active, sim_is_associated_to = adaptivity_controller.compute_adaptivity(
+            0.1, dummy_micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, data_for_adaptivity)
 
         self.assertTrue(np.array_equal(expected_is_sim_active, is_sim_active))
         self.assertTrue(np.array_equal(expected_sim_is_associated_to, sim_is_associated_to))
