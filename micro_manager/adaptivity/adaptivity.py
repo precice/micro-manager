@@ -53,7 +53,7 @@ class AdaptivityCalculator:
         _similarity_dists = np.copy(similarity_dists)
 
         data_diff = np.zeros_like(_similarity_dists)
-        for name in self._adaptivity_data_names:
+        for name in data.keys():
             data_vals = data[name]
             if data_vals.ndim == 1:
                 # If the adaptivity-data is a scalar for each simulation,
