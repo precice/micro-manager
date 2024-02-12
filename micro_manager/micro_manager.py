@@ -3,7 +3,6 @@
 Micro Manager is a tool to initialize and adaptively control micro simulations and couple them via preCICE to a macro simulation.
 This files the class MicroManager which has the following callable public methods:
 
-- initialize
 - solve
 
 This file is directly executable as it consists of a main() function. Upon execution, an object of the class MicroManager is created using a given JSON file,
