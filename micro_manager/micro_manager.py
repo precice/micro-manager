@@ -347,7 +347,7 @@ class MicroManager:
         if hasattr(micro_problem, 'initialize') and callable(getattr(micro_problem, 'initialize')):
             if self._is_adaptivity_on:
                 self._micro_sims_init = True
-                initial_micro_output = self._micro_sims[0].initialize()  # Get initial data from first simulation
+                initial_micro_output = self._micro_sims[0].initialize()  # Call initialize() of the first simulation
                 if initial_micro_output is None:  # Check if the detected initialize() method returns any data
                     if self._rank == 0:
                         warn("The initialize() call of the Micro simulation has not returned any initial data."
@@ -355,8 +355,8 @@ class MicroManager:
                         self._micro_sims_init = False
                 else:
                     # Save initial data from first micro simulation as we anyway have it
-                    for name in self._adaptivity_micro_data_names:
-                        self._data_for_adaptivity[name][i] = initial_micro_output[name]
+                    for name in initial_micro_output.keys():
+                        self._data_for_adaptivity[name][0] = initial_micro_output[name]
 
                     # Gather initial data from the rest of the micro simulations
                     for i in range(1, self._local_number_of_sims):
