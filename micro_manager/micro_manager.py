@@ -284,7 +284,7 @@ class MicroManager:
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
         # simulations have been created by previous ranks, so that it can set
         # the correct global IDs
-        self._comm.Allgather(np.array(self._local_number_of_sims), nms_all_ranks)
+        self._comm.Allgatherv(np.array(self._local_number_of_sims), nms_all_ranks)
 
         # Get global number of micro simulations
         self._global_number_of_sims = np.sum(nms_all_ranks)
