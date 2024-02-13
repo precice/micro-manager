@@ -1,4 +1,4 @@
-# This file mocks pyprecice, the Python bindings for preCICE, and is used _only_ for unit testing the Micro Manager.
+# This file mocks pyprecice, the Python bindings for preCICE, and is used _only_ for testing the Micro Manager.
 from typing import Any
 import numpy as np
 
