@@ -552,12 +552,23 @@ class MicroManager:
 
         for count, sim in enumerate(self._micro_sims):
             start_time = time.time()
-            micro_sims_output[count] = sim.solve(micro_sims_input[count], self._dt)
+            try:
+                micro_sims_output[count] = sim.solve(micro_sims_input[count], self._dt)
+            except Exception as e:
+                _, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
+            self._macro_mesh_name)
+                self._logger.error(
+                    "Micro simulation with global ID {} at macro coordinates {} has experienced an error. Exiting simulation.".format(
+                        sim.get_global_id(), mesh_vertex_coords[count]))
+                self._logger.error(e)
+                # set the micro simulation value to old value and keep it constant
+                micro_sims_output[count] = self._old_micro_sims_output[count]
             end_time = time.time()
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[count]["micro_sim_time"] = end_time - start_time
-
+        self._old_micro_sims_output = micro_sims_output
+        
         return micro_sims_output
 
     def _solve_micro_simulations_with_adaptivity(
