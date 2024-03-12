@@ -362,7 +362,8 @@ class MicroManager:
                         for name in self._adaptivity_micro_data_names:
                             self._data_for_adaptivity[name][i] = initial_micro_output[name]
             else:
-                self._logger.info("Micro simulation has the method initialize(), but it is not called, because adaptivity is off.")
+                self._logger.info(
+                    "Micro simulation has the method initialize(), but it is not called, because adaptivity is off.")
 
         self._micro_sims_have_output = False
         if hasattr(micro_problem, 'output') and callable(getattr(micro_problem, 'output')):
