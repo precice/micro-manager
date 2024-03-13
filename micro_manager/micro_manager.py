@@ -21,6 +21,7 @@ import logging
 import time
 from copy import deepcopy
 from typing import Dict
+from warnings import warn
 
 from .config import Config
 from .micro_simulation import create_simulation_class
@@ -133,26 +134,27 @@ class MicroManager:
         """
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
+        similarity_dists_cp = None
+        is_sim_active_cp = None
+        sim_is_associated_to_cp = None
+        sim_states_cp = [None] * self._local_number_of_sims
 
         if self._is_adaptivity_on:
             similarity_dists = np.zeros(
                 (self._number_of_sims_for_adaptivity,
                  self._number_of_sims_for_adaptivity))
 
-            # Start adaptivity calculation with all sims inactive
-            is_sim_active = np.array([False] * self._number_of_sims_for_adaptivity)
+            # Start adaptivity calculation with all sims active
+            is_sim_active = np.array([True] * self._number_of_sims_for_adaptivity)
 
-            # Activate the first one (a random choice)
-            is_sim_active[0] = True
+            # Active sims do not have an associated sim
+            sim_is_associated_to = np.full((self._number_of_sims_for_adaptivity), -2, dtype=np.intc)
 
-            # Associate all sims to the one active sim
-            sim_is_associated_to = np.zeros((self._number_of_sims_for_adaptivity), dtype=np.intc)
-            sim_is_associated_to[0] = -2  # An active sim does not have an associated sim
-
-        similarity_dists_cp = None
-        is_sim_active_cp = None
-        sim_is_associated_to_cp = None
-        sim_states_cp = [None] * self._local_number_of_sims
+            # If micro simulations have been initialized, compute adaptivity based on initial data
+            if self._micro_sims_init:
+                # Compute adaptivity based on initial data of micro sims
+                similarity_dists, is_sim_active, sim_is_associated_to = self._adaptivity_controller.compute_adaptivity(
+                    self._dt, self._micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, self._data_for_adaptivity)
 
         while self._participant.is_coupling_ongoing():
             # Write a checkpoint
@@ -337,6 +339,31 @@ class MicroManager:
                 self._number_of_sims_for_adaptivity = self._global_number_of_sims
 
             self._micro_sims_active_steps = np.zeros(self._local_number_of_sims)
+
+        self._micro_sims_init = False  # DECLARATION
+
+        # Get initial data from micro simulations if initialize() method exists
+        if hasattr(micro_problem, 'initialize') and callable(getattr(micro_problem, 'initialize')):
+            if self._is_adaptivity_on:
+                self._micro_sims_init = True
+                initial_micro_output = self._micro_sims[0].initialize()  # Call initialize() of the first simulation
+                if initial_micro_output is None:  # Check if the detected initialize() method returns any data
+                    warn("The initialize() call of the Micro simulation has not returned any initial data."
+                         " The initialize call is stopped.")
+                    self._micro_sims_init = False
+                else:
+                    # Save initial data from first micro simulation as we anyway have it
+                    for name in initial_micro_output.keys():
+                        self._data_for_adaptivity[name][0] = initial_micro_output[name]
+
+                    # Gather initial data from the rest of the micro simulations
+                    for i in range(1, self._local_number_of_sims):
+                        initial_micro_output = self._micro_sims[i].initialize()
+                        for name in self._adaptivity_micro_data_names:
+                            self._data_for_adaptivity[name][i] = initial_micro_output[name]
+            else:
+                self._logger.info(
+                    "Micro simulation has the method initialize(), but it is not called, because adaptivity is off.")
 
         self._micro_sims_have_output = False
         if hasattr(micro_problem, 'output') and callable(getattr(micro_problem, 'output')):
