@@ -72,7 +72,6 @@ class MicroManager:
             self._size)
 
         micro_file_name = self._config.get_micro_file_name()
-        self._micro_problem = getattr(__import__(micro_file_name, fromlist=["MicroSimulation"]), "MicroSimulation")
 
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
