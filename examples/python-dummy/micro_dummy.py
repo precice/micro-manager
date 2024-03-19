@@ -21,13 +21,6 @@ class MicroSimulation:
         self._micro_scalar_data = macro_data["macro-scalar-data"] + 1
         for d in range(self._dims):
             self._micro_vector_data.append(macro_data["macro-vector-data"][d] + 1)
-        
-        # random simulation crash
-        import numpy as np
-        if np.random.rand() < 0.01:
-            print("Micro simulation {} crashed!".format(self._sim_id))
-            self._micro_scalar_data = 1 / 0
-            
 
         return {
             "micro-scalar-data": self._micro_scalar_data.copy(),

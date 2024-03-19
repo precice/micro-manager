@@ -389,6 +389,9 @@ class MicroManager:
             sim_id += 1
 
         self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
+        
+        self._crashed_sims = [False] * self._local_number_of_sims
+        self._old_micro_sims_output = [None] * self._local_number_of_sims
 
         micro_problem = getattr(
             importlib.import_module(
@@ -551,22 +554,46 @@ class MicroManager:
         micro_sims_output = [None] * self._local_number_of_sims
 
         for count, sim in enumerate(self._micro_sims):
-            start_time = time.time()
-            try:
-                micro_sims_output[count] = sim.solve(micro_sims_input[count], self._dt)
-            except Exception as e:
-                _, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
-            self._macro_mesh_name)
-                self._logger.error(
-                    "Micro simulation with global ID {} at macro coordinates {} has experienced an error. Exiting simulation.".format(
-                        sim.get_global_id(), mesh_vertex_coords[count]))
-                self._logger.error(e)
-                # set the micro simulation value to old value and keep it constant
+            
+            if not self._crashed_sims[count]:
+                try:
+                    start_time = time.time()
+                    micro_sims_output[count] = sim.solve(micro_sims_input[count], self._dt)
+                    end_time = time.time()
+                except Exception as error_message:
+                    _, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
+                self._macro_mesh_name)
+                    self._logger.error(
+                        "Micro simulation at macro coordinates {} has experienced an error. " 
+                        "See next entry for error message. " 
+                        "Keeping values constant at results of previous iteration".format(
+                        mesh_vertex_coords[count]))
+                    self._logger.error(error_message)
+                    micro_sims_output[count] = self._old_micro_sims_output[count]
+                    self._crashed_sims[count] = True
+            else:
                 micro_sims_output[count] = self._old_micro_sims_output[count]
-            end_time = time.time()
+                
+            
 
-            if self._is_micro_solve_time_required:
+            if self._is_micro_solve_time_required and not self._crashed_sims[count]:
                 micro_sims_output[count]["micro_sim_time"] = end_time - start_time
+        
+            crash_ratio = np.sum(self._crashed_sims) / len(self._crashed_sims)
+            if crash_ratio > 0.2:
+                self._logger.info("More than 20% of the micro simulations on rank {} have crashed. "
+                                  "Exiting simulation.".format(self._rank))
+                sys.exit()
+        
+        set_sims = np.where(micro_sims_output)
+        none_mask = np.array([item is None for item in micro_sims_output])
+        unset_sims = np.where(none_mask)[0]
+  
+        for unset_sims in unset_sims:
+            self._logger.info("Micro Sim {} has previously not run. "
+                              "It will be replace with the output of the first "
+                              "micro sim that ran {}".format(unset_sims, set_sims[0][0]))
+            micro_sims_output[unset_sims] = micro_sims_output[set_sims[0][0]]
         self._old_micro_sims_output = micro_sims_output
         
         return micro_sims_output
@@ -622,11 +649,28 @@ class MicroManager:
 
         # Solve all active micro simulations
         for active_id in active_sim_ids:
-            start_time = time.time()
-            micro_sims_output[active_id] = self._micro_sims[active_id].solve(
-                micro_sims_input[active_id], self._dt
-            )
-            end_time = time.time()
+            
+            if not self._crashed_sims[active_id]:
+                try:
+                    start_time = time.time()
+                    micro_sims_output[active_id] = self._micro_sims[active_id].solve(
+                        micro_sims_input[active_id], self._dt
+                    )
+                    end_time = time.time()
+                except Exception as error_message:
+                    _, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
+                self._macro_mesh_name)
+                    self._logger.error("Micro simulation at macro coordinates {} has experienced an error. " 
+                        "See next entry for error message. " 
+                        "Keeping values constant at results of previous iteration".format(
+                        mesh_vertex_coords[active_id])) # Access the correct coordinates
+                    self._logger.error(error_message)
+                    # set the micro simulation value to old value and keep it constant if simulation crashes
+                    micro_sims_output[active_id] = self._old_micro_sims_output[active_id]
+                    self._crashed_sims[active_id] = True
+            else:
+                micro_sims_output[active_id] = self._old_micro_sims_output[active_id]
+            
 
             # Mark the micro sim as active for export
             micro_sims_output[active_id]["active_state"] = 1
@@ -634,8 +678,26 @@ class MicroManager:
                 "active_steps"
             ] = self._micro_sims_active_steps[active_id]
 
-            if self._is_micro_solve_time_required:
+            if self._is_micro_solve_time_required and not self._crashed_sims[active_id]:
                 micro_sims_output[active_id]["micro_sim_time"] = end_time - start_time
+
+            crash_ratio = np.sum(self._crashed_sims) / len(self._crashed_sims)
+            if crash_ratio > 0.2:
+                self._logger.info("More than 20% of the micro simulations on rank {} have crashed. "
+                                  "Exiting simulation.".format(self._rank))
+                sys.exit()
+        
+        set_sims = np.where(micro_sims_output)
+        unset_sims = []
+        for active_id in active_sim_ids:
+            if micro_sims_output[active_id] is None:
+                unset_sims.append(active_id)
+  
+        for unset_sims in unset_sims:
+            self._logger.info("Micro Sim {} has previously not run. "
+                              "It will be replace with the output of the first "
+                              "micro sim that ran {}".format(unset_sims, set_sims[0][0]))
+            micro_sims_output[unset_sims] = micro_sims_output[set_sims[0][0]]
 
         # For each inactive simulation, copy data from most similar active simulation
         if self._adaptivity_type == "global":
@@ -662,6 +724,7 @@ class MicroManager:
         for i in range(self._local_number_of_sims):
             for name in self._adaptivity_micro_data_names:
                 self._data_for_adaptivity[name][i] = micro_sims_output[i][name]
+        self._old_micro_sims_output = micro_sims_output
 
         return micro_sims_output
 
