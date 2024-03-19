@@ -408,6 +408,9 @@ class MicroManager:
             sim_id += 1
 
         self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
+        
+        self._crashed_sims = [False] * self._local_number_of_sims
+        self._old_micro_sims_output = [None] * self._local_number_of_sims
 
         self._crashed_sims = [False] * self._local_number_of_sims
         self._old_micro_sims_output = [None] * self._local_number_of_sims
@@ -700,7 +703,6 @@ class MicroManager:
         for active_id in active_sim_ids:
             if micro_sims_output[active_id] is None:
                 unset_sims.append(active_id)
-
         for unset_sims in unset_sims:
             self._logger.info("Micro Sim {} has previously not run. "
                               "It will be replace with the output of the first "

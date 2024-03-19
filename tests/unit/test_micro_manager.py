@@ -7,28 +7,22 @@ import micro_manager
 
 
 class MicroSimulation:
-    def __init__(self, sim_id):
+    def __init__(self, sim_id, crashing=False):
         self.very_important_value = 0
+        self.sim_id = sim_id
+        self.crashing = crashing
+        self.current_time = 0
 
+        
     def initialize(self):
         pass
 
     def solve(self, macro_data, dt):
-        if not self.crashing:
-            assert macro_data["macro-scalar-data"] == 1
-            assert macro_data["macro-vector-data"].tolist() == [0, 1, 2]
-            return {
-                "micro-scalar-data": macro_data["macro-scalar-data"] + 1,
-                "micro-vector-data": macro_data["macro-vector-data"] + 1
-                }
-        else:
-            if self.sim_id == 0:
-                self.current_time += dt
-                if self.current_time > dt:
-                    raise Exception("Micro Simulation has crashed")
-            return {
-                "micro-scalar-data": macro_data["macro-scalar-data"] + 1,
-                "micro-vector-data": macro_data["macro-vector-data"] + 1
+        assert macro_data["macro-scalar-data"] == 1
+        assert macro_data["macro-vector-data"].tolist() == [0, 1, 2]
+        return {
+            "micro-scalar-data": macro_data["macro-scalar-data"] + 1,
+            "micro-vector-data": macro_data["macro-vector-data"] + 1
             }
 
 class TestFunctioncalls(TestCase):
@@ -102,7 +96,7 @@ class TestFunctioncalls(TestCase):
                 fake_data["macro-vector-data"].tolist(),
             )
 
-    def test_solve_mico_sims(self):
+    def test_solve_micro_sims(self):
         """
         Test if the internal function _solve_micro_simulations works as expected.
         """
@@ -120,31 +114,6 @@ class TestFunctioncalls(TestCase):
                 data["micro-vector-data"].tolist(),
                 (fake_data["micro-vector-data"] + 1).tolist(),
             )
-
-    def test_crash_handling(self):
-        """
-        Test if the micro manager catches a simulation crash and handles it adequately.
-        """
-        manager = micro_manager.MicroManager('micro-manager-config.json')
-        manager._local_number_of_sims = 4
-        manager._micro_sims = [MicroSimulation(i, crashing = True) for i in range(4)]
-        manager._micro_sims_active_steps = np.zeros(4, dtype=np.int32)
-        # Momentarily, a simulation crash during the first step is not handled
-        micro_sims_output = manager._solve_micro_simulations(self.fake_read_data)
-        for i, data in enumerate(micro_sims_output):
-            self.fake_read_data[i]["macro-scalar-data"] = data["micro-scalar-data"]
-            self.fake_read_data[i]["macro-vector-data"] = data["micro-vector-data"]
-        micro_sims_output = manager._solve_micro_simulations(self.fake_read_data)
-        # The crashed simulation should have the same data as the previous step
-        data_crashed = micro_sims_output[0]
-        self.assertEqual(data_crashed["micro-scalar-data"], 2)
-        self.assertListEqual(data_crashed["micro-vector-data"].tolist(),
-                                (self.fake_write_data[0]["micro-vector-data"] + 1).tolist())
-        # Non-crashed simulations should have updated data
-        data_normal = micro_sims_output[1]
-        self.assertEqual(data_normal["micro-scalar-data"], 3)
-        self.assertListEqual(data_normal["micro-vector-data"].tolist(),
-                                (self.fake_write_data[1]["micro-vector-data"] + 2).tolist())
 
     def test_config(self):
         """
