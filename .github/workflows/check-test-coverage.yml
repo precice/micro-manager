@@ -1,0 +1,15 @@
+name: Check test coverage
+on:
+    pull_request:
+        branches:
+            - main
+            - develop
+jobs:
+    coverage:
+        runs-on: ubuntu-latest
+        steps:
+          - name: Get test coverage using Coverage 
+            uses: orgoro/coverage@v3.1
+            with:
+                coverageFile: path/to/coverage.xml
+                token: ${{ secrets.GITHUB_TOKEN }}
