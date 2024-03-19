@@ -11,7 +11,7 @@ jobs:
   adaptivity_integration_tests:
     name: Run adaptivity integration tests
     runs-on: ubuntu-latest
-    container: precice/precice:develop
+    container: precice/precice:nightly
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -47,7 +47,7 @@ jobs:
   adaptivity_unit_tests_serial:
     name: Run adaptivity unit tests in serial
     runs-on: ubuntu-latest
-    container: precice/precice:develop
+    container: precice/precice:nightly
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
@@ -73,7 +73,7 @@ jobs:
   adaptivity_unit_tests_parallel:
     name: Run adaptivity unit tests in parallel
     runs-on: ubuntu-latest
-    container: precice/precice:develop
+    container: precice/precice:nightly
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3
