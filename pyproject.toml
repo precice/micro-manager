@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=41", "wheel", "setuptools-git-versioning"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name="micro-manager-precice"
+dynamic = [ "version" ]
+dependencies = [
+    "lxml", "pydot", "xdot", "PyGObject"
+]
+requires-python = ">=3.8"
+authors = [
+    { name = "Ishaan Desai",  email="ishaan.desai@ipva.uni-stuttgart.de"}
+]
+maintainers = [
+    { name = "Ishaan Desai",  email="ishaan.desai@ipvs.uni-stuttgart.de"}
+]
+description="A tool which facilitates two-scale macro-micro coupled simulations using preCICE."
+readme = "README.md"
+license={ text = "GPLv3" }
+keywords = [ "preCICE", "multiscale", "coupling" ]
+classifiers=[
+"Development Status :: 4 - Beta",
+"License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
+"Programming Language :: Python :: 3 :: Only",
+"Programming Language :: Python :: 3.8",
+Topic :: Scientific/Engineering
+]
+
+[project.urls]
+Homepage = "https://precice.org"
+Documentation = "https://precice.org/tooling-micro-manager-overview.html"
+Repository = "https://github.com/precice/micro-manager"
+"Bug Tracker" = "https://github.com/precice/micro-manager/issues"
+
+[project.scripts]
+precice-config-visualizer = "preciceconfigvisualizer.cli:main"
+
+[project.gui-scripts]
+precice-config-visualizer-gui = "preciceconfigvisualizer.gui:main"
+
+[tool.setuptools]
+packages=["preciceconfigvisualizer"]
+
+[tool.setuptools-git-versioning]
+enabled = true
