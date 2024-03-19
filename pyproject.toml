@@ -34,7 +34,7 @@ Repository = "https://github.com/precice/micro-manager"
 "Bug Tracker" = "https://github.com/precice/micro-manager/issues"
 
 [tool.setuptools]
-packages=["micro_manager"]
+packages=["micro_manager", "micro_manager.adaptivity"]
 
 [tool.setuptools-git-versioning]
 enabled = true
