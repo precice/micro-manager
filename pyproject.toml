@@ -1,12 +1,12 @@
 [build-system]
-requires = ["setuptools>=41", "wheel", "setuptools-git-versioning"]
+requires = ["setuptools>=61", "wheel", "setuptools-git-versioning"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name="micro-manager-precice"
 dynamic = [ "version" ]
 dependencies = [
-    "lxml", "pydot", "xdot", "PyGObject"
+    "pyprecice>=3.0.0.0", "numpy", "mpi4py"
 ]
 requires-python = ">=3.8"
 authors = [
@@ -24,7 +24,7 @@ classifiers=[
 "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
 "Programming Language :: Python :: 3 :: Only",
 "Programming Language :: Python :: 3.8",
-Topic :: Scientific/Engineering
+"Topic :: Scientific/Engineering",
 ]
 
 [project.urls]
@@ -33,14 +33,8 @@ Documentation = "https://precice.org/tooling-micro-manager-overview.html"
 Repository = "https://github.com/precice/micro-manager"
 "Bug Tracker" = "https://github.com/precice/micro-manager/issues"
 
-[project.scripts]
-precice-config-visualizer = "preciceconfigvisualizer.cli:main"
-
-[project.gui-scripts]
-precice-config-visualizer-gui = "preciceconfigvisualizer.gui:main"
-
 [tool.setuptools]
-packages=["preciceconfigvisualizer"]
+packages=["micro_manager"]
 
 [tool.setuptools-git-versioning]
 enabled = true
