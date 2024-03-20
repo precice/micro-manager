@@ -74,8 +74,6 @@ class MicroManager:
             self._config.get_config_file_name(),
             self._rank,
             self._size)
-        
-        micro_file_name = self._config.get_micro_file_name()
 
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
@@ -408,7 +406,7 @@ class MicroManager:
             sim_id += 1
 
         self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
-        
+
         self._crashed_sims = [False] * self._local_number_of_sims
         self._old_micro_sims_output = [None] * self._local_number_of_sims
 
