@@ -1,6 +1,6 @@
 # Micro Manager changelog
 
-## latest
+## v0.4.0
 
 - Add note in the cpp-dummy that pickling support does not work due to no good way to pass the sim id to the new micro simulation instance [commit](https://github.com/precice/micro-manager/commit/0a82966676717a533aca9bffa4a110453158f29c)
 - Reintroduce initialize function in the micro simulation API https://github.com/precice/micro-manager/pull/79
