@@ -2,6 +2,10 @@
 
 ## latest
 
+- Add note in the cpp-dummy that pickling support does not work due to no good way to pass the sim id to the new micro simulation instance https://github.com/precice/micro-manager/commit/0a82966676717a533aca9bffa4a110453158f29c
+- Reintroduce initialize function in the micro simulation API https://github.com/precice/micro-manager/pull/79
+- Use Allgatherv instead of allgather when collecting number of micro simulations on each rank in initialization https://github.com/precice/micro-manager/pull/81
+- Remove the callable function `initialize()` from the micro simulation API https://github.com/precice/micro-manager/commit/bed5a4cc0f03b780da7f62b3f51ed1df2796588c
 - Pass an ID to the micro simulation object so that it is aware of its own uniqueness https://github.com/precice/micro-manager/pull/66
 - Resolve bug which led to an error when global adaptivity was used with unequal number of simulations on each rank https://github.com/precice/micro-manager/pull/78
 - Make the `initialize()` method of the MicroManager class private https://github.com/precice/micro-manager/pull/77
