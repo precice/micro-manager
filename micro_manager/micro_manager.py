@@ -70,8 +70,10 @@ class MicroManager:
 
         # Define the preCICE Participant
         self._participant = precice.Participant(
-            "Micro-Manager", self._config.get_config_file_name(), self._rank, self._size
-        )
+            "Micro-Manager",
+            self._config.get_config_file_name(),
+            self._rank,
+            self._size)
 
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
@@ -389,7 +391,7 @@ class MicroManager:
             sim_id += 1
 
         self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
-        
+
         self._crashed_sims = [False] * self._local_number_of_sims
         self._old_micro_sims_output = [None] * self._local_number_of_sims
 
@@ -554,48 +556,45 @@ class MicroManager:
         micro_sims_output = [None] * self._local_number_of_sims
 
         for count, sim in enumerate(self._micro_sims):
-            
+
             if not self._crashed_sims[count]:
                 try:
                     start_time = time.time()
-                    micro_sims_output[count] = sim.solve(micro_sims_input[count], self._dt)
+                    micro_sims_output[count] = sim.solve(
+                        micro_sims_input[count], self._dt)
                     end_time = time.time()
                 except Exception as error_message:
                     _, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
-                self._macro_mesh_name)
-                    self._logger.error(
-                        "Micro simulation at macro coordinates {} has experienced an error. " 
-                        "See next entry for error message. " 
-                        "Keeping values constant at results of previous iteration".format(
-                        mesh_vertex_coords[count]))
+                        self._macro_mesh_name)
+                    self._logger.error("Micro simulation at macro coordinates {} has experienced an error. "
+                                       "See next entry for error message. "
+                                       "Keeping values constant at results of previous iteration".format(
+                                           mesh_vertex_coords[count]))
                     self._logger.error(error_message)
                     micro_sims_output[count] = self._old_micro_sims_output[count]
                     self._crashed_sims[count] = True
             else:
                 micro_sims_output[count] = self._old_micro_sims_output[count]
-                
-            
-
             if self._is_micro_solve_time_required and not self._crashed_sims[count]:
                 micro_sims_output[count]["micro_sim_time"] = end_time - start_time
-        
+
             crash_ratio = np.sum(self._crashed_sims) / len(self._crashed_sims)
             if crash_ratio > 0.2:
                 self._logger.info("More than 20% of the micro simulations on rank {} have crashed. "
                                   "Exiting simulation.".format(self._rank))
                 sys.exit()
-        
+
         set_sims = np.where(micro_sims_output)
         none_mask = np.array([item is None for item in micro_sims_output])
         unset_sims = np.where(none_mask)[0]
-  
+
         for unset_sims in unset_sims:
             self._logger.info("Micro Sim {} has previously not run. "
                               "It will be replace with the output of the first "
                               "micro sim that ran {}".format(unset_sims, set_sims[0][0]))
             micro_sims_output[unset_sims] = micro_sims_output[set_sims[0][0]]
         self._old_micro_sims_output = micro_sims_output
-        
+
         return micro_sims_output
 
     def _solve_micro_simulations_with_adaptivity(
@@ -649,7 +648,7 @@ class MicroManager:
 
         # Solve all active micro simulations
         for active_id in active_sim_ids:
-            
+
             if not self._crashed_sims[active_id]:
                 try:
                     start_time = time.time()
@@ -659,18 +658,17 @@ class MicroManager:
                     end_time = time.time()
                 except Exception as error_message:
                     _, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
-                self._macro_mesh_name)
-                    self._logger.error("Micro simulation at macro coordinates {} has experienced an error. " 
-                        "See next entry for error message. " 
-                        "Keeping values constant at results of previous iteration".format(
-                        mesh_vertex_coords[active_id])) # Access the correct coordinates
+                        self._macro_mesh_name)
+                    self._logger.error("Micro simulation at macro coordinates {} has experienced an error. "
+                                       "See next entry for error message. "
+                                       "Keeping values constant at results of previous iteration".format(
+                                           mesh_vertex_coords[active_id]))
                     self._logger.error(error_message)
                     # set the micro simulation value to old value and keep it constant if simulation crashes
                     micro_sims_output[active_id] = self._old_micro_sims_output[active_id]
                     self._crashed_sims[active_id] = True
             else:
                 micro_sims_output[active_id] = self._old_micro_sims_output[active_id]
-            
 
             # Mark the micro sim as active for export
             micro_sims_output[active_id]["active_state"] = 1
@@ -686,13 +684,13 @@ class MicroManager:
                 self._logger.info("More than 20% of the micro simulations on rank {} have crashed. "
                                   "Exiting simulation.".format(self._rank))
                 sys.exit()
-        
+
         set_sims = np.where(micro_sims_output)
         unset_sims = []
         for active_id in active_sim_ids:
             if micro_sims_output[active_id] is None:
                 unset_sims.append(active_id)
-  
+
         for unset_sims in unset_sims:
             self._logger.info("Micro Sim {} has previously not run. "
                               "It will be replace with the output of the first "
