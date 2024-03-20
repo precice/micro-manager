@@ -68,7 +68,8 @@ PYBIND11_MODULE(micro_dummy, m) {
         .def("solve", &MicroSimulation::solve)
         .def("get_state", &MicroSimulation::get_state)
         .def("set_state", &MicroSimulation::set_state)
-        .def(py::pickle(
+        // Pickling support does not work currently, as there is no way to pass the simulation ID to the new instance ms.
+        .def(py::pickle( // https://pybind11.readthedocs.io/en/latest/advanced/classes.html#pickling-support
             [](const MicroSimulation &ms) { // __getstate__
                 return ms.get_state();
             },
