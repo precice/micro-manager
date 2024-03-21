@@ -7,13 +7,9 @@ import micro_manager
 
 
 class MicroSimulation:
-    def __init__(self, sim_id, crashing=False):
+    def __init__(self, sim_id):
         self.very_important_value = 0
-        self.sim_id = sim_id
-        self.crashing = crashing
-        self.current_time = 0
 
-        
     def initialize(self):
         pass
 
@@ -106,7 +102,7 @@ class TestFunctioncalls(TestCase):
                 fake_data["macro-vector-data"].tolist(),
             )
 
-    def test_solve_micro_sims(self):
+    def test_solve_mico_sims(self):
         """
         Test if the internal function _solve_micro_simulations works as expected.
         """
@@ -119,6 +115,7 @@ class TestFunctioncalls(TestCase):
 
         for data, fake_data in zip(micro_sims_output, self.fake_write_data):
             self.assertEqual(data["micro-scalar-data"], 2)
+<<<<<<< HEAD
 
             self.assertListEqual(
                 data["micro-vector-data"].tolist(),
@@ -149,6 +146,10 @@ class TestFunctioncalls(TestCase):
         self.assertEqual(data_normal["micro-scalar-data"], 3)
         self.assertListEqual(data_normal["micro-vector-data"].tolist(),
                                 (self.fake_write_data[1]["micro-vector-data"] + 2).tolist())
+=======
+            self.assertListEqual(data["micro-vector-data"].tolist(),
+                                 (fake_data["micro-vector-data"] + 1).tolist())
+>>>>>>> 12a60fc (Add tests for simulation crashes)
 
     def test_config(self):
         """
