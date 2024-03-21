@@ -1,6 +1,17 @@
 # Micro Manager changelog
 
-## latest
+## v0.4.0
+
+- Add note in the cpp-dummy that pickling support does not work due to no good way to pass the sim id to the new micro simulation instance [commit](https://github.com/precice/micro-manager/commit/0a82966676717a533aca9bffa4a110453158f29c)
+- Reintroduce initialize function in the micro simulation API https://github.com/precice/micro-manager/pull/79
+- Use Allgatherv instead of allgather when collecting number of micro simulations on each rank in initialization https://github.com/precice/micro-manager/pull/81
+- Remove the callable function `initialize()` from the micro simulation API [commit](https://github.com/precice/micro-manager/commit/bed5a4cc0f03b780da7f62b3f51ed1df2796588c)
+- Pass an ID to the micro simulation object so that it is aware of its own uniqueness https://github.com/precice/micro-manager/pull/66
+- Resolve bug which led to an error when global adaptivity was used with unequal number of simulations on each rank https://github.com/precice/micro-manager/pull/78
+- Make the `initialize()` method of the MicroManager class private https://github.com/precice/micro-manager/pull/77
+- Add reference paper via a CITATION.cff file [commit](https://github.com/precice/micro-manager/commit/6c08889c658c889d6ab5d0867802522585abcee5)
+- Add JOSS DOI badge [commit](https://github.com/precice/micro-manager/commit/2e3c2a4c77732f56a957abbad9e4d0cb64029725)
+- Update pyprecice API calls to their newer variants https://github.com/precice/micro-manager/pull/51
 
 ## v0.3.0
 

@@ -13,16 +13,7 @@
 #include "micro_cpp_dummy.hpp"
 
 // Constructor
-MicroSimulation::MicroSimulation() : _micro_scalar_data(0), _state(0) {}
-
-// Initialize
-void MicroSimulation::initialize()
-{
-    std::cout << "Initialize micro problem\n";
-    _micro_scalar_data = 0;
-    _micro_vector_data.clear();
-    _state = 0;
-}
+MicroSimulation::MicroSimulation(int sim_id) : _sim_id(sim_id), _micro_scalar_data(0), _state(0) {}
 
 // Solve
 py::dict MicroSimulation::solve(py::dict macro_data, double dt)
@@ -73,12 +64,12 @@ PYBIND11_MODULE(micro_dummy, m) {
     m.doc() = "pybind11 micro dummy plugin";
 
     py::class_<MicroSimulation>(m, "MicroSimulation")
-        .def(py::init())
-        .def("initialize", &MicroSimulation::initialize)
+        .def(py::init<int>())
         .def("solve", &MicroSimulation::solve)
         .def("get_state", &MicroSimulation::get_state)
         .def("set_state", &MicroSimulation::set_state)
-        .def(py::pickle(
+        // Pickling support does not work currently, as there is no way to pass the simulation ID to the new instance ms.
+        .def(py::pickle( // https://pybind11.readthedocs.io/en/latest/advanced/classes.html#pickling-support
             [](const MicroSimulation &ms) { // __getstate__
                 return ms.get_state();
             },
@@ -87,7 +78,7 @@ PYBIND11_MODULE(micro_dummy, m) {
                     throw std::runtime_error("Invalid state!");
 
                 /* Create a new C++ instance */
-                MicroSimulation ms;
+                MicroSimulation ms(0);
 
                 ms.set_state(t);
 

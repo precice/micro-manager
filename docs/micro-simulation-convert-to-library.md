@@ -14,19 +14,24 @@ Restructure your micro simulation code into a Python class with the structure gi
 
 ```python
 class MicroSimulation: # Name is fixed
-    def __init__(self):
+    def __init__(self, sim_id):
         """
         Constructor of class MicroSimulation.
+
+        Parameters
+        ----------
+        sim_id : int
+            ID of the simulation instance, that the Micro Manager has set for it.
         """
 
     def initialize(self) -> dict:
         """
-        Initialize the micro simulation. This function is *optional*.
+        Initialize the micro simulation and return initial data which will be used in computing adaptivity before the first time step.
 
         Returns
         -------
-        data : dict
-            Python dictionary with names of micro data as keys and the data as values at the initial condition
+        initial_data : dict
+            Dictionary with names of initial data as keys and the initial data itself as values.
         """
 
     def solve(self, macro_data: dict, dt: float) -> dict:

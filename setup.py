@@ -13,7 +13,7 @@ with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
 
 setup(
     name='micro-manager-precice',
-    version='v0.3.0',
+    version='v0.4.0',
     description='micro-manager-precice is a package which facilitates two-scale macro-micro coupled simulations using preCICE',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -26,7 +26,7 @@ setup(
     packages=find_packages(
         exclude=['examples']),
     install_requires=[
-        'pyprecice==2.5.0.4',
+        'pyprecice>=3.0.0.0',
         'numpy>=1.13.3',
         'mpi4py'],
     test_suite='tests',

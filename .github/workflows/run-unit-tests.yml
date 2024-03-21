@@ -1,4 +1,4 @@
-name: Run unit tests
+name: Run unit tests for functions in micro_manager.py
 on:
   push:
     branches:
@@ -10,7 +10,7 @@ on:
 jobs:
   unit-tests:
     runs-on: ubuntu-latest
-    container: precice/precice
+    container: precice/precice:nightly
     steps:
       - uses: actions/checkout@v3
         with:
@@ -21,8 +21,8 @@ jobs:
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
-          python3 -m pip install --user .
-          python3 -m pip uninstall -y pyprecice
+          pip3 install --user .
+          pip3 uninstall -y pyprecice
 
       - name: Run unit tests
         working-directory: micro-manager/tests/unit

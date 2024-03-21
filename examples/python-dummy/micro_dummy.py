@@ -6,19 +6,15 @@ In this script we solve a dummy micro problem to just show the working of the ma
 
 class MicroSimulation:
 
-    def __init__(self):
+    def __init__(self, sim_id):
         """
         Constructor of MicroSimulation class.
         """
+        self._sim_id = sim_id
         self._dims = 3
         self._micro_scalar_data = None
         self._micro_vector_data = None
         self._state = None
-
-    def initialize(self):
-        self._micro_scalar_data = 0
-        self._micro_vector_data = []
-        self._state = 0
 
     def solve(self, macro_data, dt):
         assert dt != 0
