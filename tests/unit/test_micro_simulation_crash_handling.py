@@ -75,7 +75,7 @@ class TestSimulationCrashHandling(TestCase):
         manager._micro_sims = [MicroSimulation(i) for i in range(10)]
         manager._micro_sims_active_steps = np.zeros(10, dtype=np.int32)
         is_sim_active = np.array(
-            [True, True, False, True, False, False, False, True, True, False,])
+            [True, True, False, True, False, False, False, True, True, False])
         sim_is_associated_to = np.array([-2, -2, 1, -2, 3, 3, 0, -2, -2, 8])
         # Crash in the first time step is handled differently
 
