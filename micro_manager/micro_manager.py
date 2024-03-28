@@ -589,9 +589,8 @@ class MicroManager:
         unset_sims = np.where(none_mask)[0]
 
         for unset_sims in unset_sims:
-            self._logger.info("Micro Sim {} has previously not run. "
-                              "It will be replace with the output of the first "
-                              "micro sim that ran {}".format(unset_sims, set_sims[0][0]))
+            self._logger.info("Micro simulation {} has has crashed in the very first run attempt. "
+                              "The output of the first micro sim that ran ({}) will be used as its output.".format(unset_sims, set_sims[0][0]))
             micro_sims_output[unset_sims] = micro_sims_output[set_sims[0][0]]
         self._old_micro_sims_output = micro_sims_output
 
