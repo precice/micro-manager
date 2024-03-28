@@ -19,6 +19,7 @@ from mpi4py import MPI
 import numpy as np
 import logging
 import time
+import importlib
 from copy import deepcopy
 from typing import Dict
 from warnings import warn
@@ -70,8 +71,6 @@ class MicroManager:
             self._config.get_config_file_name(),
             self._rank,
             self._size)
-
-        micro_file_name = self._config.get_micro_file_name()
 
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
@@ -309,9 +308,9 @@ class MicroManager:
         self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
 
         micro_problem = getattr(
-            __import__(
+            importlib.import_module(
                 self._config.get_micro_file_name(),
-                fromlist=["MicroSimulation"]),
+                "MicroSimulation"),
             "MicroSimulation")
 
         # Create micro simulation objects
