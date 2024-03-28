@@ -102,7 +102,7 @@ class TestFunctioncalls(TestCase):
                 fake_data["macro-vector-data"].tolist(),
             )
 
-    def test_solve_micro_sims(self):
+    def test_solve_mico_sims(self):
         """
         Test if the internal function _solve_micro_simulations works as expected.
         """
