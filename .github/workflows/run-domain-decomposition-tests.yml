@@ -11,7 +11,7 @@ jobs:
   domain_decomposition_integration_tests:
     name: Run domain decomposition integration tests
     runs-on: ubuntu-latest
-    container: precice/precice:develop
+    container: precice/precice:nightly
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
@@ -51,7 +51,7 @@ jobs:
   domain_decomposition_unit_tests:
     name: Run domain decomposition unit tests
     runs-on: ubuntu-latest
-    container: precice/precice:develop
+    container: precice/precice:nightly
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v3

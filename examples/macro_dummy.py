@@ -43,9 +43,9 @@ def main():
     if interface.requires_initial_data():
         for name, dim in write_data_names.items():
             if dim == 0:
-                interface.write_block_scalar_data(name, vertex_ids, write_scalar_data)
+                interface.write_data(write_mesh_name, name, vertex_ids, write_scalar_data)
             elif dim == 1:
-                interface.write_block_vector_data(name, vertex_ids, write_vector_data)
+                interface.write_data(write_mesh_name, name, vertex_ids, write_vector_data)
 
     # initialize preCICE
     interface.initialize()

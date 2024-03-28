@@ -11,7 +11,7 @@ jobs:
   run_dummy:
     name: Run dummy
     runs-on: ubuntu-latest
-    container: precice/precice:develop
+    container: precice/precice:nightly
     steps:
 
       - name: Checkout Repository
