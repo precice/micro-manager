@@ -13,6 +13,7 @@ Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
 """
 
 import argparse
+import importlib
 import os
 import sys
 from mpi4py import MPI
@@ -168,9 +169,9 @@ class SnapshotComputation:
         self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
 
         micro_problem = getattr(
-            __import__(
-                self._config.get_micro_file_name(),
-                fromlist=["MicroSimulation"]),
+            importlib.import_module(
+                self._config.get_micro_file_name(), "MicroSimulation"
+            ),
             "MicroSimulation")
 
         # Create micro simulation objects
