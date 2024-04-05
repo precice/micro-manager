@@ -82,7 +82,6 @@ class SnapshotComputation:
         self._global_number_of_sims = 0
         self._is_rank_empty = False
         self._dt = 0
-        self._mesh_vertex_ids = None  # IDs of macro vertices as set by preCICE TODO: rewrite so it works without precise
         self._micro_n_out = self._config.get_micro_output_n()
 
 
@@ -98,8 +97,8 @@ class SnapshotComputation:
         - Read macro parameters from the config file, solve micro simulations, and write data to a file.
         - If adaptivity is on, compute micro simulations adaptively.
         """
-
-        # Loop over parameter step sizes
+        
+        # Loop over macro parameter increases
 
         micro_sims_input = self._read_data_from_precice()  # TODO: replace with own read_data function or just a list of dicts
         
@@ -123,22 +122,22 @@ class SnapshotComputation:
         - Create all micro simulation objects and initialize them if an initialize() method is available.
         """
         # Decompose the macro-domain and set the mesh access region for each partition
-        assert len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(
-            self._macro_mesh_name), "Provided macro mesh bounds are of incorrect dimension"  # TODO: Replace with own function
         if self._is_parallel:
+            dimension = len(self._macro_bounds) / 2
             domain_decomposer = DomainDecomposer(
-                self._logger, self._participant.get_mesh_dimensions(self._macro_mesh_name), self._rank, self._size)  # TODO: Replace _participant with own function
+                self._logger, dimension, self._rank, self._size)  # TODO: Replace _participant with own function
             coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(self._macro_bounds, self._ranks_per_axis)
+            # TODO: assign the correct parameters and corresponding coordinates to this rank and neglect the others using the coupling_mesh_bounds
+            self._mesh_vertex_coords = None # TODO
         else:
-            coupling_mesh_bounds = self._macro_bounds
+            # TODO: is all macro coords given in parameter file
+            self._mesh_vertex_coords = None # TODO
+        # I think this is unnecessary
+        # self._participant.set_mesh_access_region(self._macro_mesh_name, coupling_mesh_bounds)  # TODO: write own set_mesh_access_region
 
-        self._participant.set_mesh_access_region(self._macro_mesh_name, coupling_mesh_bounds)  # TODO: write own set_mesh_access_region
+        assert (self._mesh_vertex_coords.size != 0), "Macro mesh has no vertices."
 
-        self._mesh_vertex_ids, mesh_vertex_coords = self._participant.get_mesh_vertex_ids_and_coordinates(
-            self._macro_mesh_name)  # TODO: write own get_mesh_vertex_ids_and_coordinates
-        assert (mesh_vertex_coords.size != 0), "Macro mesh has no vertices."
-
-        self._local_number_of_sims, _ = mesh_vertex_coords.shape
+        self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
         self._logger.info("Number of local micro simulations = {}".format(self._local_number_of_sims))
 
         if self._local_number_of_sims == 0:
@@ -228,7 +227,7 @@ def main():
     parser.add_argument(
         'config_file',
         type=str,
-        help='Path to the JSON config file of the manager.')
+        help='Path to the JSON config file of the snapshot creation manager.')
 
     args = parser.parse_args()
     config_file_path = args.config_file
