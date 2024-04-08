@@ -70,14 +70,12 @@ class TestFunctioncalls(TestCase):
         manager._write_data_to_precice(self.fake_write_data)
         read_data = manager._read_data_from_precice()
 
-        print("read_data: {}".format(read_data))
-
         for data, fake_data in zip(read_data, self.fake_read_data):
             self.assertEqual(data["macro-scalar-data"], 1)
             self.assertListEqual(data["macro-vector-data"].tolist(),
                                  fake_data["macro-vector-data"].tolist())
 
-    def test_solve_mico_sims(self):
+    def test_solve_micro_sims(self):
         """
         Test if the internal function _solve_micro_simulations works as expected.
         """

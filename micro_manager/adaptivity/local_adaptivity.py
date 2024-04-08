@@ -28,7 +28,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             similarity_dists_nm1: np.ndarray,
             is_sim_active_nm1: np.ndarray,
             sim_is_associated_to_nm1: np.ndarray,
-            data_for_adaptivity: dict):
+            data_for_adaptivity: dict) -> tuple:
         """
         Compute adaptivity locally (within a rank).
 
@@ -55,6 +55,12 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         is_sim_active : numpy array
             1D array, True is sim is active, False if sim is inactive.
         """
+        for name in data_for_adaptivity.keys():
+            if name not in self._adaptivity_data_names:
+                raise ValueError(
+                    "Data for adaptivity must be one of the following: {}".format(
+                        self._adaptivity_data_names.keys()))
+
         similarity_dists = self._get_similarity_dists(dt, similarity_dists_nm1, data_for_adaptivity)
 
         # Operation done globally if global adaptivity is chosen

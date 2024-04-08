@@ -13,7 +13,7 @@ class TestGlobalAdaptivity(TestCase):
 
     def test_update_inactive_sims_global_adaptivity(self):
         """
-        Test functionality to update inactive simulations in a particular setting, for a global adaptivity setting.
+        Test functionality to update inactive simulations in a particular setting.
         Run this test in parallel using MPI with 2 ranks.
         """
         if self._rank == 0:
@@ -76,7 +76,7 @@ class TestGlobalAdaptivity(TestCase):
 
     def test_update_all_active_sims_global_adaptivity(self):
         """
-        Test functionality to calculate adaptivity when all simulations are active, for a global adaptivity setting.
+        Test functionality to calculate adaptivity when all simulations are active.
         Run this test in parallel using MPI with 2 ranks.
         """
         if self._rank == 0:
@@ -105,7 +105,7 @@ class TestGlobalAdaptivity(TestCase):
             rank=self._rank,
             comm=self._comm)
 
-        adaptivity_controller._adaptivity_data_names = {"data1": "scalar", "data2": "scalar"}
+        adaptivity_controller._adaptivity_data_names = {"data1": "scalar", "data2": "scalar", "data3": "vector"}
 
         class MicroSimulation():
             def __init__(self, global_id) -> None:
@@ -133,7 +133,7 @@ class TestGlobalAdaptivity(TestCase):
 
     def test_communicate_micro_output(self):
         """
-        Test functionality to communicate micro output from active sims to their associated inactive sims, for a global adaptivity setting.
+        Test functionality to communicate micro output from active sims to their associated inactive sims.
         Run this test in parallel using MPI with 2 ranks.
         """
         output_0 = {"data0.1": 1.0, "data0.2": [1.0, 2.0]}
