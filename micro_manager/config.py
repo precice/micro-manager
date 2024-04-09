@@ -64,36 +64,55 @@ class Config:
             data = json.load(read_file)
 
         # convert paths to python-importable paths
-        self._micro_file_name = data["micro_file_name"].replace("/", ".").replace("\\", ".").replace(".py", "")
+        self._micro_file_name = (
+            data["micro_file_name"]
+            .replace("/", ".")
+            .replace("\\", ".")
+            .replace(".py", "")
+        )
 
-        self._config_file_name = os.path.join(folder, data["coupling_params"]["config_file_name"])
+        self._config_file_name = os.path.join(
+            folder, data["coupling_params"]["config_file_name"]
+        )
         self._macro_mesh_name = data["coupling_params"]["macro_mesh_name"]
 
         try:
             self._write_data_names = data["coupling_params"]["write_data_names"]
-            assert isinstance(self._write_data_names, dict), "Write data entry is not a dictionary"
+            assert isinstance(
+                self._write_data_names, dict
+            ), "Write data entry is not a dictionary"
             for key, value in self._write_data_names.items():
                 if value == "scalar":
                     self._write_data_names[key] = False
                 elif value == "vector":
                     self._write_data_names[key] = True
                 else:
-                    raise Exception("Write data dictionary as a value other than 'scalar' or 'vector'")
+                    raise Exception(
+                        "Write data dictionary as a value other than 'scalar' or 'vector'"
+                    )
         except BaseException:
-            self._logger.info("No write data names provided. Micro manager will only read data from preCICE.")
+            self._logger.info(
+                "No write data names provided. Micro manager will only read data from preCICE."
+            )
 
         try:
             self._read_data_names = data["coupling_params"]["read_data_names"]
-            assert isinstance(self._read_data_names, dict), "Read data entry is not a dictionary"
+            assert isinstance(
+                self._read_data_names, dict
+            ), "Read data entry is not a dictionary"
             for key, value in self._read_data_names.items():
                 if value == "scalar":
                     self._read_data_names[key] = False
                 elif value == "vector":
                     self._read_data_names[key] = True
                 else:
-                    raise Exception("Read data dictionary as a value other than 'scalar' or 'vector'")
+                    raise Exception(
+                        "Read data dictionary as a value other than 'scalar' or 'vector'"
+                    )
         except BaseException:
-            self._logger.info("No read data names provided. Micro manager will only write data to preCICE.")
+            self._logger.info(
+                "No read data names provided. Micro manager will only write data to preCICE."
+            )
 
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
 
@@ -101,46 +120,61 @@ class Config:
             self._ranks_per_axis = data["simulation_params"]["decomposition"]
         except BaseException:
             self._logger.info(
-                "Domain decomposition is not specified, so the Micro Manager will expect to be run in serial.")
+                "Domain decomposition is not specified, so the Micro Manager will expect to be run in serial."
+            )
 
         try:
-            if data["simulation_params"]["adaptivity"]:
+            if data["simulation_params"]["adaptivity"] == "True":
                 self._adaptivity = True
             else:
                 self._adaptivity = False
         except BaseException:
             self._logger.info(
-                "Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations in all time steps.")
+                "Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations in all time steps."
+            )
 
         if self._adaptivity:
-            if data["simulation_params"]["adaptivity"]["type"] == "local":
+            if data["simulation_params"]["adaptivity_settings"]["type"] == "local":
                 self._adaptivity_type = "local"
-            elif data["simulation_params"]["adaptivity"]["type"] == "global":
+            elif data["simulation_params"]["adaptivity_settings"]["type"] == "global":
                 self._adaptivity_type = "global"
             else:
                 raise Exception("Adaptivity type can be either local or global.")
 
             exchange_data = {**self._read_data_names, **self._write_data_names}
-            for dname in data["simulation_params"]["adaptivity"]["data"]:
+            for dname in data["simulation_params"]["adaptivity_settings"]["data"]:
                 self._data_for_adaptivity[dname] = exchange_data[dname]
 
             if self._data_for_adaptivity.keys() == self._write_data_names.keys():
                 warn(
                     "Only micro simulation data is used for similarity computation in adaptivity. This would lead to the"
                     " same set of active and inactive simulations for the entire simulation time. If this is not intended,"
-                    " please include macro simulation data as well.")
+                    " please include macro simulation data as well."
+                )
 
-            self._adaptivity_history_param = data["simulation_params"]["adaptivity"]["history_param"]
-            self._adaptivity_coarsening_constant = data["simulation_params"]["adaptivity"]["coarsening_constant"]
-            self._adaptivity_refining_constant = data["simulation_params"]["adaptivity"]["refining_constant"]
+            self._adaptivity_history_param = data["simulation_params"][
+                "adaptivity_settings"
+            ]["history_param"]
+            self._adaptivity_coarsening_constant = data["simulation_params"][
+                "adaptivity_settings"
+            ]["coarsening_constant"]
+            self._adaptivity_refining_constant = data["simulation_params"][
+                "adaptivity_settings"
+            ]["refining_constant"]
 
-            if "similarity_measure" in data["simulation_params"]["adaptivity"]:
-                self._adaptivity_similarity_measure = data["simulation_params"]["adaptivity"]["similarity_measure"]
+            if "similarity_measure" in data["simulation_params"]["adaptivity_settings"]:
+                self._adaptivity_similarity_measure = data["simulation_params"][
+                    "adaptivity_settings"
+                ]["similarity_measure"]
             else:
-                self._logger.info("No similarity measure provided, using L1 norm as default")
+                self._logger.info(
+                    "No similarity measure provided, using L1 norm as default"
+                )
                 self._adaptivity_similarity_measure = "L1"
 
-            adaptivity_every_implicit_iteration = data["simulation_params"]["adaptivity"]["every_implicit_iteration"]
+            adaptivity_every_implicit_iteration = data["simulation_params"][
+                "adaptivity_settings"
+            ]["every_implicit_iteration"]
 
             if adaptivity_every_implicit_iteration == "True":
                 self._adaptivity_every_implicit_iteration = True
@@ -148,30 +182,39 @@ class Config:
                 self._adaptivity_every_implicit_iteration = False
 
             if not self._adaptivity_every_implicit_iteration:
-                self._logger.info("Micro Manager will compute adaptivity once at the start of every time window")
+                self._logger.info(
+                    "Micro Manager will compute adaptivity once at the start of every time window"
+                )
 
             self._write_data_names["active_state"] = False
             self._write_data_names["active_steps"] = False
 
         try:
             diagnostics_data_names = data["diagnostics"]["data_from_micro_sims"]
-            assert isinstance(diagnostics_data_names, dict), "Diagnostics data is not a dictionary"
+            assert isinstance(
+                diagnostics_data_names, dict
+            ), "Diagnostics data is not a dictionary"
             for key, value in diagnostics_data_names.items():
                 if value == "scalar":
                     self._write_data_names[key] = False
                 elif value == "vector":
                     self._write_data_names[key] = True
                 else:
-                    raise Exception("Diagnostics data dictionary as a value other than 'scalar' or 'vector'")
+                    raise Exception(
+                        "Diagnostics data dictionary as a value other than 'scalar' or 'vector'"
+                    )
         except BaseException:
-            self._logger.info("No diagnostics data is defined. Micro Manager will not output any diagnostics data.")
+            self._logger.info(
+                "No diagnostics data is defined. Micro Manager will not output any diagnostics data."
+            )
 
         try:
             self._micro_output_n = data["diagnostics"]["micro_output_n"]
         except BaseException:
             self._logger.info(
                 "Output interval of micro simulations not specified, if output is available then it will be called "
-                "in every time window.")
+                "in every time window."
+            )
 
         try:
             if data["diagnostics"]["output_micro_sim_solve_time"]:
@@ -179,7 +222,8 @@ class Config:
                 self._write_data_names["micro_sim_time"] = False
         except BaseException:
             self._logger.info(
-                "Micro manager will not output time required to solve each micro simulation in each time step.")
+                "Micro manager will not output time required to solve each micro simulation in each time step."
+            )
 
     def get_config_file_name(self):
         """
