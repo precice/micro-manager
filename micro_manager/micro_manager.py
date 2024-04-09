@@ -30,6 +30,7 @@ from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
 from .config import Config
 from .domain_decomposition import DomainDecomposer
 from .micro_simulation import create_simulation_class
+from .interpolation import interpolate
 
 sys.path.append(os.getcwd())
 
@@ -582,6 +583,10 @@ class MicroManager:
                     micro_sims_output[count] = sim.solve(
                         micro_sims_input[count], self._dt)
                     end_time = time.time()
+                    # Write solve time of the macro simulation if required and the simulation has not crashed
+                    if self._is_micro_solve_time_required:
+                        micro_sims_output[count]["micro_sim_time"] = end_time - start_time
+                    
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
                     self._logger.error("Micro simulation at macro coordinates {} has experienced an error. "
@@ -594,19 +599,30 @@ class MicroManager:
             # If simulation has crashed in a previous iteration, keep the output constant
             else:
                 micro_sims_output[count] = self._old_micro_sims_output[count]
-            # Write solve time of the macro simulation if required and the simulation has not crashed
-            if self._is_micro_solve_time_required and not self._crashed_sims[count]:
-                micro_sims_output[count]["micro_sim_time"] = end_time - start_time
 
-        # If a simulation crashes in the first iteration it is replaced with the output of the first simulation that ran
-        set_sims = np.where(micro_sims_output)
-        none_mask = np.array([item is None for item in micro_sims_output])
-        unset_sims = np.where(none_mask)[0]
+        # If a simulation crashes in the first iteration its result is interpolated
+        set_sims = []
+        set_coords = []
+        unset_sims = []
+        for count in range(self._local_number_of_sims):
+            if micro_sims_output[count] is not None:
+                set_sims.append(micro_sims_output[count].copy())
+                set_sims[-1].pop("micro_sim_time", None)
+                set_coords.append(self._mesh_vertex_coords[count])
+            else:
+                unset_sims.append(count)
 
-        for unset_sims in unset_sims:
-            self._logger.info("Micro simulation {} has has crashed in the very first run attempt. "
-                              "The output of the first micro sim that ran ({}) will be used as its output.".format(unset_sims, set_sims[0][0]))
-            micro_sims_output[unset_sims] = micro_sims_output[set_sims[0][0]]
+        # Interpolate if no data is available
+        for unset_sim in unset_sims:
+            micro_sims_output[unset_sim] = interpolate(
+                self._logger,
+                set_coords,
+                self._mesh_vertex_coords[unset_sim],
+                set_sims
+            )
+            if self._is_micro_solve_time_required:
+                micro_sims_output[unset_sim]["micro_sim_time"] = 0
+          
         self._old_micro_sims_output = micro_sims_output
 
         return micro_sims_output
@@ -671,6 +687,9 @@ class MicroManager:
                         micro_sims_input[active_id], self._dt
                     )
                     end_time = time.time()
+                    # Write solve time of the macro simulation if required and the simulation has not crashed
+                    if self._is_micro_solve_time_required:
+                        micro_sims_output[active_id]["micro_sim_time"] = end_time - start_time
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
                     self._logger.error("Micro simulation at macro coordinates {} has experienced an error. "
@@ -691,21 +710,30 @@ class MicroManager:
                 "active_steps"
             ] = self._micro_sims_active_steps[active_id]
 
-            # Write solve time of the macro simulation if required and the simulation has not crashed
-            if self._is_micro_solve_time_required and not self._crashed_sims[active_id]:
-                micro_sims_output[active_id]["micro_sim_time"] = end_time - start_time
+            
 
-        # If a simulation crashes in the first iteration it is replaced with the output of the first simulation that ran
-        set_sims = np.where(micro_sims_output)
+        # If a simulation crashes in the first iteration its result is interpolated
+        set_sims = []
+        set_coords = []
         unset_sims = []
         for active_id in active_sim_ids:
-            if micro_sims_output[active_id] is None:
+            if micro_sims_output[active_id] is not None:
+                set_sims.append(micro_sims_output[active_id].copy())
+                set_sims[-1].pop("micro_sim_time", None)
+                set_coords.append(self._mesh_vertex_coords[active_id])
+            else:
                 unset_sims.append(active_id)
-        for unset_sims in unset_sims:
-            self._logger.info("Micro Sim {} has previously not run. "
-                              "It will be replace with the output of the first "
-                              "micro sim that ran {}".format(unset_sims, set_sims[0][0]))
-            micro_sims_output[unset_sims] = micro_sims_output[set_sims[0][0]]
+
+        # Interpolate if no data is available
+        for unset_sim in unset_sims:
+            micro_sims_output[unset_sim] = interpolate(
+                self._logger,
+                set_coords,
+                self._mesh_vertex_coords[unset_sim],
+                set_sims
+            )
+            if self._is_micro_solve_time_required:
+                micro_sims_output[unset_sim]["micro_sim_time"] = 0
 
         # For each inactive simulation, copy data from most similar active simulation
         if self._adaptivity_type == "global":
