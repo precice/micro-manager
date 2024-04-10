@@ -19,6 +19,7 @@ def create_simulation_class(micro_simulation_class):
     Simulation : class
         Definition of class Simulation defined in this function.
     """
+
     class Simulation(micro_simulation_class):
         def __init__(self, global_id):
             micro_simulation_class.__init__(self, global_id)

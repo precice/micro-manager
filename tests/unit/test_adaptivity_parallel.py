@@ -1,8 +1,11 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
-from micro_manager.adaptivity.global_adaptivity import GlobalAdaptivityCalculator
+
 import numpy as np
 from mpi4py import MPI
+
+from micro_manager.adaptivity.global_adaptivity import \
+    GlobalAdaptivityCalculator
 
 
 class TestGlobalAdaptivity(TestCase):
@@ -29,12 +32,8 @@ class TestGlobalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         adaptivity_controller = GlobalAdaptivityCalculator(
-            configurator,
-            MagicMock(),
-            5,
-            global_ids,
-            rank=self._rank,
-            comm=self._comm)
+            configurator, MagicMock(), 5, global_ids, rank=self._rank, comm=self._comm
+        )
 
         # Force the activation of sim #0 and #4
         def check_for_activation(i, sim_dists, active):
@@ -45,7 +44,7 @@ class TestGlobalAdaptivity(TestCase):
 
         adaptivity_controller._check_for_activation = check_for_activation
 
-        class MicroSimulation():
+        class MicroSimulation:
             def __init__(self, global_id) -> None:
                 self._global_id = global_id
                 self._state = [global_id] * 3
@@ -63,11 +62,17 @@ class TestGlobalAdaptivity(TestCase):
         for i in global_ids:
             dummy_micro_sims.append(MicroSimulation(i))
 
-        is_sim_active, sim_is_associated_to = adaptivity_controller._update_inactive_sims(
-            np.array([0]), is_sim_active, sim_is_associated_to, dummy_micro_sims)
+        (
+            is_sim_active,
+            sim_is_associated_to,
+        ) = adaptivity_controller._update_inactive_sims(
+            np.array([0]), is_sim_active, sim_is_associated_to, dummy_micro_sims
+        )
 
         self.assertTrue(np.array_equal(expected_is_sim_active, is_sim_active))
-        self.assertTrue(np.array_equal(expected_sim_is_associated_to, sim_is_associated_to))
+        self.assertTrue(
+            np.array_equal(expected_sim_is_associated_to, sim_is_associated_to)
+        )
 
         if self._rank == 0:
             self.assertTrue(np.array_equal([3, 3, 3], dummy_micro_sims[0].get_state()))
@@ -81,7 +86,10 @@ class TestGlobalAdaptivity(TestCase):
         """
         if self._rank == 0:
             global_ids = [0, 1, 2]
-            data_for_adaptivity = {"data1": [1.0, 1.0, 1.0], "data2": [13.0, 13.0, 13.0]}
+            data_for_adaptivity = {
+                "data1": [1.0, 1.0, 1.0],
+                "data2": [13.0, 13.0, 13.0],
+            }
         elif self._rank == 1:
             global_ids = [3, 4]
             data_for_adaptivity = {"data1": [1.0, 1.0], "data2": [13.0, 13.0]}
@@ -98,16 +106,16 @@ class TestGlobalAdaptivity(TestCase):
         configurator.get_adaptivity_coarsening_const = MagicMock(return_value=0.2)
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L2rel")
         adaptivity_controller = GlobalAdaptivityCalculator(
-            configurator,
-            MagicMock(),
-            5,
-            global_ids,
-            rank=self._rank,
-            comm=self._comm)
+            configurator, MagicMock(), 5, global_ids, rank=self._rank, comm=self._comm
+        )
 
-        adaptivity_controller._adaptivity_data_names = {"data1": "scalar", "data2": "scalar", "data3": "vector"}
+        adaptivity_controller._adaptivity_data_names = {
+            "data1": "scalar",
+            "data2": "scalar",
+            "data3": "vector",
+        }
 
-        class MicroSimulation():
+        class MicroSimulation:
             def __init__(self, global_id) -> None:
                 self._global_id = global_id
                 self._state = [global_id] * 3
@@ -125,11 +133,23 @@ class TestGlobalAdaptivity(TestCase):
         for i in global_ids:
             dummy_micro_sims.append(MicroSimulation(i))
 
-        _, is_sim_active, sim_is_associated_to = adaptivity_controller.compute_adaptivity(
-            0.1, dummy_micro_sims, similarity_dists, is_sim_active, sim_is_associated_to, data_for_adaptivity)
+        (
+            _,
+            is_sim_active,
+            sim_is_associated_to,
+        ) = adaptivity_controller.compute_adaptivity(
+            0.1,
+            dummy_micro_sims,
+            similarity_dists,
+            is_sim_active,
+            sim_is_associated_to,
+            data_for_adaptivity,
+        )
 
         self.assertTrue(np.array_equal(expected_is_sim_active, is_sim_active))
-        self.assertTrue(np.array_equal(expected_sim_is_associated_to, sim_is_associated_to))
+        self.assertTrue(
+            np.array_equal(expected_sim_is_associated_to, sim_is_associated_to)
+        )
 
     def test_communicate_micro_output(self):
         """
@@ -154,13 +174,11 @@ class TestGlobalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         adaptivity_controller = GlobalAdaptivityCalculator(
-            configurator,
-            MagicMock(),
-            5,
-            global_ids,
-            rank=self._rank,
-            comm=self._comm)
+            configurator, MagicMock(), 5, global_ids, rank=self._rank, comm=self._comm
+        )
 
-        adaptivity_controller.communicate_micro_output(is_sim_active, sim_is_associated_to, sim_output)
+        adaptivity_controller.communicate_micro_output(
+            is_sim_active, sim_is_associated_to, sim_output
+        )
 
         self.assertTrue(np.array_equal(expected_sim_output, sim_output))
