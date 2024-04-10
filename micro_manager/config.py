@@ -124,25 +124,33 @@ class Config:
             )
 
         try:
-            if data["simulation_params"]["adaptivity"]:
+            if data["simulation_params"]["adaptivity"] == "True":
                 self._adaptivity = True
+                if not data["simulation_params"]["adaptivity_settings"]:
+                    raise Exception(
+                        "Adaptivity is turned on but no adaptivity settings are provided."
+                    )
             else:
                 self._adaptivity = False
+                if data["simulation_params"]["adaptivity_settings"]:
+                    raise Exception(
+                        "Adaptivity settings are provided but adaptivity is turned off."
+                    )
         except BaseException:
             self._logger.info(
-                "Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations in all time steps."
+                "Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations."
             )
 
         if self._adaptivity:
-            if data["simulation_params"]["adaptivity"]["type"] == "local":
+            if data["simulation_params"]["adaptivity_settings"]["type"] == "local":
                 self._adaptivity_type = "local"
-            elif data["simulation_params"]["adaptivity"]["type"] == "global":
+            elif data["simulation_params"]["adaptivity_settings"]["type"] == "global":
                 self._adaptivity_type = "global"
             else:
                 raise Exception("Adaptivity type can be either local or global.")
 
             exchange_data = {**self._read_data_names, **self._write_data_names}
-            for dname in data["simulation_params"]["adaptivity"]["data"]:
+            for dname in data["simulation_params"]["adaptivity_settings"]["data"]:
                 self._data_for_adaptivity[dname] = exchange_data[dname]
 
             if self._data_for_adaptivity.keys() == self._write_data_names.keys():
@@ -152,19 +160,19 @@ class Config:
                     " please include macro simulation data as well."
                 )
 
-            self._adaptivity_history_param = data["simulation_params"]["adaptivity"][
-                "history_param"
-            ]
+            self._adaptivity_history_param = data["simulation_params"][
+                "adaptivity_settings"
+            ]["history_param"]
             self._adaptivity_coarsening_constant = data["simulation_params"][
-                "adaptivity"
+                "adaptivity_settings"
             ]["coarsening_constant"]
             self._adaptivity_refining_constant = data["simulation_params"][
-                "adaptivity"
+                "adaptivity_settings"
             ]["refining_constant"]
 
-            if "similarity_measure" in data["simulation_params"]["adaptivity"]:
+            if "similarity_measure" in data["simulation_params"]["adaptivity_settings"]:
                 self._adaptivity_similarity_measure = data["simulation_params"][
-                    "adaptivity"
+                    "adaptivity_settings"
                 ]["similarity_measure"]
             else:
                 self._logger.info(
@@ -173,7 +181,7 @@ class Config:
                 self._adaptivity_similarity_measure = "L1"
 
             adaptivity_every_implicit_iteration = data["simulation_params"][
-                "adaptivity"
+                "adaptivity_settings"
             ]["every_implicit_iteration"]
 
             if adaptivity_every_implicit_iteration == "True":
