@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## latest
+
+- Add switch to turn adaptivity on and off in configuration https://github.com/precice/micro-manager/pull/93
+
 ## v0.4.0
 
 - Add note in the cpp-dummy that pickling support does not work due to no good way to pass the sim id to the new micro simulation instance [commit](https://github.com/precice/micro-manager/commit/0a82966676717a533aca9bffa4a110453158f29c)
