@@ -4,8 +4,7 @@ from unittest.mock import MagicMock
 import numpy as np
 from mpi4py import MPI
 
-from micro_manager.adaptivity.global_adaptivity import \
-    GlobalAdaptivityCalculator
+from micro_manager.adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 
 
 class TestGlobalAdaptivity(TestCase):
