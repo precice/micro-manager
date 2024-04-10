@@ -126,11 +126,19 @@ class Config:
         try:
             if data["simulation_params"]["adaptivity"] == "True":
                 self._adaptivity = True
+                if not data["simulation_params"]["adaptivity_settings"]:
+                    raise Exception(
+                        "Adaptivity is turned on but no adaptivity settings are provided."
+                    )
             else:
                 self._adaptivity = False
+                if data["simulation_params"]["adaptivity_settings"]:
+                    raise Exception(
+                        "Adaptivity settings are provided but adaptivity is turned off."
+                    )
         except BaseException:
             self._logger.info(
-                "Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations in all time steps."
+                "Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations."
             )
 
         if self._adaptivity:

@@ -5,7 +5,6 @@ In this script we solve a dummy micro problem to just show the working of the ma
 
 
 class MicroSimulation:
-
     def __init__(self, sim_id):
         """
         Constructor of MicroSimulation class.
@@ -25,8 +24,10 @@ class MicroSimulation:
         self._micro_vector_data = macro_data["macro-vector-data"]
         self._micro_scalar_data = macro_data["macro-scalar-data"]
 
-        return {"micro-scalar-data": self._micro_scalar_data,
-                "micro-vector-data": self._micro_vector_data}
+        return {
+            "micro-scalar-data": self._micro_scalar_data,
+            "micro-vector-data": self._micro_vector_data,
+        }
 
     def get_state(self):
         return [self._micro_scalar_data, self._micro_vector_data]
