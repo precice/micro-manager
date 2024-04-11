@@ -29,7 +29,7 @@ setup(
     author_email="ishaan.desai@uni-stuttgart.de",
     license="LGPL-3.0",
     packages=find_packages(exclude=["examples"]),
-    install_requires=["pyprecice>=3.0.0.0", "numpy>=1.13.3", "mpi4py"],
+    install_requires=["pyprecice>=3.0.0.0", "numpy>=1.13.3", "scikit-learn", "mpi4py"],
     test_suite="tests",
     zip_safe=False,
 )

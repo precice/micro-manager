@@ -1,43 +1,83 @@
 import numpy as np
-from scipy.interpolate import griddata as gd
+from sklearn.neighbors import NearestNeighbors
 
 
-def interpolate(logger, known_coords: list, inter_coord: list , data: list)-> dict:
-    """
-    Interpolate parameters at a given vertex
+class Interpolation:
+    def __init__(self, logger):
 
-    Args:
-        logger : logger object
-            Logger of the micro manager
-        known_coords : list
-            List of vertices where the data is known
-        inter_coord : list
-            Vertex where the data is to be interpolated
-        data : list
-            List of dicts in which keys are names of data and the values are the data.
+        self._logger = logger
 
-    Returns:
-        result: dict
-            Interpolated data at inter_coord
-    """
-    result = dict()
-    assert len(known_coords) == len(data), "Number of known coordinates and data points do not match"
+    def get_nearest_neighbor_indices_local(
+        self,
+        all_local_coords,
+        inter_point,
+        k: int,
+        inter_point_is_neighbor: bool = False,
+    ) -> np.ndarray:
+        """
+        Get the indices of the k nearest neighbors of a point in a list of coordinates.
+        Note: It can be chosen whether the point itself is considered as a neighbor or not.
+        Args:
+            all_local_coords: list
+                List of coordinates of all points.
+            inter_point:
+                Coordinates of the point for which the neighbors are to be found.
+            k: int
+            inter_point_is_neighbor: bool, optional
+                Decide whether the interpolation point is considered as its own neighbor.
+                Defaults to False.
 
-    for params in data[0].keys():
-        # Attempt to interpolate the data
-        try:
-            result[params] = gd(known_coords, [d[params] for d in data], inter_coord, method='linear').tolist()
-            # Extrapolation is replaced by taking a nearest neighbor
-            if np.isnan(result[params]).any():
-                nearest_neighbor_pos = np.argmin(np.linalg.norm(np.array(known_coords) - np.array(inter_coord), axis=1))
-                nearest_neighbor = known_coords[nearest_neighbor_pos]
-                logger.info("Interpolation failed at macro vertex {}. Taking value of closest neighbor at macro vertex {}".format(params, inter_coord, nearest_neighbor))
-                return data[nearest_neighbor_pos]
-            return result
-        # If interpolation fails, take the value of the nearest neighbor
-        except Exception:
-                nearest_neighbor_pos = np.argmin(np.linalg.norm(np.array(known_coords) - np.array(inter_coord), axis=1))
-                nearest_neighbor = known_coords[nearest_neighbor_pos]
-                logger.info("Interpolation failed at macro vertex {}. Taking value of closest neighbor at macro vertex {}".format(params, inter_coord, nearest_neighbor))
-                return data[nearest_neighbor_pos]
- 
+        Returns: np.ndarray
+            of indices of the k nearest neighbors.
+        """
+        assert (
+            len(all_local_coords) > k
+        ), "Number of neighbors must be less than the number of all available neighbors."
+        if not inter_point_is_neighbor:
+            neighbors = NearestNeighbors(n_neighbors=k + 1).fit(all_local_coords)
+
+            dists, neighbor_indices = neighbors.kneighbors(
+                [inter_point], return_distance=True
+            )
+
+            if np.min(dists) < 1e-10:
+                argmin = np.argmin(dists)
+                neighbor_indices = np.delete(neighbor_indices, argmin)
+            else:
+                argmax = np.argmax(dists)
+                neighbor_indices = np.delete(neighbor_indices, argmax)
+        else:
+            neighbors = NearestNeighbors(n_neighbors=k).fit(all_local_coords)
+            neighbor_indices = neighbors.kneighbors(
+                [inter_point], return_distance=False
+            )
+
+        return neighbor_indices
+
+    def inv_dist_weighted_interp(
+        self, neighbors: list, point, values: list
+    ) -> np.ndarray:
+        """
+            Interpolate a value at a point using inverse distance weighting.
+
+        Args:
+            neighbors: list
+                Coordinates at which the values are known.
+            point:
+                Coordinates at which the value is to be interpolated.
+            values: list
+                Values at the known coordinates.
+
+        Returns: nd.array
+            Value at interpolation point.
+        """
+        interpol_val = 0
+        summed_weights = 0
+        for inx in range(len(neighbors)):
+            norm = np.linalg.norm(np.array(neighbors[inx]) - np.array(point)) ** 2
+            if norm < 1e-10:
+                return values[inx]
+            interpol_val += values[inx] / norm
+            summed_weights += 1 / norm
+
+        return interpol_val / summed_weights
