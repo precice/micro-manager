@@ -18,8 +18,8 @@ class MicroSimulation:
         assert macro_data["macro-vector-data"].tolist() == [0, 1, 2]
         return {
             "micro-scalar-data": macro_data["macro-scalar-data"] + 1,
-            "micro-vector-data": macro_data["macro-vector-data"] + 1
-            }
+            "micro-vector-data": macro_data["macro-vector-data"] + 1,
+        }
 
 
 class TestFunctioncalls(TestCase):
