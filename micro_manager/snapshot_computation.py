@@ -20,9 +20,6 @@ from mpi4py import MPI
 import numpy as np
 import logging
 import time
-from copy import deepcopy
-from typing import Dict
-from warnings import warn
 
 from .config import Config
 from .micro_simulation import create_simulation_class
@@ -49,11 +46,13 @@ class SnapshotComputation:
         self._logger.setLevel(level=logging.INFO)
 
         # Create file handler which logs messages
-        fh = logging.FileHandler('snapshot-computation.log')
+        fh = logging.FileHandler("snapshot-computation.log")
         fh.setLevel(logging.INFO)
 
         # Create formatter and add it to handlers
-        formatter = logging.Formatter('[' + str(self._rank) + '] %(name)s -  %(levelname)s - %(message)s')
+        formatter = logging.Formatter(
+            "[" + str(self._rank) + "] %(name)s -  %(levelname)s - %(message)s"
+        )
         fh.setFormatter(formatter)
         self._logger.addHandler(fh)  # add the handlers to the logger
 
@@ -84,7 +83,6 @@ class SnapshotComputation:
         self._dt = 0
         self._micro_n_out = self._config.get_micro_output_n()
 
-
         self._initialize()
 
     # **************
@@ -97,18 +95,34 @@ class SnapshotComputation:
         - Read macro parameters from the config file, solve micro simulations, and write data to a file.
         - If adaptivity is on, compute micro simulations adaptively.
         """
-        
+
         # Loop over macro parameter increases
 
-        micro_sims_input = self._read_data_from_precice()  # TODO: replace with own read_data function or just a list of dicts
-        
+        micro_sims_input = (
+            self._read_data_from_precice()
+        )  # TODO: replace with own read_data function or just a list of dicts
+
         micro_sims_output = self._solve_micro_simulations(micro_sims_input)
 
-        self._write_data_to_precice(micro_sims_output) # TODO: Replace with write data to file
+        self._write_data_to_precice(
+            micro_sims_output
+        )  # TODO: Replace with write data to file
 
-        self._logger.info("Snapshots for micro simulations {} - {} have been created".format(
-            self._micro_sims[0].get_global_id(), self._micro_sims[-1].get_global_id()))
+        self._logger.info(
+            "Snapshots for micro simulations {} - {} have been created".format(
+                self._micro_sims[0].get_global_id(),
+                self._micro_sims[-1].get_global_id(),
+            )
+        )
 
+        # TODO: make this work
+        message = "Snapshots {} - {} have been computed for parameters {}".format(
+            self._micro_sims[0].get_global_id(), self._micro_sims[-1].get_global_id()
+        )
+        for params, values in micro_sims_input.items():
+            message += "{} = {}, ".format(params, values)
+
+        self._logger.info(message)
 
     # ***************
     # Private methods
@@ -125,26 +139,33 @@ class SnapshotComputation:
         if self._is_parallel:
             dimension = len(self._macro_bounds) / 2
             domain_decomposer = DomainDecomposer(
-                self._logger, dimension, self._rank, self._size)  # TODO: Replace _participant with own function
-            coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(self._macro_bounds, self._ranks_per_axis)
+                self._logger, dimension, self._rank, self._size
+            )  # TODO: Replace _participant with own function
+            coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(
+                self._macro_bounds, self._ranks_per_axis
+            )
             # TODO: assign the correct parameters and corresponding coordinates to this rank and neglect the others using the coupling_mesh_bounds
-            self._mesh_vertex_coords = None # TODO
+            self._mesh_vertex_coords = None  # TODO
         else:
             # TODO: is all macro coords given in parameter file
-            self._mesh_vertex_coords = None # TODO
-        # I think this is unnecessary
+            self._mesh_vertex_coords = None  # TODO
+        # TODO I think this is unnecessary
         # self._participant.set_mesh_access_region(self._macro_mesh_name, coupling_mesh_bounds)  # TODO: write own set_mesh_access_region
 
-        assert (self._mesh_vertex_coords.size != 0), "Macro mesh has no vertices."
+        assert self._mesh_vertex_coords.size != 0, "Macro mesh has no vertices."
 
         self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
-        self._logger.info("Number of local micro simulations = {}".format(self._local_number_of_sims))
+        self._logger.info(
+            "Number of local micro simulations = {}".format(self._local_number_of_sims)
+        )
 
         if self._local_number_of_sims == 0:
             if self._is_parallel:
                 self._logger.info(
                     "Rank {} has no micro simulations and hence will not do any computation.".format(
-                        self._rank))
+                        self._rank
+                    )
+                )
                 self._is_rank_empty = True
             else:
                 raise Exception("Micro Manager has no micro simulations.")
@@ -159,7 +180,7 @@ class SnapshotComputation:
         self._global_number_of_sims = np.sum(nms_all_ranks)
 
         # Create lists of local and global IDs
-        sim_id = np.sum(nms_all_ranks[:self._rank])
+        sim_id = np.sum(nms_all_ranks[: self._rank])
         self._global_ids_of_local_sims = []  # DECLARATION
         for i in range(self._local_number_of_sims):
             self._global_ids_of_local_sims.append(sim_id)
@@ -171,27 +192,36 @@ class SnapshotComputation:
             importlib.import_module(
                 self._config.get_micro_file_name(), "MicroSimulation"
             ),
-            "MicroSimulation")
+            "MicroSimulation",
+        )
 
         # Create micro simulation objects
         for i in range(self._local_number_of_sims):
-            self._micro_sims[i] = create_simulation_class(
-                micro_problem)(self._global_ids_of_local_sims[i])
+            self._micro_sims[i] = create_simulation_class(micro_problem)(
+                self._global_ids_of_local_sims[i]
+            )
 
-        self._logger.info("Micro simulations with global IDs {} - {} created.".format(
-            self._global_ids_of_local_sims[0], self._global_ids_of_local_sims[-1]))
-        
+        self._logger.info(
+            "Micro simulations with global IDs {} - {} created.".format(
+                self._global_ids_of_local_sims[0], self._global_ids_of_local_sims[-1]
+            )
+        )
+
         self._micro_sims_init = False  # DECLARATION
 
         # Get initial data from micro simulations if initialize() method exists
-        if hasattr(micro_problem, 'initialize') and callable(getattr(micro_problem, 'initialize')):
-                self._logger.info(
-                    "Micro simulation has the method initialize(), but it is not called, because adaptivity is not used for snapshot computation.")
+        if hasattr(micro_problem, "initialize") and callable(
+            getattr(micro_problem, "initialize")
+        ):
+            self._logger.info(
+                "Micro simulation has the method initialize(), but it is not called, because adaptivity is not used for snapshot computation."
+            )
 
         self._micro_sims_have_output = False
-        if hasattr(micro_problem, 'output') and callable(getattr(micro_problem, 'output')):
+        if hasattr(micro_problem, "output") and callable(
+            getattr(micro_problem, "output")
+        ):
             self._micro_sims_have_output = True
-            
 
     def _solve_micro_simulations(self, micro_sims_input: list) -> list:
         """
@@ -220,14 +250,15 @@ class SnapshotComputation:
                 micro_sims_output[count]["micro_sim_time"] = end_time - start_time
 
         return micro_sims_output
-    
+
 
 def main():
-    parser = argparse.ArgumentParser(description='.')
+    parser = argparse.ArgumentParser(description=".")
     parser.add_argument(
-        'config_file',
+        "config_file",
         type=str,
-        help='Path to the JSON config file of the snapshot creation manager.')
+        help="Path to the JSON config file of the snapshot creation manager.",
+    )
 
     args = parser.parse_args()
     config_file_path = args.config_file
