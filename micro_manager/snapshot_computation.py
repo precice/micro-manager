@@ -23,7 +23,6 @@ import time
 
 from .config import Config
 from .micro_simulation import create_simulation_class
-from .domain_decomposition import DomainDecomposer
 
 sys.path.append(os.getcwd())
 
@@ -80,8 +79,10 @@ class SnapshotComputation:
         self._local_number_of_sims = 0
         self._global_number_of_sims = 0
         self._is_rank_empty = False
-        self._dt = 0
-        self._micro_n_out = self._config.get_micro_output_n()
+        self._dt = 0  # TODO: potentially irrelevant
+        self._micro_n_out = (
+            self._config.get_micro_output_n()
+        )  # TODO: potentially irrelevant
 
         self._initialize()
 
@@ -92,15 +93,15 @@ class SnapshotComputation:
     def solve(self) -> None:
         """
         Solve the problem using given macro parameters.
-        - Read macro parameters from the config file, solve micro simulations, and write data to a file.
-        - If adaptivity is on, compute micro simulations adaptively.
+        - Read macro parameters from the config file, solve micro simulations,
+          and write outputs to storage file.
         """
 
         # Loop over macro parameter increases
 
         micro_sims_input = (
             self._read_data_from_precice()
-        )  # TODO: replace with own read_data function or just a list of dicts
+        )  # TODO: replace with own read_data function or just a list of dicts to read data from parameter file
 
         micro_sims_output = self._solve_micro_simulations(micro_sims_input)
 
@@ -140,7 +141,7 @@ class SnapshotComputation:
             dimension = len(self._macro_bounds) / 2
             domain_decomposer = DomainDecomposer(
                 self._logger, dimension, self._rank, self._size
-            )  # TODO: Replace _participant with own function
+            )  # TODO: Replace _participant with own function and with own domain decomposition
             coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(
                 self._macro_bounds, self._ranks_per_axis
             )
@@ -154,7 +155,9 @@ class SnapshotComputation:
 
         assert self._mesh_vertex_coords.size != 0, "Macro mesh has no vertices."
 
-        self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
+        self._local_number_of_sims = (
+            []
+        )  # TODO: use custom function to get number of micro simulations
         self._logger.info(
             "Number of local micro simulations = {}".format(self._local_number_of_sims)
         )
@@ -206,16 +209,6 @@ class SnapshotComputation:
                 self._global_ids_of_local_sims[0], self._global_ids_of_local_sims[-1]
             )
         )
-
-        self._micro_sims_init = False  # DECLARATION
-
-        # Get initial data from micro simulations if initialize() method exists
-        if hasattr(micro_problem, "initialize") and callable(
-            getattr(micro_problem, "initialize")
-        ):
-            self._logger.info(
-                "Micro simulation has the method initialize(), but it is not called, because adaptivity is not used for snapshot computation."
-            )
 
         self._micro_sims_have_output = False
         if hasattr(micro_problem, "output") and callable(
