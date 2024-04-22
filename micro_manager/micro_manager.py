@@ -411,7 +411,7 @@ class MicroManager:
         self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
 
         # setup for simulation crashes
-        self._crashed_sims = [False] * self._local_number_of_sims
+        self._has_sim_crashed = [False] * self._local_number_of_sims
         self._neighbor_list = [None] * self._local_number_of_sims
         number_of_nearest_neighbors = int(self._local_number_of_sims * 0.25)
         self._interpolation = Interpolation(self._logger)

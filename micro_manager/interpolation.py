@@ -32,7 +32,7 @@ class Interpolation:
         """
         assert (
             len(all_local_coords) > k
-        ), "Number of neighbors must be less than the number of all available neighbors."
+        ), "Desired number of neighbors must be less than the number of all available neighbors."
         if not inter_point_is_neighbor:
             neighbors = NearestNeighbors(n_neighbors=k + 1).fit(all_local_coords)
 
