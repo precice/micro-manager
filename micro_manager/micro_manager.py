@@ -173,6 +173,11 @@ class MicroManager:
                 )
 
         while self._participant.is_coupling_ongoing():
+
+            self._dt = (
+                self._participant.get_max_time_step_size()
+            )  # ask preCICE at beginning of time step for allowed time step size
+
             # Write a checkpoint
             if self._participant.requires_writing_checkpoint():
                 for i in range(self._local_number_of_sims):
@@ -256,11 +261,11 @@ class MicroManager:
 
             self._write_data_to_precice(micro_sims_output)
 
-            self._participant.advance(self._dt)
-            self._dt = self._participant.get_max_time_step_size()
-
-            t += self._dt
-            n += 1
+            t += self._dt  # increase internal time when time step is done.
+            n += 1  # increase counter
+            self._participant.advance(
+                self._dt
+            )  # notify preCICE that time step of size self._dt is complete
 
             # Revert micro simulations to their last checkpoints if required
             if self._participant.requires_reading_checkpoint():
