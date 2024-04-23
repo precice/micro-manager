@@ -7,7 +7,7 @@ from micro_manager.interpolation import Interpolation
 class TestInterpolation(TestCase):
     def test_local_interpolation(self):
         """
-        Test if local interpolation works as expected
+        Test if local interpolation works as expected.
         """
         coords = [[-2, 0, 0], [-1, 0, 0], [2, 0, 0]]
         inter_point = [1, 0, 0]
@@ -28,7 +28,7 @@ class TestInterpolation(TestCase):
     def test_nearest_neighbor(self):
         """
         Test if finding nearest neighbor works as expected if interpolation point
-        itself is not part of neighbor coordinates
+        itself is not part of neighbor coordinates.
         """
         neighbors = [[0, 2, 0], [0, 3, 0], [0, 0, 4], [-5, 0, 0]]
         inter_coord = [0, 0, 0]
@@ -42,11 +42,10 @@ class TestInterpolation(TestCase):
             nearest_neighbor_index.tolist(), expected_nearest_neighbor_index
         )
 
-    def test_nearest_neighbor_excluding_interpolation_point(self):
+    def test_nearest_neighbor_with_point_its_own_neighbor(self):
         """
         Test if finding nearest neighbor works as expected when the
-        interpolation point is part of the coordinate list but its
-        distance shall not be considered
+        interpolation point is part of the coordinate list.
         """
         neighbors = [[0, 0, 0], [0, 3, 0], [0, 0, 4], [-5, 0, 0]]
         inter_coord = [0, 0, 0]
@@ -59,22 +58,3 @@ class TestInterpolation(TestCase):
         self.assertListEqual(
             nearest_neighbor_index.tolist(), expected_nearest_neighbor_index
         )
-
-
-def test_nearest_neighbor_including_interpolation_point(self):
-    """
-    Test if finding nearest neighbor works as expected when the
-    interpolation point is part of the coordinate list and its
-    distance shall be considered
-    """
-    neighbors = [[0, 0, 0], [0, 3, 0], [0, 0, 4], [-5, 0, 0]]
-    inter_coord = [0, 0, 0]
-    expected_nearest_neighbor_index = [0, 1]
-    k = 2
-    interpolation = Interpolation(MagicMock())
-    nearest_neighbor_index = interpolation.get_nearest_neighbor_indices_local(
-        neighbors, inter_coord, k, inter_point_is_neighbor=True
-    )
-    self.assertListEqual(
-        nearest_neighbor_index.tolist(), expected_nearest_neighbor_index
-    )

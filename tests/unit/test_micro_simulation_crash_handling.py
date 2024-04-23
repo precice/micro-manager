@@ -1,5 +1,7 @@
-import numpy as np
 from unittest import TestCase
+
+import numpy as np
+
 import micro_manager
 import micro_manager.interpolation
 
@@ -25,6 +27,7 @@ class TestSimulationCrashHandling(TestCase):
     def test_crash_handling(self):
         """
         Test if the micro manager catches a simulation crash and handles it adequately.
+        A crash if caught by interpolation within _solve_micro_simulations.
         """
 
         macro_data = []
@@ -38,11 +41,14 @@ class TestSimulationCrashHandling(TestCase):
         manager = micro_manager.MicroManager("micro-manager-config_crash.json")
 
         manager._local_number_of_sims = 4
-        manager._crashed_sims = [False] * 4
+        manager._has_sim_crashed = [False] * 4
         manager._mesh_vertex_coords = np.array(
             [[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0]]
         )
         manager._neighbor_list = np.array([[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]])
+        manager._is_adaptivity_on = (
+            False  # make sure adaptivity is off overriding config
+        )
         manager._micro_sims = [MicroSimulation(i) for i in range(4)]
 
         micro_sims_output = manager._solve_micro_simulations(macro_data)
@@ -67,6 +73,7 @@ class TestSimulationCrashHandling(TestCase):
     def test_crash_handling_with_adaptivity(self):
         """
         Test if the micro manager catches a simulation crash and handles it adequately with adaptivity.
+        A crash if caught by interpolation within _solve_micro_simulations_with_adaptivity.
         """
 
         macro_data = []
@@ -81,7 +88,7 @@ class TestSimulationCrashHandling(TestCase):
 
         manager._local_number_of_sims = 5
         manager._micro_sims_active_steps = np.zeros(5, dtype=np.int32)
-        manager._crashed_sims = [False] * 5
+        manager._has_sim_crashed = [False] * 5
         manager._mesh_vertex_coords = np.array(
             [[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0], [1, 1, 0]]
         )
