@@ -20,6 +20,7 @@ import time
 from copy import deepcopy
 from typing import Dict
 from warnings import warn
+import itertools
 
 import numpy as np
 import precice
@@ -417,14 +418,6 @@ class MicroManager:
         self._has_sim_crashed = [False] * self._local_number_of_sims
         self._neighbor_list = [None] * self._local_number_of_sims  # DECLARATION
         self._interpolation = Interpolation(self._logger)
-        for count in range(self._local_number_of_sims):
-            self._neighbor_list[
-                count
-            ] = self._interpolation.get_nearest_neighbor_indices_local(
-                self._mesh_vertex_coords,
-                self._mesh_vertex_coords[count],
-                self._number_of_nearest_neighbors,
-            )
 
         micro_problem = getattr(
             importlib.import_module(
@@ -627,7 +620,7 @@ class MicroManager:
                     )
                 )
                 micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
-                    micro_sims_output, unset_sim
+                    micro_sims_input, micro_sims_output, unset_sim
                 )
 
         return micro_sims_output
@@ -731,7 +724,7 @@ class MicroManager:
                 )
 
                 micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
-                    micro_sims_output, unset_sim, active_sim_ids
+                    micro_sims_input, micro_sims_output, unset_sim, active_sim_ids
                 )
 
         # For each inactive simulation, copy data from most similar active simulation
@@ -763,13 +756,20 @@ class MicroManager:
         return micro_sims_output
 
     def _interpolate_output_for_crashed_sim(
-        self, micro_sims_output: list, unset_sim: int, active_sim_ids: np.ndarray = None
+        self,
+        micro_sims_input: list,
+        micro_sims_output: list,
+        unset_sim: int,
+        active_sim_ids: np.ndarray = None,
     ) -> dict:
         """
         Using the output of neighboring simulations, interpolate the output for a crashed simulation.
 
         Parameters
         ----------
+        micro_sims_input : list
+            List of dicts in which keys are names of data and the values are the data which are required inputs to
+            solve a micro simulation.
         micro_sims_output : list
             Output of local micro simulations.
         unset_sim : int
@@ -782,30 +782,64 @@ class MicroManager:
         output_interpol : dict
             Result of the interpolation in which keys are names of data and the values are the data.
         """
+        # Find neighbors of the crashed simulation in active and non-crashed simulations
+        # set iteration length to only iterate over active simulations
+        if self._is_adaptivity_on:
+            iter_length = active_sim_ids
+        else:
+            iter_length = range(len(micro_sims_input))
+        micro_sims_active_input_lists = []  # DECLARATION
+        micro_sims_active_values = []  # DECLARATION
+        # Turn crashed sim macro parameters into list to use as coordinate for interpolation
+        crashed_position = []  # DECLARATION
+        for value in micro_sims_input[unset_sim].values():
+            if isinstance(value, np.ndarray) or isinstance(value, list):
+                crashed_position.extend(value)
+            else:
+                crashed_position.append(value)
+        # Turn active sim macro parameters into list to use as coordinates for interpolation based on parameters
+        for i in iter_length:
+            if not self._has_sim_crashed[i]:
+                # collect macro data at one vertex
+                intermediate = []  # DECLARATION
+                for value in micro_sims_input[i].values():
+                    if isinstance(value, np.ndarray) or isinstance(value, list):
+                        intermediate.extend(value)
+                    else:
+                        intermediate.append(value)
+                # Create lists of macro data for interpolation
+                micro_sims_active_input_lists.append(intermediate)
+                micro_sims_active_values.append(micro_sims_output[i].copy())
+        # Find nearest neighbors
+        nearest_neighbors = self._interpolation.get_nearest_neighbor_indices_local(
+            micro_sims_active_input_lists,
+            crashed_position,
+            self._number_of_nearest_neighbors,
+        )
+        # Interpolate
         output_interpol = dict()
-        coord = []  # DECLARATION
+        interpol_space = []  # DECLARATION
         interpol_values = []  # DECLARATION
         # Collect neighbor vertices for interpolation
-        for neighbor in self._neighbor_list[unset_sim]:
-            # Only include neighbors that have not crashed and remove data not required for interpolation
-            if not self._has_sim_crashed[neighbor]:
-                if self._is_adaptivity_on:
-                    if neighbor in active_sim_ids:
-                        coord.append(self._mesh_vertex_coords[neighbor].copy())
-                        interpol_values.append(micro_sims_output[neighbor].copy())
-                        interpol_values[-1].pop("micro_sim_time", None)
-                        interpol_values[-1].pop("active_state", None)
-                        interpol_values[-1].pop("active_steps", None)
-                else:
-                    coord.append(self._mesh_vertex_coords[neighbor].copy())
-                    interpol_values.append(micro_sims_output[neighbor].copy())
-                    interpol_values[-1].pop("micro_sim_time", None)
-        if len(coord) == 0:
+        for neighbor in nearest_neighbors:
+            # Remove data not required for interpolation from values
+            if self._is_adaptivity_on:
+                interpol_space.append(micro_sims_active_input_lists[neighbor].copy())
+                interpol_values.append(micro_sims_active_values[neighbor].copy())
+                interpol_values[-1].pop("micro_sim_time", None)
+                interpol_values[-1].pop("active_state", None)
+                interpol_values[-1].pop("active_steps", None)
+            else:
+                interpol_space.append(micro_sims_active_input_lists[neighbor].copy())
+                interpol_values.append(micro_sims_active_values[neighbor].copy())
+                interpol_values[-1].pop("micro_sim_time", None)
+        if len(interpol_space) == 0:
             self._logger.error(
                 "No neighbors available for interpolation at macro vertex {}.".format(
                     self._mesh_vertex_coords[unset_sim]
                 )
             )
+            return None
         else:
             # Interpolate for each parameter
             for key in interpol_values[0].keys():
@@ -814,7 +848,7 @@ class MicroManager:
                 for elems in range(len(interpol_values)):
                     key_values.append(interpol_values[elems][key])
                 output_interpol[key] = self._interpolation.inv_dist_weighted_interp(
-                    coord, self._mesh_vertex_coords[unset_sim], key_values
+                    interpol_space, crashed_position, key_values
                 )
             # Reintroduce removed information
             if self._is_micro_solve_time_required:

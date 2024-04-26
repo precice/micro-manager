@@ -15,8 +15,6 @@ class Interpolation:
     ) -> np.ndarray:
         """
         Get the indices of the k nearest neighbors of a point in a list of coordinates.
-        If inter_point is part of all_local_coords, it is only considered one time less than it occurs.
-        inter_point is expected to be in all_local_coords at most once.
 
         Parameters
         ----------
@@ -32,28 +30,19 @@ class Interpolation:
         neighbor_indices : np.ndarray
             Indices of the k nearest neighbors in all local points.
         """
-        assert (
-            len(all_local_coords) >= k
-        ), "Desired number of neighbors must be less than or equal to the number of all available neighbors."
-        # If the number of neighbors is larger than the number of all available neighbors, increase the number of neighbors
-        # to be able to delete a neighbor if it coincides with the interpolation point.
-        if len(all_local_coords) > k:
-            k += 1
+        assert len(all_local_coords) > 0, "No local coordinates provided."
+        if len(all_local_coords) < k:
+            self._logger.info(
+                "Number of neighbors {} is larger than the number of neighbors {}. Setting k to {}.".format(
+                    k, len(all_local_coords), len(all_local_coords)
+                )
+            )
+            k = len(all_local_coords)
         neighbors = NearestNeighbors(n_neighbors=k).fit(all_local_coords)
 
-        dists, neighbor_indices = neighbors.kneighbors(
-            [inter_point], return_distance=True
-        )
-
-        # Check whether the inter_point is also part of the neighbor list and remove it.
-        if np.min(dists) < 1e-16:
-            argmin = np.argmin(dists)
-            neighbor_indices = np.delete(neighbor_indices, argmin)
-        # If point itself is not in neighbor list, remove neighbor with largest distance
-        # to return the desired number of neighbors
-        else:
-            argmax = np.argmax(dists)
-            neighbor_indices = np.delete(neighbor_indices, argmax)
+        neighbor_indices = neighbors.kneighbors(
+            [inter_point], return_distance=False
+        ).flatten()
 
         return neighbor_indices
 

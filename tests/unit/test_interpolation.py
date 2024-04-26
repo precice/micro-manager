@@ -30,27 +30,10 @@ class TestInterpolation(TestCase):
         Test if finding nearest neighbor works as expected if interpolation point
         itself is not part of neighbor coordinates.
         """
-        neighbors = [[0, 2, 0], [0, 3, 0], [0, 0, 4], [-5, 0, 0]]
+        neighbors = [[0, 2, 0], [0, 3, 0], [0, 0, 4], [-5, 0, 0], [0, 0, 0]]
         inter_coord = [0, 0, 0]
-        expected_nearest_neighbor_index = [0, 1]
-        k = 2
-        interpolation = Interpolation(MagicMock())
-        nearest_neighbor_index = interpolation.get_nearest_neighbor_indices_local(
-            neighbors, inter_coord, k
-        )
-        self.assertListEqual(
-            nearest_neighbor_index.tolist(), expected_nearest_neighbor_index
-        )
-
-    def test_nearest_neighbor_with_point_its_own_neighbor(self):
-        """
-        Test if finding nearest neighbor works as expected when the
-        interpolation point is part of the coordinate list.
-        """
-        neighbors = [[0, 0, 0], [0, 3, 0], [0, 0, 4], [-5, 0, 0]]
-        inter_coord = [0, 0, 0]
-        expected_nearest_neighbor_index = [1, 2]
-        k = 2
+        expected_nearest_neighbor_index = [4, 0, 1]
+        k = 3
         interpolation = Interpolation(MagicMock())
         nearest_neighbor_index = interpolation.get_nearest_neighbor_indices_local(
             neighbors, inter_coord, k
