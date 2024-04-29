@@ -33,7 +33,7 @@ class Interpolation:
         assert len(all_local_coords) > 0, "No local coordinates provided."
         if len(all_local_coords) < k:
             self._logger.info(
-                "Number of neighbors {} is larger than the number of neighbors {}. Setting k to {}.".format(
+                "Number of desired neighbors k = {} is larger than the number of available neighbors {}. Setting k = {}.".format(
                     k, len(all_local_coords), len(all_local_coords)
                 )
             )

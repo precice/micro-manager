@@ -811,11 +811,19 @@ class MicroManager:
                 micro_sims_active_input_lists.append(intermediate_list)
                 micro_sims_active_values.append(micro_sims_output[i].copy())
         # Find nearest neighbors
-        nearest_neighbors = self._interpolation.get_nearest_neighbor_indices_local(
-            micro_sims_active_input_lists,
-            crashed_position,
-            self._number_of_nearest_neighbors,
-        )
+        if len(micro_sims_active_input_lists) == 0:
+            self._logger.error(
+                "No active neighbors available for interpolation at macro vertex {}. Value cannot be interpolated".format(
+                    self._mesh_vertex_coords[unset_sim]
+                )
+            )
+            return None
+        else:
+            nearest_neighbors = self._interpolation.get_nearest_neighbor_indices_local(
+                micro_sims_active_input_lists,
+                crashed_position,
+                self._number_of_nearest_neighbors,
+            )
         # Interpolate
         interpol_space = []  # DECLARATION
         interpol_values = []  # DECLARATION
@@ -833,33 +841,23 @@ class MicroManager:
                 interpol_values.append(micro_sims_active_values[neighbor].copy())
                 interpol_values[-1].pop("micro_sim_time", None)
 
+        # Interpolate for each parameter
         output_interpol = dict()
-        if len(interpol_space) == 0:
-            self._logger.error(
-                "No neighbors available for interpolation at macro vertex {}.".format(
-                    self._mesh_vertex_coords[unset_sim]
-                )
+        for key in interpol_values[0].keys():
+            key_values = []  # DECLARATION
+            # Collect values of current parameter from neighboring simulations
+            for elems in range(len(interpol_values)):
+                key_values.append(interpol_values[elems][key])
+            output_interpol[key] = self._interpolation.interpolate(
+                interpol_space, crashed_position, key_values
             )
-            return None
-        else:
-            # Interpolate for each parameter
-            for key in interpol_values[0].keys():
-                key_values = []  # DECLARATION
-                # Collect values of current parameter from neighboring simulations
-                for elems in range(len(interpol_values)):
-                    key_values.append(interpol_values[elems][key])
-                output_interpol[key] = self._interpolation.interpolate(
-                    interpol_space, crashed_position, key_values
-                )
-            # Reintroduce removed information
-            if self._is_micro_solve_time_required:
-                output_interpol["micro_sim_time"] = 0
-            if self._is_adaptivity_on:
-                output_interpol["active_state"] = 1
-                output_interpol["active_steps"] = self._micro_sims_active_steps[
-                    unset_sim
-                ]
-            return output_interpol
+        # Reintroduce removed information
+        if self._is_micro_solve_time_required:
+            output_interpol["micro_sim_time"] = 0
+        if self._is_adaptivity_on:
+            output_interpol["active_state"] = 1
+            output_interpol["active_steps"] = self._micro_sims_active_steps[unset_sim]
+        return output_interpol
 
 
 def main():
