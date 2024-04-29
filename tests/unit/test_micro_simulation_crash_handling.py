@@ -45,7 +45,6 @@ class TestSimulationCrashHandling(TestCase):
         manager._mesh_vertex_coords = np.array(
             [[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0]]
         )
-        manager._neighbor_list = np.array([[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]])
         manager._is_adaptivity_on = (
             False  # make sure adaptivity is off overriding config
         )
@@ -53,7 +52,7 @@ class TestSimulationCrashHandling(TestCase):
 
         micro_sims_output = manager._solve_micro_simulations(macro_data)
 
-        # Crashed data has interpolated value
+        # Crashed simulation has interpolated value
         data_crashed = micro_sims_output[2]
         self.assertEqual(data_crashed["micro-scalar-data"], expected_crash_scalar_data)
         self.assertListEqual(
@@ -93,9 +92,6 @@ class TestSimulationCrashHandling(TestCase):
         manager._mesh_vertex_coords = np.array(
             [[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0], [1, 1, 0]]
         )
-        manager._neighbor_list = np.array(
-            [[1, 2, 3, 4], [0, 2, 3, 4], [0, 1, 3, 4], [0, 1, 2, 4], [0, 1, 2, 3]]
-        )
         manager._micro_sims = [MicroSimulation(i) for i in range(5)]
 
         is_sim_active = np.array([True, True, True, True, False])
@@ -104,7 +100,7 @@ class TestSimulationCrashHandling(TestCase):
             macro_data, is_sim_active, sim_is_associated_to
         )
 
-        # Crashed data has interpolated value
+        # Crashed simulation has interpolated value
         data_crashed = micro_sims_output[2]
         self.assertEqual(data_crashed["micro-scalar-data"], expected_crash_scalar_data)
         self.assertListEqual(

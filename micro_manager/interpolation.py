@@ -46,9 +46,7 @@ class Interpolation:
 
         return neighbor_indices
 
-    def inv_dist_weighted_interp(
-        self, neighbors: np.ndarray, point: np.ndarray, values
-    ):
+    def interpolate(self, neighbors: np.ndarray, point: np.ndarray, values):
         """
             Interpolate a value at a point using inverse distance weighting.
             .. math::
