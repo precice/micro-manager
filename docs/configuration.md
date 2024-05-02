@@ -107,7 +107,7 @@ The Micro Manager can adaptively control micro simulations. The adaptivity strat
 
 All the adaptivity parameters are chosen from the second publication.
 
-To turn on adaptivity, the following options need to be set in `simulation_params` under the sub-heading `adaptivity`:
+To turn on adaptivity, set `"adaptivity": True` in `simulation_params`. Then under `adaptivity_settings` set the following variables:
 
 Parameter | Description
 --- | ---
@@ -119,12 +119,13 @@ Parameter | Description
 `every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
 `similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.
 
-Example of adaptivity configuration
+Example of adaptivity configuration is
 
 ```json
 "simulation_params": {
     "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
-    "adaptivity" {
+    "adaptivity": "True",
+    "adaptivity_settings" {
         "type": "local",
         "data": ["temperature", "porosity"],
         "history_param": 0.5,

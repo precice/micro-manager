@@ -7,14 +7,14 @@ on:
   pull_request:
     branches:
       - "*"
-jobs:  
+jobs:
   domain_decomposition_integration_tests:
     name: Run domain decomposition integration tests
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: micro-manager
 
@@ -42,7 +42,7 @@ jobs:
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube
         run: mpiexec -n 2 --allow-run-as-root python3 run_micro_manager.py --config micro-manager-config-parallel-1.json & python3 unit_cube.py
-      
+
       - name: Run integration test (variant 2)
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube
@@ -54,7 +54,7 @@ jobs:
     container: precice/precice:nightly
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: micro-manager
 
