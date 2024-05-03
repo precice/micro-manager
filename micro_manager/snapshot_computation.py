@@ -21,7 +21,8 @@ import numpy as np
 import logging
 import time
 
-from .config import Config
+from .config_snapshot import SnapshotConfig
+from .read_write_data import HDFParameterfile as hp
 from .micro_simulation import create_simulation_class
 
 sys.path.append(os.getcwd())
@@ -59,9 +60,7 @@ class SnapshotComputation:
         self._micro_sims_have_output = False
 
         self._logger.info("Provided configuration file: {}".format(config_file))
-        self._config = Config(self._logger, config_file)
-
-        self._macro_mesh_name = self._config.get_macro_mesh_name()
+        self._config = SnapshotConfig(self._logger, config_file)
 
         # Data names of data to output - TODO: rename but reuse
         self._write_data_names = self._config.get_write_data_names()
@@ -69,20 +68,15 @@ class SnapshotComputation:
         # Data names of data read as macro input parameters - TODO: rename but reuse
         self._read_data_names = self._config.get_read_data_names()
 
-        self._macro_bounds = self._config.get_macro_domain_bounds()
+        self._parameter_file = self._config.get_parameter_file_name()
 
-        if self._is_parallel:  # Simulation is run in parallel
-            self._ranks_per_axis = self._config.get_ranks_per_axis()
+        self._postprocessing = self._config.get_postprocessing()
 
         self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
         self._local_number_of_sims = 0
         self._global_number_of_sims = 0
         self._is_rank_empty = False
-        self._dt = 0  # TODO: potentially irrelevant
-        self._micro_n_out = (
-            self._config.get_micro_output_n()
-        )  # TODO: potentially irrelevant
 
         self._initialize()
 
@@ -97,33 +91,56 @@ class SnapshotComputation:
           and write outputs to storage file.
         """
 
-        # Loop over macro parameter increases
-
-        micro_sims_input = (
-            self._read_data_from_precice()
-        )  # TODO: replace with own read_data function or just a list of dicts to read data from parameter file
-
-        micro_sims_output = self._solve_micro_simulations(micro_sims_input)
-
-        self._write_data_to_precice(
-            micro_sims_output
-        )  # TODO: Replace with write data to file
-
-        self._logger.info(
-            "Snapshots for micro simulations {} - {} have been created".format(
-                self._micro_sims[0].get_global_id(),
-                self._micro_sims[-1].get_global_id(),
+        # TODO Loop over macro parameter increases - potentially enumerate
+        for elems in range(self._local_number_of_sims):
+            # TODO create micro simulation object
+            # Create micro simulation objects
+            self._micro_sims = create_simulation_class(self._micro_problem)(
+                self._global_ids_of_local_sims[elems]
             )
-        )
 
-        # TODO: make this work
-        message = "Snapshots {} - {} have been computed for parameters {}".format(
-            self._micro_sims[0].get_global_id(), self._micro_sims[-1].get_global_id()
-        )
-        for params, values in micro_sims_input.items():
-            message += "{} = {}, ".format(params, values)
+            micro_sims_input = self._macro_parameters[elems]
+            # TODO: replace with own read_data function or just a list of dicts to read data from parameter file
+            parameter = ""
+            for key, value in micro_sims_input.items():
+                parameter += "{} = {}, ".format(key, value)
 
-        self._logger.info(message)
+            micro_sims_output = self._solve_micro_simulations(micro_sims_input)
+
+            # TODO: postprocessing
+            if self._postprocessing is True:
+                if hasattr(self._micro_problem, "postprocessing") and callable(
+                    getattr(self._micro_problem, "postprocessing")
+                ):
+                    micro_sims_output = self._micro_sims.postprocessing(
+                        micro_sims_output
+                    )
+                else:
+                    self._logger.info(
+                        "Postprocessing is activated in config file but not available. Skipping postprocessing."
+                    )
+
+            # TODO log that the snapshots have been created or that the simulation has crashed
+            if micro_sims_output is not None:
+                self._data_storage.write_sim_output_to_hdf(
+                    self._output_file_path, micro_sims_input, micro_sims_output
+                )
+                # TODO: Replace with write data to file
+                self._logger.info(
+                    "Snapshots for macro parameter: {} have been created and stored".format(
+                        parameter
+                    )
+                )
+            else:
+                self._logger.error(
+                    "Simulation with parameter: {} has crashed. Skipping this snapshot".format(
+                        parameter
+                    )
+                )
+
+        # TODO exit loop
+
+        self._logger.info("Snapshot computation finished.")
 
     # ***************
     # Private methods
@@ -131,33 +148,45 @@ class SnapshotComputation:
 
     def _initialize(self) -> None:
         """
-        Initialize the Micro Manager by performing the following tasks:
+        Initialize the Snapshot Computation by performing the following tasks:
         - Decompose the domain if the snapshot creation is executed in parallel.
+        - Read macro parameter from file
         - Simulate macro information.
         - Create all micro simulation objects and initialize them if an initialize() method is available.
         """
-        # Decompose the macro-domain and set the mesh access region for each partition
+
+        # Create subdirectory in which the snapshot files are stored
+
+        directory = os.path.dirname(self._parameter_file)
+        output_subdirectory = os.path.join(directory, "output")
+        os.makedirs(output_subdirectory, exist_ok=True)
+
+        # Create instance for reading and writing data
+
+        self._data_storage = hp(self._logger, self._rank, self._size)
+
+        # Read macro parameters from the parameter file
+        self._macro_parameters = self._data_storage.read_parameter_hdf_to_dict(
+            self._parameter_file, self._read_data_names
+        )
+
+        # Decompose macro parameters if the snapshot creation is executed in parallel
         if self._is_parallel:
-            dimension = len(self._macro_bounds) / 2
-            domain_decomposer = DomainDecomposer(
-                self._logger, dimension, self._rank, self._size
-            )  # TODO: Replace _participant with own function and with own domain decomposition
-            coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(
-                self._macro_bounds, self._ranks_per_axis
-            )
-            # TODO: assign the correct parameters and corresponding coordinates to this rank and neglect the others using the coupling_mesh_bounds
-            self._mesh_vertex_coords = None  # TODO
-        else:
-            # TODO: is all macro coords given in parameter file
-            self._mesh_vertex_coords = None  # TODO
-        # TODO I think this is unnecessary
-        # self._participant.set_mesh_access_region(self._macro_mesh_name, coupling_mesh_bounds)  # TODO: write own set_mesh_access_region
+            equal_partition = int(len(self._macro_parameters) / self._size)
+            rest = len(self._macro_parameters) % self._size
+            if self._rank < rest:
+                start = self._rank * (equal_partition + 1)
+                end = start + equal_partition + 1
+            else:
+                start = self._rank * equal_partition + rest
+                end = start + equal_partition
+            self._macro_parameters = self._macro_parameters[start:end]
 
-        assert self._mesh_vertex_coords.size != 0, "Macro mesh has no vertices."
+        # Create file to store output
+        self._output_file_path = self._data_storage.create_file(output_subdirectory)
 
-        self._local_number_of_sims = (
-            []
-        )  # TODO: use custom function to get number of micro simulations
+        self._local_number_of_sims = len(self._macro_parameters)
+        # TODO: use number of parameters to get number of micro simulations
         self._logger.info(
             "Number of local micro simulations = {}".format(self._local_number_of_sims)
         )
@@ -171,8 +200,9 @@ class SnapshotComputation:
                 )
                 self._is_rank_empty = True
             else:
-                raise Exception("Micro Manager has no micro simulations.")
+                raise Exception("Snapshot has no micro simulations.")
 
+        # TODO: I don't think we have communication thus it is not necessary tp know the global idsSnapshot
         nms_all_ranks = np.zeros(self._size, dtype=np.int64)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
         # simulations have been created by previous ranks, so that it can set
@@ -191,28 +221,16 @@ class SnapshotComputation:
 
         self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
 
-        micro_problem = getattr(
+        self._micro_problem = getattr(
             importlib.import_module(
                 self._config.get_micro_file_name(), "MicroSimulation"
             ),
             "MicroSimulation",
         )
 
-        # Create micro simulation objects
-        for i in range(self._local_number_of_sims):
-            self._micro_sims[i] = create_simulation_class(micro_problem)(
-                self._global_ids_of_local_sims[i]
-            )
-
-        self._logger.info(
-            "Micro simulations with global IDs {} - {} created.".format(
-                self._global_ids_of_local_sims[0], self._global_ids_of_local_sims[-1]
-            )
-        )
-
         self._micro_sims_have_output = False
-        if hasattr(micro_problem, "output") and callable(
-            getattr(micro_problem, "output")
+        if hasattr(self._micro_problem, "output") and callable(
+            getattr(self._micro_problem, "output")
         ):
             self._micro_sims_have_output = True
 
@@ -232,17 +250,24 @@ class SnapshotComputation:
             List of dicts in which keys are names of data and the values are the data of the output of the micro
             simulations.
         """
-        micro_sims_output = [None] * self._local_number_of_sims
-
-        for count, sim in enumerate(self._micro_sims):
+        micro_sims_output = [None]
+        try:
             start_time = time.time()
-            micro_sims_output[count] = sim.solve(micro_sims_input[count], self._dt)
+            micro_sims_output = self._micro_sims.solve(micro_sims_input)
             end_time = time.time()
 
             if self._is_micro_solve_time_required:
-                micro_sims_output[count]["micro_sim_time"] = end_time - start_time
+                micro_sims_output["micro_sim_time"] = end_time - start_time
 
-        return micro_sims_output
+            return micro_sims_output
+        except Exception as e:
+            self._logger.error(
+                "Micro simulation with input {} has crashed. See next entry on rank for error message".format(
+                    micro_sims_input
+                )
+            )
+            self._logger.error(e)
+            return None
 
 
 def main():
