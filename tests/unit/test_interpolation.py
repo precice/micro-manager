@@ -41,7 +41,7 @@ class TestInterpolation(TestCase):
         k = 3
 
         interpolation = Interpolation(MagicMock())
-        nearest_neighbor_index = interpolation.get_nearest_neighbor_indices_local(
+        nearest_neighbor_index = interpolation.get_nearest_neighbor_indices(
             neighbors, inter_coord, k
         )
         self.assertListEqual(
