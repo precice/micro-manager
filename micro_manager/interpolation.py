@@ -7,9 +7,9 @@ class Interpolation:
 
         self._logger = logger
 
-    def get_nearest_neighbor_indices_local(
+    def get_nearest_neighbor_indices(
         self,
-        all_local_coords: np.ndarray,
+        coords: np.ndarray,
         inter_point: np.ndarray,
         k: int,
     ) -> np.ndarray:
@@ -18,7 +18,7 @@ class Interpolation:
 
         Parameters
         ----------
-        all_local_coords : list
+        coords : list
             List of coordinates of all points.
         inter_point : list | np.ndarray
             Coordinates of the point for which the neighbors are to be found.
@@ -30,15 +30,14 @@ class Interpolation:
         neighbor_indices : np.ndarray
             Local indices of the k nearest neighbors in all local points.
         """
-        assert len(all_local_coords) > 0, "No local coordinates provided."
-        if len(all_local_coords) < k:
+        if len(coords) < k:
             self._logger.info(
                 "Number of desired neighbors k = {} is larger than the number of available neighbors {}. Resetting k = {}.".format(
-                    k, len(all_local_coords), len(all_local_coords)
+                    k, len(coords), len(coords)
                 )
             )
-            k = len(all_local_coords)
-        neighbors = NearestNeighbors(n_neighbors=k).fit(all_local_coords)
+            k = len(coords)
+        neighbors = NearestNeighbors(n_neighbors=k).fit(coords)
 
         neighbor_indices = neighbors.kneighbors(
             [inter_point], return_distance=False
@@ -68,17 +67,17 @@ class Interpolation:
         """
         interpol_val = 0
         summed_weights = 0
-        # iterate over all neighbors
+        # Iterate over all neighbors
         for inx in range(len(neighbors)):
-            # compute the squared norm of the difference between interpolation point and neighbor
+            # Compute the squared norm of the difference between interpolation point and neighbor
             norm = np.linalg.norm(np.array(neighbors[inx]) - np.array(point)) ** 2
             # If interpolation point is already part of the data it is returned as the interpolation result
             # This avoids division by zero
             if norm < 1e-16:
                 return values[inx]
-            # update interpolation value
+            # Update interpolation value
             interpol_val += values[inx] / norm
-            # extend normalization factor
+            # Extend normalization factor
             summed_weights += 1 / norm
 
         return interpol_val / summed_weights

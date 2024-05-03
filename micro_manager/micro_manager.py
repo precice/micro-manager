@@ -20,7 +20,6 @@ import time
 from copy import deepcopy
 from typing import Dict
 from warnings import warn
-import itertools
 
 import numpy as np
 import precice
@@ -90,7 +89,7 @@ class MicroManager:
 
         self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
-        # Parameter for interpolation in case of simulation crash
+        # Parameter for interpolation in case of a simulation crash
         self._crash_threshold = 0.2
         self._number_of_nearest_neighbors = 4
 
@@ -417,7 +416,7 @@ class MicroManager:
 
         # Setup for simulation crashes
         self._has_sim_crashed = [False] * self._local_number_of_sims
-        self._interpolation = Interpolation(self._logger)
+        self._interpolant = Interpolation(self._logger)
 
         micro_problem = getattr(
             importlib.import_module(
@@ -607,21 +606,20 @@ class MicroManager:
                     self._has_sim_crashed[count] = True
 
         # Interpolate result for crashed simulation
-        if self._has_sim_crashed.count(True) > 0:
-            unset_sims = [
-                count for count, value in enumerate(micro_sims_output) if value is None
-            ]
+        unset_sims = [
+            count for count, value in enumerate(micro_sims_output) if value is None
+        ]
 
-            # Iterate over all crashed simulations to interpolate output
-            for unset_sim in unset_sims:
-                self._logger.info(
-                    "Interpolating output for crashed simulation at macro vertex {}.".format(
-                        self._mesh_vertex_coords[unset_sim]
-                    )
+        # Iterate over all crashed simulations to interpolate output
+        for unset_sim in unset_sims:
+            self._logger.info(
+                "Interpolating output for crashed simulation at macro vertex {}.".format(
+                    self._mesh_vertex_coords[unset_sim]
                 )
-                micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
-                    micro_sims_input, micro_sims_output, unset_sim
-                )
+            )
+            micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
+                micro_sims_input, micro_sims_output, unset_sim
+            )
 
         return micro_sims_output
 
@@ -709,23 +707,22 @@ class MicroManager:
                     self._has_sim_crashed[active_id] = True
 
         # Interpolate result for crashed simulation
-        if self._has_sim_crashed.count(True) > 0:
-            unset_sims = []
-            for active_id in active_sim_ids:
-                if micro_sims_output[active_id] is None:
-                    unset_sims.append(active_id)
+        unset_sims = []
+        for active_id in active_sim_ids:
+            if micro_sims_output[active_id] is None:
+                unset_sims.append(active_id)
 
-            # Iterate over all crashed simulations to interpolate output
-            for unset_sim in unset_sims:
-                self._logger.info(
-                    "Interpolating output for crashed simulation at macro vertex {}.".format(
-                        self._mesh_vertex_coords[unset_sim]
-                    )
+        # Iterate over all crashed simulations to interpolate output
+        for unset_sim in unset_sims:
+            self._logger.info(
+                "Interpolating output for crashed simulation at macro vertex {}.".format(
+                    self._mesh_vertex_coords[unset_sim]
                 )
+            )
 
-                micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
-                    micro_sims_input, micro_sims_output, unset_sim, active_sim_ids
-                )
+            micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
+                micro_sims_input, micro_sims_output, unset_sim, active_sim_ids
+            )
 
         # For each inactive simulation, copy data from most similar active simulation
         if self._adaptivity_type == "global":
@@ -791,7 +788,7 @@ class MicroManager:
         micro_sims_active_input_lists = []
         micro_sims_active_values = []
         # Turn crashed simulation macro parameters into list to use as coordinate for interpolation
-        crashed_position = []  # DECLARATION
+        crashed_position = []
         for value in micro_sims_input[unset_sim].values():
             if isinstance(value, np.ndarray) or isinstance(value, list):
                 crashed_position.extend(value)
@@ -801,7 +798,7 @@ class MicroManager:
         for i in iter_length:
             if not self._has_sim_crashed[i]:
                 # Collect macro data at one macro vertex
-                intermediate_list = []  # DECLARATION
+                intermediate_list = []
                 for value in micro_sims_input[i].values():
                     if isinstance(value, np.ndarray) or isinstance(value, list):
                         intermediate_list.extend(value)
@@ -819,14 +816,14 @@ class MicroManager:
             )
             return None
         else:
-            nearest_neighbors = self._interpolation.get_nearest_neighbor_indices_local(
+            nearest_neighbors = self._interpolant.get_nearest_neighbor_indices(
                 micro_sims_active_input_lists,
                 crashed_position,
                 self._number_of_nearest_neighbors,
             )
         # Interpolate
-        interpol_space = []  # DECLARATION
-        interpol_values = []  # DECLARATION
+        interpol_space = []
+        interpol_values = []
         # Collect neighbor vertices for interpolation
         for neighbor in nearest_neighbors:
             # Remove data not required for interpolation from values
@@ -848,7 +845,7 @@ class MicroManager:
             # Collect values of current parameter from neighboring simulations
             for elems in range(len(interpol_values)):
                 key_values.append(interpol_values[elems][key])
-            output_interpol[key] = self._interpolation.interpolate(
+            output_interpol[key] = self._interpolant.interpolate(
                 interpol_space, crashed_position, key_values
             )
         # Reintroduce removed information
