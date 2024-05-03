@@ -788,8 +788,8 @@ class MicroManager:
             iter_length = active_sim_ids
         else:
             iter_length = range(len(micro_sims_input))
-        micro_sims_active_input_lists = []  # DECLARATION
-        micro_sims_active_values = []  # DECLARATION
+        micro_sims_active_input_lists = []
+        micro_sims_active_values = []
         # Turn crashed simulation macro parameters into list to use as coordinate for interpolation
         crashed_position = []  # DECLARATION
         for value in micro_sims_input[unset_sim].values():

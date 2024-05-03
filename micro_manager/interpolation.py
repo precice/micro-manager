@@ -14,7 +14,7 @@ class Interpolation:
         k: int,
     ) -> np.ndarray:
         """
-        Get the indices of the k nearest neighbors of a point in a list of coordinates.
+        Get local indices of the k nearest neighbors of a point.
 
         Parameters
         ----------
@@ -28,12 +28,12 @@ class Interpolation:
         Returns
         ------
         neighbor_indices : np.ndarray
-            Indices of the k nearest neighbors in all local points.
+            Local indices of the k nearest neighbors in all local points.
         """
         assert len(all_local_coords) > 0, "No local coordinates provided."
         if len(all_local_coords) < k:
             self._logger.info(
-                "Number of desired neighbors k = {} is larger than the number of available neighbors {}. Setting k = {}.".format(
+                "Number of desired neighbors k = {} is larger than the number of available neighbors {}. Resetting k = {}.".format(
                     k, len(all_local_coords), len(all_local_coords)
                 )
             )
@@ -48,7 +48,7 @@ class Interpolation:
 
     def interpolate(self, neighbors: np.ndarray, point: np.ndarray, values):
         """
-            Interpolate a value at a point using inverse distance weighting.
+            Interpolate a value at a point using inverse distance weighting. (https://en.wikipedia.org/wiki/Inverse_distance_weighting)
             .. math::
                 f(x) = (\sum_{i=1}^{n} \frac{f_i}{\Vert x_i - x \Vert^2}) / (\sum_{j=1}^{n} \frac{1}{\Vert x_j - x \Vert^2})
 

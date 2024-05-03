@@ -26,7 +26,7 @@ class MicroSimulation:
 class TestSimulationCrashHandling(TestCase):
     def test_crash_handling(self):
         """
-        Test if the micro manager catches a simulation crash and handles it adequately.
+        Test if the Micro Manager catches a simulation crash and handles it adequately.
         A crash if caught by interpolation within _solve_micro_simulations.
         """
 
