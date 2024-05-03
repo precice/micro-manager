@@ -37,7 +37,7 @@ Repository = "https://github.com/precice/micro-manager"
 micro-manager-precice = "micro_manager.micro_manager:main"
 
 [tool.setuptools]
-packages=["micro_manager"]
+packages=["micro_manager", "micro_manager.adaptivity"]
 
 [tool.setuptools-git-versioning]
 enabled = true
