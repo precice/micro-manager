@@ -1,0 +1,7 @@
+# Logging related files
+*.log
+
+
+# PyCharm related files
+.idea
+__pycache__
