@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61", "wheel", "setuptools-git-versioning"]
+requires = ["setuptools>=41", "wheel", "setuptools-git-versioning"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -10,7 +10,7 @@ dependencies = [
 ]
 requires-python = ">=3.8"
 authors = [
-    { name = "Ishaan Desai",  email="ishaan.desai@ipva.uni-stuttgart.de"}
+    { name = "The preCICE Developers",  email="info@precice.org"}
 ]
 maintainers = [
     { name = "Ishaan Desai",  email="ishaan.desai@ipvs.uni-stuttgart.de"}
@@ -33,8 +33,11 @@ Documentation = "https://precice.org/tooling-micro-manager-overview.html"
 Repository = "https://github.com/precice/micro-manager"
 "Bug Tracker" = "https://github.com/precice/micro-manager/issues"
 
+[project.scripts]
+micro-manager-precice = "micro_manager.micro_manager:main"
+
 [tool.setuptools]
-packages=["micro_manager", "micro_manager.adaptivity"]
+packages=["micro_manager"]
 
 [tool.setuptools-git-versioning]
 enabled = true
