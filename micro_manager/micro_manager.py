@@ -30,6 +30,7 @@ from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
 from .config import Config
 from .domain_decomposition import DomainDecomposer
 from .micro_simulation import create_simulation_class
+from .interpolation import Interpolation
 
 sys.path.append(os.getcwd())
 
@@ -87,6 +88,10 @@ class MicroManager:
             self._ranks_per_axis = self._config.get_ranks_per_axis()
 
         self._is_micro_solve_time_required = self._config.write_micro_solve_time()
+
+        # Parameter for interpolation in case of a simulation crash
+        self._crash_threshold = 0.2
+        self._number_of_nearest_neighbors = 4
 
         self._local_number_of_sims = 0
         self._global_number_of_sims = 0
@@ -259,6 +264,25 @@ class MicroManager:
             else:
                 micro_sims_output = self._solve_micro_simulations(micro_sims_input)
 
+            # Check if more than a certain percentage of the micro simulations have crashed and terminate if threshold is exceeded
+            crashed_sims_on_all_ranks = np.zeros(self._size, dtype=np.int64)
+            self._comm.Allgather(
+                np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
+            )
+
+            if self._is_parallel:
+                crash_ratio = (
+                    np.sum(crashed_sims_on_all_ranks) / self._global_number_of_sims
+                )
+            else:
+                crash_ratio = np.sum(self._has_sim_crashed) / len(self._has_sim_crashed)
+            if crash_ratio > self._crash_threshold:
+                self._logger.info(
+                    "{:.1%} of the micro simulations have crashed exceeding the threshold of {:.1%}. "
+                    "Exiting simulation.".format(crash_ratio, self._crash_threshold)
+                )
+                sys.exit()
+
             self._write_data_to_precice(micro_sims_output)
 
             t += self._dt  # increase internal time when time step is done.
@@ -336,11 +360,11 @@ class MicroManager:
 
         (
             self._mesh_vertex_ids,
-            mesh_vertex_coords,
+            self._mesh_vertex_coords,
         ) = self._participant.get_mesh_vertex_ids_and_coordinates(self._macro_mesh_name)
-        assert mesh_vertex_coords.size != 0, "Macro mesh has no vertices."
+        assert self._mesh_vertex_coords.size != 0, "Macro mesh has no vertices."
 
-        self._local_number_of_sims, _ = mesh_vertex_coords.shape
+        self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
         self._logger.info(
             "Number of local micro simulations = {}".format(self._local_number_of_sims)
         )
@@ -389,6 +413,10 @@ class MicroManager:
             sim_id += 1
 
         self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
+
+        # Setup for simulation crashes
+        self._has_sim_crashed = [False] * self._local_number_of_sims
+        self._interpolant = Interpolation(self._logger)
 
         micro_problem = getattr(
             importlib.import_module(
@@ -551,12 +579,47 @@ class MicroManager:
         micro_sims_output = [None] * self._local_number_of_sims
 
         for count, sim in enumerate(self._micro_sims):
-            start_time = time.time()
-            micro_sims_output[count] = sim.solve(micro_sims_input[count], self._dt)
-            end_time = time.time()
+            # If micro simulation has not crashed in a previous iteration, attempt to solve it
+            if not self._has_sim_crashed[count]:
+                # Attempt to solve the micro simulation
+                try:
+                    start_time = time.time()
+                    micro_sims_output[count] = sim.solve(
+                        micro_sims_input[count], self._dt
+                    )
+                    end_time = time.time()
+                    # Write solve time of the macro simulation if required and the simulation has not crashed
+                    if self._is_micro_solve_time_required:
+                        micro_sims_output[count]["micro_sim_time"] = (
+                            end_time - start_time
+                        )
 
-            if self._is_micro_solve_time_required:
-                micro_sims_output[count]["micro_sim_time"] = end_time - start_time
+                # If simulation crashes, log the error and keep the output constant at the previous iteration's output
+                except Exception as error_message:
+                    self._logger.error(
+                        "Micro simulation at macro coordinates {} has experienced an error. "
+                        "See next entry on this rank for error message.".format(
+                            self._mesh_vertex_coords[count]
+                        )
+                    )
+                    self._logger.error(error_message)
+                    self._has_sim_crashed[count] = True
+
+        # Interpolate result for crashed simulation
+        unset_sims = [
+            count for count, value in enumerate(micro_sims_output) if value is None
+        ]
+
+        # Iterate over all crashed simulations to interpolate output
+        for unset_sim in unset_sims:
+            self._logger.info(
+                "Interpolating output for crashed simulation at macro vertex {}.".format(
+                    self._mesh_vertex_coords[unset_sim]
+                )
+            )
+            micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
+                micro_sims_input, micro_sims_output, unset_sim
+            )
 
         return micro_sims_output
 
@@ -611,20 +674,55 @@ class MicroManager:
 
         # Solve all active micro simulations
         for active_id in active_sim_ids:
-            start_time = time.time()
-            micro_sims_output[active_id] = self._micro_sims[active_id].solve(
-                micro_sims_input[active_id], self._dt
+            # If micro simulation has not crashed in a previous iteration, attempt to solve it
+            if not self._has_sim_crashed[active_id]:
+                # Attempt to solve the micro simulation
+                try:
+                    start_time = time.time()
+                    micro_sims_output[active_id] = self._micro_sims[active_id].solve(
+                        micro_sims_input[active_id], self._dt
+                    )
+                    end_time = time.time()
+                    # Write solve time of the macro simulation if required and the simulation has not crashed
+                    if self._is_micro_solve_time_required:
+                        micro_sims_output[active_id]["micro_sim_time"] = (
+                            end_time - start_time
+                        )
+
+                    # Mark the micro sim as active for export
+                    micro_sims_output[active_id]["active_state"] = 1
+                    micro_sims_output[active_id][
+                        "active_steps"
+                    ] = self._micro_sims_active_steps[active_id]
+
+                # If simulation crashes, log the error and keep the output constant at the previous iteration's output
+                except Exception as error_message:
+                    self._logger.error(
+                        "Micro simulation at macro coordinates {} has experienced an error. "
+                        "See next entry on this rank for error message.".format(
+                            self._mesh_vertex_coords[active_id]
+                        )
+                    )
+                    self._logger.error(error_message)
+                    self._has_sim_crashed[active_id] = True
+
+        # Interpolate result for crashed simulation
+        unset_sims = []
+        for active_id in active_sim_ids:
+            if micro_sims_output[active_id] is None:
+                unset_sims.append(active_id)
+
+        # Iterate over all crashed simulations to interpolate output
+        for unset_sim in unset_sims:
+            self._logger.info(
+                "Interpolating output for crashed simulation at macro vertex {}.".format(
+                    self._mesh_vertex_coords[unset_sim]
+                )
             )
-            end_time = time.time()
 
-            # Mark the micro sim as active for export
-            micro_sims_output[active_id]["active_state"] = 1
-            micro_sims_output[active_id][
-                "active_steps"
-            ] = self._micro_sims_active_steps[active_id]
-
-            if self._is_micro_solve_time_required:
-                micro_sims_output[active_id]["micro_sim_time"] = end_time - start_time
+            micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
+                micro_sims_input, micro_sims_output, unset_sim, active_sim_ids
+            )
 
         # For each inactive simulation, copy data from most similar active simulation
         if self._adaptivity_type == "global":
@@ -653,6 +751,110 @@ class MicroManager:
                 self._data_for_adaptivity[name][i] = micro_sims_output[i][name]
 
         return micro_sims_output
+
+    def _interpolate_output_for_crashed_sim(
+        self,
+        micro_sims_input: list,
+        micro_sims_output: list,
+        unset_sim: int,
+        active_sim_ids: np.ndarray = None,
+    ) -> dict:
+        """
+        Using the output of neighboring simulations, interpolate the output for a crashed simulation.
+
+        Parameters
+        ----------
+        micro_sims_input : list
+            List of dicts in which keys are names of data and the values are the data which are required inputs to
+            solve a micro simulation.
+        micro_sims_output : list
+            List dicts containing output of local micro simulations.
+        unset_sim : int
+            Index of the crashed simulation in the list of all local simulations currently interpolating.
+        active_sim_ids : numpy.ndarray, optional
+            Array of active simulation IDs.
+
+        Returns
+        -------
+        output_interpol : dict
+            Result of the interpolation in which keys are names of data and the values are the data.
+        """
+        # Find neighbors of the crashed simulation in active and non-crashed simulations
+        # Set iteration length to only iterate over active simulations
+        if self._is_adaptivity_on:
+            iter_length = active_sim_ids
+        else:
+            iter_length = range(len(micro_sims_input))
+        micro_sims_active_input_lists = []
+        micro_sims_active_values = []
+        # Turn crashed simulation macro parameters into list to use as coordinate for interpolation
+        crashed_position = []
+        for value in micro_sims_input[unset_sim].values():
+            if isinstance(value, np.ndarray) or isinstance(value, list):
+                crashed_position.extend(value)
+            else:
+                crashed_position.append(value)
+        # Turn active simulation macro parameters into lists to use as coordinates for interpolation based on parameters
+        for i in iter_length:
+            if not self._has_sim_crashed[i]:
+                # Collect macro data at one macro vertex
+                intermediate_list = []
+                for value in micro_sims_input[i].values():
+                    if isinstance(value, np.ndarray) or isinstance(value, list):
+                        intermediate_list.extend(value)
+                    else:
+                        intermediate_list.append(value)
+                # Create lists of macro data for interpolation
+                micro_sims_active_input_lists.append(intermediate_list)
+                micro_sims_active_values.append(micro_sims_output[i].copy())
+        # Find nearest neighbors
+        if len(micro_sims_active_input_lists) == 0:
+            self._logger.error(
+                "No active neighbors available for interpolation at macro vertex {}. Value cannot be interpolated".format(
+                    self._mesh_vertex_coords[unset_sim]
+                )
+            )
+            return None
+        else:
+            nearest_neighbors = self._interpolant.get_nearest_neighbor_indices(
+                micro_sims_active_input_lists,
+                crashed_position,
+                self._number_of_nearest_neighbors,
+            )
+        # Interpolate
+        interpol_space = []
+        interpol_values = []
+        # Collect neighbor vertices for interpolation
+        for neighbor in nearest_neighbors:
+            # Remove data not required for interpolation from values
+            if self._is_adaptivity_on:
+                interpol_space.append(micro_sims_active_input_lists[neighbor].copy())
+                interpol_values.append(micro_sims_active_values[neighbor].copy())
+                interpol_values[-1].pop("micro_sim_time", None)
+                interpol_values[-1].pop("active_state", None)
+                interpol_values[-1].pop("active_steps", None)
+            else:
+                interpol_space.append(micro_sims_active_input_lists[neighbor].copy())
+                interpol_values.append(micro_sims_active_values[neighbor].copy())
+                interpol_values[-1].pop("micro_sim_time", None)
+
+        # Interpolate for each parameter
+        output_interpol = dict()
+        for key in interpol_values[0].keys():
+            key_values = []  # DECLARATION
+            # Collect values of current parameter from neighboring simulations
+            for elems in range(len(interpol_values)):
+                key_values.append(interpol_values[elems][key])
+            output_interpol[key] = self._interpolant.interpolate(
+                interpol_space, crashed_position, key_values
+            )
+        # Reintroduce removed information
+        if self._is_micro_solve_time_required:
+            output_interpol["micro_sim_time"] = 0
+        if self._is_adaptivity_on:
+            output_interpol["active_state"] = 1
+            output_interpol["active_steps"] = self._micro_sims_active_steps[unset_sim]
+        return output_interpol
 
 
 def main():

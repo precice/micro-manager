@@ -106,6 +106,7 @@ class TestFunctioncalls(TestCase):
 
         for data, fake_data in zip(micro_sims_output, self.fake_write_data):
             self.assertEqual(data["micro-scalar-data"], 2)
+
             self.assertListEqual(
                 data["micro-vector-data"].tolist(),
                 (fake_data["micro-vector-data"] + 1).tolist(),
