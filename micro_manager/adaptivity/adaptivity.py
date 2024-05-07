@@ -10,6 +10,8 @@ import re
 import xml.etree.ElementTree as ET
 from warnings import warn
 
+import numpy as np
+
 
 class AdaptivityCalculator:
     def __init__(self, configurator, logger) -> None:
@@ -38,9 +40,13 @@ class AdaptivityCalculator:
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
 
-        self._similarity_measure = self._get_similarity_measure(configurator.get_adaptivity_similarity_measure())
+        self._similarity_measure = self._get_similarity_measure(
+            configurator.get_adaptivity_similarity_measure()
+        )
 
-    def _get_similarity_dists(self, dt: float, similarity_dists: np.ndarray, data: dict) -> np.ndarray:
+    def _get_similarity_dists(
+        self, dt: float, similarity_dists: np.ndarray, data: dict
+    ) -> np.ndarray:
         """
         Calculate metric which determines if two micro simulations are similar enough to have one of them deactivated.
 
@@ -150,9 +156,8 @@ class AdaptivityCalculator:
         return adaptive_similartity_const 
 
     def _update_active_sims(
-            self,
-            similarity_dists: np.ndarray,
-            is_sim_active: np.ndarray) -> np.ndarray:
+        self, similarity_dists: np.ndarray, is_sim_active: np.ndarray
+    ) -> np.ndarray:
         """
         Update set of active micro simulations. Active micro simulations are compared to each other
         and if found similar, one of them is deactivated.
@@ -177,13 +182,19 @@ class AdaptivityCalculator:
         max_similarity_dist = np.amax(similarity_dists)
 
         if max_similarity_dist == 0.0:
-            warn("All similarity distances are zero, probably because all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number.")
+            warn(
+                "All similarity distances are zero, probably because all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
+            )
             self._coarse_tol = sys.float_info.min
         else:
-            self._coarse_tol = self._coarse_const * self._refine_const * max_similarity_dist
-            
-        _is_sim_active = np.copy(is_sim_active)  # Input is_sim_active is not longer used after this point
+            self._coarse_tol = (
+                self._coarse_const * self._refine_const * max_similarity_dist
+            )
 
+        _is_sim_active = np.copy(
+            is_sim_active
+        )  # Input is_sim_active is not longer used after this point
+        
         # Update the set of active micro sims
         for i in range(_is_sim_active.size):
             if _is_sim_active[i]:  # if sim is active
@@ -193,10 +204,11 @@ class AdaptivityCalculator:
         return _is_sim_active
 
     def _associate_inactive_to_active(
-            self,
-            similarity_dists: np.ndarray,
-            is_sim_active: np.ndarray,
-            sim_is_associated_to: np.ndarray) -> np.ndarray:
+        self,
+        similarity_dists: np.ndarray,
+        is_sim_active: np.ndarray,
+        sim_is_associated_to: np.ndarray,
+    ) -> np.ndarray:
         """
         Associate inactive micro simulations to most similar active micro simulation.
 
@@ -233,10 +245,8 @@ class AdaptivityCalculator:
         return _sim_is_associated_to
 
     def _check_for_activation(
-            self,
-            inactive_id: int,
-            similarity_dists: np.ndarray,
-            is_sim_active: np.ndarray) -> bool:
+        self, inactive_id: int, similarity_dists: np.ndarray, is_sim_active: np.ndarray
+    ) -> bool:
         """
         Check if an inactive simulation needs to be activated.
 
@@ -262,10 +272,8 @@ class AdaptivityCalculator:
         return min(dists) > self._ref_tol
 
     def _check_for_deactivation(
-            self,
-            active_id: int,
-            similarity_dists: np.ndarray,
-            is_sim_active: np.ndarray) -> bool:
+        self, active_id: int, similarity_dists: np.ndarray, is_sim_active: np.ndarray
+    ) -> bool:
         """
         Check if an active simulation needs to be deactivated.
 
@@ -292,7 +300,9 @@ class AdaptivityCalculator:
                     return True
         return False
 
-    def _get_similarity_measure(self, similarity_measure: str) -> Callable[[np.ndarray], np.ndarray]:
+    def _get_similarity_measure(
+        self, similarity_measure: str
+    ) -> Callable[[np.ndarray], np.ndarray]:
         """
         Get similarity measure to be used for similarity calculation
 
@@ -306,17 +316,18 @@ class AdaptivityCalculator:
         similarity_measure : function
             Function to be used for similarity calculation. Takes data as input and returns similarity measure
         """
-        if similarity_measure == 'L1':
+        if similarity_measure == "L1":
             return self._l1
-        elif similarity_measure == 'L2':
+        elif similarity_measure == "L2":
             return self._l2
-        elif similarity_measure == 'L1rel':
+        elif similarity_measure == "L1rel":
             return self._l1rel
-        elif similarity_measure == 'L2rel':
+        elif similarity_measure == "L2rel":
             return self._l2rel
         else:
             raise ValueError(
-                'Similarity measure not supported. Currently supported similarity measures are "L1", "L2", "L1rel", "L2rel".')
+                'Similarity measure not supported. Currently supported similarity measures are "L1", "L2", "L1rel", "L2rel".'
+            )
 
     def _l1(self, data: np.ndarray) -> np.ndarray:
         """
@@ -368,7 +379,9 @@ class AdaptivityCalculator:
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
         # divide i,j by max(data[i],data[j]) to get relative difference
-        relative = np.nan_to_num((pointwise_diff / np.maximum(data[np.newaxis, :], data[:, np.newaxis])))
+        relative = np.nan_to_num(
+            (pointwise_diff / np.maximum(data[np.newaxis, :], data[:, np.newaxis]))
+        )
         return np.linalg.norm(relative, ord=1, axis=-1)
 
     def _l2rel(self, data: np.ndarray) -> np.ndarray:
@@ -389,5 +402,7 @@ class AdaptivityCalculator:
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
         # divide i,j by max(data[i],data[j]) to get relative difference
-        relative = np.nan_to_num((pointwise_diff / np.maximum(data[np.newaxis, :], data[:, np.newaxis])))
+        relative = np.nan_to_num(
+            (pointwise_diff / np.maximum(data[np.newaxis, :], data[:, np.newaxis]))
+        )
         return np.linalg.norm(relative, ord=2, axis=-1)

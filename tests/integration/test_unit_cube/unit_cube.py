@@ -25,7 +25,7 @@ def main():
     x_coords, y_coords, z_coords = np.meshgrid(
         np.linspace(0, 1, np_axis),
         np.linspace(0, 1, np_axis),
-        np.linspace(0, 1, np_axis)
+        np.linspace(0, 1, np_axis),
     )
 
     nv = np_axis ** participant.get_mesh_dimensions(mesh_name)
@@ -81,7 +81,9 @@ def main():
 
         # Read data from preCICE
         for count, data_name in enumerate(read_data_names.keys()):
-            read_data[count] = participant.read_data(mesh_name, data_name, vertex_ids, 1.)
+            read_data[count] = participant.read_data(
+                mesh_name, data_name, vertex_ids, 1.0
+            )
 
         # Set the read data as the write data with an increment
         write_data[0] = read_data[0] + 1
@@ -119,5 +121,5 @@ def main():
     participant.finalize()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

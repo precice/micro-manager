@@ -12,7 +12,7 @@ jobs:
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
           path: micro-manager
 
@@ -24,6 +24,14 @@ jobs:
           pip3 install --user .
           pip3 uninstall -y pyprecice
 
-      - name: Run unit tests
+      - name: Run micro_manager unit test
         working-directory: micro-manager/tests/unit
         run: python3 -m unittest test_micro_manager.py
+
+      - name: Run interpolation unit test
+        working-directory: micro-manager/tests/unit
+        run: python3 -m unittest test_interpolation.py
+
+      - name: Run micro simulation crash unit test
+        working-directory: micro-manager/tests/unit
+        run: python3 -m unittest test_micro_simulation_crash_handling.py

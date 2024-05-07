@@ -9,7 +9,8 @@
     "simulation_params": {
         "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
         "decomposition": [2, 1, 1],
-        "adaptivity": {
+        "adaptivity": "True",
+        "adaptivity_settings": {
             "type": "global",
             "data": ["macro-scalar-data", "micro-vector-data"],
             "history_param": 0.5,
