@@ -3,7 +3,6 @@ import os
 
 from .config import Config
 from .micro_manager import MicroManagerCoupling
-from .snapshot_computation import SnapshotComputation
 
 
 def main() -> None:
