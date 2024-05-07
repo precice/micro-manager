@@ -1,0 +1,10 @@
+# Logging related files
+*.log
+
+
+# PyCharm related files
+.idea
+__pycache__
+
+# Output database related files
+output/
