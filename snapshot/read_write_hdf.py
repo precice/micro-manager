@@ -8,26 +8,42 @@ class ReadWriteHDF:
     def __init__(self, logger) -> None:
         self._logger = logger
 
-    def create_file(self, dir_name: str, file_name: str) -> str:
-        # create path to file
-        file_path = os.path.join(dir_name, file_name)
-        # create hdf file file in subfolder.
+    def create_file(self, file_path: str) -> None:
+        """
+        Create a file with a given name in a given directory overriding a file if it exists.
+
+        Parameters
+        ----------
+        dir_name : str
+            Directory in which the file should be created.
+        file_name : str
+            Name of the file to be created.
+
+        """
         f = h5py.File(file_path, "w")
         f.close()
-        # return path to file
-        return file_path
 
     def collect_output_files(self, dir_name: str, file_list: list) -> None:
         """
-        Iterate over all given files in "output" directory and write them to a single file.
+        Iterate over given files in a given directory and copy the content into a single file.
+
+        Parameters
+        ----------
+        dir_name : str
+            Path to directory containing the files.
+        file_list : list
+            List of files to be combined.
         """
-        # 1. create a output file
+        # Create a output file
         main_file = h5py.File(os.path.join(dir_name, "output.hdf5"), "w")
+        # Loop over files
         for file in file_list:
             parameter_file = h5py.File(os.path.join(dir_name, file), "r")
+            # Add all data sets to the main file.
             for key in parameter_file.keys():
                 current_data = parameter_file[key][:]
                 for i in range(len(current_data)):
+                    # If data set does not exist create and add current data
                     if key not in main_file.keys():
                         main_file.create_dataset(
                             key,
@@ -35,6 +51,7 @@ class ReadWriteHDF:
                             shape=(1, *current_data[i].shape),
                             maxshape=(None, *current_data[i].shape),
                         )
+                    # If dataset exists resize and add current data
                     else:
                         main_file[key].resize(main_file[key].shape[0] + 1, axis=0)
                         main_file[key][-1] = current_data[i]
@@ -42,17 +59,28 @@ class ReadWriteHDF:
         main_file.close()
 
     def write_sim_output_to_hdf(
-        self, file_name: str, macro_data: dict, micro_data: dict
+        self, file_path: str, macro_data: dict, micro_data: dict
     ) -> None:
-        parameter_file = h5py.File(file_name, "a")
-        # Check if data sets corresponding to the keys in the dict. If not create them with max length none and the shape of their first entry
-        # For all entries in the dict or all dicts in list of dict write the data to the corresponding data set
+        """
+        Write the output of a micro simulation to a hdf5 file.
+
+        Parameters
+        ----------
+        file_path : str
+            Path to file in which the data should be written.
+        macro_data : dict
+            Dict of macro simulation input.
+        micro_data : dict
+            Dict of micro simulation output.
+        """
+        parameter_file = h5py.File(file_path, "a")
         input_data = [macro_data, micro_data]
-        # Check if data sets corresponding to the keys in the dict. If not create them with max length none and the shape of their first entry
-        # For all entries in the dict or all dicts in list of dict write the data to the corresponding data set
+        # Iterate over macro and micro data sets
         for i in range(len(input_data)):
+            # Iterate over all keys in the current data set
             for key in input_data[i].keys():
                 current_data = np.asarray(input_data[i][key])
+                # If dataset corresponding to dictionary key does not exist create and add current data
                 if key not in parameter_file.keys():
                     parameter_file.create_dataset(
                         key,
@@ -61,24 +89,34 @@ class ReadWriteHDF:
                         maxshape=(None, *current_data.shape),
                     )
                     parameter_file[key]
+                # If dataset exists resize and add current data
                 else:
                     parameter_file[key].resize(parameter_file[key].shape[0] + 1, axis=0)
                     parameter_file[key][-1] = current_data
         parameter_file.close()
 
-    def read_hdf_to_dict(self, file_name: str, data_names: dict) -> list:
+    def read_hdf_to_dict(self, file_path: str, data_names: dict) -> list:
         """
-        Read an hdf5 file and return a dictionary of the given data.
-        E.g. the if data_names corresponds to the macro data parameters a list of dictionaries with the macro data is returned.
+        Read data from a hdf5 file and return it as a list of dictionaries.
+
+        Parameters
+        ----------
+        file_path : str
+            Path of file to read data from.
+        data_names : dict
+            Names of parameters to read from the file.
+
+        Returns
+        -------
+        list
+            List of dicts where the keys are the names of the parameters and the values the corresponding data.
         """
-        # 1. open file in read mode
-        parameter_file = h5py.File(file_name, "r")
-        # 2. create an empty list
+
+        parameter_file = h5py.File(file_path, "r")
         parameter_data = dict()
         output = []
-        # Read all the macro data
+        # Read data by iterating over the relevant datasets
         for key in data_names.keys():
-
             parameter_data[key] = np.asarray(parameter_file[key][:])
             my_key = key
         # 3. iterate over len of data. In each iteration write data from all macro data sets (using the read_data_names as keys) to a dictionary with the key being the name of the data set
