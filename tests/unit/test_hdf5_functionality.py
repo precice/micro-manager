@@ -22,8 +22,11 @@ class TestHDFFunctionalities(TestCase):
         data_manager = ReadWriteHDF(MagicMock())
         data_manager.create_file(entire_path)
         self.assertTrue(os.path.isfile(entire_path))
+<<<<<<< HEAD
         with h5py.File(entire_path, "r") as f:
             self.assertEqual(f.attrs["status"], "writing")
+=======
+>>>>>>> 4bbc33a (Improve logging, comments and minor structural improvements)
         os.remove(entire_path)
 
     def test_collect_output_files(self):

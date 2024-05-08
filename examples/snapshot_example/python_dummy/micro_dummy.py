@@ -1,6 +1,7 @@
 """
 Micro simulation
-In this script we solve a dummy micro problem to just show the working of the macro-micro coupling
+In this script we solve a dummy micro problem to just show the working of the micro simulation snapshot computation.
+Set 'crash == True' to make micro simulation 13 crash to see how the parameter is skipped
 """
 
 
@@ -14,10 +15,12 @@ class MicroSimulation:
         self._micro_scalar_data = None
         self._micro_vector_data = None
         self._state = None
+        self._crash = False
 
     def solve(self, macro_data, dt):
         self._micro_vector_data = []
-        if macro_data["macro-scalar-data"] == 13:
+
+        if self._crash == True and macro_data["macro-scalar-data"] == 13:
             raise ValueError("Macro scalar data is unlucky number 13!")
         self._micro_scalar_data = macro_data["macro-scalar-data"] + 1
         for d in range(self._dims):

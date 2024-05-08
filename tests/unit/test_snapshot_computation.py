@@ -53,6 +53,7 @@ class TestFunctionCalls(TestCase):
         """
         snapshot_object = MicroManagerSnapshot("snapshot-config.json")
 
+        # Information from the config file
         self.assertDictEqual(
             snapshot_object._read_data_names, self.fake_read_data_names
         )
