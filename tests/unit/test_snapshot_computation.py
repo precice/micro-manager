@@ -58,15 +58,17 @@ class TestFunctionCalls(TestCase):
 
         snapshot_object = snapshot.SnapshotComputation("snapshot-config.json")
 
+        # Information from the config file
         self.assertDictEqual(
             snapshot_object._read_data_names, self.fake_read_data_names
         )
         self.assertDictEqual(
             snapshot_object._write_data_names, self.fake_write_data_names
         )
-        self.assertTrue(snapshot_object._postprocessing)
-        self.assertTrue(snapshot_object._merge_output)
+        self.assertTrue(snapshot_object._is_postprocessing_required)
+        self.assertTrue(snapshot_object._merge_output_files)
 
+        # Set up in initialize
         self.assertEqual(snapshot_object._global_number_of_sims, 1)
         self.assertDictEqual(
             snapshot_object._read_data_names, self.fake_read_data_names
@@ -106,6 +108,8 @@ class TestFunctionCalls(TestCase):
 
         snapshot_object = snapshot.SnapshotComputation("snapshot-config.json")
         snapshot_object._data_storage = MagicMock()
+
+        # Replace initialize call
         snapshot_object._file_name = "output.hdf5"
         snapshot_object._output_file_path = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),

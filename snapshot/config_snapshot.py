@@ -116,7 +116,7 @@ class SnapshotConfig:
                 self._merge_output = True
         except BaseException:
             self._logger.info(
-                "No postprocessing will take place before saving output to file."
+                "Outputs from different ranks will not be collected into one file."
             )
 
         try:
@@ -131,7 +131,7 @@ class SnapshotConfig:
                     self._write_data_names[key] = True
                 else:
                     raise Exception(
-                        "Diagnostics data dictionary as a value other than 'scalar' or 'vector'"
+                        "Diagnostics data dictionary has a value other than 'scalar' or 'vector'"
                     )
         except BaseException:
             self._logger.info(
@@ -196,7 +196,7 @@ class SnapshotConfig:
 
     def write_micro_solve_time(self):
         """
-        Depending on user input, Snapshot computation will calculate execution time of solve() step of every micro simulation
+        Depending on user input, Snapshot computation will calculate execution time of solve() step of every micro simulation.
 
         Returns
         -------
@@ -207,7 +207,7 @@ class SnapshotConfig:
 
     def get_postprocessing(self):
         """
-        Depending on user input, Snapshot computation will perform postprocessing for every micro simulation
+        Depending on user input, Snapshot computation will perform postprocessing for every micro simulation before writing output to a file.
 
         Returns
         -------
@@ -218,11 +218,11 @@ class SnapshotConfig:
 
     def get_merge_output(self):
         """
-        Depending on user input, Snapshot computation will perform merge output files for every rank
+        Depending on user input, Snapshot computation will collect outputs from every rank in one file
 
         Returns
         -------
         merge_output : bool
-            True if merging of output is wanted.
+            True if collection of output is wanted.
         """
         return self._merge_output

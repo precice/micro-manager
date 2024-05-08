@@ -19,9 +19,9 @@ class TestHDFFunctionalities(TestCase):
         if os.path.isfile(entire_path):
             os.remove(entire_path)
         data_manager = ReadWriteHDF(MagicMock())
-        complete_path = data_manager.create_file(path, file_name)
-        self.assertTrue(os.path.isfile(complete_path))
-        os.remove(complete_path)
+        data_manager.create_file(entire_path)
+        self.assertTrue(os.path.isfile(entire_path))
+        os.remove(entire_path)
 
     def test_collect_output_files(self):
         """
@@ -41,26 +41,28 @@ class TestHDFFunctionalities(TestCase):
         self.assertEqual(
             output["macro_scalar_data"][0], output1["macro_scalar_data"][0]
         )
-        self.assertEqual(
-            output["macro_scalar_data"][1], output2["macro_scalar_data"][0]
-        )
+
         self.assertListEqual(
             output["macro_vector_data"][0].tolist(),
             output1["macro_vector_data"][0].tolist(),
+        )
+        self.assertEqual(
+            output["micro_scalar_data"][0], output1["micro_scalar_data"][0]
+        )
+
+        self.assertListEqual(
+            output["micro_vector_data"][0].tolist(),
+            output1["micro_vector_data"][0].tolist(),
+        )
+        self.assertEqual(
+            output["macro_scalar_data"][1], output2["macro_scalar_data"][0]
         )
         self.assertListEqual(
             output["macro_vector_data"][1].tolist(),
             output2["macro_vector_data"][0].tolist(),
         )
         self.assertEqual(
-            output["micro_scalar_data"][0], output1["micro_scalar_data"][0]
-        )
-        self.assertEqual(
             output["micro_scalar_data"][1], output2["micro_scalar_data"][0]
-        )
-        self.assertListEqual(
-            output["micro_vector_data"][0].tolist(),
-            output1["micro_vector_data"][0].tolist(),
         )
         self.assertListEqual(
             output["micro_vector_data"][1].tolist(),

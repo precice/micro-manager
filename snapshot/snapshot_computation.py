@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """
-Snapshot Computation is a tool to initialize and adaptively control micro simulations
-and create snapshot databases by simulating a macro simulation via prescribes parameters.
+Snapshot Computation is a tool to initialize micro simulations and create a snapshot database by simulating
+micro simulations related to a set of prescribed macro parameters.
 This files the class SnapshotComputation which has the following callable public methods:
 
 - solve
 
 This file is directly executable as it consists of a main() function. Upon execution, an object of the class SnapshotComputation is created using a given JSON file,
-and the initialize and solve methods are called.
+ the solve method is called.
 
 Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
 """
@@ -65,17 +65,15 @@ class SnapshotComputation:
         # Data names of data to output to the snapshot database
         self._write_data_names = self._config.get_write_data_names()
 
-        # Data names of data to read as macro input parameter
+        # Data names of data to read as input parameter to the simulations
         self._read_data_names = self._config.get_read_data_names()
 
         # Path to the parameter file containing input parameters for micro simulations
         self._parameter_file = self._config.get_parameter_file_name()
 
-        # Postprocessing flag
-        self._postprocessing = self._config.get_postprocessing()
+        self._is_postprocessing_required = self._config.get_postprocessing()
 
-        # Collect output files flag
-        self._merge_output = self._config.get_merge_output()
+        self._merge_output_files = self._config.get_merge_output()
 
         self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
@@ -91,27 +89,26 @@ class SnapshotComputation:
 
     def solve(self) -> None:
         """
-        Solve the problem using given macro parameters.
-        - Read macro parameters from the config file, solve micro simulations,
-          and write outputs to storage file.
+        Solve the problem by iterating over a set macro parameters.
+        - Read macro parameters from the config file, solve micro simulation one by one,
+          and write outputs to a file.
         """
 
-        # TODO Loop over macro parameter increases - potentially enumerate
+        # Loop over all macro parameters
         for elems in range(self._local_number_of_sims):
-            # TODO create micro simulation object
-            # Create micro simulation objects
+            # Create micro simulation object
             self._micro_sims = create_simulation_class(self._micro_problem)(
                 self._global_ids_of_local_sims[elems]
             )
 
             micro_sims_input = self._macro_parameters[elems]
-            # TODO: replace with own read_data function or just a list of dicts to read data from parameter file
+            # Solve micro simulation
             micro_sims_output = self._solve_micro_simulations(micro_sims_input)
 
-            # TODO log that the snapshots have been created or that the simulation has crashed
+            # Write output to file
             if micro_sims_output is not None:
-                # TODO: postprocessing
-                if self._postprocessing is True:
+                # Postprocessing
+                if self._is_postprocessing_required is True:
                     if hasattr(self._micro_problem, "postprocessing") and callable(
                         getattr(self._micro_problem, "postprocessing")
                     ):
@@ -122,34 +119,34 @@ class SnapshotComputation:
                         self._logger.info(
                             "Postprocessing is activated in config file but not available. Skipping postprocessing."
                         )
-                        self._postprocessing = False
+                        self._is_postprocessing_required = False
                 self._data_storage.write_sim_output_to_hdf(
                     self._output_file_path, micro_sims_input, micro_sims_output
                 )
+            # Log error and skip snapshot
             else:
                 parameter = ""
                 for key, value in micro_sims_input.items():
                     parameter += "{} = {}, ".format(key, value)
                 parameter = parameter[:-2]
-                micro_sims_output = self._solve_micro_simulations(micro_sims_input)
-                self._logger.error(
+                self._logger.info(
                     "Skipping snapshot storage for crashed simulation with parameter {}.".format(
                         parameter
                     )
                 )
 
-        # TODO: communicate that that snapshot computation has finished and collect output on rank 0
-
-        if self._merge_output and self._is_parallel:
-            self._logger.info("Snapshots have been computed. Merging output files")
-            # self._comm.barrier()
+        # If activated, merge output files
+        if self._merge_output_files and self._is_parallel:
+            self._logger.info(
+                "Snapshots have been computed and stored. Merging output files"
+            )
             list_of_output_files = self._comm.gather(self._file_name, 0)
             if self._rank == 0:
                 self._data_storage.collect_output_files(
                     self._output_subdirectory, list_of_output_files
                 )
         else:
-            self._logger.info("Snapshot computation finished.")
+            self._logger.info("Snapshot computation completed.")
 
     # ***************
     # Private methods
@@ -158,20 +155,18 @@ class SnapshotComputation:
     def _initialize(self) -> None:
         """
         Initialize the Snapshot Computation by performing the following tasks:
-        - Decompose the domain if the snapshot creation is executed in parallel.
-        - Read macro parameter from file
-        - Simulate macro information.
-        - Create all micro simulation objects and initialize them if an initialize() method is available.
+        - Distribute the parameter data equally if the snapshot creation is executed in parallel.
+        - Read macro parameter from parameter file.
+        - Create output subdirectory and file paths to store output.
+        - Import micro simulation class.
         """
 
-        # Create subdirectory in which the snapshot files are stored
-
+        # Create subdirectory to store output files in
         directory = os.path.dirname(self._parameter_file)
         self._output_subdirectory = os.path.join(directory, "output")
         os.makedirs(self._output_subdirectory, exist_ok=True)
 
-        # Create instance for reading and writing data
-
+        # Create object responsible for reading parameters and writing simulation output
         self._data_storage = hp(self._logger)
 
         # Read macro parameters from the parameter file
@@ -179,7 +174,7 @@ class SnapshotComputation:
             self._parameter_file, self._read_data_names
         )
 
-        # Decompose macro parameters if the snapshot creation is executed in parallel
+        # Decompose parameters if the snapshot creation is executed in parallel
         if self._is_parallel:
             equal_partition = int(len(self._macro_parameters) / self._size)
             rest = len(self._macro_parameters) % self._size
@@ -191,17 +186,17 @@ class SnapshotComputation:
                 end = start + equal_partition
             self._macro_parameters = self._macro_parameters[start:end]
 
-        # Create file to store output
+        # Create file to store output from a rank in
         if self._is_parallel:
             self._file_name = "output_{}.hdf5".format(self._rank)
         else:
             self._file_name = "output.hdf5"
-        self._output_file_path = self._data_storage.create_file(
+        self._output_file_path = os.path.join(
             self._output_subdirectory, self._file_name
         )
-
+        self._data_storage.create_file(self._output_file_path)
+        self._logger.info("Output file created: {}".format(self._output_file_path))
         self._local_number_of_sims = len(self._macro_parameters)
-        # TODO: use number of parameters to get number of micro simulations
         self._logger.info(
             "Number of local micro simulations = {}".format(self._local_number_of_sims)
         )
@@ -258,16 +253,16 @@ class SnapshotComputation:
 
         Returns
         -------
-        micro_sims_output : dict
+        micro_sims_output : dict | None
             Dicts in which keys are names of data and the values are the data of the output of the micro
-            simulations.
+            simulations. The return type is None if the simulation has crashed.
         """
-        # if time is a parameter, split input
+        # If time is a parameter, split input as time is a separate argument
         if "dt" in micro_sims_input:
             dt = micro_sims_input["dt"]
             del micro_sims_input["dt"]
         else:
-            dt = None
+            dt = 1
         try:
             start_time = time.time()
             micro_sims_output = self._micro_sims.solve(micro_sims_input, dt)
@@ -277,9 +272,10 @@ class SnapshotComputation:
                 micro_sims_output["micro_sim_time"] = end_time - start_time
 
             return micro_sims_output
+        # Handle simulation crash
         except Exception as e:
             self._logger.error(
-                "Micro simulation with input {} has crashed. See next entry on rank for error message".format(
+                "Micro simulation with input {} has crashed. See next entry on this rank for error message".format(
                     micro_sims_input
                 )
             )
