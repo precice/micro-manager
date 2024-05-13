@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
-import micro_manager
+import micro_manager_precice
 
 
 class MicroSimulation:

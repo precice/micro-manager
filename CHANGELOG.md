@@ -2,6 +2,7 @@
 
 ## latest
 
+- Use `pyproject.toml` instead of `setup.py` to configure the build. Package name is now `micro_manager_precice` https://github.com/precice/micro-manager/pull/84
 - Add switch to turn adaptivity on and off in configuration https://github.com/precice/micro-manager/pull/93
 
 ## v0.4.0
