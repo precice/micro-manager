@@ -39,3 +39,11 @@ jobs:
       - name: Run micro simulation crash unit test
         working-directory: micro-manager/tests/unit
         run: python3 -m unittest test_micro_simulation_crash_handling.py
+
+      - name: Run HDF5 read and write unit tests
+        working-directory: micro-manager/tests/unit
+        run: python3 -m unittest test_hdf5_functionality.py
+
+      - name: Run snapshot_computation unit tests
+        working-directory: micro-manager/tests/unit
+        run: python3 -m unittest test_snapshot_computation.py
