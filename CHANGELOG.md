@@ -2,6 +2,7 @@
 
 ## latest
 
+- Add handling of crashing micro simulations https://github.com/precice/micro-manager/pull/85
 - Add switch to turn adaptivity on and off in configuration https://github.com/precice/micro-manager/pull/93
 
 ## v0.4.0
