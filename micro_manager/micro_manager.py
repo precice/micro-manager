@@ -467,6 +467,8 @@ class MicroManager:
         else:
             is_initial_data_available = True
 
+        is_initial_data_required = False
+
         # Check if provided micro simulation has an initialize() method
         if hasattr(micro_problem, "initialize") and callable(
             getattr(micro_problem, "initialize")
