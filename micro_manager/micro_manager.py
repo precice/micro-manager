@@ -477,10 +477,14 @@ class MicroManager:
 
             # Check if the initialize() method of the micro simulation has any arguments
             argspec = inspect.getfullargspec(micro_problem.initialize)
-            if not argspec.args:
+            if len(argspec.args) == 1:
                 is_initial_data_required = False
-            else:
+            elif len(argspec.args) == 2:
                 is_initial_data_required = True
+            else:
+                raise Exception(
+                    "The initialize() method of the Micro simulation has an incorrect number of arguments."
+                )
 
         if is_initial_data_required and not is_initial_data_available:
             raise Exception(
@@ -489,7 +493,7 @@ class MicroManager:
 
         if not is_initial_data_required and is_initial_data_available:
             warn(
-                "The initialize() method of the Micro simulation does not require initial data, but initial data has been provided. The provided initial data will be ignored."
+                "The initialize() method of the micro simulation does not require initial data, but initial data has been provided. The provided initial data will be ignored."
             )
 
         # Get initial data from micro simulations if initialize() method exists
