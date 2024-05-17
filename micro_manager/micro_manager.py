@@ -17,6 +17,7 @@ import logging
 import os
 import sys
 import time
+import inspect
 from copy import deepcopy
 from typing import Dict
 from warnings import warn
@@ -458,40 +459,101 @@ class MicroManager:
 
         self._micro_sims_init = False  # DECLARATION
 
-        # Get initial data from micro simulations if initialize() method exists
+        # Read initial data from preCICE, if it is available
+        initial_data = self._read_data_from_precice()
+
+        if not initial_data:
+            is_initial_data_available = False
+        else:
+            is_initial_data_available = True
+
+        # Boolean which states if the initialize() method of the micro simulation requires initial data
+        is_initial_data_required = False
+
+        # Check if provided micro simulation has an initialize() method
         if hasattr(micro_problem, "initialize") and callable(
             getattr(micro_problem, "initialize")
         ):
             self._micro_sims_init = True
-            initial_micro_output = self._micro_sims[
-                0
-            ].initialize()  # Call initialize() of the first simulation
+
+            # Check if the initialize() method of the micro simulation has any arguments
+            argspec = inspect.getfullargspec(micro_problem.initialize)
+            if len(argspec.args) == 1:
+                is_initial_data_required = False
+            elif len(argspec.args) == 2:
+                is_initial_data_required = True
+            else:
+                raise Exception(
+                    "The initialize() method of the Micro simulation has an incorrect number of arguments."
+                )
+
+        if is_initial_data_required and not is_initial_data_available:
+            raise Exception(
+                "The initialize() method of the Micro simulation requires initial data, but no initial data has been provided."
+            )
+
+        if not is_initial_data_required and is_initial_data_available:
+            warn(
+                "The initialize() method of the micro simulation does not require initial data, but initial data has been provided. The provided initial data will be ignored."
+            )
+
+        # Get initial data from micro simulations if initialize() method exists
+        if self._micro_sims_init:
+
+            # Call initialize() method of the micro simulation to check if it returns any initial data
+            if is_initial_data_required:
+                initial_micro_output = self._micro_sims[0].initialize(initial_data[0])
+            else:
+                initial_micro_output = self._micro_sims[0].initialize()
+
             if (
                 initial_micro_output is None
             ):  # Check if the detected initialize() method returns any data
                 warn(
                     "The initialize() call of the Micro simulation has not returned any initial data."
-                    " This means that the initialize() call has no effect on the adaptivity."
+                    " This means that the initialize() call has no effect on the adaptivity. The initialize method will nevertheless still be called."
                 )
                 self._micro_sims_init = False
-                for i in range(1, self._local_number_of_sims):
-                    self._micro_sims[i].initialize()
-            else:
+
+                if is_initial_data_required:
+                    for i in range(1, self._local_number_of_sims):
+                        self._micro_sims[i].initialize(initial_data[i])
+                else:
+                    for i in range(1, self._local_number_of_sims):
+                        self._micro_sims[i].initialize()
+            else:  # Case where the initialize() method returns data
                 if self._is_adaptivity_on:
                     # Save initial data from first micro simulation as we anyway have it
                     for name in initial_micro_output.keys():
                         self._data_for_adaptivity[name][0] = initial_micro_output[name]
 
                     # Gather initial data from the rest of the micro simulations
-                    for i in range(1, self._local_number_of_sims):
-                        initial_micro_output = self._micro_sims[i].initialize()
-                        for name in self._adaptivity_micro_data_names:
-                            self._data_for_adaptivity[name][i] = initial_micro_output[
-                                name
-                            ]
+                    if is_initial_data_required:
+                        for i in range(1, self._local_number_of_sims):
+                            initial_micro_output = self._micro_sims[i].initialize(
+                                initial_data[i]
+                            )
+                            for name in self._adaptivity_micro_data_names:
+                                self._data_for_adaptivity[name][
+                                    i
+                                ] = initial_micro_output[name]
+                    else:
+                        for i in range(1, self._local_number_of_sims):
+                            initial_micro_output = self._micro_sims[i].initialize()
+                            for name in self._adaptivity_micro_data_names:
+                                self._data_for_adaptivity[name][
+                                    i
+                                ] = initial_micro_output[name]
                 else:
-                    for i in range(1, self._local_number_of_sims):
-                        self._micro_sims[i].initialize()
+                    warn(
+                        "The initialize() method of the Micro simulation returns initial data, but adaptivity is turned off. The returned data will be ignored. The initialize method will nevertheless still be called."
+                    )
+                    if is_initial_data_required:
+                        for i in range(1, self._local_number_of_sims):
+                            self._micro_sims[i].initialize(initial_data[i])
+                    else:
+                        for i in range(1, self._local_number_of_sims):
+                            self._micro_sims[i].initialize()
 
         self._micro_sims_have_output = False
         if hasattr(micro_problem, "output") and callable(
