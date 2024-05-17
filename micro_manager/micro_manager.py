@@ -467,6 +467,7 @@ class MicroManager:
         else:
             is_initial_data_available = True
 
+        # Boolean which states if the initialize() method of the micro simulation requires initial data
         is_initial_data_required = False
 
         # Check if provided micro simulation has an initialize() method
