@@ -125,8 +125,6 @@ class MicroManager:
             )
             self._micro_sims_active_steps = None
 
-        self._initialize()
-
     # **************
     # Public methods
     # **************
@@ -321,11 +319,7 @@ class MicroManager:
 
         self._participant.finalize()
 
-    # ***************
-    # Private methods
-    # ***************
-
-    def _initialize(self) -> None:
+    def initialize(self) -> None:
         """
         Initialize the Micro Manager by performing the following tasks:
         - Decompose the domain if the Micro Manager is executed in parallel.
@@ -500,6 +494,10 @@ class MicroManager:
             self._micro_sims_have_output = True
 
         self._dt = self._participant.get_max_time_step_size()
+
+    # ***************
+    # Private methods
+    # ***************
 
     def _read_data_from_precice(self) -> list:
         """
@@ -869,6 +867,8 @@ def main():
         config_file_path = os.getcwd() + "/" + config_file_path
 
     manager = MicroManager(config_file_path)
+
+    manager.initialze()
 
     manager.solve()
 
