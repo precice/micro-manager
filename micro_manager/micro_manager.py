@@ -930,7 +930,7 @@ def main():
 
     manager = MicroManager(config_file_path)
 
-    manager.initialze()
+    manager.initialize()
 
     manager.solve()
 
