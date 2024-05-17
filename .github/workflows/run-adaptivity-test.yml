@@ -33,14 +33,13 @@ jobs:
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube
         run: |
-          python3 unit_cube.py & micro-manager-precice micro-manager-config-local-adaptivity.json
+          micro-manager-precice micro-manager-config-local-adaptivity.json & python3 unit_cube.py
 
       - name: Run integration test with global adaptivity
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube
         run: |
-          export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-          python3 unit_cube.py & micro-manager-precice micro-manager-config-global-adaptivity.json
+          micro-manager-precice micro-manager-config-global-adaptivity.json & python3 unit_cube.py
 
   adaptivity_unit_tests_serial:
     name: Run adaptivity unit tests in serial
