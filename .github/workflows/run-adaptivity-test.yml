@@ -23,8 +23,7 @@ jobs:
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
-          python -m pip install --upgrade pip
-          pip install setuptools wheel twine
+          pip3 install --upgrade pip
 
       - name: Install Micro Manager
         working-directory: micro-manager
@@ -34,13 +33,15 @@ jobs:
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube
         run: |
-          micro-manager-precice micro-manager-config-local-adaptivity.json & python3 unit_cube.py
+          micro-manager-precice micro-manager-config-local-adaptivity.json &
+          python3 unit_cube.py
 
       - name: Run integration test with global adaptivity
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube
         run: |
-          micro-manager-precice micro-manager-config-global-adaptivity.json & python3 unit_cube.py
+          micro-manager-precice micro-manager-config-global-adaptivity.json &
+          python3 unit_cube.py
 
   adaptivity_unit_tests_serial:
     name: Run adaptivity unit tests in serial
@@ -91,8 +92,7 @@ jobs:
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
-          python -m pip install --upgrade pip
-          pip install setuptools wheel twine
+          pip3 install --upgrade pip
 
       - name: Install Micro Manager
         working-directory: micro-manager

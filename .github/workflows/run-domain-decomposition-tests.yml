@@ -30,23 +30,27 @@ jobs:
       - name: Install Dependencies
         working-directory: micro-manager
         run: |
+          apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
-          python -m pip install --upgrade pip
-          pip install setuptools wheel twine
+          pip3 install --upgrade pip
 
       - name: Install micro-manager
         working-directory: micro-manager
         run: pip3 install --user .
 
-      - name: Run integration test (variant 1)
+      - name: Run integration test (2 processes)
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube
-        run: mpiexec -n 2 --allow-run-as-root micro-manager-precice micro-manager-config-parallel-1.json & python3 unit_cube.py
+        run: |
+          mpiexec -n 2 --allow-run-as-root micro-manager-precice micro-manager-config-parallel-1.json &
+          python3 unit_cube.py
 
-      - name: Run integration test (variant 2)
+      - name: Run integration test (6 processes)
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube
-        run: mpiexec -n 6 --oversubscribe --allow-run-as-root micro-manager-precice micro-manager-config-parallel-2.json & python3 unit_cube.py
+        run: |
+          mpiexec -n 6 --oversubscribe --allow-run-as-root micro-manager-precice micro-manager-config-parallel-2.json &
+          python3 unit_cube.py
 
   domain_decomposition_unit_tests:
     name: Run domain decomposition unit tests
@@ -63,8 +67,7 @@ jobs:
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
-          python -m pip install --upgrade pip
-          pip install setuptools wheel
+          pip3 install --upgrade pip
 
       - name: Install Micro Manager
         working-directory: micro-manager
