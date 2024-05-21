@@ -30,8 +30,7 @@ jobs:
       - name: Install micro-manager
         working-directory: micro-manager
         run: |
-          pip3 install --user .
-          export PATH="/github/home/.local/bin:$PATH"
+          pip3 install .
 
       - name: Run python macro-micro dummy
         timeout-minutes: 3
