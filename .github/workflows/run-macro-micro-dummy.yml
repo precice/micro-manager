@@ -26,11 +26,12 @@ jobs:
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           apt-get -qq install sudo
           pip3 install --upgrade pip
-          pip3 install setuptools wheel
 
       - name: Install micro-manager
         working-directory: micro-manager
-        run: pip3 install --user .
+        run: |
+          pip3 install --user .
+          export PATH="/github/home/.local/bin:$PATH"
 
       - name: Run python macro-micro dummy
         timeout-minutes: 3
