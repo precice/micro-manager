@@ -39,6 +39,8 @@ class TestSimulationCrashHandling(TestCase):
         expected_crash_scalar_data = 55 / 49
 
         manager = micro_manager.MicroManager("micro-manager-config_crash.json")
+        manager.initialize()
+
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
         manager._local_number_of_sims = 4
         manager._has_sim_crashed = [False] * 4
@@ -84,6 +86,7 @@ class TestSimulationCrashHandling(TestCase):
         expected_crash_scalar_data = 55 / 49
 
         manager = micro_manager.MicroManager("micro-manager-config_crash.json")
+        manager.initialize()
 
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
         manager._local_number_of_sims = 5

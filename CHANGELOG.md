@@ -2,6 +2,8 @@
 
 ## latest
 
+- Use executable `micro-manager-precice` by default, and stop using the script `run_micro_manager.py` https://github.com/precice/micro-manager/pull/105
+- Make `initialize()` method of the MicroManager class public https://github.com/precice/micro-manager/pull/105
 - Optionally use initial macro data to initialize micro simulations https://github.com/precice/micro-manager/pull/104
 - Use `pyproject.toml` instead of `setup.py` to configure the build. Package name is now `micro_manager_precice` https://github.com/precice/micro-manager/pull/84
 - Add handling of crashing micro simulations https://github.com/precice/micro-manager/pull/85

@@ -65,6 +65,7 @@ class TestFunctioncalls(TestCase):
         Test if the initialize function of the MicroManager class initializes member variables to correct values
         """
         manager = micro_manager.MicroManager("micro-manager-config.json")
+        manager.initialize()
 
         self.assertEqual(manager._dt, 0.1)  # from Interface.initialize
         self.assertEqual(manager._global_number_of_sims, 4)
@@ -98,6 +99,8 @@ class TestFunctioncalls(TestCase):
         Test if the internal function _solve_micro_simulations works as expected.
         """
         manager = micro_manager.MicroManager("micro-manager-config.json")
+        manager.initialize()
+
         manager._local_number_of_sims = 4
         manager._micro_sims = [MicroSimulation(i) for i in range(4)]
         manager._micro_sims_active_steps = np.zeros(4, dtype=np.int32)
