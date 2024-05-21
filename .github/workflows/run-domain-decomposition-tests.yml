@@ -36,7 +36,7 @@ jobs:
 
       - name: Install micro-manager
         working-directory: micro-manager
-        run: pip3 install --user .
+        run: pip3 install .
 
       - name: Run integration test (2 processes)
         timeout-minutes: 3

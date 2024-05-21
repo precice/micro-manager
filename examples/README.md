@@ -4,20 +4,34 @@ The `solverdummies` are minimal working examples for using the preCICE Micro Man
 
 ## Python
 
-To run the Python solverdummies, run the following commands in the `examples/` directory in **two different terminals**:
+To run the Python solverdummies, run the commands given below in the `examples/` directory in **two different terminals**.
+
+First terminal:
 
 ```bash
 python macro_dummy.py
-python python-dummy/run_micro_manager.py --config micro-manager-config.json
+```
+
+Second terminal:
+
+```bash
+micro-manager-precice micro-manager-python-config.json
 ```
 
 Note that running `micro_manager micro-manager-config.json` from the terminal will not work, as the path in the configuration file is relative to the current working directory. See [#36](https://github.com/precice/micro-manager/issues/36) for more information.
 
-To run the Python solverdummies with adaptivity run the following commands in the `examples/` directory in **two different terminals**:
+To run the Python solverdummies with adaptivity, run the commands given below in the `examples/` directory in **two different terminals**.
+
+First terminal:
 
 ```bash
 python macro_dummy.py
-python python-dummy/run_micro_manager.py --config micro-manager-adaptivity-config.json
+```
+
+Second terminal:
+
+```bash
+micro-manager-precice micro-manager-python-adaptivity-config.json
 ```
 
 ## C++
@@ -45,18 +59,32 @@ The command above compiles the C++ solverdummy and creates a shared library that
 
 </details>
 
-Then, run the following commands in the `examples/` directory, in **two different terminals**:
+To run the Python solverdummies, run the commands given below in the `examples/` directory in **two different terminals**.
+
+First terminal:
 
 ```bash
 python macro_dummy.py
-python cpp-dummy/run_micro_manager.py --config micro-manager-config.json
 ```
 
-To run the C++ solverdummies with adaptivity run the following commands in the `examples/` directory in **two different terminals**:
+Second terminal:
+
+```bash
+micro-manager-precice micro-manager-cpp-config.json
+```
+
+To run the C++ solverdummies with adaptivity, run the following commands in the `examples/` directory in **two different terminals**:
+
+First terminal:
 
 ```bash
 python macro_dummy.py
-python cpp-dummy/run_micro_manager.py --config micro-manager-adaptivity-config.json
+```
+
+Second terminal:
+
+```bash
+micro-manager-precice micro-manager-cpp-adaptivity-config.json
 ```
 
 When changing the C++ solverdummy to your own solver, make sure to change the `PYBIND11_MODULE` in `micro_cpp_dummy.cpp` to the name that you want to compile to.

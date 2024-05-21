@@ -27,7 +27,7 @@ jobs:
 
       - name: Install Micro Manager
         working-directory: micro-manager
-        run: pip3 install --user .
+        run: pip3 install .
 
       - name: Run integration test with local adaptivity
         timeout-minutes: 3
