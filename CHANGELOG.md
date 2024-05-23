@@ -1,6 +1,6 @@
 # Micro Manager changelog
 
-## latest
+## v0.5.0rc2
 
 - Use executable `micro-manager-precice` by default, and stop using the script `run_micro_manager.py` https://github.com/precice/micro-manager/pull/105
 - Make `initialize()` method of the MicroManager class public https://github.com/precice/micro-manager/pull/105
