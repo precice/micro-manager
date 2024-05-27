@@ -519,7 +519,14 @@ class MicroManager:
                 if self._is_adaptivity_on:
                     # Save initial data from first micro simulation as we anyway have it
                     for name in initial_micro_output.keys():
-                        self._data_for_adaptivity[name][0] = initial_micro_output[name]
+                        if name in self._data_for_adaptivity:
+                            self._data_for_adaptivity[name][0] = initial_micro_output[
+                                name
+                            ]
+                        else:
+                            raise Exception(
+                                "The initialize() method needs to return data which is required for the adaptivity calculation."
+                            )
 
                     # Gather initial data from the rest of the micro simulations
                     if is_initial_data_required:
