@@ -2,6 +2,7 @@
 
 ## latest
 
+- Check if initial data returned from the micro simulation is the data that the adaptivity computation requires https://github.com/precice/micro-manager/pull/109
 - Use executable `micro-manager-precice` by default, and stop using the script `run_micro_manager.py` https://github.com/precice/micro-manager/pull/105
 - Make `initialize()` method of the MicroManager class public https://github.com/precice/micro-manager/pull/105
 - Optionally use initial macro data to initialize micro simulations https://github.com/precice/micro-manager/pull/104
