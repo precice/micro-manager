@@ -488,7 +488,7 @@ class MicroManager:
 
         if not is_initial_data_required and is_initial_data_available:
             warn(
-                "The initialize() method of the micro simulation does not require initial data, but initial data has been provided. The provided initial data will be ignored."
+                "The initialize() method is only allowed to return data which is required for the adaptivity calculation."
             )
 
         # Get initial data from micro simulations if initialize() method exists
