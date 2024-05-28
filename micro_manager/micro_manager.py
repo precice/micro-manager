@@ -471,15 +471,35 @@ class MicroManager:
             self._micro_sims_init = True
 
             # Check if the initialize() method of the micro simulation has any arguments
-            argspec = inspect.getfullargspec(micro_problem.initialize)
-            if len(argspec.args) == 1:
-                is_initial_data_required = False
-            elif len(argspec.args) == 2:
-                is_initial_data_required = True
-            else:
-                raise Exception(
-                    "The initialize() method of the Micro simulation has an incorrect number of arguments."
+            try:  # Try to get the signature of the initialize() method, if it is written in Python
+                argspec = inspect.getfullargspec(micro_problem.initialize)
+                if len(argspec.args) == 1:
+                    is_initial_data_required = False
+                elif len(argspec.args) == 2:
+                    is_initial_data_required = True
+                else:
+                    raise Exception(
+                        "The initialize() method of the Micro simulation has an incorrect number of arguments."
+                    )
+            except TypeError:
+                self._logger.info(
+                    "The signature of initialize() method of the micro simulation cannot be determined. Trying to determine the signature by calling the method."
                 )
+                # Try to call the initialize() method of the micro simulation without arguments. This is necessary if the function is not written in Python.
+                try:
+                    self._micro_sims[0].initialize()
+                    is_initial_data_required = False
+                except TypeError:
+                    self._logger.info(
+                        "The initialize() method of the micro simulation has arguments. Attempting to call it again with initial data."
+                    )
+                    try:
+                        self._micro_sims[0].initialize(initial_data[0])
+                        is_initial_data_required = True
+                    except TypeError:
+                        raise Exception(
+                            "The initialize() method of the Micro simulation has an incorrect number of arguments."
+                        )
 
         if is_initial_data_required and not is_initial_data_available:
             raise Exception(
