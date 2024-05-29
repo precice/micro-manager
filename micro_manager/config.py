@@ -341,14 +341,17 @@ class Config:
             )
 
         try:
-            if self._data["snapshot_params"]["postprocessing"] == "True":
-                self._postprocessing = True
-            else:
-                self._postprocessing = False
+            self._postprocessing_file_name = (
+                self._data["snapshot_params"]["postprocessing_file_name"]
+                .replace("/", ".")
+                .replace("\\", ".")
+                .replace(".py", "")
+            )
         except BaseException:
             self._logger.info(
-                "No postprocessing will take place before saving output to file."
+                "No post-processing file name provided. Snapshot computation will not perform any post-processing."
             )
+            self._postprocessing_file_name = None
 
         try:
             if self._data["snapshot_params"]["merge_output"] == "True":

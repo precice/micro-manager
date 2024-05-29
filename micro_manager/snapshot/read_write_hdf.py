@@ -10,7 +10,7 @@ class ReadWriteHDF:
 
     def create_file(self, file_path: str) -> None:
         """
-        Create a file with a given name in a given directory overriding a file if it exists.
+        Create a file with a given name in a given directory.
 
         Parameters
         ----------
@@ -51,14 +51,14 @@ class ReadWriteHDF:
                             shape=(1, *current_data[i].shape),
                             maxshape=(None, *current_data[i].shape),
                         )
-                    # If dataset exists resize and add current data
-                    else:
+
+                    else:  # If dataset exists resize and add current data
                         main_file[key].resize(main_file[key].shape[0] + 1, axis=0)
                         main_file[key][-1] = current_data[i]
             parameter_file.close()
         main_file.close()
 
-    def write_sim_output_to_hdf(
+    def write_output_to_hdf(
         self, file_path: str, macro_data: dict, micro_data: dict
     ) -> None:
         """
@@ -74,28 +74,27 @@ class ReadWriteHDF:
             Dict of micro simulation output.
         """
         parameter_file = h5py.File(file_path, "a")
-        input_data = [macro_data, micro_data]
+        input_data = macro_data | micro_data
         # Iterate over macro and micro data sets
-        for i in range(len(input_data)):
-            # Iterate over all keys in the current data set
-            for key in input_data[i].keys():
-                current_data = np.asarray(input_data[i][key])
-                # If dataset corresponding to dictionary key does not exist create and add current data
-                if key not in parameter_file.keys():
-                    parameter_file.create_dataset(
-                        key,
-                        data=current_data,
-                        shape=(1, *current_data.shape),
-                        maxshape=(None, *current_data.shape),
-                    )
-                    parameter_file[key]
-                # If dataset exists resize and add current data
-                else:
-                    parameter_file[key].resize(parameter_file[key].shape[0] + 1, axis=0)
-                    parameter_file[key][-1] = current_data
+
+        for key in input_data.keys():
+            current_data = np.asarray(input_data[key])
+            # If dataset corresponding to dictionary key does not exist create and add current data
+            if key not in parameter_file.keys():
+                parameter_file.create_dataset(
+                    key,
+                    data=current_data,
+                    shape=(1, *current_data.shape),
+                    maxshape=(None, *current_data.shape),
+                )
+                parameter_file[key]
+            # If dataset exists resize and add current data
+            else:
+                parameter_file[key].resize(parameter_file[key].shape[0] + 1, axis=0)
+                parameter_file[key][-1] = current_data
         parameter_file.close()
 
-    def read_hdf_to_dict(self, file_path: str, data_names: dict) -> list:
+    def read_hdf(self, file_path: str, data_names: dict) -> list:
         """
         Read data from a hdf5 file and return it as a list of dictionaries.
 
@@ -118,13 +117,14 @@ class ReadWriteHDF:
         # Read data by iterating over the relevant datasets
         for key in data_names.keys():
             parameter_data[key] = np.asarray(parameter_file[key][:])
-            my_key = key
-        # 3. iterate over len of data. In each iteration write data from all macro data sets (using the read_data_names as keys) to a dictionary with the key being the name of the data set
-        # and the value being the current value.
+            my_key = (
+                key  # Save one key to be able to iterate over the length of the data
+            )
+        # Iterate over len of data. In each iteration write data from all macro data sets
+        # to a dictionary and append it to the output list of dicts.
         for i in range(len(parameter_data[my_key])):
             current_data = dict()
             for key in data_names.keys():
                 current_data[key] = parameter_data[key][i]
             output.append(current_data)
-        # 4. return the dictionary list
         return output
