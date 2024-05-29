@@ -48,6 +48,16 @@ class Config:
         self._adaptivity_every_implicit_iteration = False
         self._adaptivity_similarity_measure = "L1"
 
+        # Snapshot information
+        self._parameter_file_name = None
+        self._postprocessing = False
+
+        self._merge_output = False
+
+        self._output_micro_sim_time = False
+
+        self._dt = 0.01
+
         self.read_json(config_filename)
 
     def read_json(self, config_filename):
@@ -59,26 +69,27 @@ class Config:
         config_filename : string
             Name of the JSON configuration file
         """
-        folder = os.path.dirname(os.path.join(os.getcwd(), config_filename))
-        path = os.path.join(folder, os.path.basename(config_filename))
+        self._folder = os.path.dirname(os.path.join(os.getcwd(), config_filename))
+        path = os.path.join(self._folder, os.path.basename(config_filename))
         with open(path, "r") as read_file:
-            data = json.load(read_file)
+            self._data = json.load(read_file)
 
         # convert paths to python-importable paths
         self._micro_file_name = (
-            data["micro_file_name"]
+            self._data["micro_file_name"]
             .replace("/", ".")
             .replace("\\", ".")
             .replace(".py", "")
         )
 
+    def read_json_micro_manager(self):
         self._config_file_name = os.path.join(
-            folder, data["coupling_params"]["config_file_name"]
+            self._folder, self._data["coupling_params"]["config_file_name"]
         )
-        self._macro_mesh_name = data["coupling_params"]["macro_mesh_name"]
+        self._macro_mesh_name = self._data["coupling_params"]["macro_mesh_name"]
 
         try:
-            self._write_data_names = data["coupling_params"]["write_data_names"]
+            self._write_data_names = self._data["coupling_params"]["write_data_names"]
             assert isinstance(
                 self._write_data_names, dict
             ), "Write data entry is not a dictionary"
@@ -97,7 +108,7 @@ class Config:
             )
 
         try:
-            self._read_data_names = data["coupling_params"]["read_data_names"]
+            self._read_data_names = self._data["coupling_params"]["read_data_names"]
             assert isinstance(
                 self._read_data_names, dict
             ), "Read data entry is not a dictionary"
@@ -120,22 +131,22 @@ class Config:
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
 
         try:
-            self._ranks_per_axis = data["simulation_params"]["decomposition"]
+            self._ranks_per_axis = self._data["simulation_params"]["decomposition"]
         except BaseException:
             self._logger.info(
                 "Domain decomposition is not specified, so the Micro Manager will expect to be run in serial."
             )
 
         try:
-            if data["simulation_params"]["adaptivity"] == "True":
+            if self._data["simulation_params"]["adaptivity"] == "True":
                 self._adaptivity = True
-                if not data["simulation_params"]["adaptivity_settings"]:
+                if not self._data["simulation_params"]["adaptivity_settings"]:
                     raise Exception(
                         "Adaptivity is turned on but no adaptivity settings are provided."
                     )
             else:
                 self._adaptivity = False
-                if data["simulation_params"]["adaptivity_settings"]:
+                if self._data["simulation_params"]["adaptivity_settings"]:
                     raise Exception(
                         "Adaptivity settings are provided but adaptivity is turned off."
                     )
@@ -145,16 +156,22 @@ class Config:
             )
 
         if self._adaptivity:
-            if data["simulation_params"]["adaptivity_settings"]["type"] == "local":
+            if (
+                self._data["simulation_params"]["adaptivity_settings"]["type"]
+                == "local"
+            ):
                 self._adaptivity_type = "local"
-            elif data["simulation_params"]["adaptivity_settings"]["type"] == "global":
+            elif (
+                self._data["simulation_params"]["adaptivity_settings"]["type"]
+                == "global"
+            ):
                 self._adaptivity_type = "global"
             else:
                 raise Exception("Adaptivity type can be either local or global.")
 
             exchange_data = {**self._read_data_names, **self._write_data_names}
-            for dname in data["simulation_params"]["adaptivity_settings"]["data"]:
-                self._data_for_adaptivity[dname] = exchange_data[dname]
+            for dname in self._data["simulation_params"]["adaptivity_settings"]["data"]:
+                self._data_for_adaptivity[dname] = exchange_self._data[dname]
 
             if self._data_for_adaptivity.keys() == self._write_data_names.keys():
                 warn(
@@ -163,18 +180,21 @@ class Config:
                     " please include macro simulation data as well."
                 )
 
-            self._adaptivity_history_param = data["simulation_params"][
+            self._adaptivity_history_param = self._data["simulation_params"][
                 "adaptivity_settings"
             ]["history_param"]
-            self._adaptivity_coarsening_constant = data["simulation_params"][
+            self._adaptivity_coarsening_constant = self._data["simulation_params"][
                 "adaptivity_settings"
             ]["coarsening_constant"]
-            self._adaptivity_refining_constant = data["simulation_params"][
+            self._adaptivity_refining_constant = self._data["simulation_params"][
                 "adaptivity_settings"
             ]["refining_constant"]
 
-            if "similarity_measure" in data["simulation_params"]["adaptivity_settings"]:
-                self._adaptivity_similarity_measure = data["simulation_params"][
+            if (
+                "similarity_measure"
+                in self._data["simulation_params"]["adaptivity_settings"]
+            ):
+                self._adaptivity_similarity_measure = self._data["simulation_params"][
                     "adaptivity_settings"
                 ]["similarity_measure"]
             else:
@@ -183,7 +203,7 @@ class Config:
                 )
                 self._adaptivity_similarity_measure = "L1"
 
-            adaptivity_every_implicit_iteration = data["simulation_params"][
+            adaptivity_every_implicit_iteration = self._data["simulation_params"][
                 "adaptivity_settings"
             ]["every_implicit_iteration"]
 
@@ -201,7 +221,7 @@ class Config:
             self._write_data_names["active_steps"] = False
 
         try:
-            diagnostics_data_names = data["diagnostics"]["data_from_micro_sims"]
+            diagnostics_data_names = self._data["diagnostics"]["data_from_micro_sims"]
             assert isinstance(
                 diagnostics_data_names, dict
             ), "Diagnostics data is not a dictionary"
@@ -220,7 +240,7 @@ class Config:
             )
 
         try:
-            self._micro_output_n = data["diagnostics"]["micro_output_n"]
+            self._micro_output_n = self._data["diagnostics"]["micro_output_n"]
         except BaseException:
             self._logger.info(
                 "Output interval of micro simulations not specified, if output is available then it will be called "
@@ -228,12 +248,110 @@ class Config:
             )
 
         try:
-            if data["diagnostics"]["output_micro_sim_solve_time"]:
+            if self._data["diagnostics"]["output_micro_sim_solve_time"]:
                 self._output_micro_sim_time = True
                 self._write_data_names["micro_sim_time"] = False
         except BaseException:
             self._logger.info(
                 "Micro manager will not output time required to solve each micro simulation in each time step."
+            )
+
+    def read_json_snapshot(self):
+        self._parameter_file_name = os.path.join(
+            self._folder, self._data["snapshot_params"]["parameter_file_name"]
+        )
+
+        try:
+            self._write_data_names = self._data["snapshot_params"]["write_data_names"]
+            assert isinstance(
+                self._write_data_names, dict
+            ), "Write data entry is not a dictionary"
+            for key, value in self._write_data_names.items():
+                if value == "scalar":
+                    self._write_data_names[key] = False
+                elif value == "vector":
+                    self._write_data_names[key] = True
+                else:
+                    raise Exception(
+                        "Write data dictionary as a value other than 'scalar' or 'vector'"
+                    )
+        except BaseException:
+            self._logger.error(
+                "No write data names provided. Snapshot computation will not yield any results."
+            )
+
+        try:
+            self._read_data_names = self._data["snapshot_params"]["read_data_names"]
+            assert isinstance(
+                self._read_data_names, dict
+            ), "Read data entry is not a dictionary"
+            for key, value in self._read_data_names.items():
+                if value == "scalar":
+                    self._read_data_names[key] = False
+                elif value == "vector":
+                    self._read_data_names[key] = True
+                else:
+                    raise Exception(
+                        "Read data dictionary as a value other than 'scalar' or 'vector'"
+                    )
+        except BaseException:
+            self._logger.error(
+                "No read data names provided. Snapshot computation is not able to yield results without information."
+            )
+
+        try:
+            if self._data["snapshot_params"]["postprocessing"] == "True":
+                self._postprocessing = True
+            else:
+                self._postprocessing = False
+        except BaseException:
+            self._logger.info(
+                "No postprocessing will take place before saving output to file."
+            )
+
+        try:
+            if self._data["snapshot_params"]["merge_output"] == "True":
+                self._merge_output = True
+            else:
+                self._merge_output = False
+        except BaseException:
+            self._logger.info(
+                "Outputs from different ranks will not be collected into one file."
+            )
+
+        try:
+            self._dt = self._data["snapshot_params"]["dt"]
+        except BaseException:
+            self._logger.info(
+                "No time step is provided. Default time step of 0.01 is used."
+            )
+
+        try:
+            diagnostics_data_names = self._data["diagnostics"]["data_from_micro_sims"]
+            assert isinstance(
+                diagnostics_data_names, dict
+            ), "Diagnostics data is not a dictionary"
+            for key, value in diagnostics_data_names.items():
+                if value == "scalar":
+                    self._write_data_names[key] = False
+                elif value == "vector":
+                    self._write_data_names[key] = True
+                else:
+                    raise Exception(
+                        "Diagnostics data dictionary has a value other than 'scalar' or 'vector'"
+                    )
+        except BaseException:
+            self._logger.info(
+                "No diagnostics data is defined. Snapshot computation will not output any diagnostics data."
+            )
+
+        try:
+            if self._data["diagnostics"]["output_micro_sim_solve_time"]:
+                self._output_micro_sim_time = True
+                self._write_data_names["micro_sim_time"] = False
+        except BaseException:
+            self._logger.info(
+                "Snapshot Computation will not output time required to solve each micro simulation."
             )
 
     def get_config_file_name(self):
@@ -445,3 +563,48 @@ class Config:
             Size of the micro time window.
         """
         return self._micro_dt
+
+    def get_parameter_file_name(self):
+        """
+        Get the name of the parameter file.
+
+        Returns
+        -------
+        parameter_file_name : string
+            Name of the hdf5 file containing the macro parameters.
+        """
+
+        return self._parameter_file_name
+
+    def get_postprocessing(self):
+        """
+        Depending on user input, Snapshot computation will perform postprocessing for every micro simulation before writing output to a file.
+
+        Returns
+        -------
+        postprocessing : bool
+            True if postprocessing is required.
+        """
+        return self._postprocessing
+
+    def get_merge_output(self):
+        """
+        Depending on user input, Snapshot computation will collect outputs from every rank in one file
+
+        Returns
+        -------
+        merge_output : bool
+            True if collection of output is wanted.
+        """
+        return self._merge_output
+
+    def get_time_step_size(self):
+        """
+        Get user provided time step size for the snapshot computation.
+
+        Returns
+        -------
+        dt : float
+            time_step_size.
+        """
+        return self._dt
