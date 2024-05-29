@@ -297,6 +297,104 @@ class Config:
                 "No diagnostics data is defined. Snapshot computation will not output any diagnostics data."
             )
 
+    def read_json_snapshot(self):
+        self._parameter_file_name = os.path.join(
+            self._folder, self._data["snapshot_params"]["parameter_file_name"]
+        )
+
+        try:
+            self._write_data_names = self._data["snapshot_params"]["write_data_names"]
+            assert isinstance(
+                self._write_data_names, dict
+            ), "Write data entry is not a dictionary"
+            for key, value in self._write_data_names.items():
+                if value == "scalar":
+                    self._write_data_names[key] = False
+                elif value == "vector":
+                    self._write_data_names[key] = True
+                else:
+                    raise Exception(
+                        "Write data dictionary as a value other than 'scalar' or 'vector'"
+                    )
+        except BaseException:
+            self._logger.error(
+                "No write data names provided. Snapshot computation will not yield any results."
+            )
+
+        try:
+            self._read_data_names = self._data["snapshot_params"]["read_data_names"]
+            assert isinstance(
+                self._read_data_names, dict
+            ), "Read data entry is not a dictionary"
+            for key, value in self._read_data_names.items():
+                if value == "scalar":
+                    self._read_data_names[key] = False
+                elif value == "vector":
+                    self._read_data_names[key] = True
+                else:
+                    raise Exception(
+                        "Read data dictionary as a value other than 'scalar' or 'vector'"
+                    )
+        except BaseException:
+            self._logger.error(
+                "No read data names provided. Snapshot computation is not able to yield results without information."
+            )
+
+        try:
+            if self._data["snapshot_params"]["postprocessing"] == "True":
+                self._postprocessing = True
+            else:
+                self._postprocessing = False
+        except BaseException:
+            self._logger.info(
+                "No postprocessing will take place before saving output to file."
+            )
+
+        try:
+            if self._data["snapshot_params"]["merge_output"] == "True":
+                self._merge_output = True
+            else:
+                self._merge_output = False
+        except BaseException:
+            self._logger.info(
+                "Outputs from different ranks will not be collected into one file."
+            )
+
+        try:
+            self._dt = self._data["snapshot_params"]["dt"]
+        except BaseException:
+            self._logger.info(
+                "No time step is provided. Default time step of 0.01 is used."
+            )
+
+        try:
+            diagnostics_data_names = self._data["diagnostics"]["data_from_micro_sims"]
+            assert isinstance(
+                diagnostics_data_names, dict
+            ), "Diagnostics data is not a dictionary"
+            for key, value in diagnostics_data_names.items():
+                if value == "scalar":
+                    self._write_data_names[key] = False
+                elif value == "vector":
+                    self._write_data_names[key] = True
+                else:
+                    raise Exception(
+                        "Diagnostics data dictionary has a value other than 'scalar' or 'vector'"
+                    )
+        except BaseException:
+            self._logger.info(
+                "No diagnostics data is defined. Snapshot computation will not output any diagnostics data."
+            )
+
+        try:
+            if self._data["diagnostics"]["output_micro_sim_solve_time"]:
+                self._output_micro_sim_time = True
+                self._write_data_names["micro_sim_time"] = False
+        except BaseException:
+            self._logger.info(
+                "Snapshot Computation will not output time required to solve each micro simulation."
+            )
+
     def get_config_file_name(self):
         """
         Get the name of the JSON configuration file.
