@@ -1,9 +1,10 @@
 {
-    "micro_file_name": "micro_dummy",
+    "micro_file_name": "python_dummy/micro_dummy",
     "snapshot_params": {
         "parameter_file_name": "parameter.hdf5",
         "read_data_names": {"macro-scalar-data": "scalar", "macro-vector-data": "vector"},
         "write_data_names": {"micro-scalar-data": "scalar", "micro-vector-data": "vector"},
+        "dt": 0.1,
         "postprocessing": "True",
         "merge_output": "True"
     },
