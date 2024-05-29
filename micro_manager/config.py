@@ -50,8 +50,7 @@ class Config:
 
         # Snapshot information
         self._parameter_file_name = None
-        self._postprocessing = False
-
+        self._postprocessing_file_name = None
         self._merge_output = False
 
         self._output_micro_sim_time = False
@@ -62,7 +61,7 @@ class Config:
 
     def read_json(self, config_filename):
         """
-        Reads JSON adapter configuration file and saves the data to the respective instance attributes.
+        Reads JSON configuration file.
 
         Parameters
         ----------
@@ -83,6 +82,10 @@ class Config:
         )
 
     def read_json_micro_manager(self):
+        """
+        Reads Micro Manager relevant information from JSON configuration file
+        and saves the data to the respective instance attributes.
+        """
         self._config_file_name = os.path.join(
             self._folder, self._data["coupling_params"]["config_file_name"]
         )
@@ -171,7 +174,7 @@ class Config:
 
             exchange_data = {**self._read_data_names, **self._write_data_names}
             for dname in self._data["simulation_params"]["adaptivity_settings"]["data"]:
-                self._data_for_adaptivity[dname] = exchange_self._data[dname]
+                self._data_for_adaptivity[dname] = exchange_data[dname]
 
             if self._data_for_adaptivity.keys() == self._write_data_names.keys():
                 warn(
@@ -300,14 +303,17 @@ class Config:
             )
 
         try:
-            if self._data["snapshot_params"]["postprocessing"] == "True":
-                self._postprocessing = True
-            else:
-                self._postprocessing = False
+            self._postprocessing_file_name = (
+                self._data["snapshot_params"]["postprocessing_file_name"]
+                .replace("/", ".")
+                .replace("\\", ".")
+                .replace(".py", "")
+            )
         except BaseException:
             self._logger.info(
-                "No postprocessing will take place before saving output to file."
+                "No post-processing file name provided. Snapshot computation will not perform any post-processing."
             )
+            self._postprocessing_file_name = None
 
         try:
             if self._data["snapshot_params"]["merge_output"] == "True":
@@ -576,7 +582,7 @@ class Config:
 
         return self._parameter_file_name
 
-    def get_postprocessing(self):
+    def get_postprocessing_file_name(self):
         """
         Depending on user input, Snapshot computation will perform postprocessing for every micro simulation before writing output to a file.
 
@@ -585,7 +591,7 @@ class Config:
         postprocessing : bool
             True if postprocessing is required.
         """
-        return self._postprocessing
+        return self._postprocessing_file_name
 
     def get_merge_output(self):
         """
