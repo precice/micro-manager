@@ -22,7 +22,7 @@ import logging
 import time
 
 from micro_manager.config import Config
-from .read_write_hdf import ReadWriteHDF as hp
+from .read_write_hdf import ReadWriteHDF
 from micro_manager.micro_simulation import create_simulation_class
 
 sys.path.append(os.getcwd())
@@ -72,7 +72,7 @@ class SnapshotComputation:
         # Path to the parameter file containing input parameters for micro simulations
         self._parameter_file = self._config.get_parameter_file_name()
 
-        self._is_postprocessing_required = self._config.get_postprocessing()
+        self._post_processing_file_name = self._config.get_postprocessing_file_name()
 
         self._merge_output_files = self._config.get_merge_output()
 
@@ -104,24 +104,36 @@ class SnapshotComputation:
 
             micro_sims_input = self._macro_parameters[elems]
             # Solve micro simulation
-            micro_sims_output = self._solve_micro_simulations(micro_sims_input)
+            micro_sims_output = self._solve_micro_simulation(micro_sims_input)
 
             # Write output to file
             if micro_sims_output is not None:
                 # Postprocessing
-                if self._is_postprocessing_required is True:
-                    if hasattr(self._micro_problem, "postprocessing") and callable(
-                        getattr(self._micro_problem, "postprocessing")
-                    ):
-                        micro_sims_output = self._micro_sims.postprocessing(
-                            micro_sims_output
+                if self._post_processing_file_name is not None:
+                    try:
+                        post_processing = getattr(
+                            importlib.import_module(
+                                self._post_processing_file_name, "Postprocessing"
+                            ),
+                            "Postprocessing",
                         )
-                    else:
+                        if hasattr(post_processing, "postprocessing") and callable(
+                            getattr(post_processing, "postprocessing")
+                        ):
+                            micro_sims_output = post_processing.postprocessing(
+                                micro_sims_output
+                            )
+                        else:
+                            self._logger.info(
+                                "No post-processing script can be found in the provided path. Skipping post-processing."
+                            )
+                            self._post_processing_file_name = None
+                    except Exception:
                         self._logger.info(
-                            "Postprocessing is activated in config file but not available. Skipping postprocessing."
+                            "No post-processing script can be found in the provided path. Skipping post-processing."
                         )
-                        self._is_postprocessing_required = False
-                self._data_storage.write_sim_output_to_hdf(
+                        self._post_processing_file_name = None
+                self._data_storage.write_output_to_hdf(
                     self._output_file_path, micro_sims_input, micro_sims_output
                 )
             # Log error and skip snapshot
@@ -136,7 +148,7 @@ class SnapshotComputation:
                     )
                 )
 
-        # If activated, merge output files
+        # If merging of output files is activated in config, merge output files
         if self._merge_output_files and self._is_parallel:
             self._logger.info(
                 "Snapshots have been computed and stored. Merging output files"
@@ -164,10 +176,10 @@ class SnapshotComputation:
         os.makedirs(self._output_subdirectory, exist_ok=True)
 
         # Create object responsible for reading parameters and writing simulation output
-        self._data_storage = hp(self._logger)
+        self._data_storage = ReadWriteHDF(self._logger)
 
         # Read macro parameters from the parameter file
-        self._macro_parameters = self._data_storage.read_hdf_to_dict(
+        self._macro_parameters = self._data_storage.read_hdf(
             self._parameter_file, self._read_data_names
         )
 
@@ -224,7 +236,6 @@ class SnapshotComputation:
         for i in range(self._local_number_of_sims):
             self._global_ids_of_local_sims.append(sim_id)
             sim_id += 1
-
         self._micro_problem = getattr(
             importlib.import_module(
                 self._config.get_micro_file_name(), "MicroSimulation"
@@ -242,9 +253,9 @@ class SnapshotComputation:
     # Private methods
     # ***************
 
-    def _solve_micro_simulations(self, micro_sims_input: dict) -> dict | None:
+    def _solve_micro_simulation(self, micro_sims_input: dict) -> dict | None:
         """
-        Solve all micro simulations and assemble the micro simulations outputs in a list of dicts format.
+        Solve micro simulation.
 
         Parameters
         ----------
