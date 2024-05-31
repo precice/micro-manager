@@ -468,12 +468,13 @@ class MicroManager:
         if hasattr(micro_problem, "initialize") and callable(
             getattr(micro_problem, "initialize")
         ):
-            self._micro_sims_init = True
+            self._micro_sims_init = True  # Starting value before setting
 
-            # Check if the initialize() method of the micro simulation has any arguments
             try:  # Try to get the signature of the initialize() method, if it is written in Python
                 argspec = inspect.getfullargspec(micro_problem.initialize)
-                if len(argspec.args) == 1:
+                if (
+                    len(argspec.args) == 1
+                ):  # The first argument in the signature is self
                     is_initial_data_required = False
                 elif len(argspec.args) == 2:
                     is_initial_data_required = True
@@ -485,15 +486,15 @@ class MicroManager:
                 self._logger.info(
                     "The signature of initialize() method of the micro simulation cannot be determined. Trying to determine the signature by calling the method."
                 )
-                # Try to call the initialize() method of the micro simulation without arguments. This is necessary if the function is not written in Python.
-                try:
+                # Try to get the signature of the initialize() method, if it is not written in Python
+                try:  # Try to call the initialize() method without initial data
                     self._micro_sims[0].initialize()
                     is_initial_data_required = False
                 except TypeError:
                     self._logger.info(
                         "The initialize() method of the micro simulation has arguments. Attempting to call it again with initial data."
                     )
-                    try:
+                    try:  # Try to call the initialize() method with initial data
                         self._micro_sims[0].initialize(initial_data[0])
                         is_initial_data_required = True
                     except TypeError:
