@@ -5,7 +5,7 @@
         "read_data_names": {"macro-scalar-data": "scalar", "macro-vector-data": "vector"},
         "write_data_names": {"micro-scalar-data": "scalar", "micro-vector-data": "vector"},
         "dt": 0.1,
-        "postprocessing_file_name": "snapshot_postprocessing",
+        "post_processing_file_name": "snapshot_post_processing",
         "merge_output": "True"
     },
     "diagnostics": {
