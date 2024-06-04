@@ -5,13 +5,12 @@ This files the class MicroManager which has the following callable public method
 
 - solve
 
-This file is directly executable as it consists of a main() function. Upon execution, an object of the class MicroManager is created using a given JSON file,
+This file is executable via __main__.py. Upon execution, an object of the class MicroManager is created using a given JSON file,
 and the initialize and solve methods are called.
 
 Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
 """
 
-import argparse
 import importlib
 import logging
 import os
@@ -943,25 +942,3 @@ class MicroManager:
             output_interpol["active_state"] = 1
             output_interpol["active_steps"] = self._micro_sims_active_steps[unset_sim]
         return output_interpol
-
-
-def main():
-    parser = argparse.ArgumentParser(description=".")
-    parser.add_argument(
-        "config_file", type=str, help="Path to the JSON config file of the manager."
-    )
-
-    args = parser.parse_args()
-    config_file_path = args.config_file
-    if not os.path.isabs(config_file_path):
-        config_file_path = os.getcwd() + "/" + config_file_path
-
-    manager = MicroManager(config_file_path)
-
-    manager.initialize()
-
-    manager.solve()
-
-
-if __name__ == "__main__":
-    main()
