@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-The Micro Manager abstract base class and base class provide an interface its subclasses.
-The Micro Manager base class handles initialization shared by its subclasses (MicroManagerCoupling), respectively.
+The Micro Manager abstract base class provides an interface for its subclasses.
+The Micro Manager base class handles initialization shared by its subclasses (MicroManagerCoupling).
 The base class should not be executed on its own. It is meant to be inherited by MicroManagerCoupling.
 
 For more details see the MicroManagerCoupling class or the documentation at https://precice.org/tooling-micro-manager-overview.html.
@@ -14,7 +14,7 @@ from abc import ABC, abstractmethod
 from .config import Config
 
 
-class MicroManagerAbstract(ABC):
+class MicroManagerInterface(ABC):
     """
     Abstract base class of Micro Manager classes. Defines interface for Micro Manager classes.
     """
@@ -34,7 +34,7 @@ class MicroManagerAbstract(ABC):
         pass
 
 
-class MicroManager(MicroManagerAbstract):
+class MicroManager(MicroManagerInterface):
     """
     Micro Manager base class provides common functionalities for its subclasses.
     """

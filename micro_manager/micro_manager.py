@@ -23,7 +23,6 @@ from warnings import warn
 
 import numpy as np
 import precice
-from mpi4py import MPI
 
 from .micro_manager_base import MicroManager
 from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
