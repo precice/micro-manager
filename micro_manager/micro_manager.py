@@ -4,6 +4,7 @@ Micro Manager is a tool to initialize and adaptively control micro simulations a
 This files the class MicroManager which has the following callable public methods:
 
 - solve
+- initialize
 
 This file is executable via __main__.py. Upon execution, an object of the class MicroManager is created using a given JSON file,
 and the initialize and solve methods are called.
@@ -12,7 +13,6 @@ Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
 """
 
 import importlib
-import logging
 import os
 import sys
 import time
@@ -25,9 +25,9 @@ import numpy as np
 import precice
 from mpi4py import MPI
 
+from .micro_manager_base import MicroManager
 from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
-from .config import Config
 from .domain_decomposition import DomainDecomposer
 from .micro_simulation import create_simulation_class
 from .interpolation import Interpolation
@@ -35,7 +35,7 @@ from .interpolation import Interpolation
 sys.path.append(os.getcwd())
 
 
-class MicroManager:
+class MicroManagerCoupling(MicroManager):
     def __init__(self, config_file: str) -> None:
         """
         Constructor.
@@ -45,29 +45,7 @@ class MicroManager:
         config_file : string
             Name of the JSON configuration file (provided by the user).
         """
-        self._comm = MPI.COMM_WORLD
-        self._rank = self._comm.Get_rank()
-        self._size = self._comm.Get_size()
-
-        self._logger = logging.getLogger(__name__)
-        self._logger.setLevel(level=logging.INFO)
-
-        # Create file handler which logs messages
-        fh = logging.FileHandler("micro-manager.log")
-        fh.setLevel(logging.INFO)
-
-        # Create formatter and add it to handlers
-        formatter = logging.Formatter(
-            "[" + str(self._rank) + "] %(name)s -  %(levelname)s - %(message)s"
-        )
-        fh.setFormatter(formatter)
-        self._logger.addHandler(fh)  # add the handlers to the logger
-
-        self._is_parallel = self._size > 1
-        self._micro_sims_have_output = False
-
-        self._logger.info("Provided configuration file: {}".format(config_file))
-        self._config = Config(self._logger, config_file)
+        super().__init__(config_file)
 
         # Define the preCICE Participant
         self._participant = precice.Participant(
@@ -93,9 +71,6 @@ class MicroManager:
         self._crash_threshold = 0.2
         self._number_of_nearest_neighbors = 4
 
-        self._local_number_of_sims = 0
-        self._global_number_of_sims = 0
-        self._is_rank_empty = False
         self._dt = 0
         self._mesh_vertex_ids = None  # IDs of macro vertices as set by preCICE
         self._micro_n_out = self._config.get_micro_output_n()

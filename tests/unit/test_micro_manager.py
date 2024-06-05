@@ -53,7 +53,7 @@ class TestFunctioncalls(TestCase):
         """
         Test if the constructor of the MicroManager class passes correct values to member variables.
         """
-        manager = micro_manager.MicroManager("micro-manager-config.json")
+        manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
 
         self.assertListEqual(manager._macro_bounds, self.macro_bounds)
         self.assertDictEqual(manager._read_data_names, self.fake_read_data_names)
@@ -64,7 +64,7 @@ class TestFunctioncalls(TestCase):
         """
         Test if the initialize function of the MicroManager class initializes member variables to correct values
         """
-        manager = micro_manager.MicroManager("micro-manager-config.json")
+        manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
         manager.initialize()
 
         self.assertEqual(manager._dt, 0.1)  # from Interface.initialize
@@ -82,7 +82,7 @@ class TestFunctioncalls(TestCase):
         """
         Test if the internal functions _read_data_from_precice and _write_data_to_precice work as expected.
         """
-        manager = micro_manager.MicroManager("micro-manager-config.json")
+        manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
 
         manager._write_data_to_precice(self.fake_write_data)
         read_data = manager._read_data_from_precice()
@@ -98,7 +98,7 @@ class TestFunctioncalls(TestCase):
         """
         Test if the internal function _solve_micro_simulations works as expected.
         """
-        manager = micro_manager.MicroManager("micro-manager-config.json")
+        manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
         manager.initialize()
 
         manager._local_number_of_sims = 4

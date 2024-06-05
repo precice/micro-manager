@@ -2,7 +2,7 @@ import argparse
 import os
 
 from .config import Config
-from .micro_manager import MicroManager
+from .micro_manager import MicroManagerCoupling
 
 
 def main():
@@ -16,7 +16,7 @@ def main():
     if not os.path.isabs(config_file_path):
         config_file_path = os.getcwd() + "/" + config_file_path
 
-    manager = MicroManager(config_file_path)
+    manager = MicroManagerCoupling(config_file_path)
 
     manager.initialize()
 
