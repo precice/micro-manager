@@ -6,7 +6,7 @@ This files the class MicroManager which has the following callable public method
 - solve
 - initialize
 
-This file is executable via __main__.py. Upon execution, an object of the class MicroManager is created using a given JSON file,
+Upon execution, an object of the class MicroManager is created using a given JSON file,
 and the initialize and solve methods are called.
 
 Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
