@@ -5,7 +5,7 @@ from .config import Config
 from .micro_manager import MicroManagerCoupling
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser(description=".")
     parser.add_argument(
         "config_file", type=str, help="Path to the JSON config file of the manager."
