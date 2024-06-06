@@ -3,7 +3,6 @@ from unittest import TestCase
 import numpy as np
 
 import micro_manager
-import micro_manager.interpolation
 
 
 class MicroSimulation:
@@ -38,7 +37,7 @@ class TestSimulationCrashHandling(TestCase):
         expected_crash_vector_data = np.array([55 / 49, 55 / 49, 55 / 49])
         expected_crash_scalar_data = 55 / 49
 
-        manager = micro_manager.MicroManager("micro-manager-config_crash.json")
+        manager = micro_manager.MicroManagerCoupling("micro-manager-config_crash.json")
         manager.initialize()
 
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
@@ -85,7 +84,7 @@ class TestSimulationCrashHandling(TestCase):
         expected_crash_vector_data = np.array([55 / 49, 55 / 49, 55 / 49])
         expected_crash_scalar_data = 55 / 49
 
-        manager = micro_manager.MicroManager("micro-manager-config_crash.json")
+        manager = micro_manager.MicroManagerCoupling("micro-manager-config_crash.json")
         manager.initialize()
 
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
