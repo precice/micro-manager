@@ -16,19 +16,17 @@ import argparse
 import importlib
 import os
 import sys
-from mpi4py import MPI
 import numpy as np
-import logging
 import time
 
-from micro_manager.config import Config
-from .read_write_hdf import ReadWriteHDF
+from micro_manager.micro_manager import MicroManager
+from .dataset import ReadWriteHDF
 from micro_manager.micro_simulation import create_simulation_class
 
 sys.path.append(os.getcwd())
 
 
-class SnapshotComputation:
+class MicroManagerSnapshot(MicroManager):
     def __init__(self, config_file: str) -> None:
         """
         Constructor.
@@ -38,29 +36,7 @@ class SnapshotComputation:
         config_file : string
             Name of the JSON configuration file (provided by the user).
         """
-        self._comm = MPI.COMM_WORLD
-        self._rank = self._comm.Get_rank()
-        self._size = self._comm.Get_size()
-
-        self._logger = logging.getLogger(__name__)
-        self._logger.setLevel(level=logging.INFO)
-
-        # Create file handler which logs messages
-        fh = logging.FileHandler("snapshot-computation.log")
-        fh.setLevel(logging.INFO)
-
-        # Create formatter and add it to handlers
-        formatter = logging.Formatter(
-            "[" + str(self._rank) + "] %(name)s -  %(levelname)s - %(message)s"
-        )
-        fh.setFormatter(formatter)
-        self._logger.addHandler(fh)  # add the handlers to the logger
-
-        self._is_parallel = self._size > 1
-        self._micro_sims_have_output = False
-
-        self._logger.info("Provided configuration file: {}".format(config_file))
-        self._config = Config(self._logger, config_file)
+        super().__init__(config_file)
         self._config.read_json_snapshot()
 
         # Data names of data to output to the snapshot database
@@ -77,10 +53,6 @@ class SnapshotComputation:
         self._merge_output_files = self._config.get_merge_output()
 
         self._is_micro_solve_time_required = self._config.write_micro_solve_time()
-
-        self._local_number_of_sims = 0
-        self._global_number_of_sims = 0
-        self._is_rank_empty = False
 
         self._dt = self._config.get_time_step_size()
 
@@ -287,25 +259,3 @@ class SnapshotComputation:
             )
             self._logger.error(e)
             return None
-
-
-def main():
-    parser = argparse.ArgumentParser(description=".")
-    parser.add_argument(
-        "config_file",
-        type=str,
-        help="Path to the JSON config file of the snapshot creation manager.",
-    )
-
-    args = parser.parse_args()
-    config_file_path = args.config_file
-    if not os.path.isabs(config_file_path):
-        config_file_path = os.getcwd() + "/" + config_file_path
-
-    manager = SnapshotComputation(config_file_path)
-
-    manager.solve()
-
-
-if __name__ == "__main__":
-    main()

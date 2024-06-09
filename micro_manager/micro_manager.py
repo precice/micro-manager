@@ -45,7 +45,7 @@ class MicroManagerCoupling(MicroManager):
             Name of the JSON configuration file (provided by the user).
         """
         super().__init__(config_file)
-
+        self._config.read_json_micro_manager()
         # Define the preCICE Participant
         self._participant = precice.Participant(
             "Micro-Manager", self._config.get_config_file_name(), self._rank, self._size
