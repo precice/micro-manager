@@ -51,7 +51,7 @@ class TestSimulationCrashHandling(TestCase):
         )
         manager._micro_sims = [MicroSimulation(i) for i in range(4)]
 
-        micro_sims_output = manager._solve_micro_simulations(macro_data)
+        micro_sims_output = manager._solve_micro_simulations(macro_data, 1.0)
 
         # Crashed simulation has interpolated value
         data_crashed = micro_sims_output[2]
@@ -99,7 +99,7 @@ class TestSimulationCrashHandling(TestCase):
         is_sim_active = np.array([True, True, True, True, False])
         sim_is_associated_to = np.array([-2, -2, -2, -2, 2])
         micro_sims_output = manager._solve_micro_simulations_with_adaptivity(
-            macro_data, is_sim_active, sim_is_associated_to
+            macro_data, is_sim_active, sim_is_associated_to, 1.0
         )
 
         # Crashed simulation has interpolated value
