@@ -76,7 +76,7 @@ class MicroManager(MicroManagerInterface):
         self._logger.info("Provided configuration file: {}".format(config_file))
         self._config = Config(self._logger, config_file)
 
-        self._micro_dt = self._config.get_micro_time_window()
+        self._micro_dt = self._config.get_micro_time_window_size()
 
     def initialize(self):
         """
