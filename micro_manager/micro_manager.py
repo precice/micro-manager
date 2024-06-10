@@ -70,7 +70,6 @@ class MicroManagerCoupling(MicroManager):
         self._crash_threshold = 0.2
         self._number_of_nearest_neighbors = 4
 
-        self._dt = 0
         self._mesh_vertex_ids = None  # IDs of macro vertices as set by preCICE
         self._micro_n_out = self._config.get_micro_output_n()
 
@@ -117,6 +116,8 @@ class MicroManagerCoupling(MicroManager):
         sim_is_associated_to_cp = None
         sim_states_cp = [None] * self._local_number_of_sims
 
+        dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
+
         if self._is_adaptivity_on:
             similarity_dists = np.zeros(
                 (
@@ -140,7 +141,7 @@ class MicroManagerCoupling(MicroManager):
                     is_sim_active,
                     sim_is_associated_to,
                 ) = self._adaptivity_controller.compute_adaptivity(
-                    self._dt,
+                    dt,
                     self._micro_sims,
                     similarity_dists,
                     is_sim_active,
@@ -150,9 +151,7 @@ class MicroManagerCoupling(MicroManager):
 
         while self._participant.is_coupling_ongoing():
 
-            self._dt = (
-                self._participant.get_max_time_step_size()
-            )  # ask preCICE at beginning of time step for allowed time step size
+            dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
             # Write a checkpoint
             if self._participant.requires_writing_checkpoint():
@@ -168,7 +167,7 @@ class MicroManagerCoupling(MicroManager):
                             is_sim_active,
                             sim_is_associated_to,
                         ) = self._adaptivity_controller.compute_adaptivity(
-                            self._dt,
+                            dt,
                             self._micro_sims,
                             similarity_dists,
                             is_sim_active,
@@ -206,7 +205,7 @@ class MicroManagerCoupling(MicroManager):
                         is_sim_active,
                         sim_is_associated_to,
                     ) = self._adaptivity_controller.compute_adaptivity(
-                        self._dt,
+                        dt,
                         self._micro_sims,
                         similarity_dists,
                         is_sim_active,
@@ -230,10 +229,10 @@ class MicroManagerCoupling(MicroManager):
                         self._micro_sims_active_steps[active_id] += 1
 
                 micro_sims_output = self._solve_micro_simulations_with_adaptivity(
-                    micro_sims_input, is_sim_active, sim_is_associated_to
+                    micro_sims_input, is_sim_active, sim_is_associated_to, dt
                 )
             else:
-                micro_sims_output = self._solve_micro_simulations(micro_sims_input)
+                micro_sims_output = self._solve_micro_simulations(micro_sims_input, dt)
 
             # Check if more than a certain percentage of the micro simulations have crashed and terminate if threshold is exceeded
             crashed_sims_on_all_ranks = np.zeros(self._size, dtype=np.int64)
@@ -257,11 +256,11 @@ class MicroManagerCoupling(MicroManager):
 
             self._write_data_to_precice(micro_sims_output)
 
-            t += self._dt  # increase internal time when time step is done.
+            t += dt  # increase internal time when time step is done.
             n += 1  # increase counter
             self._participant.advance(
-                self._dt
-            )  # notify preCICE that time step of size self._dt is complete
+                dt
+            )  # notify preCICE that time step of size dt is complete
 
             # Revert micro simulations to their last checkpoints if required
             if self._participant.requires_reading_checkpoint():
@@ -556,15 +555,18 @@ class MicroManagerCoupling(MicroManager):
         ):
             self._micro_sims_have_output = True
 
-        self._dt = self._participant.get_max_time_step_size()
-
     # ***************
     # Private methods
     # ***************
 
-    def _read_data_from_precice(self) -> list:
+    def _read_data_from_precice(self, dt) -> list:
         """
         Read data from preCICE.
+
+        Parameters
+        ----------
+        dt : float
+            Time step size at which data is to be read from preCICE.
 
         Returns
         -------
@@ -579,7 +581,7 @@ class MicroManagerCoupling(MicroManager):
             read_data.update(
                 {
                     name: self._participant.read_data(
-                        self._macro_mesh_name, name, self._mesh_vertex_ids, self._dt
+                        self._macro_mesh_name, name, self._mesh_vertex_ids, dt
                     )
                 }
             )
@@ -621,7 +623,7 @@ class MicroManagerCoupling(MicroManager):
                     self._macro_mesh_name, dname, [], np.array([])
                 )
 
-    def _solve_micro_simulations(self, micro_sims_input: list) -> list:
+    def _solve_micro_simulations(self, micro_sims_input: list, dt: float) -> list:
         """
         Solve all micro simulations and assemble the micro simulations outputs in a list of dicts format.
 
@@ -630,6 +632,8 @@ class MicroManagerCoupling(MicroManager):
         micro_sims_input : list
             List of dicts in which keys are names of data and the values are the data which are required inputs to
             solve a micro simulation.
+        dt : float
+            Time step size.
 
         Returns
         -------
@@ -645,9 +649,7 @@ class MicroManagerCoupling(MicroManager):
                 # Attempt to solve the micro simulation
                 try:
                     start_time = time.time()
-                    micro_sims_output[count] = sim.solve(
-                        micro_sims_input[count], self._dt
-                    )
+                    micro_sims_output[count] = sim.solve(micro_sims_input[count], dt)
                     end_time = time.time()
                     # Write solve time of the macro simulation if required and the simulation has not crashed
                     if self._is_micro_solve_time_required:
@@ -689,6 +691,7 @@ class MicroManagerCoupling(MicroManager):
         micro_sims_input: list,
         is_sim_active: np.ndarray,
         sim_is_associated_to: np.ndarray,
+        dt: float,
     ) -> list:
         """
         Solve all micro simulations and assemble the micro simulations outputs in a list of dicts format.
@@ -702,6 +705,8 @@ class MicroManagerCoupling(MicroManager):
             1D array having state (active or inactive) of each micro simulation
         sim_is_associated_to : numpy array
             1D array with values of associated simulations of inactive simulations. Active simulations have None
+        dt : float
+            Time step size.
 
         Returns
         -------
@@ -741,7 +746,7 @@ class MicroManagerCoupling(MicroManager):
                 try:
                     start_time = time.time()
                     micro_sims_output[active_id] = self._micro_sims[active_id].solve(
-                        micro_sims_input[active_id], self._dt
+                        micro_sims_input[active_id], dt
                     )
                     end_time = time.time()
                     # Write solve time of the macro simulation if required and the simulation has not crashed

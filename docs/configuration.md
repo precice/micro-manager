@@ -16,7 +16,8 @@ The Micro Manager is configured with a JSON file. An example configuration file 
         "config_file_name": "precice-config.xml",
         "macro_mesh_name": "macro-mesh",
         "read_data_names": {"temperature": "scalar", "heat-flux": "vector"},
-        "write_data_names": {"porosity": "scalar", "conductivity": "vector"}
+        "write_data_names": {"porosity": "scalar", "conductivity": "vector"},
+        "micro_time_window_size": 1.0
     },
     "simulation_params": {
         "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
@@ -41,6 +42,7 @@ Parameter | Description
 `macro_mesh_name` |  Name of the macro mesh as stated in the preCICE configuration.
 `read_data_names` |  A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"`  as values depending on the nature of the data.
 `write_data_names` |  A Python dictionary with the names of the data to be written to preCICE as keys and `"scalar"` or `"vector"`  as values depending on the nature of the data.
+`micro_time_window_size` | Initial time window size (dt) of the micro simulation.
 
 ## Simulation Parameters
 
