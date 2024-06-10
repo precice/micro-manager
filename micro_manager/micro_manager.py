@@ -196,7 +196,7 @@ class MicroManagerCoupling(MicroManager):
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
 
-            micro_sims_input = self._read_data_from_precice()
+            micro_sims_input = self._read_data_from_precice(dt)
 
             if self._is_adaptivity_on:
                 if self._adaptivity_in_every_implicit_step:
@@ -426,7 +426,7 @@ class MicroManagerCoupling(MicroManager):
         self._micro_sims_init = False  # DECLARATION
 
         # Read initial data from preCICE, if it is available
-        initial_data = self._read_data_from_precice()
+        initial_data = self._read_data_from_precice(dt=self._micro_dt)
 
         if not initial_data:
             is_initial_data_available = False
