@@ -133,9 +133,8 @@ class MicroManagerCoupling(MicroManager):
                 (self._number_of_sims_for_adaptivity), -2, dtype=np.intc
             )
 
-            # If micro simulations have been initialized, compute adaptivity based on initial data
+            # If micro simulations have been initialized, compute adaptivity before starting the coupling
             if self._micro_sims_init:
-                # Compute adaptivity based on initial data of micro sims
                 (
                     similarity_dists,
                     is_sim_active,
@@ -248,6 +247,7 @@ class MicroManagerCoupling(MicroManager):
                 )
             else:
                 crash_ratio = np.sum(self._has_sim_crashed) / len(self._has_sim_crashed)
+
             if crash_ratio > self._crash_threshold:
                 self._logger.info(
                     "{:.1%} of the micro simulations have crashed exceeding the threshold of {:.1%}. "
