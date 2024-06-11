@@ -2,8 +2,12 @@
 Functionality for adaptive initialization and control of micro simulations
 """
 import sys
+import os
+import numpy as np
 from math import exp
 from typing import Callable
+import re
+import xml.etree.ElementTree as ET
 from warnings import warn
 
 import numpy as np
@@ -25,6 +29,7 @@ class AdaptivityCalculator:
         self._hist_param = configurator.get_adaptivity_hist_param()
         self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
+        self._config_file_name = configurator.get_config_file_name()
 
         self._logger = logger
 
@@ -69,6 +74,202 @@ class AdaptivityCalculator:
             data_diff += self._similarity_measure(data_vals)
 
         return exp(-self._hist_param * dt) * _similarity_dists + dt * data_diff
+
+    def _get_distance_weight_power(self) -> float:
+        """
+        Calculate distance weights from convergence status: if the residual is still reducing fast, it tends to have less miceo simulations, otherwise more micro simulations.
+        If no convergence status is found, the default value 0.5 is returned.
+
+        Returns
+        -------
+        distance_weight : float
+        """
+        # Read the XML file as text
+        with open(self._config_file_name, "r") as xml_file:
+            xml_data = xml_file.read()
+
+        unique_names = [
+            "absolute-convergence-measure",
+            "relative-convergence-measure",
+            "residual-relative-convergence-measure",
+        ]
+
+        # Initialize lists to store the found attributes
+        data_values = []
+        limit_values = []
+
+        for unique_name in unique_names:
+            patteren = f'<{unique_name} limit="([^"]+)" data="([^"]+)" mesh="([^"]+)"'
+            matches = re.finditer(patteren, xml_data)
+            for match in matches:
+                data_values.append(match.group(2))
+                limit_values.append(match.group(1))
+
+        # read convergence value from precice-Mysolver-convergence.log file
+        # Initialize lists to store the extracted values
+        last_convergence_values = []
+        last_sec_convergence_values = []
+        power_value = 0.5
+
+        file_path = None
+        file_name_suffix = "-convergence.log"
+
+        # Search for the file in the current directory and its subdirectories
+        for root, _, files in os.walk(os.getcwd()):
+            for file_name in files:
+                if file_name.endswith(file_name_suffix):
+                    file_path = os.path.join(root, file_name)
+                    break
+
+        if file_path:
+            with open(file_path, "r") as file:
+                lines = file.readlines()
+            if len(lines) < 3:
+                print("File does not contain enough lines.")
+            else:
+                # Read the header line and last two lines of the file
+                header_line = lines[0].strip().split()
+                last_line = lines[-1].strip().split()
+                last_second_line = lines[-2].strip().split()
+                # Extract the convergence values from the last line and the last second line, store in two arraries
+                for i in range(0, len(header_line)):
+                    last_convergence_values.append(float(last_line[i]))
+                    last_sec_convergence_values.append(float(last_second_line[i]))
+                for data in data_values:
+                    for element in header_line:
+                        if data in element:
+                            index_convergence = header_line.index(element)
+                            index_config = data_values.index(data)
+                            last_convergence_values[index_convergence] = max(
+                                last_convergence_values[index_convergence],
+                                float(limit_values[index_config]),
+                            )  # if current residual is smaller than the limit, set this value to limit to avoid that one over-converged value balances the other not converged values in the following multiplication
+                            last_sec_convergence_values[index_convergence] = max(
+                                last_sec_convergence_values[index_convergence],
+                                float(limit_values[index_config]),
+                            )
+
+                # Calculate the power value based on the convergence values
+                if last_convergence_values[0] != last_sec_convergence_values[0]:
+                    power_value = 0.5  # first iteration in each time step
+                else:
+                    rel_diff = (
+                        np.log10(np.prod(np.array(last_convergence_values[2:])))
+                        - np.log10(np.prod(np.array(last_sec_convergence_values[2:])))
+                    ) / np.log10(
+                        np.prod(np.array(last_convergence_values[2:]))
+                    )  # the rel_diff is (lg(convergence values at the last iteration)-lg(convergence values at the second last iteration))/lg(convergence values at the last iteration)
+                    # TODO: test insensely
+                    power_value = min(
+                        max(abs(np.log10(abs(rel_diff))), 0.5), 1.0
+                    )  # limit the power value in between 0.5 and 1.0 (motivated by experiments)
+
+        else:
+            print(
+                "Convergence file is not found in the current directory or its subdirectories."
+            )
+
+        self._logger.info("power value: {} ".format(power_value))
+
+        return power_value
+
+    def _get_deactivate_distance(
+        self, similarity_dists: np.ndarray, is_sim_active: np.ndarray
+    ) -> float:
+        """
+        Get maximum gap between ascending distances between all active micro simulations.
+
+        Parameters
+        ----------
+        similarity_dists : numpy array
+            2D array having similarity distances between each micro simulation pair
+        is_sim_active : numpy array
+            1D array having state (active or inactive) of each micro simulation
+
+        Returns
+        -------
+        max_gap : float
+            Maximum gap between active micro simulations
+        """
+        _similarity_dists = np.copy(similarity_dists)
+        active_ids = np.where(is_sim_active)[0]
+        max_gap = 0.0
+        similarity_dists_active = _similarity_dists[active_ids, :][:, active_ids]
+        deactivate_distance = 0.0
+        # power=self._get_distance_weight_power()
+        power = 0.5
+
+        # sort the distances between active sims in ascending order
+        similarity_dists_active = np.sort(similarity_dists_active, axis=None)
+        similarity_dists_active = np.append(
+            similarity_dists_active, np.amax(_similarity_dists)
+        )
+        # print(f"similarity_dists_active: {similarity_dists_active}") # observe the distance distribution
+        # get the maximum gap between ascending distances
+        for i in range(1, similarity_dists_active.size):
+            measure = (
+                similarity_dists_active[i] - similarity_dists_active[i - 1]
+            ) * np.power(similarity_dists_active[i], power)
+            if measure > max_gap:
+                max_gap = measure
+                deactivate_distance = similarity_dists_active[
+                    i
+                ]  # get the distance value at the right end of the gap
+        # print(f"deactivate_distance: {deactivate_distance}")
+        return deactivate_distance
+
+    def _get_activate_distance(
+        self, similarity_dists: np.ndarray, is_sim_active: np.ndarray
+    ) -> float:
+        """
+        Get maximum gap between ascending distances from inactive to active micro simulations.
+
+        Parameters
+        ----------
+        similarity_dists : numpy array
+        is_sim_active : numpy array
+            1D array having state (active or inactive) of each micro simulation
+
+        Returns
+        -------
+        max_gap : float
+            Maximum gap between active micro simulations
+        """
+        _similarity_dists = np.copy(similarity_dists)
+        inactive_ids = np.where(is_sim_active == False)[0]
+        active_ids = np.where(is_sim_active)[0]
+        max_gap = 0.0
+        activate_distance = 0.0
+        similarity_dists_inactive_active = np.zeros(inactive_ids.size)
+        # power=self._get_distance_weight_power()
+        power = 0.5
+
+        # get minimum distance between active and inactive sims for each inactive sim
+        for i in range(inactive_ids.size):
+            similarity_dists_inactive_active[i] = np.amin(
+                _similarity_dists[inactive_ids[i], active_ids]
+            )
+
+        # sort the distances between active sims in ascending order
+        similarity_dists_inactive_active = np.sort(
+            similarity_dists_inactive_active, axis=None
+        )
+        similarity_dists_inactive_active = np.append(
+            similarity_dists_inactive_active, np.amax(_similarity_dists)
+        )
+        # print(f"similarity_dists_inactive: {similarity_dists_inactive_active}")
+
+        # get the maximum gap between ascending distances
+        for i in range(1, similarity_dists_inactive_active.size):
+            measure = (
+                similarity_dists_inactive_active[i]
+                - similarity_dists_inactive_active[i - 1]
+            ) * np.power(similarity_dists_inactive_active[i], power)
+            if measure > max_gap:
+                max_gap = measure
+                activate_distance = similarity_dists_inactive_active[i - 1]
+        # print(f"activate_distance: {activate_distance}")
+        return activate_distance
 
     def _update_active_sims(
         self, similarity_dists: np.ndarray, is_sim_active: np.ndarray
