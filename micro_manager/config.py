@@ -30,6 +30,7 @@ class Config:
         self._macro_mesh_name = None
         self._read_data_names = dict()
         self._write_data_names = dict()
+        self._micro_dt = None
 
         self._macro_domain_bounds = None
         self._ranks_per_axis = None
@@ -113,6 +114,8 @@ class Config:
             self._logger.info(
                 "No read data names provided. Micro manager will only write data to preCICE."
             )
+
+        self._micro_dt = data["coupling_params"]["micro_dt"]
 
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
 
@@ -431,3 +434,14 @@ class Config:
             True if adaptivity needs to be calculated in every time iteration, False otherwise.
         """
         return self._adaptivity_every_implicit_iteration
+
+    def get_micro_dt(self):
+        """
+        Get the size of the micro time window.
+
+        Returns
+        -------
+        micro_time_window : float
+            Size of the micro time window.
+        """
+        return self._micro_dt

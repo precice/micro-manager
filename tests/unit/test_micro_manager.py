@@ -67,7 +67,7 @@ class TestFunctioncalls(TestCase):
         manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
         manager.initialize()
 
-        self.assertEqual(manager._dt, 0.1)  # from Interface.initialize
+        self.assertEqual(manager._micro_dt, 0.1)  # from Interface.initialize
         self.assertEqual(manager._global_number_of_sims, 4)
         self.assertListEqual(manager._macro_bounds, self.macro_bounds)
         self.assertListEqual(manager._mesh_vertex_ids.tolist(), [0, 1, 2, 3])
@@ -85,7 +85,7 @@ class TestFunctioncalls(TestCase):
         manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
 
         manager._write_data_to_precice(self.fake_write_data)
-        read_data = manager._read_data_from_precice()
+        read_data = manager._read_data_from_precice(1.0)
 
         for data, fake_data in zip(read_data, self.fake_read_data):
             self.assertEqual(data["macro-scalar-data"], 1)
@@ -105,7 +105,7 @@ class TestFunctioncalls(TestCase):
         manager._micro_sims = [MicroSimulation(i) for i in range(4)]
         manager._micro_sims_active_steps = np.zeros(4, dtype=np.int32)
 
-        micro_sims_output = manager._solve_micro_simulations(self.fake_read_data)
+        micro_sims_output = manager._solve_micro_simulations(self.fake_read_data, 1.0)
 
         for data, fake_data in zip(micro_sims_output, self.fake_write_data):
             self.assertEqual(data["micro-scalar-data"], 2)
