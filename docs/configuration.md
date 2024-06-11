@@ -42,7 +42,7 @@ Parameter | Description
 `macro_mesh_name` |  Name of the macro mesh as stated in the preCICE configuration.
 `read_data_names` |  A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"`  as values depending on the nature of the data.
 `write_data_names` |  A Python dictionary with the names of the data to be written to preCICE as keys and `"scalar"` or `"vector"`  as values depending on the nature of the data.
-`micro_time_window_size` | Initial time window size (dt) of the micro simulation.
+`micro_dt` | Initial time window size (dt) of the micro simulation.
 
 ## Simulation Parameters
 
