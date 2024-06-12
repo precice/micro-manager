@@ -34,6 +34,7 @@ class TestInterpolation(TestCase):
         """
         Test if finding nearest neighbor works as expected if interpolation point
         itself is not part of neighbor coordinates.
+        Note: running this test requires the sci-kit learn package to be installed.
         """
         neighbors = [[0, 2, 0], [0, 3, 0], [0, 0, 4], [-5, 0, 0], [0, 0, 0]]
         inter_coord = [0, 0, 0]

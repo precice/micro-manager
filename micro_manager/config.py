@@ -39,6 +39,8 @@ class Config:
 
         self._output_micro_sim_time = False
 
+        self._interpolate_crash = False
+
         self._adaptivity = False
         self._adaptivity_type = "local"
         self._data_for_adaptivity = dict()
@@ -199,6 +201,10 @@ class Config:
 
             self._write_data_names["active_state"] = False
             self._write_data_names["active_steps"] = False
+
+        if "interpolate_crash" in data["simulation_params"]:
+            if data["simulation_params"]["interpolate_crash"] == "True":
+                self._interpolate_crash = True
 
         try:
             diagnostics_data_names = data["diagnostics"]["data_from_micro_sims"]
@@ -445,3 +451,14 @@ class Config:
             Size of the micro time window.
         """
         return self._micro_dt
+
+    def interpolate_crashed_micro_sim(self):
+        """
+        Check if user wants crashed micro simulations to be interpolated.
+
+        Returns
+        -------
+        interpolate_crash : bool
+            True if crashed micro simulations need to be interpolated, False otherwise.
+        """
+        return self._interpolate_crash
