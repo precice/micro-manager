@@ -253,19 +253,21 @@ class MicroManagerCoupling(MicroManager):
                     np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
                 )
 
-            if self._is_parallel:
-                crash_ratio = (
-                    np.sum(crashed_sims_on_all_ranks) / self._global_number_of_sims
-                )
-            else:
-                crash_ratio = np.sum(self._has_sim_crashed) / len(self._has_sim_crashed)
+                if self._is_parallel:
+                    crash_ratio = (
+                        np.sum(crashed_sims_on_all_ranks) / self._global_number_of_sims
+                    )
+                else:
+                    crash_ratio = np.sum(self._has_sim_crashed) / len(
+                        self._has_sim_crashed
+                    )
 
-            if crash_ratio > self._crash_threshold:
-                self._logger.info(
-                    "{:.1%} of the micro simulations have crashed exceeding the threshold of {:.1%}. "
-                    "Exiting simulation.".format(crash_ratio, self._crash_threshold)
-                )
-                sys.exit()
+                if crash_ratio > self._crash_threshold:
+                    self._logger.info(
+                        "{:.1%} of the micro simulations have crashed exceeding the threshold of {:.1%}. "
+                        "Exiting simulation.".format(crash_ratio, self._crash_threshold)
+                    )
+                    sys.exit()
 
             self._write_data_to_precice(micro_sims_output)
 
@@ -497,6 +499,9 @@ class MicroManagerCoupling(MicroManager):
             warn(
                 "The initialize() method is only allowed to return data which is required for the adaptivity calculation."
             )
+
+        # Get initial data from micro simulations if initialize() method exists
+        if self._micro_sims_init:
 
             # Call initialize() method of the micro simulation to check if it returns any initial data
             if is_initial_data_required:
