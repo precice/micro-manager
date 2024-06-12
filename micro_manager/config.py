@@ -51,7 +51,6 @@ class Config:
         # Snapshot information
         self._parameter_file_name = None
         self._postprocessing_file_name = None
-        self._merge_output = False
 
         self._output_micro_sim_time = False
 
@@ -314,16 +313,6 @@ class Config:
                 "No post-processing file name provided. Snapshot computation will not perform any post-processing."
             )
             self._postprocessing_file_name = None
-
-        try:
-            if self._data["snapshot_params"]["merge_output"] == "True":
-                self._merge_output = True
-            else:
-                self._merge_output = False
-        except BaseException:
-            self._logger.info(
-                "Outputs from different ranks will not be collected into one file."
-            )
 
         try:
             self._dt = self._data["snapshot_params"]["dt"]
@@ -592,17 +581,6 @@ class Config:
             True if postprocessing is required.
         """
         return self._postprocessing_file_name
-
-    def get_merge_output(self):
-        """
-        Depending on user input, Snapshot computation will collect outputs from every rank in one file
-
-        Returns
-        -------
-        merge_output : bool
-            True if collection of output is wanted.
-        """
-        return self._merge_output
 
     def get_time_step_size(self):
         """
