@@ -38,21 +38,11 @@ class MicroManagerSnapshot(MicroManager):
         super().__init__(config_file)
         self._config.read_json_snapshot()
 
-        # Data names of data to output to the snapshot database
-        self._write_data_names = self._config.get_write_data_names()
-
-        # Data names of data to read as input parameter to the simulations
-        self._read_data_names = self._config.get_read_data_names()
-
         # Path to the parameter file containing input parameters for micro simulations
         self._parameter_file = self._config.get_parameter_file_name()
 
         # Get name of pos-processing script
         self._post_processing_file_name = self._config.get_postprocessing_file_name()
-
-        self._is_micro_solve_time_required = self._config.write_micro_solve_time()
-
-        self._micro_dt = self._config.get_time_step_size()
 
         # Collect crashed indices
         self._crashed_snapshots = []  # Declaration

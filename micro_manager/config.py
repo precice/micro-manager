@@ -80,16 +80,6 @@ class Config:
             .replace(".py", "")
         )
 
-    def read_json_micro_manager(self):
-        """
-        Reads Micro Manager relevant information from JSON configuration file
-        and saves the data to the respective instance attributes.
-        """
-        self._config_file_name = os.path.join(
-            self._folder, self._data["coupling_params"]["config_file_name"]
-        )
-        self._macro_mesh_name = self._data["coupling_params"]["macro_mesh_name"]
-
         try:
             self._write_data_names = self._data["coupling_params"]["write_data_names"]
             assert isinstance(
@@ -128,9 +118,30 @@ class Config:
                 "No read data names provided. Micro manager will only write data to preCICE."
             )
 
-        self._micro_dt = data["simulation_params"]["micro_dt"]
+        self._micro_dt = self._data["simulation_params"]["micro_dt"]
 
-        self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
+        try:
+            if self._data["diagnostics"]["output_micro_sim_solve_time"]:
+                self._output_micro_sim_time = True
+                self._write_data_names["micro_sim_time"] = False
+        except BaseException:
+            self._logger.info(
+                "Micro manager will not output time required to solve each micro simulation in each time step."
+            )
+
+    def read_json_micro_manager(self):
+        """
+        Reads Micro Manager relevant information from JSON configuration file
+        and saves the data to the respective instance attributes.
+        """
+        self._config_file_name = os.path.join(
+            self._folder, self._data["coupling_params"]["config_file_name"]
+        )
+        self._macro_mesh_name = self._data["coupling_params"]["macro_mesh_name"]
+
+        self._macro_domain_bounds = self._data["simulation_params"][
+            "macro_domain_bounds"
+        ]
 
         try:
             self._ranks_per_axis = self._data["simulation_params"]["decomposition"]
@@ -249,57 +260,10 @@ class Config:
                 "in every time window."
             )
 
-        try:
-            if self._data["diagnostics"]["output_micro_sim_solve_time"]:
-                self._output_micro_sim_time = True
-                self._write_data_names["micro_sim_time"] = False
-        except BaseException:
-            self._logger.info(
-                "Micro manager will not output time required to solve each micro simulation in each time step."
-            )
-
     def read_json_snapshot(self):
         self._parameter_file_name = os.path.join(
-            self._folder, self._data["snapshot_params"]["parameter_file_name"]
+            self._folder, self._data["coupling_params"]["parameter_file_name"]
         )
-
-        try:
-            self._write_data_names = self._data["snapshot_params"]["write_data_names"]
-            assert isinstance(
-                self._write_data_names, dict
-            ), "Write data entry is not a dictionary"
-            for key, value in self._write_data_names.items():
-                if value == "scalar":
-                    self._write_data_names[key] = False
-                elif value == "vector":
-                    self._write_data_names[key] = True
-                else:
-                    raise Exception(
-                        "Write data dictionary as a value other than 'scalar' or 'vector'"
-                    )
-        except BaseException:
-            self._logger.error(
-                "No write data names provided. Snapshot computation will not yield any results."
-            )
-
-        try:
-            self._read_data_names = self._data["snapshot_params"]["read_data_names"]
-            assert isinstance(
-                self._read_data_names, dict
-            ), "Read data entry is not a dictionary"
-            for key, value in self._read_data_names.items():
-                if value == "scalar":
-                    self._read_data_names[key] = False
-                elif value == "vector":
-                    self._read_data_names[key] = True
-                else:
-                    raise Exception(
-                        "Read data dictionary as a value other than 'scalar' or 'vector'"
-                    )
-        except BaseException:
-            self._logger.error(
-                "No read data names provided. Snapshot computation is not able to yield results without information."
-            )
 
         try:
             self._postprocessing_file_name = (
@@ -313,13 +277,6 @@ class Config:
                 "No post-processing file name provided. Snapshot computation will not perform any post-processing."
             )
             self._postprocessing_file_name = None
-
-        try:
-            self._dt = self._data["snapshot_params"]["dt"]
-        except BaseException:
-            self._logger.info(
-                "No time step is provided. Default time step of 0.01 is used."
-            )
 
         try:
             diagnostics_data_names = self._data["diagnostics"]["data_from_micro_sims"]
@@ -338,15 +295,6 @@ class Config:
         except BaseException:
             self._logger.info(
                 "No diagnostics data is defined. Snapshot computation will not output any diagnostics data."
-            )
-
-        try:
-            if self._data["diagnostics"]["output_micro_sim_solve_time"]:
-                self._output_micro_sim_time = True
-                self._write_data_names["micro_sim_time"] = False
-        except BaseException:
-            self._logger.info(
-                "Snapshot Computation will not output time required to solve each micro simulation."
             )
 
     def get_config_file_name(self):
