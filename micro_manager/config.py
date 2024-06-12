@@ -451,7 +451,7 @@ class Config:
             Size of the micro time window.
         """
         return self._micro_dt
-    
+
     def interpolate_crashed_micro_sim(self):
         """
         Check if user wants crashed micro simulations to be interpolated.
