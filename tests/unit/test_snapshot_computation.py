@@ -2,8 +2,9 @@ import numpy as np
 import os
 from unittest import TestCase
 from unittest.mock import MagicMock, patch
-import snapshot
+from micro_manager.snapshot.snapshot import MicroManagerSnapshot
 from micro_manager.micro_simulation import create_simulation_class
+from micro_manager.config import Config
 
 
 class MicroSimulation:
@@ -48,7 +49,7 @@ class TestFunctionCalls(TestCase):
 
     def test_snapshot_constructor(self):
         """
-        Test if the constructor of the SnapshotComputation class passes correct values to member variables.
+        Test if the constructor of the MicroManagerSnapshot class passes correct values to member variables.
         """
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
         file_name = "output.hdf5"
@@ -56,7 +57,7 @@ class TestFunctionCalls(TestCase):
         if os.path.isfile(complete_path):
             os.remove(complete_path)
 
-        snapshot_object = snapshot.SnapshotComputation("snapshot-config.json")
+        snapshot_object = MicroManagerSnapshot("snapshot-config.json")
 
         # Information from the config file
         self.assertDictEqual(
@@ -80,12 +81,11 @@ class TestFunctionCalls(TestCase):
         os.remove(complete_path)
         os.rmdir(path)
 
-    @patch("snapshot.SnapshotComputation._initialize")
-    def test_solve_micro_sims(self, mock_initialize):
+    def test_solve_micro_sims(self):
         """
         Test if the internal function _solve_micro_simulations works as expected.
         """
-        snapshot_object = snapshot.SnapshotComputation("snapshot-config.json")
+        snapshot_object = MicroManagerSnapshot("snapshot-config.json")
 
         snapshot_object._micro_problem = MicroSimulation
 
@@ -100,13 +100,12 @@ class TestFunctionCalls(TestCase):
             (self.fake_read_data["macro-vector-data"] + 1).tolist(),
         )
 
-    @patch("snapshot.SnapshotComputation._initialize")
-    def test_solve(self, mock_initialize):
+    def test_solve(self):
         """
-        Test if the solve function of the SnapshotComputation class works as expected.
+        Test if the solve function of the MicroManagerSnapshot class works as expected.
         """
 
-        snapshot_object = snapshot.SnapshotComputation("snapshot-config.json")
+        snapshot_object = MicroManagerSnapshot("snapshot-config.json")
         snapshot_object._data_storage = MagicMock()
 
         # Replace initialize call
@@ -136,7 +135,7 @@ class TestFunctionCalls(TestCase):
         """
         Test if the functions in the SnapshotConfig class work.
         """
-        config = snapshot.SnapshotConfig(MagicMock(), "snapshot-config.json")
+        config = Config(MagicMock(), "snapshot-config.json")
 
         self.assertEqual(
             config._parameter_file_name.split("/")[-1], "test_parameter.hdf5"
