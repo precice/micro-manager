@@ -120,7 +120,7 @@ class TestFunctioncalls(TestCase):
         Test if the functions in the Config class work.
         """
         config = micro_manager.Config(MagicMock(), "micro-manager-config.json")
-
+        config.read_json_micro_manager()
         self.assertEqual(config._config_file_name.split("/")[-1], "dummy-config.xml")
         self.assertEqual(config._micro_file_name, "test_micro_manager")
         self.assertEqual(config._macro_mesh_name, "dummy-macro-mesh")

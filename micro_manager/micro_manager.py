@@ -53,18 +53,10 @@ class MicroManagerCoupling(MicroManager):
 
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
-        # Data names of data written to preCICE
-        self._write_data_names = self._config.get_write_data_names()
-
-        # Data names of data read from preCICE
-        self._read_data_names = self._config.get_read_data_names()
-
         self._macro_bounds = self._config.get_macro_domain_bounds()
 
         if self._is_parallel:  # Simulation is run in parallel
             self._ranks_per_axis = self._config.get_ranks_per_axis()
-
-        self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
         # Parameter for interpolation in case of a simulation crash
         self._crash_threshold = 0.2
