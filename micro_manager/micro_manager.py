@@ -29,7 +29,11 @@ from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
 from .domain_decomposition import DomainDecomposer
 from .micro_simulation import create_simulation_class
-from .interpolation import Interpolation
+
+try:
+    from .interpolation import Interpolation
+except ImportError:
+    Interpolation = None
 
 sys.path.append(os.getcwd())
 
@@ -67,8 +71,16 @@ class MicroManagerCoupling(MicroManager):
         self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
         # Parameter for interpolation in case of a simulation crash
-        self._crash_threshold = 0.2
-        self._number_of_nearest_neighbors = 4
+        self._interpolate_crashed_sims = self._config.interpolate_crashed_micro_sim()
+        if self._interpolate_crashed_sims:
+            if Interpolation is None:
+                self._logger.info(
+                    "Interpolation is turned off as the required package is not installed."
+                )
+                self._interpolate_crashed_sims = False
+            else:
+                self._crash_threshold = 0.2
+                self._number_of_nearest_neighbors = 4
 
         self._mesh_vertex_ids = None  # IDs of macro vertices as set by preCICE
         self._micro_n_out = self._config.get_micro_output_n()
@@ -235,10 +247,11 @@ class MicroManagerCoupling(MicroManager):
                 micro_sims_output = self._solve_micro_simulations(micro_sims_input, dt)
 
             # Check if more than a certain percentage of the micro simulations have crashed and terminate if threshold is exceeded
-            crashed_sims_on_all_ranks = np.zeros(self._size, dtype=np.int64)
-            self._comm.Allgather(
-                np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
-            )
+            if self._interpolate_crashed_sims:
+                crashed_sims_on_all_ranks = np.zeros(self._size, dtype=np.int64)
+                self._comm.Allgather(
+                    np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
+                )
 
             if self._is_parallel:
                 crash_ratio = (
@@ -383,7 +396,8 @@ class MicroManagerCoupling(MicroManager):
 
         # Setup for simulation crashes
         self._has_sim_crashed = [False] * self._local_number_of_sims
-        self._interpolant = Interpolation(self._logger)
+        if self._interpolate_crashed_sims:
+            self._interpolant = Interpolation(self._logger)
 
         micro_problem = getattr(
             importlib.import_module(
@@ -483,9 +497,6 @@ class MicroManagerCoupling(MicroManager):
             warn(
                 "The initialize() method is only allowed to return data which is required for the adaptivity calculation."
             )
-
-        # Get initial data from micro simulations if initialize() method exists
-        if self._micro_sims_init:
 
             # Call initialize() method of the micro simulation to check if it returns any initial data
             if is_initial_data_required:
@@ -668,21 +679,32 @@ class MicroManagerCoupling(MicroManager):
                     self._logger.error(error_message)
                     self._has_sim_crashed[count] = True
 
+        # If interpolate is off, terminate after crash
+        if not self._interpolate_crashed_sims:
+            crashed_sims_on_all_ranks = np.zeros(self._size, dtype=np.int64)
+            self._comm.Allgather(
+                np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
+            )
+            if sum(crashed_sims_on_all_ranks) > 0:
+                self._logger.info("Exiting simulation after micro simulation crash.")
+                sys.exit()
+
         # Interpolate result for crashed simulation
         unset_sims = [
             count for count, value in enumerate(micro_sims_output) if value is None
         ]
 
         # Iterate over all crashed simulations to interpolate output
-        for unset_sim in unset_sims:
-            self._logger.info(
-                "Interpolating output for crashed simulation at macro vertex {}.".format(
-                    self._mesh_vertex_coords[unset_sim]
+        if self._interpolate_crashed_sims:
+            for unset_sim in unset_sims:
+                self._logger.info(
+                    "Interpolating output for crashed simulation at macro vertex {}.".format(
+                        self._mesh_vertex_coords[unset_sim]
+                    )
                 )
-            )
-            micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
-                micro_sims_input, micro_sims_output, unset_sim
-            )
+                micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
+                    micro_sims_input, micro_sims_output, unset_sim
+                )
 
         return micro_sims_output
 
@@ -772,6 +794,15 @@ class MicroManagerCoupling(MicroManager):
                     self._logger.error(error_message)
                     self._has_sim_crashed[active_id] = True
 
+        # If interpolate is off, terminate after crash
+        if not self._interpolate_crashed_sims:
+            crashed_sims_on_all_ranks = np.zeros(self._size, dtype=np.int64)
+            self._comm.Allgather(
+                np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
+            )
+            if sum(crashed_sims_on_all_ranks) > 0:
+                self._logger.info("Exiting simulation after micro simulation crash.")
+                sys.exit()
         # Interpolate result for crashed simulation
         unset_sims = []
         for active_id in active_sim_ids:
@@ -779,16 +810,17 @@ class MicroManagerCoupling(MicroManager):
                 unset_sims.append(active_id)
 
         # Iterate over all crashed simulations to interpolate output
-        for unset_sim in unset_sims:
-            self._logger.info(
-                "Interpolating output for crashed simulation at macro vertex {}.".format(
-                    self._mesh_vertex_coords[unset_sim]
+        if self._interpolate_crashed_sims:
+            for unset_sim in unset_sims:
+                self._logger.info(
+                    "Interpolating output for crashed simulation at macro vertex {}.".format(
+                        self._mesh_vertex_coords[unset_sim]
+                    )
                 )
-            )
 
-            micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
-                micro_sims_input, micro_sims_output, unset_sim, active_sim_ids
-            )
+                micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
+                    micro_sims_input, micro_sims_output, unset_sim, active_sim_ids
+                )
 
         # For each inactive simulation, copy data from most similar active simulation
         if self._adaptivity_type == "global":
