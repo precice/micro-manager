@@ -25,7 +25,7 @@ jobs:
       - name: Install Micro Manager and uninstall pyprecice
         working-directory: micro-manager
         run: |
-          pip3 install --user .
+          pip3 install --user .[sklearn]
           pip3 uninstall -y pyprecice
 
       - name: Run micro_manager unit test
