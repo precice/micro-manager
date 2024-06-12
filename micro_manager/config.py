@@ -354,16 +354,6 @@ class Config:
             self._postprocessing_file_name = None
 
         try:
-            if self._data["snapshot_params"]["merge_output"] == "True":
-                self._merge_output = True
-            else:
-                self._merge_output = False
-        except BaseException:
-            self._logger.info(
-                "Outputs from different ranks will not be collected into one file."
-            )
-
-        try:
             self._dt = self._data["snapshot_params"]["dt"]
         except BaseException:
             self._logger.info(

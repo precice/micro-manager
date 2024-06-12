@@ -228,6 +228,7 @@ class MicroManagerSnapshot(MicroManager):
         for i in range(self._local_number_of_sims):
             self._global_ids_of_local_sims.append(sim_id)
             sim_id += 1
+
         self._micro_problem = getattr(
             importlib.import_module(
                 self._config.get_micro_file_name(), "MicroSimulation"
