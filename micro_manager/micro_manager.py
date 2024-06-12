@@ -24,6 +24,8 @@ from warnings import warn
 import numpy as np
 import precice
 
+import csv
+
 from .micro_manager_base import MicroManager
 from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
@@ -115,6 +117,7 @@ class MicroManagerCoupling(MicroManager):
         is_sim_active_cp = None
         sim_is_associated_to_cp = None
         sim_states_cp = [None] * self._local_number_of_sims
+        number_of_active_sims = []
 
         dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
@@ -290,7 +293,25 @@ class MicroManagerCoupling(MicroManager):
                         for sim in self._micro_sims:
                             sim.output()
 
+                if self._is_adaptivity_on:
+                    number_of_active_sims.append(np.sum(is_sim_active))
+
         self._participant.finalize()
+
+        if self._is_adaptivity_on:
+            avg_active_sims = np.mean(number_of_active_sims)
+
+            if self._rank == 0:
+                avg_active_sims_all_ranks = self._comm.gather(avg_active_sims, root=0)
+                with open(
+                    "active_sims_data_" + str(self._rank) + "_ranks.csv",
+                    "w",
+                    newline="",
+                ) as file:
+                    writer = csv.writer(file)
+                    writer.writerow(["Rank", "Average number of active simulations"])
+                    for i in range(self._size):
+                        writer.writerow([i, avg_active_sims_all_ranks[i]])
 
     def initialize(self) -> None:
         """
