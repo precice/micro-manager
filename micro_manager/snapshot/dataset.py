@@ -57,27 +57,29 @@ class ReadWriteHDF:
                     main_file.create_dataset(
                         key,
                         shape=(database_length, *current_data.shape),
+                        chunks=(1, *current_data.shape),
                         fillvalue=np.nan,
                     )
         # Loop over files
         crashed_snapshots = []
-        current_position = 0
+        outer_position = 0
         for file in file_list:
             parameter_file = h5py.File(os.path.join(dir_name, file), "r")
             # Add all data sets to the main file.
             for key in parameter_file.keys():
-                current_data = parameter_file[key][:]
-                current_length = len(current_data)
-                # If the key is "crashed_snapshots" add the indices to the list of crashed snapshots
-                # Otherwise write the data to the main file
-                if key == "crashed_snapshots":
-                    crashed_snapshots.extend(current_position + parameter_file[key][:])
-                else:
-                    main_file[key][
-                        current_position : current_position + current_length
-                    ] = current_data
-
-            current_position += current_length
+                inner_position = outer_position
+                for chunk in parameter_file[key].iter_chunks():
+                    current_data = parameter_file[key][chunk]
+                    # If the key is "crashed_snapshots" add the indices to the list of crashed snapshots
+                    # Otherwise write the data to the main file
+                    if key == "crashed_snapshots":
+                        crashed_snapshots.extend(
+                            inner_position + parameter_file[key][:]
+                        )
+                    else:
+                        main_file[key][inner_position] = current_data
+                    inner_position += 1
+            outer_position = inner_position
             parameter_file.close()
             os.remove(os.path.join(dir_name, file))
 
@@ -124,7 +126,10 @@ class ReadWriteHDF:
             for key in input_data.keys():
                 current_data = np.asarray(input_data[key])
                 parameter_file.create_dataset(
-                    key, shape=(length, *current_data.shape), fillvalue=np.nan
+                    key,
+                    shape=(length, *current_data.shape),
+                    chunks=(1, *current_data.shape),
+                    fillvalue=np.nan,
                 )
             self._has_datasets = True
 
@@ -134,7 +139,7 @@ class ReadWriteHDF:
             parameter_file[key][idx] = current_data
         parameter_file.close()
 
-    def read_hdf(self, file_path: str, data_names: dict) -> list:
+    def read_hdf(self, file_path: str, data_names: dict, start: int, end: int) -> list:
         """
         Read data from an HDF5 file and return it as a list of dictionaries.
 
@@ -144,6 +149,10 @@ class ReadWriteHDF:
             Path of file to read data from.
         data_names : dict
             Names of parameters to read from the file.
+        start: int
+            Index of the first snapshot to read on process.
+        end: int
+            Index of the last snapshot to read on process.
 
         Returns
         -------
@@ -156,7 +165,7 @@ class ReadWriteHDF:
         output = []
         # Read data by iterating over the relevant datasets
         for key in data_names.keys():
-            parameter_data[key] = np.asarray(parameter_file[key][:])
+            parameter_data[key] = np.asarray(parameter_file[key][start:end])
             my_key = (
                 key  # Save one key to be able to iterate over the length of the data
             )
@@ -168,6 +177,23 @@ class ReadWriteHDF:
                 current_data[key] = parameter_data[key][i]
             output.append(current_data)
         return output
+
+    def get_length(self, file_path: str) -> int:
+        """
+        Get the length of the parameter space from the HDF5 file.
+
+        Parameters
+        ----------
+        file_path : str
+            Path of file to read data from.
+
+        Returns
+        -------
+        int
+            Size of Parameter Space
+        """
+        with h5py.File(file_path, "r") as file:
+            return file[list(file.keys())[0]].len()
 
     def write_crashed_snapshots_macro(self, file_path: str, crashed_input: list):
         """

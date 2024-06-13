@@ -164,22 +164,28 @@ class MicroManagerSnapshot(MicroManager):
         # Create object responsible for reading parameters and writing simulation output
         self._data_storage = ReadWriteHDF(self._logger)
 
+        self._parameter_space_size = self._data_storage.get_length(self._parameter_file)
         # Read macro parameters from the parameter file
-        self._macro_parameters = self._data_storage.read_hdf(
-            self._parameter_file, self._read_data_names
-        )
-        self._parameter_space_size = len(self._macro_parameters)
         # Decompose parameters if the snapshot creation is executed in parallel
         if self._is_parallel:
-            equal_partition = int(len(self._macro_parameters) / self._size)
-            rest = len(self._macro_parameters) % self._size
+            equal_partition = int(self._parameter_space_size / self._size)
+            rest = self._parameter_space_size % self._size
             if self._rank < rest:
                 start = self._rank * (equal_partition + 1)
                 end = start + equal_partition + 1
             else:
                 start = self._rank * equal_partition + rest
                 end = start + equal_partition
-            self._macro_parameters = self._macro_parameters[start:end]
+            self._macro_parameters = self._data_storage.read_hdf(
+                self._parameter_file, self._read_data_names, start, end
+            )
+        else:
+            self._macro_parameters = self._data_storage.read_hdf(
+                self._parameter_file,
+                self._read_data_names,
+                0,
+                self._parameter_space_size,
+            )
 
         # Create database file to store output from a rank in
         if self._is_parallel:
