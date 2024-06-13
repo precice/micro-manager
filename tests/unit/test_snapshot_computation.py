@@ -51,11 +51,6 @@ class TestFunctionCalls(TestCase):
         """
         Test if the constructor of the MicroManagerSnapshot class passes correct values to member variables.
         """
-        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
-        file_name = "output.hdf5"
-        complete_path = os.path.join(path, file_name)
-        if os.path.isfile(complete_path):
-            os.remove(complete_path)
 
         snapshot_object = MicroManagerSnapshot("snapshot-config.json")
 
@@ -66,9 +61,23 @@ class TestFunctionCalls(TestCase):
         self.assertDictEqual(
             snapshot_object._write_data_names, self.fake_write_data_names
         )
-        self.assertTrue(snapshot_object._is_postprocessing_required)
-        self.assertTrue(snapshot_object._merge_output_files)
+        self.assertEqual(
+            snapshot_object._post_processing_file_name, "snapshot_post_processing"
+        )
 
+    def test_initialize(self):
+        """
+        Test if the initialize function of the MicroManagerSnapshot class works as expected.
+        """
+        path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "output")
+        file_name = "snapshot_data.hdf5"
+        complete_path = os.path.join(path, file_name)
+        if os.path.isfile(complete_path):
+            os.remove(complete_path)
+
+        snapshot_object = MicroManagerSnapshot("snapshot-config.json")
+
+        snapshot_object.initialize()
         # Set up in initialize
         self.assertEqual(snapshot_object._global_number_of_sims, 1)
         self.assertDictEqual(
@@ -93,7 +102,7 @@ class TestFunctionCalls(TestCase):
             snapshot_object._micro_problem
         )(0)
 
-        micro_sim_output = snapshot_object._solve_micro_simulations(self.fake_read_data)
+        micro_sim_output = snapshot_object._solve_micro_simulation(self.fake_read_data)
         self.assertEqual(micro_sim_output["micro-scalar-data"], 2)
         self.assertListEqual(
             micro_sim_output["micro-vector-data"].tolist(),
@@ -136,6 +145,7 @@ class TestFunctionCalls(TestCase):
         Test if the functions in the SnapshotConfig class work.
         """
         config = Config(MagicMock(), "snapshot-config.json")
+        config.read_json_snapshot()
 
         self.assertEqual(
             config._parameter_file_name.split("/")[-1], "test_parameter.hdf5"
@@ -143,8 +153,7 @@ class TestFunctionCalls(TestCase):
         self.assertEqual(config._micro_file_name, "test_snapshot_computation")
         self.assertDictEqual(config._read_data_names, self.fake_read_data_names)
         self.assertDictEqual(config._write_data_names, self.fake_write_data_names)
-        self.assertTrue(config._postprocessing)
-        self.assertTrue(config._merge_output)
+        self.assertEqual(config._postprocessing_file_name, "snapshot_post_processing")
 
 
 if __name__ == "__main__":

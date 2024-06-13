@@ -40,10 +40,8 @@ class MicroManagerSnapshot(MicroManager):
 
         # Path to the parameter file containing input parameters for micro simulations
         self._parameter_file = self._config.get_parameter_file_name()
-
         # Get name of pos-processing script
         self._post_processing_file_name = self._config.get_postprocessing_file_name()
-
         # Collect crashed indices
         self._crashed_snapshots = []  # Declaration
 
@@ -91,12 +89,12 @@ class MicroManagerSnapshot(MicroManager):
                             )
                         else:
                             self._logger.info(
-                                "No post-processing script can be found in the provided path. Skipping post-processing."
+                                "No post-processing script with the provided path found. Skipping post-processing."
                             )
                             self._post_processing_file_name = None
                     except Exception:
                         self._logger.info(
-                            "No post-processing script can be found in the provided path. Skipping post-processing."
+                            "No post-processing script with the provided path found. Skipping post-processing."
                         )
                         self._post_processing_file_name = None
                 self._data_storage.write_output_to_hdf(
@@ -224,7 +222,7 @@ class MicroManagerSnapshot(MicroManager):
         for i in range(self._local_number_of_sims):
             self._global_ids_of_local_sims.append(sim_id)
             sim_id += 1
-
+        print("Global IDs:", self._global_ids_of_local_sims)
         self._micro_problem = getattr(
             importlib.import_module(
                 self._config.get_micro_file_name(), "MicroSimulation"
