@@ -1,7 +1,7 @@
 import numpy as np
 import os
 from unittest import TestCase
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 from micro_manager.snapshot.snapshot import MicroManagerSnapshot
 from micro_manager.micro_simulation import create_simulation_class
 from micro_manager.config import Config
@@ -51,10 +51,8 @@ class TestFunctionCalls(TestCase):
         """
         Test if the constructor of the MicroManagerSnapshot class passes correct values to member variables.
         """
-
         snapshot_object = MicroManagerSnapshot("snapshot-config.json")
 
-        # Information from the config file
         self.assertDictEqual(
             snapshot_object._read_data_names, self.fake_read_data_names
         )
@@ -78,7 +76,6 @@ class TestFunctionCalls(TestCase):
         snapshot_object = MicroManagerSnapshot("snapshot-config.json")
 
         snapshot_object.initialize()
-        # Set up in initialize
         self.assertEqual(snapshot_object._global_number_of_sims, 1)
         self.assertDictEqual(
             snapshot_object._read_data_names, self.fake_read_data_names
