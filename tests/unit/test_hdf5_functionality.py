@@ -54,7 +54,10 @@ class TestHDFFunctionalities(TestCase):
                 for key in data.keys():
                     current_data = np.asarray(data[key])
                     f.create_dataset(
-                        key, data=current_data, shape=(1, *current_data.shape)
+                        key,
+                        data=current_data,
+                        shape=(1, *current_data.shape),
+                        chunks=(1, *current_data.shape),
                     )
         # Ensure output file does not exist
         if os.path.isfile(os.path.join(dir_name, "snapshot_data.hdf5")):
@@ -97,7 +100,7 @@ class TestHDFFunctionalities(TestCase):
         if os.path.isfile(file_name):
             os.remove(file_name)
 
-        # Create artifical output data
+        # Create artificial output data
         macro_data = {
             "macro_vector_data": np.array([3, 1, 2]),
             "macro_scalar_data": 2,
@@ -148,9 +151,23 @@ class TestHDFFunctionalities(TestCase):
         )
         read_data_names = {"macro_vector_data": True, "macro_scalar_data": False}
         data_manager = ReadWriteHDF(MagicMock())
-        read = data_manager.read_hdf(file_name, read_data_names)
+        read = data_manager.read_hdf(file_name, read_data_names, 0, -1)
         for i in range(len(read)):
             self.assertEqual(read[i]["macro_scalar_data"], expected_macro_scalar)
             self.assertListEqual(
                 read[i]["macro_vector_data"].tolist(), expected_macro_vector.tolist()
             )
+
+    def test_get_parameter_space_length(self):
+        """
+        Test if reading the length of the parameter space works as expected.
+        """
+        file_name = os.path.join(
+            os.path.dirname(os.path.realpath(__file__)),
+            "hdf_files",
+            "test_parameter.hdf5",
+        )
+        data_manager = ReadWriteHDF(MagicMock())
+
+        data_manager.get_length(file_name)
+        self.assertEqual(data_manager.get_length(file_name), 1)
