@@ -11,11 +11,12 @@ from micro_manager.snapshot.dataset import ReadWriteHDF
 class TestHDFFunctionalities(TestCase):
     def test_create_file(self):
         """
-        Test if file creation works as expected
+        Test if file creation works as expected.
         """
         path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "hdf_files")
         file_name = "create_file.hdf5"
         entire_path = os.path.join(path, file_name)
+        # Ensure output file does not exist
         if os.path.isfile(entire_path):
             os.remove(entire_path)
         data_manager = ReadWriteHDF(MagicMock())
@@ -27,12 +28,13 @@ class TestHDFFunctionalities(TestCase):
 
     def test_collect_output_files(self):
         """
-        Test if collection of output files form different ranks works as expected
+        Test if collection of output files works as expected.
         """
         dir_name = os.path.join(
             os.path.dirname(os.path.realpath(__file__)), "hdf_files"
         )
         files = ["output_1.hdf5", "output_2.hdf5"]
+        # Create ouput files to merge
         input_data = [
             {
                 "macro_vector_data": np.array([1, 2, 3]),
@@ -54,12 +56,14 @@ class TestHDFFunctionalities(TestCase):
                     f.create_dataset(
                         key, data=current_data, shape=(1, *current_data.shape)
                     )
+        # Ensure output file does not exist
         if os.path.isfile(os.path.join(dir_name, "snapshot_data.hdf5")):
             os.remove(os.path.join(dir_name, "snapshot_data.hdf5"))
         length = 2
         data_manager = ReadWriteHDF(MagicMock())
         data_manager.collect_output_files(dir_name, files, length)
         output = h5py.File(os.path.join(dir_name, "snapshot_data.hdf5"), "r")
+
         for i in range(length):
             self.assertEqual(
                 output["macro_scalar_data"][i], input_data[i]["macro_scalar_data"]
@@ -83,7 +87,7 @@ class TestHDFFunctionalities(TestCase):
 
     def test_simulation_output_to_hdf(self):
         """
-        Test if the write_sim_dict_to_hdf method correctly writes a dictionary or list of dictionaries to an hdf5 file.
+        Test if the write_output_to_hdf method correctly writes a dictionary to an HDF5 file.
         """
         file_name = os.path.join(
             os.path.dirname(os.path.realpath(__file__)),
@@ -93,7 +97,7 @@ class TestHDFFunctionalities(TestCase):
         if os.path.isfile(file_name):
             os.remove(file_name)
 
-        data_manager = ReadWriteHDF(MagicMock())
+        # Create artifical output data
         macro_data = {
             "macro_vector_data": np.array([3, 1, 2]),
             "macro_scalar_data": 2,
@@ -109,6 +113,7 @@ class TestHDFFunctionalities(TestCase):
         expected_macro_vector_data = np.array([3, 1, 2])
         expected_macro_scalar_data = 2
 
+        data_manager = ReadWriteHDF(MagicMock())
         for i in range(2):
             data_manager.write_output_to_hdf(file_name, macro_data, micro_data, i, 2)
 
@@ -132,7 +137,7 @@ class TestHDFFunctionalities(TestCase):
 
     def test_hdf_to_dict(self):
         """
-        Test if read_parameter_hdf_to_dict method correctly reads parameter data from an hdf5 file.
+        Test if read__hdf method correctly reads parameter data from an HDF5 file.
         """
         expected_macro_scalar = 1
         expected_macro_vector = np.array([0, 1, 2])
