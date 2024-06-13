@@ -267,7 +267,7 @@ class Config:
 
         try:
             self._postprocessing_file_name = (
-                self._data["snapshot_params"]["postprocessing_file_name"]
+                self._data["snapshot_params"]["post_processing_file_name"]
                 .replace("/", ".")
                 .replace("\\", ".")
                 .replace(".py", "")
@@ -525,8 +525,8 @@ class Config:
 
         Returns
         -------
-        postprocessing : bool
-            True if postprocessing is required.
+        postprocessing : str
+            Name of post-processing script.
         """
         return self._postprocessing_file_name
 

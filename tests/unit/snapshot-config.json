@@ -1,11 +1,14 @@
 {
     "micro_file_name": "test_snapshot_computation",
-    "snapshot_params": {
+    "coupling_params": {
         "parameter_file_name": "test_parameter.hdf5",
         "read_data_names": {"macro-scalar-data": "scalar", "macro-vector-data": "vector"},
         "write_data_names": {"micro-scalar-data": "scalar", "micro-vector-data": "vector"},
         "postprocessing": "True",
-        "merge_output": "True"
+        "micro_dt": 0.1
+    },
+    "snapshot_params": {
+        "post_processing_file_name": "snapshot_post_processing"
     },
     "diagnostics": {
         "output_micro_sim_solve_time": "True"

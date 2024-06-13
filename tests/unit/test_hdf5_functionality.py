@@ -5,7 +5,7 @@ import numpy as np
 import os
 import h5py
 
-from snapshot.read_write_hdf import ReadWriteHDF
+from micro_manager.snapshot.dataset import ReadWriteHDF
 
 
 class TestHDFFunctionalities(TestCase):
@@ -21,6 +21,8 @@ class TestHDFFunctionalities(TestCase):
         data_manager = ReadWriteHDF(MagicMock())
         data_manager.create_file(entire_path)
         self.assertTrue(os.path.isfile(entire_path))
+        with h5py.File(entire_path, "r") as f:
+            self.assertEqual(f.attrs["status"], "writing")
         os.remove(entire_path)
 
     def test_collect_output_files(self):
@@ -31,47 +33,53 @@ class TestHDFFunctionalities(TestCase):
             os.path.dirname(os.path.realpath(__file__)), "hdf_files"
         )
         files = ["output_1.hdf5", "output_2.hdf5"]
-        if os.path.isfile(os.path.join(dir_name, "output.hdf5")):
-            os.remove(os.path.join(dir_name, "output.hdf5"))
-        output1 = h5py.File(os.path.join(dir_name, "output_1.hdf5"), "r")
-        output2 = h5py.File(os.path.join(dir_name, "output_2.hdf5"), "r")
+        input_data = [
+            {
+                "macro_vector_data": np.array([1, 2, 3]),
+                "macro_scalar_data": 1,
+                "micro_vector_data": np.array([-1, -2, -3]),
+                "micro_scalar_data": -1,
+            },
+            {
+                "macro_vector_data": np.array([4, 5, 6]),
+                "macro_scalar_data": 2,
+                "micro_vector_data": np.array([-4, -5, -6]),
+                "micro_scalar_data": -2,
+            },
+        ]
+        for data, file in zip(input_data, files):
+            with h5py.File(os.path.join(dir_name, file), "w") as f:
+                for key in data.keys():
+                    current_data = np.asarray(data[key])
+                    f.create_dataset(
+                        key, data=current_data, shape=(1, *current_data.shape)
+                    )
+        if os.path.isfile(os.path.join(dir_name, "snapshot_data.hdf5")):
+            os.remove(os.path.join(dir_name, "snapshot_data.hdf5"))
+        length = 2
         data_manager = ReadWriteHDF(MagicMock())
-        data_manager.collect_output_files(dir_name, files)
-        output = h5py.File(os.path.join(dir_name, "output.hdf5"), "r")
-        self.assertEqual(
-            output["macro_scalar_data"][0], output1["macro_scalar_data"][0]
-        )
+        data_manager.collect_output_files(dir_name, files, length)
+        output = h5py.File(os.path.join(dir_name, "snapshot_data.hdf5"), "r")
+        for i in range(length):
+            self.assertEqual(
+                output["macro_scalar_data"][i], input_data[i]["macro_scalar_data"]
+            )
 
-        self.assertListEqual(
-            output["macro_vector_data"][0].tolist(),
-            output1["macro_vector_data"][0].tolist(),
-        )
-        self.assertEqual(
-            output["micro_scalar_data"][0], output1["micro_scalar_data"][0]
-        )
+            self.assertListEqual(
+                output["macro_vector_data"][i].tolist(),
+                input_data[i]["macro_vector_data"].tolist(),
+            )
+            self.assertEqual(
+                output["micro_scalar_data"][i], input_data[i]["micro_scalar_data"]
+            )
 
-        self.assertListEqual(
-            output["micro_vector_data"][0].tolist(),
-            output1["micro_vector_data"][0].tolist(),
-        )
-        self.assertEqual(
-            output["macro_scalar_data"][1], output2["macro_scalar_data"][0]
-        )
-        self.assertListEqual(
-            output["macro_vector_data"][1].tolist(),
-            output2["macro_vector_data"][0].tolist(),
-        )
-        self.assertEqual(
-            output["micro_scalar_data"][1], output2["micro_scalar_data"][0]
-        )
-        self.assertListEqual(
-            output["micro_vector_data"][1].tolist(),
-            output2["micro_vector_data"][0].tolist(),
-        )
-        output1.close()
-        output2.close()
+            self.assertListEqual(
+                output["micro_vector_data"][i].tolist(),
+                input_data[i]["micro_vector_data"].tolist(),
+            )
+
         output.close()
-        os.remove(os.path.join(dir_name, "output.hdf5"))
+        os.remove(os.path.join(dir_name, "snapshot_data.hdf5"))
 
     def test_simulation_output_to_hdf(self):
         """
@@ -101,7 +109,8 @@ class TestHDFFunctionalities(TestCase):
         expected_macro_vector_data = np.array([3, 1, 2])
         expected_macro_scalar_data = 2
 
-        data_manager.write_sim_output_to_hdf(file_name, macro_data, micro_data)
+        for i in range(2):
+            data_manager.write_output_to_hdf(file_name, macro_data, micro_data, i, 2)
 
         test_file = h5py.File(file_name, "r")
 
@@ -126,13 +135,15 @@ class TestHDFFunctionalities(TestCase):
         Test if read_parameter_hdf_to_dict method correctly reads parameter data from an hdf5 file.
         """
         expected_macro_scalar = 1
-        expected_macro_vector = np.array([1, 2, 3])
+        expected_macro_vector = np.array([0, 1, 2])
         file_name = os.path.join(
-            os.path.dirname(os.path.realpath(__file__)), "hdf_files", "output_1.hdf5"
+            os.path.dirname(os.path.realpath(__file__)),
+            "hdf_files",
+            "test_parameter.hdf5",
         )
         read_data_names = {"macro_vector_data": True, "macro_scalar_data": False}
         data_manager = ReadWriteHDF(MagicMock())
-        read = data_manager.read_hdf_to_dict(file_name, read_data_names)
+        read = data_manager.read_hdf(file_name, read_data_names)
         for i in range(len(read)):
             self.assertEqual(read[i]["macro_scalar_data"], expected_macro_scalar)
             self.assertListEqual(

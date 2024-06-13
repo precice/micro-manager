@@ -7,7 +7,7 @@
         "micro_dt": 0.1
     },
     "snapshot_params": {
-        "post_processing_file_name": "snapshot_post_processing"
+        "post_processing_file_name": "snapshot_postprocessing"
     },
     "diagnostics": {
         "output_micro_sim_solve_time": "True"
