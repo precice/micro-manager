@@ -40,7 +40,7 @@ class ReadWriteHDF:
         file_list : list
             List of files to be combined.
         dataset_length : int
-            Number of snapshots.
+            Global number of snapshots.
         """
         # Create a output file
         main_file = h5py.File(os.path.join(dir_name, "snapshot_data.hdf5"), "w")
@@ -109,11 +109,11 @@ class ReadWriteHDF:
         macro_data : dict
             Dict of macro simulation input.
         micro_data : dict | None
-            Dict of micro simulation output.
+            Dict of micro simulation output. If None, only the macro data is written.
         idx: int
             Local index of the current snapshot.
         length : int
-            Number of snapshots.
+            Local number of snapshots.
         """
         parameter_file = h5py.File(file_path, "a")
         if micro_data is None:
@@ -178,7 +178,7 @@ class ReadWriteHDF:
             output.append(current_data)
         return output
 
-    def get_length(self, file_path: str) -> int:
+    def get_parameter_space_size(self, file_path: str) -> int:
         """
         Get the length of the parameter space from the HDF5 file.
 

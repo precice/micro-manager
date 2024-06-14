@@ -168,6 +168,4 @@ class TestHDFFunctionalities(TestCase):
             "test_parameter.hdf5",
         )
         data_manager = ReadWriteHDF(MagicMock())
-
-        data_manager.get_length(file_name)
-        self.assertEqual(data_manager.get_length(file_name), 1)
+        self.assertEqual(data_manager.get_parameter_space_size(file_name), 1)

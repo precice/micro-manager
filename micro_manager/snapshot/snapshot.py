@@ -6,9 +6,6 @@ This files the class SnapshotComputation which has the following callable public
 - solve
 - initialize
 
-This file is directly executable as it consists of a main() function. Upon execution, an object of the class SnapshotComputation is created using a given JSON file,
-the solve method is called.
-
 Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
 """
 
@@ -153,7 +150,7 @@ class MicroManagerSnapshot(MicroManager):
         - Distribute the parameter data equally if the snapshot creation is executed in parallel.
         - Read macro parameter from parameter file.
         - Create output subdirectory and file paths to store output.
-        - Import micro simulation class.
+        - Import micro simulation.
         """
 
         # Create subdirectory to store output files in
@@ -164,7 +161,9 @@ class MicroManagerSnapshot(MicroManager):
         # Create object responsible for reading parameters and writing simulation output
         self._data_storage = ReadWriteHDF(self._logger)
 
-        self._parameter_space_size = self._data_storage.get_length(self._parameter_file)
+        self._parameter_space_size = self._data_storage.get_parameter_space_size(
+            self._parameter_file
+        )
         # Read macro parameters from the parameter file
         # Decompose parameters if the snapshot creation is executed in parallel
         if self._is_parallel:
@@ -258,7 +257,7 @@ class MicroManagerSnapshot(MicroManager):
         Returns
         -------
         micro_sims_output : dict | None
-            Dicts in which keys are names of data and the values are the data of the output of the micro
+            Dict in which keys are names of data and the values are the data of the output of the micro
             simulations. The return type is None if the simulation has crashed.
         """
         try:
