@@ -44,6 +44,10 @@ jobs:
         working-directory: micro-manager/tests/unit
         run: python3 -m unittest test_hdf5_functionality.py
 
+      - name: Install dependencies for snapshot computation
+        working-directory: micro-manager/tests/unit
+        run: pip3 install --user ".[snapshot]"
+
       - name: Run snapshot_computation unit tests
         working-directory: micro-manager/tests/unit
         run: python3 -m unittest test_snapshot_computation.py
