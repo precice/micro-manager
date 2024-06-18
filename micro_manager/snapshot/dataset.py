@@ -1,13 +1,14 @@
 from importlib import metadata
 import os
 from datetime import datetime
+
 import numpy as np
 
 try:
     import h5py
 except ImportError:
     raise ImportError(
-        "The Micro Manager snapshot computation requires the h5py package to store snapshots."
+        "The Micro Manager snapshot computation requires the h5py package."
     )
 
 import numpy as np
