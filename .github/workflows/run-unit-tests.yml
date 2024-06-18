@@ -25,7 +25,7 @@ jobs:
       - name: Install Micro Manager and uninstall pyprecice
         working-directory: micro-manager
         run: |
-          pip3 install --user .
+          pip3 install --user .[snapshot]
           pip3 uninstall -y pyprecice
 
       - name: Run micro_manager unit test
@@ -43,10 +43,6 @@ jobs:
       - name: Run HDF5 read and write unit tests
         working-directory: micro-manager/tests/unit
         run: python3 -m unittest test_hdf5_functionality.py
-
-      - name: Install dependencies for snapshot computation
-        working-directory: micro-manager/tests/unit
-        run: pip3 install --user ".[snapshot]"
 
       - name: Run snapshot_computation unit tests
         working-directory: micro-manager/tests/unit
