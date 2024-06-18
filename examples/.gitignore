@@ -6,3 +6,6 @@ precice-events/
 # PyCharm related files
 .idea
 __pycache__
+
+# Snapshot results
+output/
