@@ -12,8 +12,9 @@ Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
 import importlib
 import os
 import sys
-import numpy as np
 import time
+
+import numpy as np
 
 from micro_manager.micro_manager import MicroManager
 from .dataset import ReadWriteHDF

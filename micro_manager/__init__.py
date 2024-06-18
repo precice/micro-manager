@@ -3,7 +3,13 @@ import os
 
 from .config import Config
 from .micro_manager import MicroManagerCoupling
-from .snapshot.snapshot import MicroManagerSnapshot
+
+try:
+    from .snapshot.snapshot import MicroManagerSnapshot
+
+    is_snapshot_possible = True
+except ImportError:
+    is_snapshot_possible = False
 
 
 def main():
@@ -24,7 +30,12 @@ def main():
     if not args.snapshot:
         manager = MicroManagerCoupling(config_file_path)
     else:
-        manager = MicroManagerSnapshot(config_file_path)
+        if not is_snapshot_possible:
+            raise ImportError(
+                "The Micro Manager snapshot computation requires the h5py package."
+            )
+        else:
+            manager = MicroManagerSnapshot(config_file_path)
 
     manager.initialize()
 
