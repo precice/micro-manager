@@ -6,6 +6,7 @@ on each rank is done.
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
 import hashlib
+import importlib
 from copy import deepcopy
 from typing import Dict
 
@@ -13,6 +14,7 @@ import numpy as np
 from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
+from ..micro_simulation import create_simulation_class
 
 
 class GlobalAdaptivityCalculator(AdaptivityCalculator):
@@ -259,6 +261,16 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             # Only handle activation of simulations on this rank -- LOCAL SCOPE HERE ON
             if self._is_sim_on_this_rank[i]:
                 to_be_activated_local_id = self._global_ids.index(i)
+                if micro_sims[to_be_activated_local_id] == None:
+                    self._logger.info(f"{i} to be solved, lazy initialization")
+                    micro_problem = getattr(
+                        importlib.import_module(
+                            self._micro_file_name, "MicroSimulation"
+                        ),
+                        "MicroSimulation",
+                    )
+                    micro_sims[to_be_activated_local_id] = create_simulation_class(micro_problem)(i)
+                    self._logger.info(f"lazy initialization of {i} successful")
                 assoc_active_id = local_sim_is_associated_to[to_be_activated_local_id]
 
                 if self._is_sim_on_this_rank[
@@ -278,9 +290,13 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                             to_be_activated_local_id
                         ]
 
+        # TODO: could be moved to before the lazy initialization above
         sim_states_and_global_ids = []
-        for sim in micro_sims:
-            sim_states_and_global_ids.append((sim.get_state(), sim.get_global_id()))
+        for local_id, sim in enumerate(micro_sims):
+            if sim == None:
+                sim_states_and_global_ids.append((None, self._global_ids[local_id]))
+            else:
+                sim_states_and_global_ids.append((sim.get_state(), sim.get_global_id()))
 
         recv_reqs = self._p2p_comm(
             list(to_be_activated_map.keys()), sim_states_and_global_ids

@@ -57,6 +57,8 @@ class Config:
 
         self._output_micro_sim_time = False
 
+        self._micro_sims_lazy_init = False
+
         self.read_json(config_filename)
 
     def read_json(self, config_filename):
@@ -182,6 +184,9 @@ class Config:
                 self._adaptivity_type = "global"
             else:
                 raise Exception("Adaptivity type can be either local or global.")
+
+            if data["simulation_params"]["adaptivity_settings"]["lazy_init"] == "True":
+                self._micro_sims_lazy_init = True
 
             exchange_data = {**self._read_data_names, **self._write_data_names}
             for dname in self._data["simulation_params"]["adaptivity_settings"]["data"]:
@@ -508,6 +513,18 @@ class Config:
             True if adaptivity needs to be calculated in every time iteration, False otherwise.
         """
         return self._adaptivity_every_implicit_iteration
+
+    def micro_sims_lazy_init(self):
+        """
+        Boolean stating whether micro simulations are created in a lazy manner.
+
+        Returns
+        -------
+        adaptivity : bool
+            True if micro simulations are created only when needed, False otherwise.
+
+        """
+        return self._micro_sims_lazy_init
 
     def get_micro_dt(self):
         """
