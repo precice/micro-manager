@@ -304,7 +304,7 @@ class MicroManagerCoupling(MicroManager):
             if self._rank == 0:
                 avg_active_sims_all_ranks = self._comm.gather(avg_active_sims, root=0)
                 with open(
-                    "active_sims_data_" + str(self._rank) + "_ranks.csv",
+                    "active_sims_data.csv",
                     "w",
                     newline="",
                 ) as file:
