@@ -4,10 +4,10 @@
         "config_file_name": "precice-config.xml",
         "macro_mesh_name": "macro-cube-mesh",
         "read_data_names": {"macro-scalar-data": "scalar", "macro-vector-data": "vector"},
-        "write_data_names": {"micro-scalar-data": "scalar", "micro-vector-data": "vector"},
-        "micro_dt": 1.0
+        "write_data_names": {"micro-scalar-data": "scalar", "micro-vector-data": "vector"}
     },
     "simulation_params": {
+        "micro_dt": 1.0,
         "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
         "decomposition": [2, 1, 1],
         "adaptivity": "True",
