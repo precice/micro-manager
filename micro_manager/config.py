@@ -115,7 +115,7 @@ class Config:
                 "No read data names provided. Micro manager will only write data to preCICE."
             )
 
-        self._micro_dt = data["coupling_params"]["micro_dt"]
+        self._micro_dt = data["simulation_params"]["micro_dt"]
 
         self._macro_domain_bounds = data["simulation_params"]["macro_domain_bounds"]
 
