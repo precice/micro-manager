@@ -29,12 +29,12 @@ def main():
     if not args.snapshot:
         manager = MicroManagerCoupling(config_file_path)
     else:
-        if not is_snapshot_possible:
+        if is_snapshot_possible:
+            manager = MicroManagerSnapshot(config_file_path)
+        else:
             raise ImportError(
                 "The Micro Manager snapshot computation requires the h5py package."
             )
-        else:
-            manager = MicroManagerSnapshot(config_file_path)
 
     manager.initialize()
 
