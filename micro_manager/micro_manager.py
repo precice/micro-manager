@@ -79,6 +79,7 @@ class MicroManagerCoupling(MicroManager):
                 )
                 self._interpolate_crashed_sims = False
             else:
+                # The following parameters can potentially become configurable by the user in the future
                 self._crash_threshold = 0.2
                 self._number_of_nearest_neighbors = 4
 
