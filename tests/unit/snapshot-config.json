@@ -3,9 +3,10 @@
     "coupling_params": {
         "parameter_file_name": "test_parameter.hdf5",
         "read_data_names": {"macro-scalar-data": "scalar", "macro-vector-data": "vector"},
-        "write_data_names": {"micro-scalar-data": "scalar", "micro-vector-data": "vector"},
-        "postprocessing": "True",
-        "micro_dt": 0.1
+        "write_data_names": {"micro-scalar-data": "scalar", "micro-vector-data": "vector"}
+    },
+    "simulation_params": {
+        "micro_dt": 1.0
     },
     "snapshot_params": {
         "post_processing_file_name": "snapshot_post_processing"

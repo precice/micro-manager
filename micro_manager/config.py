@@ -54,8 +54,6 @@ class Config:
 
         self._output_micro_sim_time = False
 
-        self._dt = 0.01
-
         self.read_json(config_filename)
 
     def read_json(self, config_filename):
@@ -529,14 +527,3 @@ class Config:
             Name of post-processing script.
         """
         return self._postprocessing_file_name
-
-    def get_time_step_size(self):
-        """
-        Get user provided time step size for the snapshot computation.
-
-        Returns
-        -------
-        dt : float
-            time_step_size.
-        """
-        return self._dt
