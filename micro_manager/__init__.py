@@ -3,6 +3,7 @@ import os
 
 from .config import Config
 from .micro_manager import MicroManagerCoupling
+
 try:
     from .snapshot.snapshot import MicroManagerSnapshot
 
