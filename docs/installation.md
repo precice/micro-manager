@@ -17,7 +17,7 @@ The Micro Manager package has the name [micro-manager-precice](https://pypi.org/
 pip install --user micro-manager-precice
 ```
 
-Unless already installed, the dependencies will be installed by `pip` during the installation procedure. To [interpolate](tooling-micro-manager-running.html/#what-happens-when-a-micro-simulation-crashes) micro simulation results after a micro crash, the optional dependency `sklearn` is required. To install `micro-manager-precice` with `sklearn`, run
+Unless already installed, the dependencies will be installed by `pip` during the installation procedure. To enable [crash handling by interpolation](tooling-micro-manager-running.html/#what-happens-when-a-micro-simulation-crashes), the optional dependency `sklearn` is required. To install `micro-manager-precice` with `sklearn`, run
 
 ```bash
 pip install --user micro-manager-precice[sklearn]

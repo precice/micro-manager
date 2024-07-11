@@ -2,7 +2,7 @@
 
 ## latest
 
-- Make `mpi4py` and `sklearn` optional dependencies
+- Make `sklearn` an optional dependency
 - Set time step of micro simulation in the configuration, and use it in the coupling https://github.com/precice/micro-manager/pull/112
 - Add a base class called `MicroManager` with minimal API and member function definitions, rename the existing `MicroManager` class to `MicroManagerCoupling` https://github.com/precice/micro-manager/pull/111
 - Handle calling `initialize()` function of micro simulations written in languages other than Python https://github.com/precice/micro-manager/pull/110

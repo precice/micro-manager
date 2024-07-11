@@ -166,10 +166,10 @@ The Micro Manager uses the output functionality of preCICE, hence these data set
 
 ## Interpolate a crashed micro simulation
 
-If the optional dependency `sklearn' is installed, the Micro Manager can interpolate a crashed micro simulation. To interpolate a crashed micro simulation, set
+If the optional dependency `sklearn' is installed, the Micro Manager will derive the output of a crashed micro simulation by interpolating outputs from similar simulations. To enable this, set
 `"interpolate_crash": "True"` in the `simulation_params` section of the configuration file.
 
-For more details on the interpolation see the [interpolation documentation](tooling-micro-manager-running.html/#what-happens-when-a-micro-simulation-crashes).
+For more details on the interpolation see the [crash handling documentation](tooling-micro-manager-running.html/#what-happens-when-a-micro-simulation-crashes).
 
 ## Next step
 
