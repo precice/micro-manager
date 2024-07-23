@@ -233,8 +233,8 @@ class Config:
             self._write_data_names["active_state"] = False
             self._write_data_names["active_steps"] = False
 
-        if "interpolate_crash" in data["simulation_params"]:
-            if data["simulation_params"]["interpolate_crash"] == "True":
+        if "interpolate_crash" in self._data["simulation_params"]:
+            if self._data["simulation_params"]["interpolate_crash"] == "True":
                 self._interpolate_crash = True
 
         try:
