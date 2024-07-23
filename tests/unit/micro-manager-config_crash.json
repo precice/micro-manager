@@ -9,6 +9,7 @@
     "simulation_params": {
         "micro_dt": 1.0,
         "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
+        "interpolate_crash": "True",
         "adaptivity": "True",
         "adaptivity_settings": {
             "type": "local",

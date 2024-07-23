@@ -27,6 +27,7 @@ class TestSimulationCrashHandling(TestCase):
         """
         Test if the Micro Manager catches a simulation crash and handles it adequately.
         A crash if caught by interpolation within _solve_micro_simulations.
+        Note: running this test requires the sci-kit learn package to be installed.
         """
 
         macro_data = []
@@ -74,6 +75,7 @@ class TestSimulationCrashHandling(TestCase):
         """
         Test if the micro manager catches a simulation crash and handles it adequately with adaptivity.
         A crash if caught by interpolation within _solve_micro_simulations_with_adaptivity.
+        Note: running this test requires the sci-kit learn package to be installed.
         """
 
         macro_data = []
