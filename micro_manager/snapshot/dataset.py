@@ -11,15 +11,6 @@ except ImportError:
         "The Micro Manager snapshot computation requires the h5py package."
     )
 
-import numpy as np
-
-try:
-    import h5py
-except ImportError:
-    raise ImportError(
-        "The Micro Manager snapshot computation requires the h5py package."
-    )
-
 
 class ReadWriteHDF:
     def __init__(self, logger) -> None:
@@ -212,7 +203,7 @@ class ReadWriteHDF:
         with h5py.File(file_path, "r") as file:
             return file[list(file.keys())[0]].len()
 
-    def write_crashed_snapshots_macro(self, file_path: str, crashed_input: list):
+    def write_crashed_snapshots(self, file_path: str, crashed_input: list):
         """
         Write indices of crashed snapshots to the HDF5 database.
 

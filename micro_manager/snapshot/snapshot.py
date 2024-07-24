@@ -104,15 +104,7 @@ class MicroManagerSnapshot(MicroManager):
                 )
             # Log error and write macro data to database if simulation has crashed
             else:
-                parameter = ""
-                for key, value in micro_sims_input.items():
-                    parameter += "{} = {}, ".format(key, value)
-                parameter = parameter[:-2]
-                self._logger.info(
-                    "Skipping snapshot storage for crashed simulation with parameter {}.".format(
-                        parameter
-                    )
-                )
+                self._logger.info("Skipping snapshot storage for crashed simulation.")
                 self._data_storage.write_output_to_hdf(
                     self._output_file_path,
                     micro_sims_input,
@@ -125,7 +117,7 @@ class MicroManagerSnapshot(MicroManager):
 
         # Write positions of crashed snapshots in database to database
         if len(self._crashed_snapshots) > 0:
-            self._data_storage.write_crashed_snapshots_macro(
+            self._data_storage.write_crashed_snapshots(
                 self._output_file_path, self._crashed_snapshots
             )
         self._data_storage.set_status(self._output_file_path, "none")

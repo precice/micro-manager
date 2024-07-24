@@ -37,13 +37,11 @@ class TestFunctionCalls(TestCase):
         self.fake_write_data_names = {
             "micro-scalar-data": False,
             "micro-vector-data": True,
-            "micro_sim_time": False,
         }
         self.fake_write_data = [
             {
                 "micro-scalar-data": 1,
                 "micro-vector-data": np.array([0, 1, 2]),
-                "micro_sim_time": 0,
             }
         ] * 4
 

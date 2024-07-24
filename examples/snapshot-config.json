@@ -10,8 +10,5 @@
     },
     "snapshot_params": {
         "post_processing_file_name": "snapshot_postprocessing"
-    },
-    "diagnostics": {
-        "output_micro_sim_solve_time": "True"
-      }
+    }
 }
