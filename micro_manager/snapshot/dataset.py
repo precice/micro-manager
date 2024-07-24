@@ -46,7 +46,7 @@ class ReadWriteHDF:
         self, dir_name: str, file_list: list, database_length: int
     ) -> None:
         """
-        Iterate over given HDF5 files in a given directory and copy the content into a single file.
+        Iterate over a list of HDF5 files in a given directory and copy the content into a single file.
         The files are deleted after the content is copied.
 
         Parameters
@@ -116,7 +116,7 @@ class ReadWriteHDF:
         length: int,
     ) -> None:
         """
-        Write the output of a micro simulation to an HDF5 file.
+        Write the output of a micro simulation to a HDF5 file.
 
         Parameters
         ----------
@@ -153,6 +153,7 @@ class ReadWriteHDF:
         for key in input_data.keys():
             current_data = np.asarray(input_data[key])
             parameter_file[key][idx] = current_data
+
         parameter_file.close()
 
     def read_hdf(self, file_path: str, data_names: dict, start: int, end: int) -> list:

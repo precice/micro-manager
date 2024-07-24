@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Snapshot Computation is a tool withing the Micro Manager to initialize micro simulations and create a snapshot database by simulating micro simulations related to a set of prescribed macro parameters.
+Snapshot Computation is a tool within the Micro Manager to initialize micro simulations and create a snapshot database of theirs outputs by running them with a set of prescribed input parameters.
 This files the class SnapshotComputation which has the following callable public methods:
 
 - solve
@@ -102,7 +102,7 @@ class MicroManagerSnapshot(MicroManager):
                     elems,
                     len(self._macro_parameters),
                 )
-            # Log error and wrote macro data to database if simulation has crashed
+            # Log error and write macro data to database if simulation has crashed
             else:
                 parameter = ""
                 for key, value in micro_sims_input.items():

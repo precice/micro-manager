@@ -525,7 +525,7 @@ class Config:
 
     def get_postprocessing_file_name(self):
         """
-        Depending on user input, Snapshot computation will perform postprocessing for every micro simulation before writing output to a file.
+        Depending on user input, snapshot computation will perform post-processing for every micro simulation before writing output to a file.
 
         Returns
         -------
