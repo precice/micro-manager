@@ -28,6 +28,7 @@ classifiers=[
 ]
 
 [project.optional-dependencies]
+snapshot = ["h5py"]
 sklearn = ["scikit-learn"]
 
 [project.urls]
@@ -40,7 +41,7 @@ Repository = "https://github.com/precice/micro-manager"
 micro-manager-precice = "micro_manager:main"
 
 [tool.setuptools]
-packages=["micro_manager", "micro_manager.adaptivity"]
+packages=["micro_manager", "micro_manager.adaptivity", "micro_manager.snapshot"]
 
 [tool.setuptools-git-versioning]
 enabled = true

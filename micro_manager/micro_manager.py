@@ -49,7 +49,7 @@ class MicroManagerCoupling(MicroManager):
             Name of the JSON configuration file (provided by the user).
         """
         super().__init__(config_file)
-
+        self._config.read_json_micro_manager()
         # Define the preCICE Participant
         self._participant = precice.Participant(
             "Micro-Manager", self._config.get_config_file_name(), self._rank, self._size
@@ -57,18 +57,10 @@ class MicroManagerCoupling(MicroManager):
 
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
-        # Data names of data written to preCICE
-        self._write_data_names = self._config.get_write_data_names()
-
-        # Data names of data read from preCICE
-        self._read_data_names = self._config.get_read_data_names()
-
         self._macro_bounds = self._config.get_macro_domain_bounds()
 
         if self._is_parallel:  # Simulation is run in parallel
             self._ranks_per_axis = self._config.get_ranks_per_axis()
-
-        self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
         # Parameter for interpolation in case of a simulation crash
         self._interpolate_crashed_sims = self._config.interpolate_crashed_micro_sim()
