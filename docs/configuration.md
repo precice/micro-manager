@@ -173,4 +173,4 @@ For more details on the interpolation see the [crash handling documentation](too
 
 ## Next step
 
-After creating a configuration file you are ready to [run the Micro Manager](tooling-micro-manager-running.html/#micro-manager).
+After creating a configuration file you are ready to [run the Micro Manager](tooling-micro-manager-running.html).

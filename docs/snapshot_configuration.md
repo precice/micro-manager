@@ -1,13 +1,31 @@
 ---
-title: Configure the Snapshot Computation
+title: Snapshot Computation
 permalink: tooling-micro-manager-snapshot-configuration.html
 keywords: tooling, macro-micro, two-scale, snapshot
-summary: Provide a JSON file to configure the Micro Manager snapshot computation.
+summary: Set up the Micro Manager snapshot computation.
 ---
 
-> Note: To install the Micro Manager for the snapshot computation, follow the instructions in the [Micro Manager installation guide](tooling-micro-manager-installation.html).
-> To prepare a micro simulation for the Micro Manager, follow the instructions in the [Micro Manager preparation guide](tooling-micro-manager-preparation.html).
-> Currently, the Micro Manager Snapshot tool can not be used with an `initialize()` method.
+## Installation
+
+To perform snapshot computations, the in the coupled case optional dependency `h5py` becomes mandatory. To install `micro-manager-precice` with `h5py`, run
+
+```bash
+pip install --user micro-manager-precice[snapshot]
+```
+
+If you have already installed `micro-manager-precice`, you can install `h5py` separately by running
+
+```bash
+pip install --user h5py
+```
+
+## Preparation
+
+To prepare a micro simulation for the Micro Manager, follow the instructions in the [Micro Manager preparation guide](tooling-micro-manager-preparation.html).
+
+Note: The `initialize()` method is not supported for the snapshot computation.
+
+## Configuration
 
 The Micro Manager snapshot computation is configured with a JSON file. An example configuration file is
 
@@ -43,7 +61,7 @@ Parameter | Description
 --- | ---
 `parameter_file_name` | Path to the HDF5 file containing the parameter space from the current working directory. Each macro parameter must be given as a dataset. Macro data for the same micro simulation should have the same index in the first dimension. The name must correspond to the names given in the config file.
 `read_data_names` | A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"` as values depending on the nature of the data.
-`write_data_names` | A Python dictionary with the names of the data to be written to preCICE as keys and `"scalar"` or `"vector"` as values depending on the nature of the data.
+`write_data_names` | A Python dictionary with the names of the data to be written to the database as keys and `"scalar"` or `"vector"` as values depending on the nature of the data.
 
 ## Simulation Parameters
 
@@ -55,14 +73,38 @@ Parameter | Description
 
 Parameter | Description
 --- | ---
-`post_processing_file_name`| Path to the post-processing script from the current working directory.
+`post_processing_file_name`| Path to the post-processing Python script from the current working directory. Providing a post-processing script is optional
 
 ## Diagnostics
 
 Parameter | Description
 --- | ---
-`output_micro_sim_solve_time` | If `True`, the Micro Manager writes the wall clock time of the `solve()` function of each micro simulation.
+`output_micro_sim_solve_time` | If `True`, the Micro Manager writes the wall clock time of the `solve()` function of each micro simulation to the database.
 
 ## Next step
 
-After creating a configuration file you are ready to [run the Micro Manager snapshot computation](tooling-micro-manager-running.html/#snapshot-computation).
+After creating a configuration file you are ready to [run the Micro Manager snapshot computation](tooling-micro-manager-snapshot-configuration.html/#running).
+
+## Running
+
+The Micro Manager snapshot computation is run directly from the terminal by adding the `--snapshot` argument and by providing the path to the configuration file as an input argument in the following way
+
+```bash
+micro-manager-precice --snapshot snapshot-config.json
+```
+
+The Micro Manager snapshot computation can also be run in parallel
+
+```bash
+mpiexec -n <number-of-processes> micro-manager-precice --snapshot snapshot-config.json
+```
+
+where `<number-of-processes>` must be replaced with the number of processes to be used.
+
+### Results
+
+The results of the snapshot computation are written into `output/` in HDF5-format. Each parameter is stored in a separate dataset. The dataset names correspond to the names specified in the configuration file. The first dimension of the datasets corresponds to the macro parameter index.
+
+### What happens when a micro simulation crashes during snapshot computation?
+
+If the computation of a snapshot fails, the snapshot is skipped.

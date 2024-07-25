@@ -23,12 +23,6 @@ Unless already installed, the dependencies will be installed by `pip` during the
 pip install --user micro-manager-precice[sklearn]
 ```
 
-To perform snapshot computations, the optional dependency `h5py` is required. To install `micro-manager-precice` with `h5py`, run
-
-```bash
-pip install --user micro-manager-precice[snapshot]
-```
-
 preCICE itself needs to be installed separately. If you encounter problems in the direct installation, see the [dependencies section](#required-dependencies) and [optional dependency section](#optional-dependencies) below.
 
 ### Option 2: Install manually
