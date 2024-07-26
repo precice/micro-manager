@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name="micro-manager-precice"
 dynamic = [ "version" ]
 dependencies = [
-    "pyprecice>=3.0.0.0", "numpy", "mpi4py", "scikit-learn"
+    "pyprecice>=3.1", "numpy", "mpi4py"
 ]
 requires-python = ">=3.8"
 authors = [
@@ -27,6 +27,10 @@ classifiers=[
 "Topic :: Scientific/Engineering",
 ]
 
+[project.optional-dependencies]
+snapshot = ["h5py"]
+sklearn = ["scikit-learn"]
+
 [project.urls]
 Homepage = "https://precice.org"
 Documentation = "https://precice.org/tooling-micro-manager-overview.html"
@@ -37,7 +41,7 @@ Repository = "https://github.com/precice/micro-manager"
 micro-manager-precice = "micro_manager:main"
 
 [tool.setuptools]
-packages=["micro_manager", "micro_manager.adaptivity"]
+packages=["micro_manager", "micro_manager.adaptivity", "micro_manager.snapshot"]
 
 [tool.setuptools-git-versioning]
 enabled = true
