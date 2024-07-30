@@ -284,7 +284,9 @@ class MicroManagerCoupling(MicroManager):
                         is_sim_active = np.copy(is_sim_active_cp)
                         sim_is_associated_to = np.copy(sim_is_associated_to_cp)
 
-            else:  # Time window has converged, now micro output can be generated
+            if (
+                self._participant.is_time_window_complete()
+            ):  # Time window has converged, now micro output can be generated
                 self._logger.info(
                     "Micro simulations {} - {} have converged at t = {}".format(
                         self._micro_sims[0].get_global_id(),
