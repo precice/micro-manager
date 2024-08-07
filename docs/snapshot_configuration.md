@@ -73,7 +73,7 @@ Parameter | Description
 
 Parameter | Description
 --- | ---
-`post_processing_file_name`| Path to the post-processing Python script from the current working directory. Providing a post-processing script is optional
+`post_processing_file_name`| Path to the post-processing Python script from the current working directory. Providing a post-processing script is optional. The script must contain a class `PostProcessing` with a method `postprocessing(sim_output)` that takes the simulation output as an argument. The method can be used to post-process the simulation output before writing it to the database.
 
 ## Diagnostics
 
