@@ -81,10 +81,6 @@ Parameter | Description
 --- | ---
 `output_micro_sim_solve_time` | If `True`, the Micro Manager writes the wall clock time of the `solve()` function of each micro simulation to the database.
 
-## Next step
-
-After creating a configuration file you are ready to [run the Micro Manager snapshot computation](tooling-micro-manager-snapshot-configuration.html/#running).
-
 ## Running
 
 The Micro Manager snapshot computation is run directly from the terminal by adding the `--snapshot` argument and by providing the path to the configuration file as an input argument in the following way
