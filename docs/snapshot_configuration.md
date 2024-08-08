@@ -7,7 +7,7 @@ summary: Set up the Micro Manager snapshot computation.
 
 ## Installation
 
-To perform snapshot computations, the in the coupled case optional dependency `h5py` becomes mandatory. To install `micro-manager-precice` with `h5py`, run
+To use the Micro Manager for snapshot computation, the dependency `h5py` is necessary. To install `micro-manager-precice` with `h5py`, run
 
 ```bash
 pip install --user micro-manager-precice[snapshot]
@@ -21,13 +21,13 @@ pip install --user h5py
 
 ## Preparation
 
-To prepare a micro simulation for the Micro Manager, follow the instructions in the [Micro Manager preparation guide](tooling-micro-manager-preparation.html).
+Prepare your micro simulation for the Micro Manager snapshot computation by following the instructions in the [preparation guide](tooling-micro-manager-preparation.html).
 
 Note: The `initialize()` method is not supported for the snapshot computation.
 
 ## Configuration
 
-The Micro Manager snapshot computation is configured with a JSON file. An example configuration file is
+Configure the snapshot computation functionality with a JSON file. An example configuration file is
 
 ```json
 {
@@ -83,19 +83,19 @@ Parameter | Description
 
 ## Running
 
-The Micro Manager snapshot computation is run directly from the terminal by adding the `--snapshot` argument and by providing the path to the configuration file as an input argument in the following way
+Run the snapshot computation directly from the terminal by adding the `--snapshot` argument to the Micro Manager executable, and by providing the path to the configuration file as an input argument in the following way
 
 ```bash
 micro-manager-precice --snapshot snapshot-config.json
 ```
 
-The Micro Manager snapshot computation can also be run in parallel
+Run the snapshot computation in parallel by
 
 ```bash
 mpiexec -n <number-of-processes> micro-manager-precice --snapshot snapshot-config.json
 ```
 
-where `<number-of-processes>` must be replaced with the number of processes to be used.
+where `<number-of-processes>` is the number of processes used.
 
 ### Results
 
