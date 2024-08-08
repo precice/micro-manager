@@ -11,8 +11,6 @@ The Micro Manager manages many simulations on a micro scale and couples them to 
 
 ![Micro Manager strategy schematic](images/docs-tooling-micro-manager-manager-solution.png)
 
-The Micro Manager can also compute snapshots of micro simulations given macro input parameters in an offline manner without preCICE.
-
 ## What can it do?
 
 The Micro Manager couples many micro simulations with one macro simulation. This includes ...
@@ -20,6 +18,8 @@ The Micro Manager couples many micro simulations with one macro simulation. This
 - ... transferring scalar and vector data to and from a large number of micro simulations.
 - ... running micro simulations in parallel using MPI.
 - ... adaptively activating and deactivating micro simulations based on a similarity calculation.
+
+The Micro Manager can also compute snapshots of micro simulations given macro input parameters in an offline manner without preCICE.
 
 ## Documentation
 
