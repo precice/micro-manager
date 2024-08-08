@@ -40,6 +40,7 @@ Ensure that the following dependencies are installed:
 #### Optional dependencies
 
 * [sklearn](https://scikit-learn.org/stable/index.html)
+* [h5py](https://www.h5py.org/) (required for snapshot computations)
 
 #### Clone the Micro Manager
 
