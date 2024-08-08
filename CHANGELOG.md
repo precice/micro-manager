@@ -2,6 +2,7 @@
 
 ## latest
 
+- Explicitly check if time window has converged using the API function `is_time_window_complete()` https://github.com/precice/micro-manager/pull/118
 - Add `MicroManagerSnapshot` enabling snapshot computation and storage of microdata in HDF5 format https://github.com/precice/micro-manager/pull/101
 - Make `sklearn` an optional dependency
 - Move the config variable `micro_dt` from the coupling parameters section to the simulation parameters section https://github.com/precice/micro-manager/pull/114
