@@ -557,6 +557,7 @@ class Config:
     def create_single_sim_object(self):
         """
         Check if multiple snapshots can be computed on a single micro simulation object.
+
         Returns
         -------
         initialize_once : bool
