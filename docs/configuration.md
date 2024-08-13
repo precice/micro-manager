@@ -16,11 +16,11 @@ The Micro Manager is configured with a JSON file. An example configuration file 
         "config_file_name": "precice-config.xml",
         "macro_mesh_name": "macro-mesh",
         "read_data_names": {"temperature": "scalar", "heat-flux": "vector"},
-        "write_data_names": {"porosity": "scalar", "conductivity": "vector"},
-        "micro_time_window_size": 1.0
+        "write_data_names": {"porosity": "scalar", "conductivity": "vector"}
     },
     "simulation_params": {
         "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+        "micro_dt": 1.0
     },
     "diagnostics": {
       "output_micro_sim_solve_time": "True"
@@ -42,7 +42,6 @@ Parameter | Description
 `macro_mesh_name` |  Name of the macro mesh as stated in the preCICE configuration.
 `read_data_names` |  A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"`  as values depending on the nature of the data.
 `write_data_names` |  A Python dictionary with the names of the data to be written to preCICE as keys and `"scalar"` or `"vector"`  as values depending on the nature of the data.
-`micro_dt` | Initial time window size (dt) of the micro simulation.
 
 ## Simulation Parameters
 
@@ -51,6 +50,7 @@ Parameter | Description
 `macro_domain_bounds`| Minimum and maximum bounds of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]` in 3D and `[xmin, xmax, ymin, ymax]` in 2D.
 Domain decomposition parameters | See section on [domain decomposition](#domain-decomposition). But default, the Micro Manager assumes that it will be run in serial.
 Adaptivity parameters | See section on [adaptivity](#adaptivity). By default, adaptivity is disabled.
+`micro_dt` | Initial time window size (dt) of the micro simulation.
 
 ## Diagnostics
 

@@ -53,6 +53,7 @@ class Config:
         # Snapshot information
         self._parameter_file_name = None
         self._postprocessing_file_name = None
+        self._initialize_once = False
 
         self._output_micro_sim_time = False
 
@@ -301,6 +302,14 @@ class Config:
                 "No diagnostics data is defined. Snapshot computation will not output any diagnostics data."
             )
 
+        try:
+            if self._data["snapshot_params"]["initialize_once"] == "True":
+                self._initialize_once = True
+        except BaseException:
+            self._logger.info(
+                "For each snapshot a new micro simulation object will be created"
+            )
+
     def get_config_file_name(self):
         """
         Get the name of the JSON configuration file.
@@ -544,3 +553,14 @@ class Config:
             True if crashed micro simulations need to be interpolated, False otherwise.
         """
         return self._interpolate_crash
+
+    def create_single_sim_object(self):
+        """
+        Check if multiple snapshots can be computed on a single micro simulation object.
+
+        Returns
+        -------
+        initialize_once : bool
+            True if initialization is done only once, False otherwise.
+        """
+        return self._initialize_once
