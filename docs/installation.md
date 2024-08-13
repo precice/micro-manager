@@ -56,11 +56,7 @@ To install using `pip`, go to the directory `micro-manager/` and run
 pip install --user .
 ```
 
-To install using Python, go to the project directory `micro-manager/` and run
-
-```bash
-python setup.py install --user
-```
+Adding optional dependencies works as above by adding them after the dot, e.g. `.[sklearn]`.
 
 ## Get the latest development version
 
