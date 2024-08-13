@@ -11,9 +11,6 @@ class MicroSimulation:
     def __init__(self, sim_id):
         self.very_important_value = 0
 
-    def initialize(self):
-        pass
-
     def solve(self, macro_data, dt):
         assert macro_data["macro-scalar-data"] == 1
         assert macro_data["macro-vector-data"].tolist() == [0, 1, 2]
@@ -149,6 +146,7 @@ class TestFunctionCalls(TestCase):
         self.assertDictEqual(config._read_data_names, self.fake_read_data_names)
         self.assertDictEqual(config._write_data_names, self.fake_write_data_names)
         self.assertEqual(config._postprocessing_file_name, "snapshot_post_processing")
+        self.assertTrue(config._initialize_once)
 
 
 if __name__ == "__main__":

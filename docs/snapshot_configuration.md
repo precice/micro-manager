@@ -74,6 +74,7 @@ Parameter | Description
 Parameter | Description
 --- | ---
 `post_processing_file_name`| Path to the post-processing Python script from the current working directory. Providing a post-processing script is optional. The script must contain a class `PostProcessing` with a method `postprocessing(sim_output)` that takes the simulation output as an argument. The method can be used to post-process the simulation output before writing it to the database.
+`initialize_once` | If `True`, only one micro simulation is initialized and solved for all macro inputs per rank. If `False` a new micro simulation is initialized and solved for each macro input in the parameter space. Default is `False`. This option can be True if the micro simulation is not history-dependent and the same setup is shared across all micro simulations.
 
 ## Diagnostics
 

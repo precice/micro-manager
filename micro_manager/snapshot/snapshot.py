@@ -40,6 +40,9 @@ class MicroManagerSnapshot(MicroManager):
         self._parameter_file = self._config.get_parameter_file_name()
         # Get name of pos-processing script
         self._post_processing_file_name = self._config.get_postprocessing_file_name()
+
+        # Check if simulation object can be re-used.
+        self._initialize_once = self._config.create_single_sim_object()
         # Collect crashed indices
         self._crashed_snapshots = []  # Declaration
 
@@ -58,10 +61,16 @@ class MicroManagerSnapshot(MicroManager):
 
         # Loop over all macro parameters
         for elems in range(self._local_number_of_sims):
-            # Create micro simulation object
-            self._micro_sims = create_simulation_class(self._micro_problem)(
-                self._global_ids_of_local_sims[elems]
-            )
+            # initialize micro simulation
+            if elems == 0:
+                self._micro_sims = create_simulation_class(self._micro_problem)(
+                    self._global_ids_of_local_sims[0]
+                )
+            else:
+                if not self._initialize_once:
+                    self._micro_sims = create_simulation_class(self._micro_problem)(
+                        self._global_ids_of_local_sims[elems]
+                    )
 
             micro_sims_input = self._macro_parameters[elems]
             # Solve micro simulation

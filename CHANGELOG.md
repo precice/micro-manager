@@ -2,6 +2,7 @@
 
 ## latest
 
+- Add option to use only one micro simulation object in the snapshot computation https://github.com/precice/micro-manager/pull/123
 - Explicitly check if time window has converged using the API function `is_time_window_complete()` https://github.com/precice/micro-manager/pull/118
 - Add `MicroManagerSnapshot` enabling snapshot computation and storage of microdata in HDF5 format https://github.com/precice/micro-manager/pull/101
 - Make `sklearn` an optional dependency
