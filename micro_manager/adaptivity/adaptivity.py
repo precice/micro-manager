@@ -288,7 +288,7 @@ class AdaptivityCalculator:
         """
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
-        # divide i,j by max(data[i],data[j]) to get relative difference
+        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
         relative = np.nan_to_num(
             (
                 pointwise_diff
@@ -316,7 +316,7 @@ class AdaptivityCalculator:
         """
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
-        # divide i,j by max(data[i],data[j]) to get relative difference
+        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
         relative = np.nan_to_num(
             (
                 pointwise_diff
