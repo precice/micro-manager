@@ -671,9 +671,9 @@ class MicroManagerCoupling(MicroManager):
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
                     self._logger.error(
-                        "Micro simulation at macro coordinates {} has experienced an error. "
+                        "Micro simulation at macro coordinates {} with input {} has experienced an error. "
                         "See next entry on this rank for error message.".format(
-                            self._mesh_vertex_coords[count]
+                            self._mesh_vertex_coords[count], micro_sims_input[count]
                         )
                     )
                     self._logger.error(error_message)
