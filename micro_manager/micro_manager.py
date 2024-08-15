@@ -167,12 +167,12 @@ class MicroManagerCoupling(MicroManager):
                             + 1
                         ]
                     )[0]
-                    micro_problem = getattr(
-                        importlib.import_module(
-                            self._config.get_micro_file_name(), "MicroSimulation"
-                        ),
-                        "MicroSimulation",
-                    )
+                micro_problem = getattr(
+                    importlib.import_module(
+                        self._config.get_micro_file_name(), "MicroSimulation"
+                    ),
+                    "MicroSimulation",
+                )
                 for i in active_sim_ids:
                     self._logger.info(f"lazy initialization of micro sim {i} started")
                     self._micro_sims[i] = create_simulation_class(micro_problem)(
