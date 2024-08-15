@@ -4,8 +4,10 @@ in a local way. If the Micro Manager is run in parallel, simulations on one rank
 each other. A global comparison is not done.
 """
 import numpy as np
+import importlib
 
 from .adaptivity import AdaptivityCalculator
+from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
@@ -130,6 +132,16 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             if not _is_sim_active[i]:  # if id is inactive
                 if self._check_for_activation(i, similarity_dists, _is_sim_active):
                     associated_active_local_id = _sim_is_associated_to[i]
+                    if micro_sims[i] == None:
+                        self._logger.info(f"{i} to be solved, lazy initialization")
+                        micro_problem = getattr(
+                            importlib.import_module(
+                                self._micro_file_name, "MicroSimulation"
+                        ),
+                        "MicroSimulation",
+                        )
+                        micro_sims[i] = create_simulation_class(micro_problem)(i)
+                        self._logger.info(f"lazy initalization of {i} successful")
                     micro_sims[i].set_state(
                         micro_sims[associated_active_local_id].get_state()
                     )
