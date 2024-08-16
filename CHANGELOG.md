@@ -1,5 +1,24 @@
 # Micro Manager changelog
 
+## v0.5.0
+
+- Use absolute values to calculate normalizing factor for relative norms in adaptivity https://github.com/precice/micro-manager/pull/125
+- Add option to use only one micro simulation object in the snapshot computation https://github.com/precice/micro-manager/pull/123
+- Explicitly check if time window has converged using the API function `is_time_window_complete()` https://github.com/precice/micro-manager/pull/118
+- Add `MicroManagerSnapshot` enabling snapshot computation and storage of microdata in HDF5 format https://github.com/precice/micro-manager/pull/101
+- Make `sklearn` an optional dependency
+- Move the config variable `micro_dt` from the coupling parameters section to the simulation parameters section https://github.com/precice/micro-manager/pull/114
+- Set time step of micro simulation in the configuration, and use it in the coupling https://github.com/precice/micro-manager/pull/112
+- Add a base class called `MicroManager` with minimal API and member function definitions, rename the existing `MicroManager` class to `MicroManagerCoupling` https://github.com/precice/micro-manager/pull/111
+- Handle calling `initialize()` function of micro simulations written in languages other than Python https://github.com/precice/micro-manager/pull/110
+- Check if initial data returned from the micro simulation is the data that the adaptivity computation requires https://github.com/precice/micro-manager/pull/109
+- Use executable `micro-manager-precice` by default, and stop using the script `run_micro_manager.py` https://github.com/precice/micro-manager/pull/105
+- Make `initialize()` method of the MicroManager class public https://github.com/precice/micro-manager/pull/105
+- Optionally use initial macro data to initialize micro simulations https://github.com/precice/micro-manager/pull/104
+- Use `pyproject.toml` instead of `setup.py` to configure the build. Package name is now `micro_manager_precice` https://github.com/precice/micro-manager/pull/84
+- Add handling of crashing micro simulations https://github.com/precice/micro-manager/pull/85
+- Add switch to turn adaptivity on and off in configuration https://github.com/precice/micro-manager/pull/93
+
 ## v0.4.0
 
 - Add note in the cpp-dummy that pickling support does not work due to no good way to pass the sim id to the new micro simulation instance [commit](https://github.com/precice/micro-manager/commit/0a82966676717a533aca9bffa4a110453158f29c)

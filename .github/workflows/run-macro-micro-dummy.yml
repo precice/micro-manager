@@ -7,7 +7,7 @@ on:
   pull_request:
     branches:
       - "*"
-jobs:  
+jobs:
   run_dummy:
     name: Run dummy
     runs-on: ubuntu-latest
@@ -15,7 +15,7 @@ jobs:
     steps:
 
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           path: micro-manager
 
@@ -25,22 +25,26 @@ jobs:
           apt-get -qq update
           apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
           apt-get -qq install sudo
-          python -m pip install --upgrade pip
-          pip install setuptools wheel twine
+          pip3 install --upgrade pip
 
       - name: Install micro-manager
         working-directory: micro-manager
-        run: pip3 install --user .
+        run: |
+          pip3 install .
 
       - name: Run python macro-micro dummy
         timeout-minutes: 3
         working-directory: micro-manager/examples
-        run: python3 python-dummy/run_micro_manager.py --config micro-manager-config.json & python3 macro_dummy.py
+        run: |
+          micro-manager-precice micro-manager-python-config.json &
+          python3 macro_dummy.py
 
       - name: Run adaptive python macro-micro dummy
         timeout-minutes: 3
         working-directory: micro-manager/examples
-        run: python3 python-dummy/run_micro_manager.py --config micro-manager-adaptivity-config.json & python3 macro_dummy.py
+        run: |
+          micro-manager-precice micro-manager-python-adaptivity-config.json &
+          python3 macro_dummy.py
 
       - name: Run c++ macro-micro dummy
         timeout-minutes: 3
@@ -50,9 +54,12 @@ jobs:
           pip install pybind11
           c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy$(python3-config --extension-suffix)
           cd ../
-          python3 cpp-dummy/run_micro_manager.py --config micro-manager-config.json & python3 macro_dummy.py
+          micro-manager-precice micro-manager-cpp-config.json &
+          python3 macro_dummy.py
 
       - name: Run adaptive c++ macro-micro dummy
         timeout-minutes: 3
         working-directory: micro-manager/examples
-        run: python3 cpp-dummy/run_micro_manager.py --config micro-manager-adaptivity-config.json & python3 macro_dummy.py
+        run: |
+          micro-manager-precice micro-manager-cpp-adaptivity-config.json &
+          python3 macro_dummy.py

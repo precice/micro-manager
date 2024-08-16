@@ -1,10 +1,13 @@
 # This file mocks pyprecice, the Python bindings for preCICE, and is used _only_ for testing the Micro Manager.
 from typing import Any
+
 import numpy as np
 
 
 class Participant:
-    def __init__(self, solver_name, config_file_name, solver_process_index, solver_process_size):
+    def __init__(
+        self, solver_name, config_file_name, solver_process_index, solver_process_size
+    ):
         self.read_write_vector_buffer = []
         self.read_write_scalar_buffer = []
 

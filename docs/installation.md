@@ -17,7 +17,13 @@ The Micro Manager package has the name [micro-manager-precice](https://pypi.org/
 pip install --user micro-manager-precice
 ```
 
-Unless already installed, the dependencies will be installed by `pip` during the installation procedure. preCICE itself needs to be installed separately. If you encounter problems in the direct installation, see the [dependencies section](#required-dependencies) below.
+Unless already installed, the dependencies will be installed by `pip` during the installation procedure. To enable [crash handling by interpolation](tooling-micro-manager-running.html/#what-happens-when-a-micro-simulation-crashes), the optional dependency `sklearn` is required. To install `micro-manager-precice` with `sklearn`, run
+
+```bash
+pip install --user micro-manager-precice[sklearn]
+```
+
+preCICE itself needs to be installed separately. If you encounter problems in the direct installation, see the [dependencies section](#required-dependencies) and [optional dependency section](#optional-dependencies) below.
 
 ### Option 2: Install manually
 
@@ -30,6 +36,11 @@ Ensure that the following dependencies are installed:
 * [pyprecice: Python language bindings for preCICE](installation-bindings-python.html)
 * [numpy](https://numpy.org/install/)
 * [mpi4py](https://mpi4py.readthedocs.io/en/stable/install.html)
+
+#### Optional dependencies
+
+* [sklearn](https://scikit-learn.org/stable/index.html)
+* [h5py](https://www.h5py.org/) (required for snapshot computations)
 
 #### Clone the Micro Manager
 
@@ -45,11 +56,7 @@ To install using `pip`, go to the directory `micro-manager/` and run
 pip install --user .
 ```
 
-To install using Python, go to the project directory `micro-manager/` and run
-
-```bash
-python setup.py install --user
-```
+Adding optional dependencies works as above by adding them after the dot, e.g. `.[sklearn]`.
 
 ## Get the latest development version
 
