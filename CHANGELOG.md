@@ -1,6 +1,6 @@
 # Micro Manager changelog
 
-## latest
+## v0.5.0
 
 - Use absolute values to calculate normalizing factor for relative norms in adaptivity https://github.com/precice/micro-manager/pull/125
 - Add option to use only one micro simulation object in the snapshot computation https://github.com/precice/micro-manager/pull/123
