@@ -129,7 +129,6 @@ class MicroManagerSnapshot(MicroManager):
             self._data_storage.write_crashed_snapshots(
                 self._output_file_path, self._crashed_snapshots
             )
-        self._data_storage.set_status(self._output_file_path, "none")
 
         # Merge output files
         if self._is_parallel:
@@ -144,7 +143,10 @@ class MicroManagerSnapshot(MicroManager):
                     list_of_output_files,
                     self._parameter_space_size,
                 )
-        self._logger.info("Snapshot computation completed.")
+        else:
+            self._data_storage.set_status(self._output_file_path, "finished")
+        if self._rank == 0:
+            self._logger.info("Snapshot computation completed.")
 
     def initialize(self) -> None:
         """
