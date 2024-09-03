@@ -137,8 +137,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                         micro_problem = getattr(
                             importlib.import_module(
                                 self._micro_file_name, "MicroSimulation"
-                        ),
-                        "MicroSimulation",
+                            ),
+                            "MicroSimulation",
                         )
                         micro_sims[i] = create_simulation_class(micro_problem)(i)
                         self._logger.info(f"lazy initalization of {i} successful")

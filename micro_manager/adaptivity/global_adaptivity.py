@@ -269,7 +269,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                         ),
                         "MicroSimulation",
                     )
-                    micro_sims[to_be_activated_local_id] = create_simulation_class(micro_problem)(i)
+                    micro_sims[to_be_activated_local_id] = create_simulation_class(
+                        micro_problem
+                    )(i)
                     self._logger.info(f"lazy initialization of {i} successful")
                 assoc_active_id = local_sim_is_associated_to[to_be_activated_local_id]
 

@@ -185,7 +185,10 @@ class Config:
             else:
                 raise Exception("Adaptivity type can be either local or global.")
 
-            if self._data["simulation_params"]["adaptivity_settings"].get("lazy_init") == "True":
+            if (
+                self._data["simulation_params"]["adaptivity_settings"].get("lazy_init")
+                == "True"
+            ):
                 self._micro_sims_lazy_init = True
 
             exchange_data = {**self._read_data_names, **self._write_data_names}

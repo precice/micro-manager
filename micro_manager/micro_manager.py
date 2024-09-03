@@ -80,7 +80,9 @@ class MicroManagerCoupling(MicroManager):
 
         self._is_adaptivity_on = self._config.turn_on_adaptivity()
 
-        self._micro_sims_lazy_init = self._is_adaptivity_on and self._config.micro_sims_lazy_init()
+        self._micro_sims_lazy_init = (
+            self._is_adaptivity_on and self._config.micro_sims_lazy_init()
+        )
 
         if self._is_adaptivity_on:
             self._number_of_sims_for_adaptivity = 0
@@ -187,7 +189,9 @@ class MicroManagerCoupling(MicroManager):
             # Write a checkpoint
             if self._participant.requires_writing_checkpoint():
                 for i in range(self._local_number_of_sims):
-                    sim_states_cp[i] = self._micro_sims[i].get_state() if self._micro_sims[i] else None
+                    sim_states_cp[i] = (
+                        self._micro_sims[i].get_state() if self._micro_sims[i] else None
+                    )
                 t_checkpoint = t
                 n_checkpoint = n
 
@@ -259,8 +263,12 @@ class MicroManagerCoupling(MicroManager):
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
                         if sim_states_cp[active_id] == None:
-                            sim_states_cp[active_id] = self._micro_sims[active_id].get_state()
-                            self._logger.info(f"state of lazily initialized micro sim {self._global_ids_of_local_sims[active_id]} successfully checkpointed")
+                            sim_states_cp[active_id] = self._micro_sims[
+                                active_id
+                            ].get_state()
+                            self._logger.info(
+                                f"state of lazily initialized micro sim {self._global_ids_of_local_sims[active_id]} successfully checkpointed"
+                            )
 
                 micro_sims_output = self._solve_micro_simulations_with_adaptivity(
                     micro_sims_input, is_sim_active, sim_is_associated_to, dt
@@ -442,7 +450,8 @@ class MicroManagerCoupling(MicroManager):
                 )
             self._logger.info(
                 "Micro simulations with global IDs {} - {} created.".format(
-                    self._global_ids_of_local_sims[0], self._global_ids_of_local_sims[-1]
+                    self._global_ids_of_local_sims[0],
+                    self._global_ids_of_local_sims[-1],
                 )
             )
 
@@ -473,7 +482,9 @@ class MicroManagerCoupling(MicroManager):
         if not initial_data:
             is_initial_data_available = False
             if self._micro_sims_lazy_init:
-                raise Exception("no initial macro data available, lazy initialization would result in only one active simulation.")
+                raise Exception(
+                    "no initial macro data available, lazy initialization would result in only one active simulation."
+                )
         else:
             is_initial_data_available = True
 
@@ -485,7 +496,9 @@ class MicroManagerCoupling(MicroManager):
             getattr(micro_problem, "initialize")
         ):
             if self._micro_sims_lazy_init:
-                raise Exception("Adaptivity can't use data returned by initialize function of micro sims when using lazy initialization.")
+                raise Exception(
+                    "Adaptivity can't use data returned by initialize function of micro sims when using lazy initialization."
+                )
             self._micro_sims_init = True  # Starting value before setting
 
             try:  # Try to get the signature of the initialize() method, if it is written in Python
