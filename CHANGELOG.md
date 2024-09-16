@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## latest
+
+- Add information about adaptivity tuning parameters https://github.com/precice/micro-manager/pull/131
+
 ## v0.5.0
 
 - Use absolute values to calculate normalizing factor for relative norms in adaptivity https://github.com/precice/micro-manager/pull/125
