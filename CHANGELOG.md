@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## latest
+
+- Put computation of counting active steps inside the adaptivity variant `if` condition https://github.com/precice/micro-manager/pull/130
+
 ## v0.5.0
 
 - Use absolute values to calculate normalizing factor for relative norms in adaptivity https://github.com/precice/micro-manager/pull/125
