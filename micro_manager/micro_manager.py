@@ -186,20 +186,20 @@ class MicroManagerCoupling(MicroManager):
                         is_sim_active_cp = np.copy(is_sim_active)
                         sim_is_associated_to_cp = np.copy(sim_is_associated_to)
 
-                    if self._adaptivity_type == "local":
-                        active_sim_ids = np.where(is_sim_active)[0]
-                    elif self._adaptivity_type == "global":
-                        active_sim_ids = np.where(
-                            is_sim_active[
-                                self._global_ids_of_local_sims[
-                                    0
-                                ] : self._global_ids_of_local_sims[-1]
-                                + 1
-                            ]
-                        )[0]
+                        if self._adaptivity_type == "local":
+                            active_sim_ids = np.where(is_sim_active)[0]
+                        elif self._adaptivity_type == "global":
+                            active_sim_ids = np.where(
+                                is_sim_active[
+                                    self._global_ids_of_local_sims[
+                                        0
+                                    ] : self._global_ids_of_local_sims[-1]
+                                    + 1
+                                ]
+                            )[0]
 
-                    for active_id in active_sim_ids:
-                        self._micro_sims_active_steps[active_id] += 1
+                        for active_id in active_sim_ids:
+                            self._micro_sims_active_steps[active_id] += 1
 
             micro_sims_input = self._read_data_from_precice(dt)
 
