@@ -121,6 +121,12 @@ Parameter | Description
 `every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
 `similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.
 
+The primary tuning parameters for adaptivity are the history parameter $$ \Lambda $$, the coarsening constant $$ C_c $$, and the $$ C_r $$. Their effects can be interpreted as:
+
+- Higher values of the history parameter $$ \Lambda $$ imply lower significance of the adaptivity state in the previous timestep on the state in the current timestep.
+- Higher values of the coarsening constant $$ C_c $$ imply that more active simulations from the previous timestep will remain active in the current timestep.
+- Higher values of the refining constant $$ C_r $$ imply that less inactive points from the previous timestep will become active in the current timestep.
+
 Example of adaptivity configuration is
 
 ```json
