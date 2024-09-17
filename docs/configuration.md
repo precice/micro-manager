@@ -123,7 +123,7 @@ Parameter | Description
 
 The primary tuning parameters for adaptivity are the history parameter $$ \Lambda $$, the coarsening constant $$ C_c $$, and the refining constant $$ C_r $$. Their effects can be interpreted as:
 
-- Higher values of the history parameter $$ \Lambda $$ imply lower significance of the adaptivity state in the previous timestep on the state in the current timestep.
+- Higher values of the history parameter $$ \Lambda $$ imply lower significance of the similarity measures in the previous timestep on the similarity measure and thus adaptivity state in the current timestep.
 - Higher values of the coarsening constant $$ C_c $$ imply that more active simulations from the previous timestep will remain active in the current timestep.
 - Higher values of the refining constant $$ C_r $$ imply that less inactive points from the previous timestep will become active in the current timestep.
 
