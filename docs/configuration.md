@@ -116,8 +116,8 @@ Parameter | Description
 `type` | Set to either `local` or `global`. The type of adaptivity matters when the Micro Manager is run in parallel. `local` means comparing micro simulations within a local partitioned domain for similarity. `global` means comparing micro simulations from all partitions, so over the entire domain.
 `data` | List of names of data which are to be used to calculate if micro-simulations are similar or not. For example `["temperature", "porosity"]`.
 `history_param` | History parameter $$ \Lambda $$, set as $$ \Lambda >= 0 $$.
-`coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ C_c < 1 $$.
-`refining_constant` | Refining constant $$ C_r $$, set as $$ C_r >= 0 $$.
+`coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ 0 =< C_c < 1 $$.
+`refining_constant` | Refining constant $$ C_r $$, set as $$ 0 =< C_r < 1 $$.
 `every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
 `similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.
 
