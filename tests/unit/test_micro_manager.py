@@ -53,7 +53,7 @@ class TestFunctioncalls(TestCase):
         """
         Test if the constructor of the MicroManager class passes correct values to member variables.
         """
-        manager = micro_manager.MicroManager("micro-manager-config.json")
+        manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
 
         self.assertListEqual(manager._macro_bounds, self.macro_bounds)
         self.assertDictEqual(manager._read_data_names, self.fake_read_data_names)
@@ -64,9 +64,10 @@ class TestFunctioncalls(TestCase):
         """
         Test if the initialize function of the MicroManager class initializes member variables to correct values
         """
-        manager = micro_manager.MicroManager("micro-manager-config.json")
+        manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
+        manager.initialize()
 
-        self.assertEqual(manager._dt, 0.1)  # from Interface.initialize
+        self.assertEqual(manager._micro_dt, 0.1)  # from Interface.initialize
         self.assertEqual(manager._global_number_of_sims, 4)
         self.assertListEqual(manager._macro_bounds, self.macro_bounds)
         self.assertListEqual(manager._mesh_vertex_ids.tolist(), [0, 1, 2, 3])
@@ -81,10 +82,10 @@ class TestFunctioncalls(TestCase):
         """
         Test if the internal functions _read_data_from_precice and _write_data_to_precice work as expected.
         """
-        manager = micro_manager.MicroManager("micro-manager-config.json")
+        manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
 
         manager._write_data_to_precice(self.fake_write_data)
-        read_data = manager._read_data_from_precice()
+        read_data = manager._read_data_from_precice(1.0)
 
         for data, fake_data in zip(read_data, self.fake_read_data):
             self.assertEqual(data["macro-scalar-data"], 1)
@@ -97,12 +98,14 @@ class TestFunctioncalls(TestCase):
         """
         Test if the internal function _solve_micro_simulations works as expected.
         """
-        manager = micro_manager.MicroManager("micro-manager-config.json")
+        manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
+        manager.initialize()
+
         manager._local_number_of_sims = 4
         manager._micro_sims = [MicroSimulation(i) for i in range(4)]
         manager._micro_sims_active_steps = np.zeros(4, dtype=np.int32)
 
-        micro_sims_output = manager._solve_micro_simulations(self.fake_read_data)
+        micro_sims_output = manager._solve_micro_simulations(self.fake_read_data, 1.0)
 
         for data, fake_data in zip(micro_sims_output, self.fake_write_data):
             self.assertEqual(data["micro-scalar-data"], 2)
@@ -117,7 +120,7 @@ class TestFunctioncalls(TestCase):
         Test if the functions in the Config class work.
         """
         config = micro_manager.Config(MagicMock(), "micro-manager-config.json")
-
+        config.read_json_micro_manager()
         self.assertEqual(config._config_file_name.split("/")[-1], "dummy-config.xml")
         self.assertEqual(config._micro_file_name, "test_micro_manager")
         self.assertEqual(config._macro_mesh_name, "dummy-macro-mesh")

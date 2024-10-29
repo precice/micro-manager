@@ -3,7 +3,6 @@ from unittest import TestCase
 import numpy as np
 
 import micro_manager
-import micro_manager.interpolation
 
 
 class MicroSimulation:
@@ -28,6 +27,7 @@ class TestSimulationCrashHandling(TestCase):
         """
         Test if the Micro Manager catches a simulation crash and handles it adequately.
         A crash if caught by interpolation within _solve_micro_simulations.
+        Note: running this test requires the sci-kit learn package to be installed.
         """
 
         macro_data = []
@@ -38,7 +38,9 @@ class TestSimulationCrashHandling(TestCase):
         expected_crash_vector_data = np.array([55 / 49, 55 / 49, 55 / 49])
         expected_crash_scalar_data = 55 / 49
 
-        manager = micro_manager.MicroManager("micro-manager-config_crash.json")
+        manager = micro_manager.MicroManagerCoupling("micro-manager-config_crash.json")
+        manager.initialize()
+
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
         manager._local_number_of_sims = 4
         manager._has_sim_crashed = [False] * 4
@@ -50,7 +52,7 @@ class TestSimulationCrashHandling(TestCase):
         )
         manager._micro_sims = [MicroSimulation(i) for i in range(4)]
 
-        micro_sims_output = manager._solve_micro_simulations(macro_data)
+        micro_sims_output = manager._solve_micro_simulations(macro_data, 1.0)
 
         # Crashed simulation has interpolated value
         data_crashed = micro_sims_output[2]
@@ -73,6 +75,7 @@ class TestSimulationCrashHandling(TestCase):
         """
         Test if the micro manager catches a simulation crash and handles it adequately with adaptivity.
         A crash if caught by interpolation within _solve_micro_simulations_with_adaptivity.
+        Note: running this test requires the sci-kit learn package to be installed.
         """
 
         macro_data = []
@@ -83,7 +86,8 @@ class TestSimulationCrashHandling(TestCase):
         expected_crash_vector_data = np.array([55 / 49, 55 / 49, 55 / 49])
         expected_crash_scalar_data = 55 / 49
 
-        manager = micro_manager.MicroManager("micro-manager-config_crash.json")
+        manager = micro_manager.MicroManagerCoupling("micro-manager-config_crash.json")
+        manager.initialize()
 
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
         manager._local_number_of_sims = 5
@@ -97,7 +101,7 @@ class TestSimulationCrashHandling(TestCase):
         is_sim_active = np.array([True, True, True, True, False])
         sim_is_associated_to = np.array([-2, -2, -2, -2, 2])
         micro_sims_output = manager._solve_micro_simulations_with_adaptivity(
-            macro_data, is_sim_active, sim_is_associated_to
+            macro_data, is_sim_active, sim_is_associated_to, 1.0
         )
 
         # Crashed simulation has interpolated value

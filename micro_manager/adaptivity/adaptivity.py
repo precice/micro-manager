@@ -100,7 +100,7 @@ class AdaptivityCalculator:
         for name in data.keys():
             data_vals = data[name]
             if data_vals.ndim == 1:
-                # If the adaptivity-data is a scalar for each simulation,
+                # If the adaptivity data is a scalar for each simulation,
                 # expand the dimension to make it a 2D array to unify the calculation.
                 # The axis is later reduced with a norm.
                 data_vals = np.expand_dims(data_vals, axis=1)
@@ -408,7 +408,7 @@ class AdaptivityCalculator:
     def _l1rel(self, data: np.ndarray) -> np.ndarray:
         """
         Calculate L1 norm of relative difference of data.
-        The relative difference is calculated by dividing the difference of two data points by the maximum of the two data points.
+        The relative difference is calculated by dividing the difference of two data points by the maximum of the absolute value of the two data points.
 
         Parameters
         ----------
@@ -422,17 +422,22 @@ class AdaptivityCalculator:
         """
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
-        # divide i,j by max(data[i],data[j]) to get relative difference
+        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
         relative = np.nan_to_num(
-            (pointwise_diff /
-             np.maximum(data[np.newaxis, :], data[:, np.newaxis]))
+            (
+                pointwise_diff
+                / np.maximum(
+                    np.absolute(data[np.newaxis, :]), np.absolute(
+                        data[:, np.newaxis])
+                )
+            )
         )
         return np.linalg.norm(relative, ord=1, axis=-1)
 
     def _l2rel(self, data: np.ndarray) -> np.ndarray:
         """
         Calculate L2 norm of relative difference of data.
-        The relative difference is calculated by dividing the difference of two data points by the maximum of the two data points.
+        The relative difference is calculated by dividing the difference of two data points by the maximum of the absolute value of the two data points.
 
         Parameters
         ----------
@@ -446,9 +451,14 @@ class AdaptivityCalculator:
         """
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
-        # divide i,j by max(data[i],data[j]) to get relative difference
+        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
         relative = np.nan_to_num(
-            (pointwise_diff /
-             np.maximum(data[np.newaxis, :], data[:, np.newaxis]))
+            (
+                pointwise_diff
+                / np.maximum(
+                    np.absolute(data[np.newaxis, :]), np.absolute(
+                        data[:, np.newaxis])
+                )
+            )
         )
         return np.linalg.norm(relative, ord=2, axis=-1)
