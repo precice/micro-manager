@@ -182,16 +182,24 @@ class Config:
                 )
                 self._adaptivity_similarity_measure = "L1"
 
+            adaptivity_for_coarsening_constant = "False"
+            adaptivity_for_refining_constant = "False"
             try:
-                self._adaptivity_for_coarsening_constant = data["simulation_params"]["adaptivity"]["adaptive_coarsening_constant"]
-                self._logger.info("The adaptivity for coarsening constant is {}.".format(self._adaptivity_for_coarsening_constant))
+                adaptivity_for_coarsening_constant = data["simulation_params"][
+                    "adaptivity_settings"
+                ]["adaptive_coarsening_constant"]
             except:
-                self._logger.info("The adaptivity for coarsening constant is False as default.")
+                self._logger.info(
+                    "The adaptivity for coarsening constant is False as default."
+                )
             try:
-                self._adaptivity_for_refining_constant = data["simulation_params"]["adaptivity"]["adaptive_refining_constant"]
-                self._logger.info("The adaptivity for refining constant is {}.".format(self._adaptivity_for_refining_constant))
+                adaptivity_for_refining_constant = data["simulation_params"][
+                    "adaptivity_settings"
+                ]["adaptive_refining_constant"]
             except:
-                self._logger.info("The adaptivity for refining constant is False as default.")
+                self._logger.info(
+                    "The adaptivity for refining constant is False as default."
+                )
 
             adaptivity_every_implicit_iteration = data["simulation_params"][
                 "adaptivity_settings"
@@ -201,6 +209,26 @@ class Config:
                 self._adaptivity_every_implicit_iteration = True
             elif adaptivity_every_implicit_iteration == "False":
                 self._adaptivity_every_implicit_iteration = False
+
+            if adaptivity_for_coarsening_constant == "True":
+                self._adaptivity_for_coarsening_constant = True
+            elif adaptivity_for_coarsening_constant == "False":
+                self._adaptivity_for_coarsening_constant = False
+            self._logger.info(
+                "The adaptivity for coarsening constant is {}.".format(
+                    self._adaptivity_for_coarsening_constant
+                )
+            )
+
+            if adaptivity_for_refining_constant == "True":
+                self._adaptivity_for_refining_constant = True
+            elif adaptivity_for_refining_constant == "False":
+                self._adaptivity_for_refining_constant = False
+            self._logger.info(
+                "The adaptivity for refining constant is {}.".format(
+                    self._adaptivity_for_refining_constant
+                )
+            )
 
             if not self._adaptivity_every_implicit_iteration:
                 self._logger.info(
@@ -421,7 +449,7 @@ class Config:
             Adaptivity refining constant
         """
         return self._adaptivity_refining_constant
-    
+
     def get_adaptivity_for_coarsening_const(self):
         """
         Get adaptivity for coarsening constant.
@@ -433,7 +461,7 @@ class Config:
             Adaptivity for coarsening constant
         """
         return self._adaptivity_for_coarsening_constant
-    
+
     def get_adaptivity_for_refining_const(self):
         """
         Get adaptivity for refining constant.
