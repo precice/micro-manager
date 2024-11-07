@@ -10,7 +10,7 @@ import numpy as np
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, logger) -> None:
+    def __init__(self, configurator) -> None:
         """
         Class constructor.
 
@@ -25,8 +25,6 @@ class AdaptivityCalculator:
         self._hist_param = configurator.get_adaptivity_hist_param()
         self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
-
-        self._logger = logger
 
         self._coarse_tol = 0.0
         self._ref_tol = 0.0

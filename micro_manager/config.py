@@ -5,6 +5,7 @@ Class Config provides functionality to read a JSON file and pass the values to t
 import json
 import os
 from warnings import warn
+from .tools.logging_wrapper import Logger
 
 
 class Config:
@@ -13,7 +14,7 @@ class Config:
     the config class in https://github.com/precice/fenics-adapter/tree/develop/fenicsadapter
     """
 
-    def __init__(self, logger, config_filename):
+    def __init__(self, config_filename):
         """
         Constructor of the Config class.
 
@@ -22,7 +23,7 @@ class Config:
         config_filename : string
             Name of the JSON configuration file
         """
-        self._logger = logger
+        self._logger = Logger("Config", "micro_manager_config.log", 0, 1)
 
         self._micro_file_name = None
 
@@ -96,7 +97,7 @@ class Config:
                         "Write data dictionary as a value other than 'scalar' or 'vector'"
                     )
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "No write data names provided. Micro manager will only read data from preCICE."
             )
 
@@ -115,7 +116,7 @@ class Config:
                         "Read data dictionary as a value other than 'scalar' or 'vector'"
                     )
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "No read data names provided. Micro manager will only write data to preCICE."
             )
 
@@ -126,7 +127,7 @@ class Config:
                 self._output_micro_sim_time = True
                 self._write_data_names["micro_sim_time"] = False
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "Micro manager will not output time required to solve each micro simulation in each time step."
             )
 
@@ -165,7 +166,7 @@ class Config:
                         "Adaptivity settings are provided but adaptivity is turned off."
                     )
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations."
             )
 
@@ -253,14 +254,14 @@ class Config:
                         "Diagnostics data dictionary as a value other than 'scalar' or 'vector'"
                     )
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "No diagnostics data is defined. Micro Manager will not output any diagnostics data."
             )
 
         try:
             self._micro_output_n = self._data["diagnostics"]["micro_output_n"]
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "Output interval of micro simulations not specified, if output is available then it will be called "
                 "in every time window."
             )
@@ -278,7 +279,7 @@ class Config:
                 .replace(".py", "")
             )
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "No post-processing file name provided. Snapshot computation will not perform any post-processing."
             )
             self._postprocessing_file_name = None
@@ -298,7 +299,7 @@ class Config:
                         "Diagnostics data dictionary has a value other than 'scalar' or 'vector'"
                     )
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "No diagnostics data is defined. Snapshot computation will not output any diagnostics data."
             )
 
@@ -306,7 +307,7 @@ class Config:
             if self._data["snapshot_params"]["initialize_once"] == "True":
                 self._initialize_once = True
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "For each snapshot a new micro simulation object will be created"
             )
 
