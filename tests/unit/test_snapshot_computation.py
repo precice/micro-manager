@@ -136,7 +136,7 @@ class TestFunctionCalls(TestCase):
         """
         Test if the functions in the SnapshotConfig class work.
         """
-        config = Config(MagicMock(), "snapshot-config.json")
+        config = Config("snapshot-config.json")
         config.read_json_snapshot()
 
         self.assertEqual(

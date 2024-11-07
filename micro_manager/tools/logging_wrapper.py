@@ -30,7 +30,9 @@ class Logger:
         handler.setLevel(level)
 
         formatter = logging.Formatter(
-            "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            "["
+            + str(self._rank)
+            + "] %(asctime)s - %(name)s - %(levelname)s - %(message)s"
         )
         handler.setFormatter(formatter)
 
@@ -81,4 +83,4 @@ class Logger:
         message : string
             Message to log.
         """
-        self._logger.error("[" + str(self._rank) + "] " + message)
+        self._logger.error(message)

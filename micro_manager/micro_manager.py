@@ -665,7 +665,7 @@ class MicroManagerCoupling(MicroManager):
                             self._mesh_vertex_coords[count], micro_sims_input[count]
                         )
                     )
-                    self._logger.error(error_message)
+                    self._logger.log_error_any_rank(error_message)
                     self._has_sim_crashed[count] = True
 
         # If interpolate is off, terminate after crash
@@ -782,7 +782,7 @@ class MicroManagerCoupling(MicroManager):
                             self._mesh_vertex_coords[active_id]
                         )
                     )
-                    self._logger.error(error_message)
+                    self._logger.log_error_any_rank(error_message)
                     self._has_sim_crashed[active_id] = True
 
         # If interpolate is off, terminate after crash
