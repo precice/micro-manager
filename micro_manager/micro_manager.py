@@ -49,11 +49,12 @@ class MicroManagerCoupling(MicroManager):
         config_file : string
             Name of the JSON configuration file (provided by the user).
         """
+        super().__init__(config_file)
+
         self._logger = Logger(
-            "MicroManagerCoupling", "micro_manager_coupling.log", 0, 1
+            "MicroManagerCoupling", "micro_manager_coupling.log", self._rank
         )
 
-        super().__init__(config_file)
         self._config.read_json_micro_manager()
         # Define the preCICE Participant
         self._participant = precice.Participant(

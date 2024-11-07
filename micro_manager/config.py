@@ -23,7 +23,7 @@ class Config:
         config_filename : string
             Name of the JSON configuration file
         """
-        self._logger = Logger("Config", "micro_manager_config.log", 0, 1)
+        self._logger = Logger("Config", "micro_manager_config.log", 0)
 
         self._micro_file_name = None
 
@@ -148,7 +148,7 @@ class Config:
         try:
             self._ranks_per_axis = self._data["simulation_params"]["decomposition"]
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "Domain decomposition is not specified, so the Micro Manager will expect to be run in serial."
             )
 
@@ -213,7 +213,7 @@ class Config:
                     "adaptivity_settings"
                 ]["similarity_measure"]
             else:
-                self._logger.info(
+                self._logger.log_info_one_rank(
                     "No similarity measure provided, using L1 norm as default"
                 )
                 self._adaptivity_similarity_measure = "L1"
@@ -228,7 +228,7 @@ class Config:
                 self._adaptivity_every_implicit_iteration = False
 
             if not self._adaptivity_every_implicit_iteration:
-                self._logger.info(
+                self._logger.log_info_one_rank(
                     "Micro Manager will compute adaptivity once at the start of every time window"
                 )
 

@@ -98,6 +98,6 @@ class DomainDecomposer:
             if rank_in_axis[d] + 1 == ranks_per_axis[d]:
                 mesh_bounds[d * 2 + 1] = macro_bounds[d * 2 + 1]
 
-        self._logger.info("Bounding box limits are {}".format(mesh_bounds))
+        self._logger.log_info_any_rank("Bounding box limits are {}".format(mesh_bounds))
 
         return mesh_bounds

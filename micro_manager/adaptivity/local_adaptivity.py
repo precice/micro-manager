@@ -9,7 +9,7 @@ from .adaptivity import AdaptivityCalculator
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator, logger) -> None:
+    def __init__(self, configurator) -> None:
         """
         Class constructor.
 
@@ -20,7 +20,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         logger : object of logging
             Logger defined from the standard package logging
         """
-        super().__init__(configurator, logger)
+        super().__init__(configurator)
 
     def compute_adaptivity(
         self,

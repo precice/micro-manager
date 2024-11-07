@@ -34,48 +34,51 @@ class Logger:
         )
         handler.setFormatter(formatter)
 
-        logger = logging.getLogger(name)
-        logger.setLevel(level)
-        logger.addHandler(handler)
+        self._logger = logging.getLogger(name)
+        self._logger.setLevel(level)
+        self._logger.addHandler(handler)
 
-        return logger
+    def get_logger(self):
+        """
+        Get the logger.
 
-    def log_info_one_rank(self, logger, message):
+        Returns
+        -------
+        logger : object of logging
+            Logger defined from the standard package logging
+        """
+        return self._logger
+
+    def log_info_one_rank(self, message):
         """
         Log a message. Only the rank 0 logs the message.
 
         Parameters
         ----------
-        logger : Logger
-            Logger object.
         message : string
             Message to log.
         """
         if self._rank == 0:
-            logger.info(message)
+            self._logger.info(message)
 
-    def log_info_any_rank(self, logger, message):
+    def log_info_any_rank(self, message):
         """
         Log a message. All ranks log the message.
 
         Parameters
         ----------
-        logger : Logger
-            Logger object.
         message : string
             Message to log.
         """
-        logger.info(message)
+        self._logger.info(message)
 
-    def log_error_any_rank(self, logger, message):
+    def log_error_any_rank(self, message):
         """
         Log an error message. Only the rank 0 logs the message.
 
         Parameters
         ----------
-        logger : Logger
-            Logger object.
         message : string
             Message to log.
         """
-        logger.error(message)
+        self._logger.error("[" + str(self._rank) + "] " + message)
