@@ -126,18 +126,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             similarity_dists, is_sim_active, sim_is_associated_to
         )
 
-        # self._logger.info(
-        #     "{} active simulations, {} inactive simulations".format(
-        #         np.count_nonzero(
-        #             is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1]
-        #         ),
-        #         np.count_nonzero(
-        #             is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1]
-        #             == False
-        #         ),
-        #     )
-        # )
-
         return similarity_dists, is_sim_active, sim_is_associated_to
 
     def communicate_micro_output(

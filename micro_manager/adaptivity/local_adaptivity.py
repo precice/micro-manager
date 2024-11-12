@@ -80,13 +80,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             similarity_dists, is_sim_active, sim_is_associated_to
         )
 
-        # self._logger.info(
-        #     "{} active simulations, {} inactive simulations".format(
-        #         np.count_nonzero(is_sim_active),
-        #         np.count_nonzero(is_sim_active == False),
-        #     )
-        # )
-
         return similarity_dists, is_sim_active, sim_is_associated_to
 
     def _update_inactive_sims(

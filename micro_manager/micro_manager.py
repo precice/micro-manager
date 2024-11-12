@@ -87,6 +87,14 @@ class MicroManagerCoupling(MicroManager):
         self._is_adaptivity_on = self._config.turn_on_adaptivity()
 
         if self._is_adaptivity_on:
+            self._adaptivity_logger = Logger(
+                "Adaptivity", "micro-manager-adaptivity.log", self._rank
+            )
+
+            self._adaptivity_logger.log_info_one_rank(
+                "Time,Avg Active Sims,Avg Inactive Sims"
+            )
+
             self._number_of_sims_for_adaptivity = 0
 
             self._data_for_adaptivity: Dict[str, np.ndarray] = dict()
@@ -297,6 +305,23 @@ class MicroManagerCoupling(MicroManager):
                     if n % self._micro_n_out == 0:
                         for sim in self._micro_sims:
                             sim.output()
+
+                        if self._is_adaptivity_on:
+                            local_active_sims = np.where(is_sim_active)[0]
+                            global_active_sims = self._comm.gather(local_active_sims)
+
+                            local_inactive_sims = np.where(is_sim_active == False)[0]
+                            global_inactive_sims = self._comm.gather(
+                                local_inactive_sims
+                            )
+
+                            self._adaptivity_logger.log_info_one_rank(
+                                "{},{},{}".format(
+                                    t,
+                                    np.mean(global_active_sims),
+                                    np.mean(global_inactive_sims),
+                                )
+                            )
 
         self._participant.finalize()
 
