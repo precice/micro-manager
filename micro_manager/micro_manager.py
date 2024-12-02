@@ -88,11 +88,11 @@ class MicroManagerCoupling(MicroManager):
 
         if self._is_adaptivity_on:
             self._adaptivity_logger = Logger(
-                "Adaptivity", "micro-manager-adaptivity.log", self._rank
+                "Adaptivity", "adaptivity_metrics.csv", self._rank, csv_logger=True
             )
 
             self._adaptivity_logger.log_info_one_rank(
-                "Time,Avg Active Sims,Avg Inactive Sims"
+                "Time,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive"
             )
 
             self._number_of_sims_for_adaptivity = 0
@@ -316,12 +316,15 @@ class MicroManagerCoupling(MicroManager):
                             )
 
                             self._adaptivity_logger.log_info_one_rank(
-                                "{},{},{}".format(
+                                "{},{},{},{},{}".format(
                                     t,
                                     np.mean(global_active_sims),
                                     np.mean(global_inactive_sims),
+                                    np.max(global_active_sims),
+                                    np.max(global_inactive_sims),
                                 )
                             )
+                self._logger.log_info_one_rank("Time window {} converged.".format(n))
 
         self._participant.finalize()
 
@@ -365,9 +368,6 @@ class MicroManagerCoupling(MicroManager):
         assert self._mesh_vertex_coords.size != 0, "Macro mesh has no vertices."
 
         self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
-        self._logger.log_info_any_rank(
-            "Number of local micro simulations = {}".format(self._local_number_of_sims)
-        )
 
         if self._local_number_of_sims == 0:
             if self._is_parallel:
@@ -388,6 +388,10 @@ class MicroManagerCoupling(MicroManager):
 
         # Get global number of micro simulations
         self._global_number_of_sims = np.sum(nms_all_ranks)
+
+        self._logger.log_info_one_rank(
+            "Number of micro simulations: {}".format(self._global_number_of_sims)
+        )
 
         if self._is_adaptivity_on:
             for name, is_data_vector in self._adaptivity_data_names.items():
@@ -480,7 +484,7 @@ class MicroManagerCoupling(MicroManager):
                         "The initialize() method of the Micro simulation has an incorrect number of arguments."
                     )
             except TypeError:
-                self._logger.log_one_rank(
+                self._logger.log_info_one_rank(
                     "The signature of initialize() method of the micro simulation cannot be determined. Trying to determine the signature by calling the method."
                 )
                 # Try to get the signature of the initialize() method, if it is not written in Python
@@ -488,7 +492,7 @@ class MicroManagerCoupling(MicroManager):
                     self._micro_sims[0].initialize()
                     is_initial_data_required = False
                 except TypeError:
-                    self._logger.log_one_rank(
+                    self._logger.log_info_one_rank(
                         "The initialize() method of the micro simulation has arguments. Attempting to call it again with initial data."
                     )
                     try:  # Try to call the initialize() method with initial data

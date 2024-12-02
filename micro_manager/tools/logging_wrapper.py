@@ -10,7 +10,7 @@ class Logger:
     Provides a logging wrapper for the Micro Manager classes.
     """
 
-    def __init__(self, name, log_file, rank=0, level=logging.INFO):
+    def __init__(self, name, log_file, rank=0, level=logging.INFO, csv_logger=False):
         """
         Set up a logger.
 
@@ -20,8 +20,12 @@ class Logger:
             Name of the logger.
         log_file : string
             Name of the log file.
+        rank : int, optional
+            Rank of the logger (default is 0).
         level : int, optional
             Logging level (default is logging.INFO).
+        csv_logger : bool, optional
+            If True, the logger will log in CSV format (default is False).
         """
 
         self._rank = rank
@@ -29,11 +33,15 @@ class Logger:
         handler = logging.FileHandler(log_file)
         handler.setLevel(level)
 
-        formatter = logging.Formatter(
-            "["
-            + str(self._rank)
-            + "] %(asctime)s - %(name)s - %(levelname)s - %(message)s"
-        )
+        if csv_logger:
+            formatter = logging.Formatter("%(message)s")
+        else:
+            formatter = logging.Formatter(
+                "["
+                + str(self._rank)
+                + "] %(asctime)s - %(name)s - %(levelname)s - %(message)s"
+            )
+
         handler.setFormatter(formatter)
 
         self._logger = logging.getLogger(name)
