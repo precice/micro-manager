@@ -51,11 +51,11 @@ class MicroManagerCoupling(MicroManager):
         """
         super().__init__(config_file)
 
-        self._logger = Logger(
-            "MicroManagerCoupling", "micro_manager_coupling.log", self._rank
-        )
+        self._logger = Logger("MicroManagerCoupling", "micro-manager.log", self._rank)
 
+        self._config.set_logger(self._logger)
         self._config.read_json_micro_manager()
+
         # Define the preCICE Participant
         self._participant = precice.Participant(
             "Micro-Manager", self._config.get_config_file_name(), self._rank, self._size
@@ -104,6 +104,7 @@ class MicroManagerCoupling(MicroManager):
 
             # Names of macro data to be used for adaptivity computation
             self._adaptivity_macro_data_names = dict()
+
             # Names of micro data to be used for adaptivity computation
             self._adaptivity_micro_data_names = dict()
             for name, is_data_vector in self._adaptivity_data_names.items():
@@ -155,6 +156,9 @@ class MicroManagerCoupling(MicroManager):
 
             # If micro simulations have been initialized, compute adaptivity before starting the coupling
             if self._micro_sims_init:
+                self._logger.log_info_one_rank(
+                    "Micro simulations have been initialized, so adaptivity will be computed before the coupling begins."
+                )
                 (
                     similarity_dists,
                     is_sim_active,
@@ -306,24 +310,27 @@ class MicroManagerCoupling(MicroManager):
                         for sim in self._micro_sims:
                             sim.output()
 
-                        if self._is_adaptivity_on:
-                            local_active_sims = np.where(is_sim_active)[0]
-                            global_active_sims = self._comm.gather(local_active_sims)
+                if self._is_adaptivity_on:
+                    if self._adaptivity_type == "local":
+                        # Gather is necessary as local adaptivity only stores local data
+                        local_active_sims = np.count_nonzero(is_sim_active)
+                        global_active_sims = self._comm.gather(local_active_sims)
 
-                            local_inactive_sims = np.where(is_sim_active == False)[0]
-                            global_inactive_sims = self._comm.gather(
-                                local_inactive_sims
-                            )
+                        local_inactive_sims = np.count_nonzero(is_sim_active == False)
+                        global_inactive_sims = self._comm.gather(local_inactive_sims)
+                    elif self._adaptivity_type == "global":
+                        global_active_sims = np.count_nonzero(is_sim_active)
+                        global_inactive_sims = np.count_nonzero(is_sim_active == False)
 
-                            self._adaptivity_logger.log_info_one_rank(
-                                "{},{},{},{},{}".format(
-                                    t,
-                                    np.mean(global_active_sims),
-                                    np.mean(global_inactive_sims),
-                                    np.max(global_active_sims),
-                                    np.max(global_inactive_sims),
-                                )
-                            )
+                    self._adaptivity_logger.log_info_one_rank(
+                        "{},{},{},{},{}".format(
+                            t,
+                            np.mean(global_active_sims),
+                            np.mean(global_inactive_sims),
+                            np.max(global_active_sims),
+                            np.max(global_inactive_sims),
+                        )
+                    )
                 self._logger.log_info_one_rank("Time window {} converged.".format(n))
 
         self._participant.finalize()
@@ -390,7 +397,7 @@ class MicroManagerCoupling(MicroManager):
         self._global_number_of_sims = np.sum(nms_all_ranks)
 
         self._logger.log_info_one_rank(
-            "Number of micro simulations: {}".format(self._global_number_of_sims)
+            "Total number of micro simulations: {}".format(self._global_number_of_sims)
         )
 
         if self._is_adaptivity_on:

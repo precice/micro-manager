@@ -5,7 +5,6 @@ Class Config provides functionality to read a JSON file and pass the values to t
 import json
 import os
 from warnings import warn
-from .tools.logging_wrapper import Logger
 
 
 class Config:
@@ -23,8 +22,6 @@ class Config:
         config_filename : string
             Name of the JSON configuration file
         """
-        self._logger = Logger("Config", "micro_manager_config.log", 0)
-
         self._micro_file_name = None
 
         self._config_file_name = None
@@ -59,6 +56,17 @@ class Config:
         self._output_micro_sim_time = False
 
         self.read_json(config_filename)
+
+    def set_logger(self, logger):
+        """
+        Set the logger for the Config class.
+
+        Parameters
+        ----------
+        logger : object of logging
+            Logger defined from the standard package logging
+        """
+        self._logger = logger
 
     def read_json(self, config_filename):
         """
