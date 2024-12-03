@@ -31,6 +31,7 @@ from .domain_decomposition import DomainDecomposer
 from .micro_simulation import create_simulation_class
 from .tools.logging_wrapper import Logger
 
+
 try:
     from .interpolation import Interpolation
 except ImportError:
@@ -51,15 +52,22 @@ class MicroManagerCoupling(MicroManager):
         """
         super().__init__(config_file)
 
-        self._logger = Logger("MicroManagerCoupling", "micro-manager.log", self._rank)
+        self._logger = Logger(
+            "MicroManagerCoupling", "micro-manager-coupling.log", self._rank
+        )
 
         self._config.set_logger(self._logger)
         self._config.read_json_micro_manager()
 
-        # Define the preCICE Participant
-        self._participant = precice.Participant(
-            "Micro-Manager", self._config.get_config_file_name(), self._rank, self._size
-        )
+        # Data names of data to output to the snapshot database
+        self._write_data_names = self._config.get_write_data_names()
+
+        # Data names of data to read as input parameter to the simulations
+        self._read_data_names = self._config.get_read_data_names()
+
+        self._micro_dt = self._config.get_micro_dt()
+
+        self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
@@ -117,6 +125,14 @@ class MicroManagerCoupling(MicroManager):
                 self._config.is_adaptivity_required_in_every_implicit_iteration()
             )
             self._micro_sims_active_steps = None
+
+        # Define the preCICE Participant
+        self._participant = precice.Participant(
+            "Micro-Manager",
+            self._config.get_precice_config_file_name(),
+            self._rank,
+            self._size,
+        )
 
     # **************
     # Public methods

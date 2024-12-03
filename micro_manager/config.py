@@ -13,19 +13,20 @@ class Config:
     the config class in https://github.com/precice/fenics-adapter/tree/develop/fenicsadapter
     """
 
-    def __init__(self, config_filename):
+    def __init__(self, config_file_name):
         """
         Constructor of the Config class.
 
         Parameters
         ----------
-        config_filename : string
+        config_file_name : string
             Name of the JSON configuration file
         """
+        self._config_file_name = config_file_name
         self._logger = None
         self._micro_file_name = None
 
-        self._config_file_name = None
+        self._precice_config_file_name = None
         self._macro_mesh_name = None
         self._read_data_names = dict()
         self._write_data_names = dict()
@@ -56,8 +57,6 @@ class Config:
 
         self._output_micro_sim_time = False
 
-        self.read_json(config_filename)
-
     def set_logger(self, logger):
         """
         Set the logger for the Config class.
@@ -69,17 +68,17 @@ class Config:
         """
         self._logger = logger
 
-    def read_json(self, config_filename):
+    def _read_json(self, config_file_name):
         """
         Reads JSON configuration file.
 
         Parameters
         ----------
-        config_filename : string
+        config_file_name : string
             Name of the JSON configuration file
         """
-        self._folder = os.path.dirname(os.path.join(os.getcwd(), config_filename))
-        path = os.path.join(self._folder, os.path.basename(config_filename))
+        self._folder = os.path.dirname(os.path.join(os.getcwd(), config_file_name))
+        path = os.path.join(self._folder, os.path.basename(config_file_name))
         with open(path, "r") as read_file:
             self._data = json.load(read_file)
 
@@ -145,8 +144,10 @@ class Config:
         Reads Micro Manager relevant information from JSON configuration file
         and saves the data to the respective instance attributes.
         """
-        self._config_file_name = os.path.join(
-            self._folder, self._data["coupling_params"]["config_file_name"]
+        self._read_json(self._config_file_name)  # Read base information
+
+        self._precice_config_file_name = os.path.join(
+            self._folder, self._data["coupling_params"]["precice_config_file_name"]
         )
         self._macro_mesh_name = self._data["coupling_params"]["macro_mesh_name"]
 
@@ -276,6 +277,11 @@ class Config:
             )
 
     def read_json_snapshot(self):
+        """
+        Reads Snapshot relevant information from JSON configuration file
+        """
+        self._read_json(self._config_file_name)  # Read base information
+
         self._parameter_file_name = os.path.join(
             self._folder, self._data["coupling_params"]["parameter_file_name"]
         )
@@ -320,16 +326,16 @@ class Config:
                 "For each snapshot a new micro simulation object will be created"
             )
 
-    def get_config_file_name(self):
+    def get_precice_config_file_name(self):
         """
-        Get the name of the JSON configuration file.
+        Get the name of the preCICE XML configuration file.
 
         Returns
         -------
         config_file_name : string
-            Name of the JSON configuration file provided to the Config class.
+            Name of the preCICE XML configuration file.
         """
-        return self._config_file_name
+        return self._precice_config_file_name
 
     def get_macro_mesh_name(self):
         """

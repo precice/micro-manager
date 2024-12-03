@@ -21,6 +21,7 @@ from .dataset import ReadWriteHDF
 from micro_manager.micro_simulation import create_simulation_class
 from micro_manager.tools.logging_wrapper import Logger
 
+
 sys.path.append(os.getcwd())
 
 
@@ -37,10 +38,21 @@ class MicroManagerSnapshot(MicroManager):
         super().__init__(config_file)
 
         self._logger = Logger(
-            "MicroManagerSnapshot", "micro_manager_snapshot.log", self._rank
+            "MicroManagerSnapshot", "micro-manager-snapshot.log", self._rank
         )
 
+        self._config.set_logger(self._logger)
         self._config.read_json_snapshot()
+
+        # Data names of data to output to the snapshot database
+        self._write_data_names = self._config.get_write_data_names()
+
+        # Data names of data to read as input parameter to the simulations
+        self._read_data_names = self._config.get_read_data_names()
+
+        self._micro_dt = self._config.get_micro_dt()
+
+        self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
         # Path to the parameter file containing input parameters for micro simulations
         self._parameter_file = self._config.get_parameter_file_name()
