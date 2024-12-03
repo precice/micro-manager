@@ -88,7 +88,7 @@ class MicroManagerCoupling(MicroManager):
 
         if self._is_adaptivity_on:
             self._adaptivity_logger = Logger(
-                "Adaptivity", "adaptivity_metrics.csv", self._rank, csv_logger=True
+                "Adaptivity", "adaptivity-metrics.csv", self._rank, csv_logger=True
             )
 
             self._adaptivity_logger.log_info_one_rank(
@@ -312,7 +312,7 @@ class MicroManagerCoupling(MicroManager):
 
                 if self._is_adaptivity_on:
                     if self._adaptivity_type == "local":
-                        # Gather is necessary as local adaptivity only stores local data
+                        # MPI Gather is necessary as local adaptivity only stores local data
                         local_active_sims = np.count_nonzero(is_sim_active)
                         global_active_sims = self._comm.gather(local_active_sims)
 

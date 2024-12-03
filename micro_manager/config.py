@@ -22,6 +22,7 @@ class Config:
         config_filename : string
             Name of the JSON configuration file
         """
+        self._logger = None
         self._micro_file_name = None
 
         self._config_file_name = None
