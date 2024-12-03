@@ -338,15 +338,16 @@ class MicroManagerCoupling(MicroManager):
                         global_active_sims = np.count_nonzero(is_sim_active)
                         global_inactive_sims = np.count_nonzero(is_sim_active == False)
 
-                    self._adaptivity_logger.log_info_one_rank(
-                        "{},{},{},{},{}".format(
-                            t,
-                            np.mean(global_active_sims),
-                            np.mean(global_inactive_sims),
-                            np.max(global_active_sims),
-                            np.max(global_inactive_sims),
+                    if self._rank == 0:
+                        self._adaptivity_logger.log_info_one_rank(
+                            "{},{},{},{},{}".format(
+                                t,
+                                np.mean(global_active_sims),
+                                np.mean(global_inactive_sims),
+                                np.max(global_active_sims),
+                                np.max(global_inactive_sims),
+                            )
                         )
-                    )
                 self._logger.log_info_one_rank("Time window {} converged.".format(n))
 
         self._participant.finalize()
