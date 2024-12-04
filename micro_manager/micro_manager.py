@@ -100,7 +100,7 @@ class MicroManagerCoupling(MicroManager):
             )
 
             self._adaptivity_logger.log_info_one_rank(
-                "Time,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive"
+                "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive"
             )
 
             self._number_of_sims_for_adaptivity = 0
@@ -300,6 +300,7 @@ class MicroManagerCoupling(MicroManager):
 
             t += dt  # increase internal time when time step is done.
             n += 1  # increase counter
+
             self._participant.advance(
                 dt
             )  # notify preCICE that time step of size dt is complete
@@ -341,7 +342,7 @@ class MicroManagerCoupling(MicroManager):
                     if self._rank == 0:
                         self._adaptivity_logger.log_info_one_rank(
                             "{},{},{},{},{}".format(
-                                t,
+                                n,
                                 np.mean(global_active_sims),
                                 np.mean(global_inactive_sims),
                                 np.max(global_active_sims),
