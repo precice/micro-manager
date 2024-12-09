@@ -20,8 +20,9 @@ import inspect
 from copy import deepcopy
 from typing import Dict
 from warnings import warn
-
 import numpy as np
+import time
+
 import precice
 
 from .micro_manager_base import MicroManager
@@ -110,6 +111,8 @@ class MicroManagerCoupling(MicroManager):
 
             self._adaptivity_data_names = self._config.get_data_for_adaptivity()
 
+            self._adaptivity_output_n = self._config.get_adaptivity_output_n()
+
             # Names of macro data to be used for adaptivity computation
             self._adaptivity_macro_data_names = dict()
 
@@ -125,6 +128,7 @@ class MicroManagerCoupling(MicroManager):
                 self._config.is_adaptivity_required_in_every_implicit_iteration()
             )
             self._micro_sims_active_steps = None
+            self._output_adaptivity_cpu_time = self._config.output_adaptivity_cpu_time()
 
         # Define the preCICE Participant
         self._participant = precice.Participant(
@@ -190,6 +194,8 @@ class MicroManagerCoupling(MicroManager):
 
         while self._participant.is_coupling_ongoing():
 
+            adaptivity_cpu_time = 0.0
+
             dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
             # Write a checkpoint
@@ -201,6 +207,7 @@ class MicroManagerCoupling(MicroManager):
 
                 if self._is_adaptivity_on:
                     if not self._adaptivity_in_every_implicit_step:
+                        start_time = time.process_time()
                         (
                             similarity_dists,
                             is_sim_active,
@@ -213,6 +220,9 @@ class MicroManagerCoupling(MicroManager):
                             sim_is_associated_to,
                             self._data_for_adaptivity,
                         )
+                        end_time = time.process_time()
+
+                        adaptivity_cpu_time = end_time - start_time
 
                         # Only checkpoint the adaptivity configuration if adaptivity is computed
                         # once in every time window
@@ -239,6 +249,7 @@ class MicroManagerCoupling(MicroManager):
 
             if self._is_adaptivity_on:
                 if self._adaptivity_in_every_implicit_step:
+                    start_time = time.process_time()
                     (
                         similarity_dists,
                         is_sim_active,
@@ -251,6 +262,8 @@ class MicroManagerCoupling(MicroManager):
                         sim_is_associated_to,
                         self._data_for_adaptivity,
                     )
+                    end_time = time.process_time()
+                    adaptivity_cpu_time = end_time - start_time
 
                     if self._adaptivity_type == "local":
                         active_sim_ids = np.where(is_sim_active)[0]
@@ -270,6 +283,12 @@ class MicroManagerCoupling(MicroManager):
                 micro_sims_output = self._solve_micro_simulations_with_adaptivity(
                     micro_sims_input, is_sim_active, sim_is_associated_to, dt
                 )
+
+                if self._output_adaptivity_cpu_time:
+                    for i in range(self._local_number_of_sims):
+                        micro_sims_output[i][
+                            "adaptivity_cpu_time"
+                        ] = adaptivity_cpu_time
             else:
                 micro_sims_output = self._solve_micro_simulations(micro_sims_input, dt)
 
@@ -339,7 +358,7 @@ class MicroManagerCoupling(MicroManager):
                         global_active_sims = np.count_nonzero(is_sim_active)
                         global_inactive_sims = np.count_nonzero(is_sim_active == False)
 
-                    if self._rank == 0:
+                    if n % self._adaptivity_output_n == 0 and self._rank == 0:
                         self._adaptivity_logger.log_info_one_rank(
                             "{},{},{},{},{}".format(
                                 n,
@@ -368,7 +387,6 @@ class MicroManagerCoupling(MicroManager):
         ), "Provided macro mesh bounds are of incorrect dimension"
         if self._is_parallel:
             domain_decomposer = DomainDecomposer(
-                self._logger,
                 self._participant.get_mesh_dimensions(self._macro_mesh_name),
                 self._rank,
                 self._size,
@@ -410,6 +428,29 @@ class MicroManagerCoupling(MicroManager):
         # simulations have been created by previous ranks, so that it can set
         # the correct global IDs
         self._comm.Allgatherv(np.array(self._local_number_of_sims), nms_all_ranks)
+
+        max_nms = np.max(nms_all_ranks)
+        min_nms = np.min(nms_all_ranks)
+
+        if (
+            max_nms != min_nms
+        ):  # if the number of maximum and minimum micro simulations per rank are different
+            self._logger.log_info_one_rank(
+                "The following ranks have the maximum number of micro simulations ({}): {}".format(
+                    max_nms, np.where(nms_all_ranks == max_nms)[0]
+                )
+            )
+            self._logger.log_info_one_rank(
+                "The following ranks have the minimum number of micro simulations ({}): {}".format(
+                    min_nms, np.where(nms_all_ranks == min_nms)[0]
+                )
+            )
+        else:  # if the number of maximum and minimum micro simulations per rank are the same
+            self._logger.log_info_one_rank(
+                "All ranks have the same number of micro simulations: {}".format(
+                    max_nms
+                )
+            )
 
         # Get global number of micro simulations
         self._global_number_of_sims = np.sum(nms_all_ranks)
@@ -811,11 +852,11 @@ class MicroManagerCoupling(MicroManager):
             if not self._has_sim_crashed[active_id]:
                 # Attempt to solve the micro simulation
                 try:
-                    start_time = time.time()
+                    start_time = time.process_time()
                     micro_sims_output[active_id] = self._micro_sims[active_id].solve(
                         micro_sims_input[active_id], dt
                     )
-                    end_time = time.time()
+                    end_time = time.process_time()
                     # Write solve time of the macro simulation if required and the simulation has not crashed
                     if self._is_micro_solve_time_required:
                         micro_sims_output[active_id]["micro_sim_time"] = (
@@ -850,6 +891,7 @@ class MicroManagerCoupling(MicroManager):
                     "Exiting simulation after micro simulation crash."
                 )
                 sys.exit()
+
         # Interpolate result for crashed simulation
         unset_sims = []
         for active_id in active_sim_ids:

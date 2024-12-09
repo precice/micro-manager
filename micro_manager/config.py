@@ -49,6 +49,8 @@ class Config:
         self._adaptivity_refining_constant = 0.5
         self._adaptivity_every_implicit_iteration = False
         self._adaptivity_similarity_measure = "L1"
+        self._adaptivity_output_n = 1
+        self._adaptivity_output_cpu_time = False
 
         # Snapshot information
         self._parameter_file_name = None
@@ -199,10 +201,19 @@ class Config:
                 self._data_for_adaptivity[dname] = exchange_data[dname]
 
             if self._data_for_adaptivity.keys() == self._write_data_names.keys():
-                warn(
+                self._logger.log_info_one_rank(
                     "Only micro simulation data is used for similarity computation in adaptivity. This would lead to the"
                     " same set of active and inactive simulations for the entire simulation time. If this is not intended,"
                     " please include macro simulation data as well."
+                )
+
+            try:
+                self._adaptivity_output_n = self._data["simulation_params"][
+                    "adaptivity_settings"
+                ]["output_n"]
+            except BaseException:
+                self._logger.log_info_one_rank(
+                    "No output interval for adaptivity provided. Adaptivity metrics will be output every time window."
                 )
 
             self._adaptivity_history_param = self._data["simulation_params"][
@@ -244,6 +255,17 @@ class Config:
 
             self._write_data_names["active_state"] = False
             self._write_data_names["active_steps"] = False
+
+            try:
+                if self.data["simulation_params"]["adaptivity_settings"][
+                    "output_cpu_time"
+                ]:
+                    self._adaptivity_output_cpu_time = True
+                    self._write_data_names["adaptivity_cpu_time"] = False
+            except BaseException:
+                self._logger.log_info_one_rank(
+                    "Micro Manager will not output CPU time of the adaptivity computation."
+                )
 
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"] == "True":
@@ -466,6 +488,17 @@ class Config:
         """
         return self._data_for_adaptivity
 
+    def get_adaptivity_output_n(self):
+        """
+        Get the output frequency of adaptivity metrics.
+
+        Returns
+        -------
+        adaptivity_output_n : int
+            Output frequency of adaptivity metrics, so output every N timesteps
+        """
+        return self._adaptivity_output_n
+
     def get_adaptivity_hist_param(self):
         """
         Get adaptivity history parameter.
@@ -524,6 +557,17 @@ class Config:
             True if adaptivity needs to be calculated in every time iteration, False otherwise.
         """
         return self._adaptivity_every_implicit_iteration
+
+    def output_adaptivity_cpu_time(self):
+        """
+        Check if CPU time of the adaptivity computation needs to be output.
+
+        Returns
+        -------
+        adaptivity_cpu_time : bool
+            True if CPU time of the adaptivity computation needs to be output, False otherwise.
+        """
+        return self._adaptivity_output_cpu_time
 
     def get_micro_dt(self):
         """
