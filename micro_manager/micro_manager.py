@@ -748,7 +748,7 @@ class MicroManagerCoupling(MicroManager):
                     end_time = time.time()
                     # Write solve time of the macro simulation if required and the simulation has not crashed
                     if self._is_micro_solve_time_required:
-                        micro_sims_output[count]["micro_sim_time"] = (
+                        micro_sims_output[count]["solve_cpu_time"] = (
                             end_time - start_time
                         )
 
@@ -859,7 +859,7 @@ class MicroManagerCoupling(MicroManager):
                     end_time = time.process_time()
                     # Write solve time of the macro simulation if required and the simulation has not crashed
                     if self._is_micro_solve_time_required:
-                        micro_sims_output[active_id]["micro_sim_time"] = (
+                        micro_sims_output[active_id]["solve_cpu_time"] = (
                             end_time - start_time
                         )
 
@@ -930,7 +930,7 @@ class MicroManagerCoupling(MicroManager):
             ] = self._micro_sims_active_steps[inactive_id]
 
             if self._is_micro_solve_time_required:
-                micro_sims_output[inactive_id]["micro_sim_time"] = 0
+                micro_sims_output[inactive_id]["solve_cpu_time"] = 0
 
         # Collect micro sim output for adaptivity calculation
         for i in range(self._local_number_of_sims):
@@ -1017,13 +1017,13 @@ class MicroManagerCoupling(MicroManager):
             if self._is_adaptivity_on:
                 interpol_space.append(micro_sims_active_input_lists[neighbor].copy())
                 interpol_values.append(micro_sims_active_values[neighbor].copy())
-                interpol_values[-1].pop("micro_sim_time", None)
+                interpol_values[-1].pop("solve_cpu_time", None)
                 interpol_values[-1].pop("active_state", None)
                 interpol_values[-1].pop("active_steps", None)
             else:
                 interpol_space.append(micro_sims_active_input_lists[neighbor].copy())
                 interpol_values.append(micro_sims_active_values[neighbor].copy())
-                interpol_values[-1].pop("micro_sim_time", None)
+                interpol_values[-1].pop("solve_cpu_time", None)
 
         # Interpolate for each parameter
         output_interpol = dict()
@@ -1037,7 +1037,7 @@ class MicroManagerCoupling(MicroManager):
             )
         # Reintroduce removed information
         if self._is_micro_solve_time_required:
-            output_interpol["micro_sim_time"] = 0
+            output_interpol["solve_cpu_time"] = 0
         if self._is_adaptivity_on:
             output_interpol["active_state"] = 1
             output_interpol["active_steps"] = self._micro_sims_active_steps[unset_sim]

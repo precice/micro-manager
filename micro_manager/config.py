@@ -133,9 +133,9 @@ class Config:
         self._micro_dt = self._data["simulation_params"]["micro_dt"]
 
         try:
-            if self._data["diagnostics"]["output_micro_sim_solve_time"]:
+            if self._data["diagnostics"]["output_micro_sim_solve_time"] == "True":
                 self._output_micro_sim_time = True
-                self._write_data_names["micro_sim_time"] = False
+                self._write_data_names["solve_cpu_time"] = False
         except BaseException:
             self._logger.log_info_one_rank(
                 "Micro manager will not output time required to solve each micro simulation in each time step."
@@ -257,9 +257,12 @@ class Config:
             self._write_data_names["active_steps"] = False
 
             try:
-                if self.data["simulation_params"]["adaptivity_settings"][
-                    "output_cpu_time"
-                ]:
+                if (
+                    self._data["simulation_params"]["adaptivity_settings"][
+                        "output_cpu_time"
+                    ]
+                    == "True"
+                ):
                     self._adaptivity_output_cpu_time = True
                     self._write_data_names["adaptivity_cpu_time"] = False
             except BaseException:
