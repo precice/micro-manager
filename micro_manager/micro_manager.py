@@ -662,7 +662,7 @@ class MicroManagerCoupling(MicroManager):
             List of dicts in which keys are names of data and the values are the data of the output of the micro
             simulations.
         """
-        micro_sims_output = [None] * self._local_number_of_sims
+        micro_sims_output: list[dict] = [None] * self._local_number_of_sims
 
         for count, sim in enumerate(self._micro_sims):
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
