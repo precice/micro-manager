@@ -20,7 +20,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self,
         configurator,
         logger,
-        global_number_of_sims: float,
+        global_number_of_sims: int,
         global_ids: list,
         rank: int,
         comm,
@@ -34,8 +34,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Object which has getter functions to get parameters defined in the configuration file.
         logger : object of logging
             Logger defined from the standard package logging
-        global_number_of_sims : float
-            List of booleans. True if simulation is on this rank, False otherwise.
+        global_number_of_sims : int
+            Total number of simulations in the macro-micro coupled problem.
         global_ids : list
             List of global IDs of simulations living on this rank.
         rank : int
