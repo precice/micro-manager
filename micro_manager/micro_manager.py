@@ -26,7 +26,6 @@ import precice
 
 from .micro_manager_base import MicroManager
 
-from .adaptivity.adaptivity import AdaptivityCalculator
 from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
 
@@ -423,12 +422,12 @@ class MicroManagerCoupling(MicroManager):
 
         if self._is_adaptivity_on:
             if self._adaptivity_type == "local":
-                self._adaptivity_controller: AdaptivityCalculator = (
+                self._adaptivity_controller: LocalAdaptivityCalculator = (
                     LocalAdaptivityCalculator(self._config, self._logger)
                 )
                 self._number_of_sims_for_adaptivity = self._local_number_of_sims
             elif self._adaptivity_type == "global":
-                self._adaptivity_controller: AdaptivityCalculator = (
+                self._adaptivity_controller: GlobalAdaptivityCalculator = (
                     GlobalAdaptivityCalculator(
                         self._config,
                         self._logger,
