@@ -25,9 +25,12 @@ import numpy as np
 import precice
 
 from .micro_manager_base import MicroManager
+
 from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
+
 from .domain_decomposition import DomainDecomposer
+
 from .micro_simulation import create_simulation_class
 
 try:
@@ -81,7 +84,7 @@ class MicroManagerCoupling(MicroManager):
         self._is_adaptivity_on = self._config.turn_on_adaptivity()
 
         if self._is_adaptivity_on:
-            self._number_of_sims_for_adaptivity = 0
+            self._number_of_sims_for_adaptivity: int = 0
 
             self._data_for_adaptivity: Dict[str, np.ndarray] = dict()
             self._adaptivity_type = self._config.get_adaptivity_type()
@@ -101,7 +104,6 @@ class MicroManagerCoupling(MicroManager):
             self._adaptivity_in_every_implicit_step = (
                 self._config.is_adaptivity_required_in_every_implicit_iteration()
             )
-            self._micro_sims_active_steps = None
 
     # **************
     # Public methods
@@ -364,7 +366,7 @@ class MicroManagerCoupling(MicroManager):
         self._comm.Allgatherv(np.array(self._local_number_of_sims), nms_all_ranks)
 
         # Get global number of micro simulations
-        self._global_number_of_sims = np.sum(nms_all_ranks)
+        self._global_number_of_sims: int = np.sum(nms_all_ranks)
 
         if self._is_adaptivity_on:
             for name, is_data_vector in self._adaptivity_data_names.items():
@@ -389,7 +391,7 @@ class MicroManagerCoupling(MicroManager):
             self._global_ids_of_local_sims.append(sim_id)
             sim_id += 1
 
-        self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
+        # self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
 
         # Setup for simulation crashes
         self._has_sim_crashed = [False] * self._local_number_of_sims
@@ -404,9 +406,12 @@ class MicroManagerCoupling(MicroManager):
         )
 
         # Create micro simulation objects
+        self._micro_sims = []
         for i in range(self._local_number_of_sims):
-            self._micro_sims[i] = create_simulation_class(micro_problem)(
-                self._global_ids_of_local_sims[i]
+            self._micro_sims.append(
+                create_simulation_class(micro_problem)(
+                    self._global_ids_of_local_sims[i]
+                )
             )
 
         self._logger.info(
@@ -417,22 +422,26 @@ class MicroManagerCoupling(MicroManager):
 
         if self._is_adaptivity_on:
             if self._adaptivity_type == "local":
-                self._adaptivity_controller = LocalAdaptivityCalculator(
-                    self._config, self._logger
+                self._adaptivity_controller: LocalAdaptivityCalculator = (
+                    LocalAdaptivityCalculator(self._config, self._logger)
                 )
                 self._number_of_sims_for_adaptivity = self._local_number_of_sims
             elif self._adaptivity_type == "global":
-                self._adaptivity_controller = GlobalAdaptivityCalculator(
-                    self._config,
-                    self._logger,
-                    self._global_number_of_sims,
-                    self._global_ids_of_local_sims,
-                    self._rank,
-                    self._comm,
+                self._adaptivity_controller: GlobalAdaptivityCalculator = (
+                    GlobalAdaptivityCalculator(
+                        self._config,
+                        self._logger,
+                        self._global_number_of_sims,
+                        self._global_ids_of_local_sims,
+                        self._rank,
+                        self._comm,
+                    )
                 )
                 self._number_of_sims_for_adaptivity = self._global_number_of_sims
 
-            self._micro_sims_active_steps = np.zeros(self._local_number_of_sims)
+            self._micro_sims_active_steps = np.zeros(
+                self._local_number_of_sims
+            )  # DECLARATION
 
         self._micro_sims_init = False  # DECLARATION
 
@@ -652,7 +661,7 @@ class MicroManagerCoupling(MicroManager):
             List of dicts in which keys are names of data and the values are the data of the output of the micro
             simulations.
         """
-        micro_sims_output = [None] * self._local_number_of_sims
+        micro_sims_output: list[dict] = [None] * self._local_number_of_sims
 
         for count, sim in enumerate(self._micro_sims):
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
