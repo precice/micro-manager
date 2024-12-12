@@ -2,11 +2,13 @@
 Functionality for adaptive initialization and control of micro simulations
 """
 import sys
+import os
+import numpy as np
 from math import exp
 from typing import Callable
+import re
+import xml.etree.ElementTree as ET
 from warnings import warn
-
-import numpy as np
 
 
 class AdaptivityCalculator:
@@ -20,11 +22,16 @@ class AdaptivityCalculator:
             Object which has getter functions to get parameters defined in the configuration file.
         logger : Logger defined from the standard package logging
         """
-        self._refine_const = configurator.get_adaptivity_refining_const()
-        self._coarse_const = configurator.get_adaptivity_coarsening_const()
+        self._refine_const_input = configurator.get_adaptivity_refining_const()
+        self._refine_const = self._refine_const_input
+        self._coarse_const_input = configurator.get_adaptivity_coarsening_const()
+        self._coarse_const = self._coarse_const_input
+        self._adaptive_coarse_const = configurator.get_adaptivity_for_coarsening_const()
+        self._adaptive_refine_const = configurator.get_adaptivity_for_refining_const()
         self._hist_param = configurator.get_adaptivity_hist_param()
         self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
+        self._config_file_name = configurator.get_config_file_name()
 
         self._logger = logger
 
@@ -34,6 +41,38 @@ class AdaptivityCalculator:
         self._similarity_measure = self._get_similarity_measure(
             configurator.get_adaptivity_similarity_measure()
         )
+
+        with open(self._config_file_name, 'r') as xml_file:
+            self.xml_data = xml_file.read()
+
+        unique_names = ["absolute-convergence-measure",
+                        "relative-convergence-measure", "residual-relative-convergence-measure"]
+
+        # Initialize lists to store the found attributes
+        self.data_values = []
+        self.limit_values = []
+
+        for unique_name in unique_names:
+            pattern = f'<{unique_name} limit="([^"]+)" data="([^"]+)" mesh="([^"]+)"'
+            matches = re.finditer(pattern, self.xml_data)
+            for match in matches:
+                self.data_values.append(match.group(2))
+                self.limit_values.append(match.group(1))
+
+        # Check if any matches were found
+        if self.data_values and self.limit_values:
+            for i, (data_value, limit_value) in enumerate(zip(self.data_values, self.limit_values), start=1):
+                print(f"Match {i}:")
+                print(f"Data: {data_value}")
+                print(f"Limit: {limit_value}")
+        else:
+            print(f"No attributes found for unique name '{unique_name}'")
+
+    def get_data_values(self):
+        return self.data_values
+
+    def get_limit_values(self):
+        return self.limit_values
 
     def _get_similarity_dists(
         self, dt: float, similarity_dists: np.ndarray, data: dict
@@ -70,6 +109,92 @@ class AdaptivityCalculator:
 
         return exp(-self._hist_param * dt) * _similarity_dists + dt * data_diff
 
+    def _get_adaptive_similarity_const(self, similarity_const: float) -> float:
+        """
+        Get adapted coarsening/refining constant based on limit values in preCICE configuration file and convergence measurements in preCICE
+
+        Returns
+        -------
+        adapted_similarity_const : float
+        """
+
+        # read convergence value from precice-Mysolver-convergence.log file
+        convergence_values = []  # last iteration
+        convergence_values_LI = []  # last 2nd iteration
+        convergence_rate = 1.0
+
+        file_path = None
+        file_name_suffix = "-convergence.log"
+
+        # Search for the file in the current directory and its subdirectories
+        for root, _, files in os.walk(os.getcwd()):
+            for file_name in files:
+                if file_name.endswith(file_name_suffix):
+                    file_path = os.path.join(root, file_name)
+                    break
+
+        if file_path:
+            with open(file_path, "r") as file:
+                lines = file.readlines()
+            if len(lines) < 2:
+                print("File does not contain enough lines.")
+                adaptive_similarity_const = similarity_const
+            else:
+                # Read the header line and last line of the file
+                # Assuming columns are tab-separated
+                header_line = lines[0].strip().split()
+                last_line = lines[-1].strip().split()
+                for data in self.data_values:
+                    for element in header_line:
+                        if data in element:
+                            index = header_line.index(element)
+                            if last_line[index] == "inf":
+                                convergence_values.append(1e+20)
+                            else:
+                                index_config = self.data_values.index(data)
+                                convergence_values.append(max(
+                                    float(last_line[index]),
+                                    float(self.limit_values[index_config])))
+                min_convergence = np.log10(np.prod(np.array(
+                    self.limit_values, dtype=float)/np.array(convergence_values, dtype=float)))
+                if last_line[1] == "60":
+                    min_convergence = max(0.0, min_convergence)
+
+                use_rate = False
+                alpha = 1
+                if use_rate:
+                    if int(last_line[1]) >= 2:
+                        last_sec_line = lines[-2].strip().split()
+                        for data in self.data_values:
+                            for element in header_line:
+                                if data in element:
+                                    index = header_line.index(element)
+                                    if last_sec_line[index] == "inf":
+                                        convergence_values_LI.append(1e+20)
+                                    else:
+                                        index_config = self.data_values.index(
+                                            data)
+                                        convergence_values_LI.append(max(
+                                            float(last_sec_line[index]),
+                                            float(self.limit_values[index_config])))
+                        min_convergence_LI = np.log10(np.prod(np.array(
+                            self.limit_values, dtype=float)/np.array(convergence_values_LI, dtype=float)))
+                        convergence_rate = min_convergence/min_convergence_LI
+                    addtional = (1 + 1.0 / (min(0.0, min_convergence) - 1.0))**min(
+                        (alpha/(convergence_rate), 10.0)) * (1 - similarity_const)
+                else:
+                    addtional = (
+                        1 + 1.0 / (min(0.0, min_convergence) - 1.0))**alpha * (1 - similarity_const)
+                adaptive_similarity_const = addtional + similarity_const
+        else:
+            print(
+                "Convergence log not found in the current directory (A) or its subdirectories.")
+
+        self._logger.info("adaptive_similarity_const: {} ".format(
+            adaptive_similarity_const))
+
+        return adaptive_similarity_const
+
     def _update_active_sims(
         self, similarity_dists: np.ndarray, is_sim_active: np.ndarray
     ) -> np.ndarray:
@@ -89,6 +214,15 @@ class AdaptivityCalculator:
         _is_sim_active : numpy array
             Updated 1D array having state (active or inactive) of each micro simulation
         """
+        if self._adaptive_coarse_const:
+            self._coarse_const = self._get_adaptive_similarity_const(
+                self._coarse_const_input)
+            print(f"Adaptive coarse constant: {self._coarse_const}")
+        if self._adaptive_refine_const:
+            self._refine_const = self._get_adaptive_similarity_const(
+                self._refine_const_input)
+            print(f"Adaptive refine constant: {self._refine_const}")
+
         max_similarity_dist = np.amax(similarity_dists)
 
         if max_similarity_dist == 0.0:
@@ -293,7 +427,8 @@ class AdaptivityCalculator:
             (
                 pointwise_diff
                 / np.maximum(
-                    np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
+                    np.absolute(data[np.newaxis, :]), np.absolute(
+                        data[:, np.newaxis])
                 )
             )
         )
@@ -321,7 +456,8 @@ class AdaptivityCalculator:
             (
                 pointwise_diff
                 / np.maximum(
-                    np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
+                    np.absolute(data[np.newaxis, :]), np.absolute(
+                        data[:, np.newaxis])
                 )
             )
         )

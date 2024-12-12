@@ -48,6 +48,8 @@ class Config:
         self._adaptivity_coarsening_constant = 0.5
         self._adaptivity_refining_constant = 0.5
         self._adaptivity_every_implicit_iteration = False
+        self._adaptivity_for_coarsening_constant = False
+        self._adaptivity_for_refining_constant = False
         self._adaptivity_similarity_measure = "L1"
 
         # Snapshot information
@@ -68,7 +70,8 @@ class Config:
         config_filename : string
             Name of the JSON configuration file
         """
-        self._folder = os.path.dirname(os.path.join(os.getcwd(), config_filename))
+        self._folder = os.path.dirname(
+            os.path.join(os.getcwd(), config_filename))
         path = os.path.join(self._folder, os.path.basename(config_filename))
         with open(path, "r") as read_file:
             self._data = json.load(read_file)
@@ -181,7 +184,8 @@ class Config:
             ):
                 self._adaptivity_type = "global"
             else:
-                raise Exception("Adaptivity type can be either local or global.")
+                raise Exception(
+                    "Adaptivity type can be either local or global.")
 
             exchange_data = {**self._read_data_names, **self._write_data_names}
             for dname in self._data["simulation_params"]["adaptivity_settings"]["data"]:
@@ -217,7 +221,7 @@ class Config:
                 )
                 self._adaptivity_similarity_measure = "L1"
 
-            adaptivity_every_implicit_iteration = self._data["simulation_params"][
+            adaptivity_every_implicit_iteration = self.data["simulation_params"][
                 "adaptivity_settings"
             ]["every_implicit_iteration"]
 
@@ -225,6 +229,26 @@ class Config:
                 self._adaptivity_every_implicit_iteration = True
             elif adaptivity_every_implicit_iteration == "False":
                 self._adaptivity_every_implicit_iteration = False
+
+            if adaptivity_for_coarsening_constant == "True":
+                self._adaptivity_for_coarsening_constant = True
+            elif adaptivity_for_coarsening_constant == "False":
+                self._adaptivity_for_coarsening_constant = False
+            self._logger.info(
+                "The adaptivity for coarsening constant is {}.".format(
+                    self._adaptivity_for_coarsening_constant
+                )
+            )
+
+            if adaptivity_for_refining_constant == "True":
+                self._adaptivity_for_refining_constant = True
+            elif adaptivity_for_refining_constant == "False":
+                self._adaptivity_for_refining_constant = False
+            self._logger.info(
+                "The adaptivity for refining constant is {}.".format(
+                    self._adaptivity_for_refining_constant
+                )
+            )
 
             if not self._adaptivity_every_implicit_iteration:
                 self._logger.info(
@@ -485,6 +509,30 @@ class Config:
             Adaptivity refining constant
         """
         return self._adaptivity_refining_constant
+
+    def get_adaptivity_for_coarsening_const(self):
+        """
+        Get adaptivity for coarsening constant.
+        More details: https://precice.org/tooling-micro-manager-configuration.html#adaptivity
+
+        Returns
+        -------
+        adaptivity_for_coarsening_constant : bool
+            Adaptivity for coarsening constant
+        """
+        return self._adaptivity_for_coarsening_constant
+
+    def get_adaptivity_for_refining_const(self):
+        """
+        Get adaptivity for refining constant.
+        More details: https://precice.org/tooling-micro-manager-configuration.html#adaptivity
+
+        Returns
+        -------
+        adaptivity_for_refining_constant : bool
+            Adaptivity for refining constant
+        """
+        return self._adaptivity_for_refining_constant
 
     def get_adaptivity_similarity_measure(self):
         """
