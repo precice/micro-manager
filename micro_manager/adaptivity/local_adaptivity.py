@@ -26,9 +26,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self,
         dt,
         micro_sims,
-        similarity_dists_nm1: np.ndarray,
-        is_sim_active_nm1: np.ndarray,
-        sim_is_associated_to_nm1: np.ndarray,
+        adaptivity_data_nm1: list,
         data_for_adaptivity: dict,
     ) -> tuple:
         """
@@ -40,22 +38,16 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             Current time step
         micro_sims : list
             List containing simulation objects
-        similarity_dists_nm1 : numpy array
-            2D array having similarity distances between each micro simulation pair.
-        is_sim_active_nm1 : numpy array
-            1D array having True if sim is active, False if sim is inactive.
-        sim_is_associated_to_nm1 : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None.
+        adaptivity_data_nm1 : list
+            List of numpy arrays: similarity_dists (2D array having similarity distances between each micro simulation pair), is_sim_active (1D array having state (active or inactive) of each micro simulation), sim_is_associated_to (1D array with values of associated simulations of inactive simulations. Active simulations have None)
         data_for_adaptivity : dict
             A dictionary containing the names of the data to be used in adaptivity as keys and information on whether
             the data are scalar or vector as values.
 
         Returns
         -------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair.
-        is_sim_active : numpy array
-            1D array, True is sim is active, False if sim is inactive.
+        list
+            List of numpy arrays: similarity_dists (2D array having similarity distances between each micro simulation pair), is_sim_active (1D array having state (active or inactive) of each micro simulation), sim_is_associated_to (1D array with values of associated simulations of inactive simulations. Active simulations have None)
         """
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
@@ -66,14 +58,16 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                 )
 
         similarity_dists = self._get_similarity_dists(
-            dt, similarity_dists_nm1, data_for_adaptivity
+            dt, adaptivity_data_nm1[0], data_for_adaptivity
         )
 
         # Operation done globally if global adaptivity is chosen
-        is_sim_active = self._update_active_sims(similarity_dists, is_sim_active_nm1)
+        is_sim_active = self._update_active_sims(
+            similarity_dists, adaptivity_data_nm1[1]
+        )
 
         is_sim_active, sim_is_associated_to = self._update_inactive_sims(
-            similarity_dists, is_sim_active, sim_is_associated_to_nm1, micro_sims
+            similarity_dists, is_sim_active, adaptivity_data_nm1[2], micro_sims
         )
 
         sim_is_associated_to = self._associate_inactive_to_active(
@@ -87,7 +81,32 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             )
         )
 
-        return similarity_dists, is_sim_active, sim_is_associated_to
+        self._active_sim_ids = np.where(is_sim_active)[0]
+        self._inactive_sim_ids = np.where(is_sim_active == False)[0]
+
+        return [similarity_dists, is_sim_active, sim_is_associated_to]
+
+    def get_active_sim_ids(self) -> np.ndarray:
+        """
+        Get the ids of active simulations.
+
+        Returns
+        -------
+        numpy array
+            1D array of active simulation ids
+        """
+        return self._active_sim_ids
+
+    def get_inactive_sim_ids(self) -> np.ndarray:
+        """
+        Get the ids of inactive simulations.
+
+        Returns
+        -------
+        numpy array
+            1D array of inactive simulation ids
+        """
+        return self._inactive_sim_ids
 
     def _update_inactive_sims(
         self,

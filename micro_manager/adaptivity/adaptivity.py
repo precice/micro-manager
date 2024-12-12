@@ -35,6 +35,9 @@ class AdaptivityCalculator:
             configurator.get_adaptivity_similarity_measure()
         )
 
+        self._active_sim_ids = np.array([], dtype=int)
+        self._inactive_sim_ids = np.array([], dtype=int)
+
     def _get_similarity_dists(
         self, dt: float, similarity_dists: np.ndarray, data: dict
     ) -> np.ndarray:
