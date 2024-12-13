@@ -126,7 +126,10 @@ class MicroManagerCoupling(MicroManager):
 
         dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
-        # adaptivity_data is a of numpy arrays: similarity_dists (2D array having similarity distances between each micro simulation pair), is_sim_active (1D array having state (active or inactive) of each micro simulation), sim_is_associated_to (1D array with values of associated simulations of inactive simulations. Active simulations have None)
+        # adaptivity_data is a list of numpy arrays:
+        # 1. similarity_dists (2D array having similarity distances between each micro simulation pair)
+        # 2. is_sim_active (1D array having state (active or inactive) of each micro simulation)
+        # 3. sim_is_associated_to (1D array with values of associated simulations of inactive simulations. Active simulations have None)
         adaptivity_data: list = []
 
         if self._is_adaptivity_on:
@@ -342,8 +345,6 @@ class MicroManagerCoupling(MicroManager):
         for i in range(self._local_number_of_sims):
             self._global_ids_of_local_sims.append(sim_id)
             sim_id += 1
-
-        # self._micro_sims = [None] * self._local_number_of_sims  # DECLARATION
 
         # Setup for simulation crashes
         self._has_sim_crashed = [False] * self._local_number_of_sims
@@ -706,13 +707,12 @@ class MicroManagerCoupling(MicroManager):
                 self._data_for_adaptivity,
             )
 
-            sim_is_associated_to = adaptivity_data[2]
-
             active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
 
             for active_id in active_sim_ids:
                 self._micro_sims_active_steps[active_id] += 1
 
+        active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
         inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
 
         micro_sims_output = [None] * self._local_number_of_sims
@@ -779,16 +779,9 @@ class MicroManagerCoupling(MicroManager):
                     micro_sims_input, micro_sims_output, unset_sim, active_sim_ids
                 )
 
-        # For each inactive simulation, copy data from most similar active simulation
-        if self._adaptivity_type == "global":
-            self._adaptivity_controller.communicate_micro_output(
-                adaptivity_data[1:3], micro_sims_output
-            )
-        elif self._adaptivity_type == "local":
-            for inactive_id in inactive_sim_ids:
-                micro_sims_output[inactive_id] = deepcopy(
-                    micro_sims_output[sim_is_associated_to[inactive_id]]
-                )
+        self._adaptivity_controller.get_full_field_micro_output(
+            adaptivity_data, micro_sims_output
+        )
 
         # Resolve micro sim output data for inactive simulations
         for inactive_id in inactive_sim_ids:
