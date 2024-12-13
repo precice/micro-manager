@@ -707,13 +707,19 @@ class MicroManagerCoupling(MicroManager):
                 self._data_for_adaptivity,
             )
 
-            active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+            active_sim_ids = self._adaptivity_controller.get_active_sim_ids(
+                adaptivity_data[1]
+            )
 
             for active_id in active_sim_ids:
                 self._micro_sims_active_steps[active_id] += 1
 
-        active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
-        inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
+        active_sim_ids = self._adaptivity_controller.get_active_sim_ids(
+            adaptivity_data[1]
+        )
+        inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids(
+            adaptivity_data[1]
+        )
 
         micro_sims_output = [None] * self._local_number_of_sims
 
@@ -779,7 +785,7 @@ class MicroManagerCoupling(MicroManager):
                     micro_sims_input, micro_sims_output, unset_sim, active_sim_ids
                 )
 
-        self._adaptivity_controller.get_full_field_micro_output(
+        micro_sims_output = self._adaptivity_controller.get_full_field_micro_output(
             adaptivity_data, micro_sims_output
         )
 

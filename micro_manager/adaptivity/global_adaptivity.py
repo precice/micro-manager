@@ -127,13 +127,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             similarity_dists, is_sim_active, sim_is_associated_to
         )
 
-        self._active_sim_ids = np.where(
-            is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1]
-        )[0]
-        self._inactive_sim_ids = np.where(
-            is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1] == False
-        )[0]
-
         self._logger.info(
             "{} active simulations, {} inactive simulations".format(
                 np.count_nonzero(
@@ -148,27 +141,41 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return [similarity_dists, is_sim_active, sim_is_associated_to]
 
-    def get_active_sim_ids(self) -> np.ndarray:
+    def get_active_sim_ids(self, is_sim_active: np.array) -> np.ndarray:
         """
         Get the ids of active simulations.
+
+        Parameters
+        ----------
+        is_sim_active : numpy array
+            1D array having state (active or inactive) of each micro simulation
 
         Returns
         -------
         numpy array
             1D array of active simulation ids
         """
-        return self._active_sim_ids
+        return np.where(is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1])[
+            0
+        ]
 
-    def get_inactive_sim_ids(self) -> np.ndarray:
+    def get_inactive_sim_ids(self, is_sim_active: np.array) -> np.ndarray:
         """
         Get the ids of inactive simulations.
+
+        Parameters
+        ----------
+        is_sim_active : numpy array
+            1D array having state (active or inactive) of each micro simulation
 
         Returns
         -------
         numpy array
             1D array of inactive simulation ids
         """
-        return self._inactive_sim_ids
+        return np.where(
+            is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1] == False
+        )[0]
 
     def get_full_field_micro_output(
         self, adaptivity_data: list, micro_output: list

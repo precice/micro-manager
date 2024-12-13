@@ -82,32 +82,39 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             )
         )
 
-        self._active_sim_ids = np.where(is_sim_active)[0]
-        self._inactive_sim_ids = np.where(is_sim_active == False)[0]
-
         return [similarity_dists, is_sim_active, sim_is_associated_to]
 
-    def get_active_sim_ids(self) -> np.ndarray:
+    def get_active_sim_ids(self, is_sim_active) -> np.ndarray:
         """
         Get the ids of active simulations.
+
+        Parameters
+        ----------
+        is_sim_active : numpy array
+            1D array having state (active or inactive) of each micro simulation
 
         Returns
         -------
         numpy array
             1D array of active simulation ids
         """
-        return self._active_sim_ids
+        return np.where(is_sim_active)[0]
 
-    def get_inactive_sim_ids(self) -> np.ndarray:
+    def get_inactive_sim_ids(self, is_sim_active: np.array) -> np.ndarray:
         """
         Get the ids of inactive simulations.
+
+        Parameters
+        ----------
+        is_sim_active : numpy array
+            1D array having state (active or inactive) of each micro simulation
 
         Returns
         -------
         numpy array
             1D array of inactive simulation ids
         """
-        return self._inactive_sim_ids
+        return np.where(is_sim_active == False)[0]
 
     def get_full_field_micro_output(
         self, adaptivity_data: list, micro_output: list
@@ -119,6 +126,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         adaptivity_data : list
             List of numpy arrays:
+                similarity_dists (2D array having similarity distances between each micro simulation pair)
                 is_sim_active (1D array having state (active or inactive) of each micro simulation)
                 sim_is_associated_to (1D array with values of associated simulations of inactive simulations. Active simulations have None)
         micro_output : list
@@ -133,7 +141,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         sim_is_associated_to = adaptivity_data[2]
 
-        for inactive_id in self._inactive_sim_ids:
+        inactive_sim_ids = self.get_inactive_sim_ids(adaptivity_data[1])
+
+        for inactive_id in inactive_sim_ids:
             micro_sims_output[inactive_id] = deepcopy(
                 micro_sims_output[sim_is_associated_to[inactive_id]]
             )
