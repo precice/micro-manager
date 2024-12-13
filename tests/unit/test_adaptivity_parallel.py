@@ -94,7 +94,7 @@ class TestGlobalAdaptivity(TestCase):
             data_for_adaptivity = {"data1": [1.0, 1.0], "data2": [13.0, 13.0]}
 
         adaptivity_data = []
-        adaptivity_data.append(np.zeros(5, 5))  # similarity_dists
+        adaptivity_data.append(np.zeros((5, 5)))  # similarity_dists
         adaptivity_data.append(
             np.array([True, True, True, True, True])
         )  # is_sim_active
