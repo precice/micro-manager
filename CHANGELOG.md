@@ -2,6 +2,7 @@
 
 ## latest
 
+- Refactor large parts of solve and adaptivity to group datasets and simplify handling https://github.com/precice/micro-manager/pull/135
 - Add information about adaptivity tuning parameters https://github.com/precice/micro-manager/pull/131
 - Put computation of counting active steps inside the adaptivity variant `if` condition https://github.com/precice/micro-manager/pull/130
 
