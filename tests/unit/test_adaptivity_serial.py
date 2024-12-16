@@ -235,7 +235,7 @@ class TestLocalAdaptivity(TestCase):
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        adaptivity_controller = LocalAdaptivityCalculator(configurator)
+        adaptivity_controller = LocalAdaptivityCalculator(configurator, MagicMock())
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
