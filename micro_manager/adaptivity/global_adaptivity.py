@@ -190,6 +190,22 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return micro_sims_output
 
+    def log_metrics(self, logger, adaptivity_data: list, n: int) -> None:
+        """ """
+        is_sim_active = adaptivity_data[1]
+        global_active_sims = np.count_nonzero(is_sim_active)
+        global_inactive_sims = np.count_nonzero(is_sim_active == False)
+
+        logger.log_info_one_rank(
+            "{},{},{},{},{}".format(
+                n,
+                np.mean(global_active_sims),
+                np.mean(global_inactive_sims),
+                np.max(global_active_sims),
+                np.max(global_inactive_sims),
+            )
+        )
+
     def _communicate_micro_output(
         self,
         adaptivity_data: list,

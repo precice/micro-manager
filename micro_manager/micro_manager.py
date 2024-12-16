@@ -121,8 +121,6 @@ class MicroManagerCoupling(MicroManager):
 
             self._adaptivity_data_names = self._config.get_data_for_adaptivity()
 
-            self._adaptivity_output_n = self._config.get_adaptivity_output_n()
-
             # Names of macro data to be used for adaptivity computation
             self._adaptivity_macro_data_names = dict()
 
@@ -138,7 +136,9 @@ class MicroManagerCoupling(MicroManager):
                 self._config.is_adaptivity_required_in_every_implicit_iteration()
             )
             self._micro_sims_active_steps = None
-            self._output_adaptivity_cpu_time = self._config.output_adaptivity_cpu_time()
+
+        self._adaptivity_output_n = self._config.get_adaptivity_output_n()
+        self._output_adaptivity_cpu_time = self._config.output_adaptivity_cpu_time()
 
         # Define the preCICE Participant
         self._participant = precice.Participant(
@@ -306,28 +306,15 @@ class MicroManagerCoupling(MicroManager):
                         for sim in self._micro_sims:
                             sim.output()
 
-                if self._is_adaptivity_on:
-                    if self._adaptivity_type == "local":
-                        # MPI Gather is necessary as local adaptivity only stores local data
-                        local_active_sims = np.count_nonzero(is_sim_active)
-                        global_active_sims = self._comm.gather(local_active_sims)
+                if (
+                    self._is_adaptivity_on
+                    and n % self._adaptivity_output_n == 0
+                    and self._rank == 0
+                ):
+                    self._adaptivity_controller.log_metrics(
+                        self._adaptivity_logger, adaptivity_data, n
+                    )
 
-                        local_inactive_sims = np.count_nonzero(is_sim_active == False)
-                        global_inactive_sims = self._comm.gather(local_inactive_sims)
-                    elif self._adaptivity_type == "global":
-                        global_active_sims = np.count_nonzero(is_sim_active)
-                        global_inactive_sims = np.count_nonzero(is_sim_active == False)
-
-                    if n % self._adaptivity_output_n == 0 and self._rank == 0:
-                        self._adaptivity_logger.log_info_one_rank(
-                            "{},{},{},{},{}".format(
-                                n,
-                                np.mean(global_active_sims),
-                                np.mean(global_inactive_sims),
-                                np.max(global_active_sims),
-                                np.max(global_inactive_sims),
-                            )
-                        )
                 self._logger.log_info_one_rank("Time window {} converged.".format(n))
 
         self._participant.finalize()
@@ -466,7 +453,7 @@ class MicroManagerCoupling(MicroManager):
         if self._is_adaptivity_on:
             if self._adaptivity_type == "local":
                 self._adaptivity_controller: LocalAdaptivityCalculator = (
-                    LocalAdaptivityCalculator(self._config)
+                    LocalAdaptivityCalculator(self._config, self._comm)
                 )
                 self._number_of_sims_for_adaptivity = self._local_number_of_sims
             elif self._adaptivity_type == "global":

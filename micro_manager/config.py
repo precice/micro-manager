@@ -50,7 +50,7 @@ class Config:
         self._adaptivity_refining_constant = 0.5
         self._adaptivity_every_implicit_iteration = False
         self._adaptivity_similarity_measure = "L1"
-        self._adaptivity_output_n = 1
+        self._adaptivity_output_n = -2
         self._adaptivity_output_cpu_time = False
         self._adaptivity_output_mem_usage = False
 

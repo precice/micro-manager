@@ -10,7 +10,7 @@ from .adaptivity import AdaptivityCalculator
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator) -> None:
+    def __init__(self, configurator, comm) -> None:
         """
         Class constructor.
 
@@ -18,10 +18,11 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
-        logger : object of logging
-            Logger defined from the standard package logging
+        comm : MPI.COMM_WORLD
+            Global communicator of MPI.
         """
         super().__init__(configurator)
+        self._comm = comm
 
     def compute_adaptivity(
         self,
@@ -142,6 +143,27 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             )
 
         return micro_sims_output
+
+    def log_metrics(self, logger, adaptivity_list: list, n: int) -> None:
+        """ """
+        is_sim_active = adaptivity_list[1]
+
+        # MPI Gather is necessary as local adaptivity only stores local data
+        local_active_sims = np.count_nonzero(is_sim_active)
+        global_active_sims = self._comm.gather(local_active_sims)
+
+        local_inactive_sims = np.count_nonzero(is_sim_active == False)
+        global_inactive_sims = self._comm.gather(local_inactive_sims)
+
+        logger.log_info_one_rank(
+            "{},{},{},{},{}".format(
+                n,
+                np.mean(global_active_sims),
+                np.mean(global_inactive_sims),
+                np.max(global_active_sims),
+                np.max(global_inactive_sims),
+            )
+        )
 
     def _update_inactive_sims(
         self,
