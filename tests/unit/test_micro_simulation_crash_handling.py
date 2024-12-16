@@ -98,15 +98,16 @@ class TestSimulationCrashHandling(TestCase):
         )
         manager._micro_sims = [MicroSimulation(i) for i in range(5)]
 
-        adaptivity_data = []
-        adaptivity_data.append(np.array([0, 0, 0, 0, 0]))  # similarity_dists
-        adaptivity_data.append(
-            np.array([True, True, True, True, False])
-        )  # is_sim_active
-        adaptivity_data.append(np.array([-2, -2, -2, -2, 2]))  # sim_is_associated_to
+        manager._adaptivity_controller._similarity_dists = np.array([0, 0, 0, 0, 0])
+        manager._adaptivity_controller._is_sim_active = np.array(
+            [True, True, True, True, False]
+        )
+        manager._adaptivity_controller._sim_is_associated_to = np.array(
+            [-2, -2, -2, -2, 2]
+        )
 
         micro_sims_output = manager._solve_micro_simulations_with_adaptivity(
-            macro_data, 1.0, adaptivity_data
+            macro_data, 1.0
         )
 
         # Crashed simulation has interpolated value
