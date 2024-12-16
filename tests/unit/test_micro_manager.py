@@ -34,7 +34,7 @@ class TestFunctioncalls(TestCase):
         self.fake_write_data_names = {
             "micro-scalar-data": False,
             "micro-vector-data": True,
-            "micro_sim_time": False,
+            "solve_cpu_time": False,
             "active_state": False,
             "active_steps": False,
         }
@@ -42,7 +42,7 @@ class TestFunctioncalls(TestCase):
             {
                 "micro-scalar-data": 1,
                 "micro-vector-data": np.array([0, 1, 2]),
-                "micro_sim_time": 0,
+                "solve_cpu_time": 0,
                 "active_state": 0,
                 "active_steps": 0,
             }
@@ -119,9 +119,12 @@ class TestFunctioncalls(TestCase):
         """
         Test if the functions in the Config class work.
         """
-        config = micro_manager.Config(MagicMock(), "micro-manager-config.json")
+        config = micro_manager.Config("micro-manager-config.json")
+        config.set_logger(MagicMock())
         config.read_json_micro_manager()
-        self.assertEqual(config._config_file_name.split("/")[-1], "dummy-config.xml")
+        self.assertEqual(
+            config._precice_config_file_name.split("/")[-1], "dummy-config.xml"
+        )
         self.assertEqual(config._micro_file_name, "test_micro_manager")
         self.assertEqual(config._macro_mesh_name, "dummy-macro-mesh")
         self.assertEqual(config._micro_output_n, 10)

@@ -13,20 +13,20 @@ class Config:
     the config class in https://github.com/precice/fenics-adapter/tree/develop/fenicsadapter
     """
 
-    def __init__(self, logger, config_filename):
+    def __init__(self, config_file_name):
         """
         Constructor of the Config class.
 
         Parameters
         ----------
-        config_filename : string
+        config_file_name : string
             Name of the JSON configuration file
         """
-        self._logger = logger
-
+        self._config_file_name = config_file_name
+        self._logger = None
         self._micro_file_name = None
 
-        self._config_file_name = None
+        self._precice_config_file_name = None
         self._macro_mesh_name = None
         self._read_data_names = dict()
         self._write_data_names = dict()
@@ -38,6 +38,7 @@ class Config:
         self._diagnostics_data_names = dict()
 
         self._output_micro_sim_time = False
+        self._output_micro_mem_use = False
 
         self._interpolate_crash = False
 
@@ -49,6 +50,9 @@ class Config:
         self._adaptivity_refining_constant = 0.5
         self._adaptivity_every_implicit_iteration = False
         self._adaptivity_similarity_measure = "L1"
+        self._adaptivity_output_n = -2
+        self._adaptivity_output_cpu_time = False
+        self._adaptivity_output_mem_usage = False
 
         # Snapshot information
         self._parameter_file_name = None
@@ -57,19 +61,28 @@ class Config:
 
         self._output_micro_sim_time = False
 
-        self.read_json(config_filename)
+    def set_logger(self, logger):
+        """
+        Set the logger for the Config class.
 
-    def read_json(self, config_filename):
+        Parameters
+        ----------
+        logger : object of logging
+            Logger defined from the standard package logging
+        """
+        self._logger = logger
+
+    def _read_json(self, config_file_name):
         """
         Reads JSON configuration file.
 
         Parameters
         ----------
-        config_filename : string
+        config_file_name : string
             Name of the JSON configuration file
         """
-        self._folder = os.path.dirname(os.path.join(os.getcwd(), config_filename))
-        path = os.path.join(self._folder, os.path.basename(config_filename))
+        self._folder = os.path.dirname(os.path.join(os.getcwd(), config_file_name))
+        path = os.path.join(self._folder, os.path.basename(config_file_name))
         with open(path, "r") as read_file:
             self._data = json.load(read_file)
 
@@ -96,7 +109,7 @@ class Config:
                         "Write data dictionary as a value other than 'scalar' or 'vector'"
                     )
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "No write data names provided. Micro manager will only read data from preCICE."
             )
 
@@ -115,19 +128,31 @@ class Config:
                         "Read data dictionary as a value other than 'scalar' or 'vector'"
                     )
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "No read data names provided. Micro manager will only write data to preCICE."
             )
 
         self._micro_dt = self._data["simulation_params"]["micro_dt"]
 
         try:
-            if self._data["diagnostics"]["output_micro_sim_solve_time"]:
+            if self._data["diagnostics"]["output_micro_sim_solve_time"] == "True":
                 self._output_micro_sim_time = True
-                self._write_data_names["micro_sim_time"] = False
+                self._write_data_names["solve_cpu_time"] = False
         except BaseException:
-            self._logger.info(
-                "Micro manager will not output time required to solve each micro simulation in each time step."
+            self._logger.log_info_one_rank(
+                "Micro manager will not output time required to solve each micro simulation."
+            )
+
+        try:
+            if self._data["diagnostics"]["output_micro_sim_solve_mem_use"] == "True":
+                self._output_micro_mem_use = True
+                self._write_data_names["solve_mem_use"] = False
+                self._logger.log_info_one_rank(
+                    "Calculating memory usage of the solve call of each micro micro simulation will slow down the Micro Manager. This option is intended for diagnostic purposes."
+                )
+        except BaseException:
+            self._logger.log_info_one_rank(
+                "Micro manager will not output memory usage for solving each micro simulation."
             )
 
     def read_json_micro_manager(self):
@@ -135,8 +160,10 @@ class Config:
         Reads Micro Manager relevant information from JSON configuration file
         and saves the data to the respective instance attributes.
         """
-        self._config_file_name = os.path.join(
-            self._folder, self._data["coupling_params"]["config_file_name"]
+        self._read_json(self._config_file_name)  # Read base information
+
+        self._precice_config_file_name = os.path.join(
+            self._folder, self._data["coupling_params"]["precice_config_file_name"]
         )
         self._macro_mesh_name = self._data["coupling_params"]["macro_mesh_name"]
 
@@ -147,7 +174,7 @@ class Config:
         try:
             self._ranks_per_axis = self._data["simulation_params"]["decomposition"]
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "Domain decomposition is not specified, so the Micro Manager will expect to be run in serial."
             )
 
@@ -165,7 +192,7 @@ class Config:
                         "Adaptivity settings are provided but adaptivity is turned off."
                     )
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations."
             )
 
@@ -188,10 +215,19 @@ class Config:
                 self._data_for_adaptivity[dname] = exchange_data[dname]
 
             if self._data_for_adaptivity.keys() == self._write_data_names.keys():
-                warn(
+                self._logger.log_info_one_rank(
                     "Only micro simulation data is used for similarity computation in adaptivity. This would lead to the"
                     " same set of active and inactive simulations for the entire simulation time. If this is not intended,"
                     " please include macro simulation data as well."
+                )
+
+            try:
+                self._adaptivity_output_n = self._data["simulation_params"][
+                    "adaptivity_settings"
+                ]["output_n"]
+            except BaseException:
+                self._logger.log_info_one_rank(
+                    "No output interval for adaptivity provided. Adaptivity metrics will be output every time window."
                 )
 
             self._adaptivity_history_param = self._data["simulation_params"][
@@ -212,7 +248,7 @@ class Config:
                     "adaptivity_settings"
                 ]["similarity_measure"]
             else:
-                self._logger.info(
+                self._logger.log_info_one_rank(
                     "No similarity measure provided, using L1 norm as default"
                 )
                 self._adaptivity_similarity_measure = "L1"
@@ -227,12 +263,40 @@ class Config:
                 self._adaptivity_every_implicit_iteration = False
 
             if not self._adaptivity_every_implicit_iteration:
-                self._logger.info(
+                self._logger.log_info_one_rank(
                     "Micro Manager will compute adaptivity once at the start of every time window"
                 )
 
             self._write_data_names["active_state"] = False
             self._write_data_names["active_steps"] = False
+
+            try:
+                if (
+                    self._data["simulation_params"]["adaptivity_settings"][
+                        "output_cpu_time"
+                    ]
+                    == "True"
+                ):
+                    self._adaptivity_output_cpu_time = True
+                    self._write_data_names["adaptivity_cpu_time"] = False
+            except BaseException:
+                self._logger.log_info_one_rank(
+                    "Micro Manager will not output CPU time of the adaptivity computation."
+                )
+
+            try:
+                if (
+                    self._data["simulation_params"]["adaptivity_settings"][
+                        "output_mem_usage"
+                    ]
+                    == "True"
+                ):
+                    self._adaptivity_output_mem_usage = True
+                    self._write_data_names["adaptivity_mem_usage"] = False
+            except BaseException:
+                self._logger.log_info_one_rank(
+                    "Micro Manager will not output CPU time of the adaptivity computation."
+                )
 
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"] == "True":
@@ -253,19 +317,24 @@ class Config:
                         "Diagnostics data dictionary as a value other than 'scalar' or 'vector'"
                     )
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "No diagnostics data is defined. Micro Manager will not output any diagnostics data."
             )
 
         try:
             self._micro_output_n = self._data["diagnostics"]["micro_output_n"]
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "Output interval of micro simulations not specified, if output is available then it will be called "
                 "in every time window."
             )
 
     def read_json_snapshot(self):
+        """
+        Reads Snapshot relevant information from JSON configuration file
+        """
+        self._read_json(self._config_file_name)  # Read base information
+
         self._parameter_file_name = os.path.join(
             self._folder, self._data["coupling_params"]["parameter_file_name"]
         )
@@ -278,7 +347,7 @@ class Config:
                 .replace(".py", "")
             )
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "No post-processing file name provided. Snapshot computation will not perform any post-processing."
             )
             self._postprocessing_file_name = None
@@ -298,7 +367,7 @@ class Config:
                         "Diagnostics data dictionary has a value other than 'scalar' or 'vector'"
                     )
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "No diagnostics data is defined. Snapshot computation will not output any diagnostics data."
             )
 
@@ -306,20 +375,20 @@ class Config:
             if self._data["snapshot_params"]["initialize_once"] == "True":
                 self._initialize_once = True
         except BaseException:
-            self._logger.info(
+            self._logger.log_info_one_rank(
                 "For each snapshot a new micro simulation object will be created"
             )
 
-    def get_config_file_name(self):
+    def get_precice_config_file_name(self):
         """
-        Get the name of the JSON configuration file.
+        Get the name of the preCICE XML configuration file.
 
         Returns
         -------
         config_file_name : string
-            Name of the JSON configuration file provided to the Config class.
+            Name of the preCICE XML configuration file.
         """
-        return self._config_file_name
+        return self._precice_config_file_name
 
     def get_macro_mesh_name(self):
         """
@@ -415,6 +484,17 @@ class Config:
         """
         return self._output_micro_sim_time
 
+    def write_micro_mem_use(self):
+        """
+        Depending on user input, micro manager will calculate memory usage of solve() step of every micro simulation
+
+        Returns
+        -------
+        output_micro_mem_use : bool
+            True if micro simulation memory usage is required.
+        """
+        return self._output_micro_mem_use
+
     def turn_on_adaptivity(self):
         """
         Boolean stating whether adaptivity is ot or not.
@@ -449,6 +529,17 @@ class Config:
             the data are scalar or vector as values.
         """
         return self._data_for_adaptivity
+
+    def get_adaptivity_output_n(self):
+        """
+        Get the output frequency of adaptivity metrics.
+
+        Returns
+        -------
+        adaptivity_output_n : int
+            Output frequency of adaptivity metrics, so output every N timesteps
+        """
+        return self._adaptivity_output_n
 
     def get_adaptivity_hist_param(self):
         """
@@ -508,6 +599,17 @@ class Config:
             True if adaptivity needs to be calculated in every time iteration, False otherwise.
         """
         return self._adaptivity_every_implicit_iteration
+
+    def output_adaptivity_cpu_time(self):
+        """
+        Check if CPU time of the adaptivity computation needs to be output.
+
+        Returns
+        -------
+        adaptivity_cpu_time : bool
+            True if CPU time of the adaptivity computation needs to be output, False otherwise.
+        """
+        return self._adaptivity_output_cpu_time
 
     def get_micro_dt(self):
         """

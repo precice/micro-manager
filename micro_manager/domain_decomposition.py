@@ -6,14 +6,12 @@ import numpy as np
 
 
 class DomainDecomposer:
-    def __init__(self, logger, dims, rank, size) -> None:
+    def __init__(self, dims, rank, size) -> None:
         """
         Class constructor.
 
         Parameters
         ----------
-        logger : object of logging
-            Logger defined from the standard package logging.
         dims : int
             Dimensions of the problem.
         rank : int
@@ -21,7 +19,6 @@ class DomainDecomposer:
         size : int
             Total number of MPI processes.
         """
-        self._logger = logger
         self._rank = rank
         self._size = size
         self._dims = dims
@@ -97,7 +94,5 @@ class DomainDecomposer:
             # Adjust the maximum bound to be exactly the domain size
             if rank_in_axis[d] + 1 == ranks_per_axis[d]:
                 mesh_bounds[d * 2 + 1] = macro_bounds[d * 2 + 1]
-
-        self._logger.info("Bounding box limits are {}".format(mesh_bounds))
 
         return mesh_bounds

@@ -19,7 +19,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(
         self,
         configurator,
-        logger,
         global_number_of_sims: int,
         global_ids: list,
         rank: int,
@@ -43,7 +42,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         comm : MPI.COMM_WORLD
             Global communicator of MPI.
         """
-        super().__init__(configurator, logger)
+        super().__init__(configurator)
         self._global_ids = global_ids
         self._comm = comm
         self._rank = rank
@@ -127,19 +126,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             similarity_dists, is_sim_active, sim_is_associated_to
         )
 
-        self._logger.info(
-            "{} active simulations, {} inactive simulations".format(
-                np.count_nonzero(
-                    is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1]
-                ),
-                np.count_nonzero(
-                    is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1]
-                    == False
-                ),
-            )
-        )
-
-        return [similarity_dists, is_sim_active, sim_is_associated_to]
+        return similarity_dists, is_sim_active, sim_is_associated_to
 
     def get_active_sim_ids(self, is_sim_active: np.array) -> np.ndarray:
         """
@@ -202,6 +189,22 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._communicate_micro_output(adaptivity_data[1:3], micro_sims_output)
 
         return micro_sims_output
+
+    def log_metrics(self, logger, adaptivity_data: list, n: int) -> None:
+        """ """
+        is_sim_active = adaptivity_data[1]
+        global_active_sims = np.count_nonzero(is_sim_active)
+        global_inactive_sims = np.count_nonzero(is_sim_active == False)
+
+        logger.log_info_one_rank(
+            "{},{},{},{},{}".format(
+                n,
+                np.mean(global_active_sims),
+                np.mean(global_inactive_sims),
+                np.max(global_active_sims),
+                np.max(global_inactive_sims),
+            )
+        )
 
     def _communicate_micro_output(
         self,

@@ -8,7 +8,6 @@ from micro_manager.domain_decomposition import DomainDecomposer
 
 class TestDomainDecomposition(TestCase):
     def setUp(self) -> None:
-        self._logger = MagicMock()
         self._macro_bounds_3d = [
             -1,
             1,
@@ -25,7 +24,7 @@ class TestDomainDecomposition(TestCase):
         rank = 5
         size = 10
         ranks_per_axis = [1, 2, 5]
-        domain_decomposer = DomainDecomposer(self._logger, 3, rank, size)
+        domain_decomposer = DomainDecomposer(3, rank, size)
         domain_decomposer._dims = 3
         mesh_bounds = domain_decomposer.decompose_macro_domain(
             self._macro_bounds_3d, ranks_per_axis
@@ -40,7 +39,7 @@ class TestDomainDecomposition(TestCase):
         rank = 10
         size = 32
         ranks_per_axis = [4, 1, 8]
-        domain_decomposer = DomainDecomposer(self._logger, 3, rank, size)
+        domain_decomposer = DomainDecomposer(3, rank, size)
         domain_decomposer._dims = 3
         mesh_bounds = domain_decomposer.decompose_macro_domain(
             self._macro_bounds_3d, ranks_per_axis
@@ -55,7 +54,7 @@ class TestDomainDecomposition(TestCase):
         rank = 7
         size = 16
         ranks_per_axis = [8, 2, 1]
-        domain_decomposer = DomainDecomposer(self._logger, 3, rank, size)
+        domain_decomposer = DomainDecomposer(3, rank, size)
         domain_decomposer._dims = 3
         mesh_bounds = domain_decomposer.decompose_macro_domain(
             self._macro_bounds_3d, ranks_per_axis
