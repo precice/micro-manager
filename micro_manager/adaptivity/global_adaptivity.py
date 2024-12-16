@@ -70,9 +70,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self,
         dt: float,
         micro_sims: list,
-        similarity_dists_nm1: np.ndarray,
-        is_sim_active_nm1: np.ndarray,
-        sim_is_associated_to_nm1: np.ndarray,
+        adaptivity_data_nm1: list,
         data_for_adaptivity: dict,
     ) -> tuple:
         """
@@ -84,21 +82,21 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Current time step of the macro-micro coupled problem
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
-        similarity_dists_nm1 : numpy array
-            2D array having similarity distances between each micro simulation pair
-        is_sim_active_nm1 : numpy array
-            1D array having state (active or inactive) of each micro simulation on this rank
-        sim_is_associated_to_nm1 : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
+        adaptivity_data_nm1 : list
+            List of numpy arrays:
+                similarity_dists (2D array having similarity distances between each micro simulation pair)
+                is_sim_active (1D array having state (active or inactive) of each micro simulation)
+                sim_is_associated_to (1D array with values of associated simulations of inactive simulations. Active simulations have None)
         data_for_adaptivity : dict
             Dictionary with keys as names of data to be used in the similarity calculation, and values as the respective data for the micro simulations
 
         Results
         -------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation
+        list
+            List of numpy arrays:
+                similarity_dists (2D array having similarity distances between each micro simulation pair)
+                is_sim_active (1D array having state (active or inactive) of each micro simulation)
+                sim_is_associated_to (1D array with values of associated simulations of inactive simulations. Active simulations have None)
         """
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
@@ -115,13 +113,15 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             global_data_for_adaptivity[name] = np.concatenate((data_as_list[:]), axis=0)
 
         similarity_dists = self._get_similarity_dists(
-            dt, similarity_dists_nm1, global_data_for_adaptivity
+            dt, adaptivity_data_nm1[0], global_data_for_adaptivity
         )
 
-        is_sim_active = self._update_active_sims(similarity_dists, is_sim_active_nm1)
+        is_sim_active = self._update_active_sims(
+            similarity_dists, adaptivity_data_nm1[1]
+        )
 
         is_sim_active, sim_is_associated_to = self._update_inactive_sims(
-            similarity_dists, is_sim_active, sim_is_associated_to_nm1, micro_sims
+            similarity_dists, is_sim_active, adaptivity_data_nm1[2], micro_sims
         )
         sim_is_associated_to = self._associate_inactive_to_active(
             similarity_dists, is_sim_active, sim_is_associated_to
@@ -139,12 +139,73 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             )
         )
 
-        return similarity_dists, is_sim_active, sim_is_associated_to
+        return [similarity_dists, is_sim_active, sim_is_associated_to]
 
-    def communicate_micro_output(
+    def get_active_sim_ids(self, is_sim_active: np.array) -> np.ndarray:
+        """
+        Get the ids of active simulations.
+
+        Parameters
+        ----------
+        is_sim_active : numpy array
+            1D array having state (active or inactive) of each micro simulation
+
+        Returns
+        -------
+        numpy array
+            1D array of active simulation ids
+        """
+        return np.where(is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1])[
+            0
+        ]
+
+    def get_inactive_sim_ids(self, is_sim_active: np.array) -> np.ndarray:
+        """
+        Get the ids of inactive simulations.
+
+        Parameters
+        ----------
+        is_sim_active : numpy array
+            1D array having state (active or inactive) of each micro simulation
+
+        Returns
+        -------
+        numpy array
+            1D array of inactive simulation ids
+        """
+        return np.where(
+            is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1] == False
+        )[0]
+
+    def get_full_field_micro_output(
+        self, adaptivity_data: list, micro_output: list
+    ) -> list:
+        """
+        Get the full field micro output from active simulations to inactive simulations.
+
+        Parameters
+        ----------
+        adaptivity_data : list
+            List of numpy arrays:
+                similarity_dists (2D array having similarity distances between each micro simulation pair)
+                is_sim_active (1D array having state (active or inactive) of each micro simulation)
+                sim_is_associated_to (1D array with values of associated simulations of inactive simulations. Active simulations have None)
+        micro_output : list
+            List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
+
+        Returns
+        -------
+        micro_output : list
+            List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
+        """
+        micro_sims_output = deepcopy(micro_output)
+        self._communicate_micro_output(adaptivity_data[1:3], micro_sims_output)
+
+        return micro_sims_output
+
+    def _communicate_micro_output(
         self,
-        is_sim_active: np.ndarray,
-        sim_is_associated_to: np.ndarray,
+        adaptivity_data: list,
         micro_output: list,
     ) -> None:
         """
@@ -155,13 +216,16 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation on this rank
-        sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have -2
+        adaptivity_data : list
+            List of numpy arrays:
+                is_sim_active (1D array having state (active or inactive) of each micro simulation)
+                sim_is_associated_to (1D array with values of associated simulations of inactive simulations. Active simulations have None)
         micro_output : list
             List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
         """
+        is_sim_active = adaptivity_data[0]
+        sim_is_associated_to = adaptivity_data[1]
+
         inactive_local_ids = np.where(
             is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1] == False
         )[0]
