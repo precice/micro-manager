@@ -106,14 +106,6 @@ class MicroManagerCoupling(MicroManager):
         self._is_adaptivity_on = self._config.turn_on_adaptivity()
 
         if self._is_adaptivity_on:
-            self._adaptivity_logger = Logger(
-                "Adaptivity", "adaptivity-metrics.csv", self._rank, csv_logger=True
-            )
-
-            self._adaptivity_logger.log_info_one_rank(
-                "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive"
-            )
-
             self._number_of_sims_for_adaptivity: int = 0
 
             self._data_for_adaptivity: Dict[str, np.ndarray] = dict()
@@ -311,9 +303,7 @@ class MicroManagerCoupling(MicroManager):
                     and n % self._adaptivity_output_n == 0
                     and self._rank == 0
                 ):
-                    self._adaptivity_controller.log_metrics(
-                        self._adaptivity_logger, adaptivity_data, n
-                    )
+                    self._adaptivity_controller.log_metrics(adaptivity_data, n)
 
                 self._logger.log_info_one_rank("Time window {} converged.".format(n))
 

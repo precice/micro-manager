@@ -42,7 +42,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         comm : MPI.COMM_WORLD
             Global communicator of MPI.
         """
-        super().__init__(configurator)
+        super().__init__(configurator, rank)
         self._global_ids = global_ids
         self._comm = comm
         self._rank = rank
@@ -190,13 +190,18 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return micro_sims_output
 
-    def log_metrics(self, logger, adaptivity_data: list, n: int) -> None:
-        """ """
+    def log_metrics(self, adaptivity_data: list, n: int) -> None:
+        """
+        Log metrics for global adaptivity.
+
+        Parameters
+        ----------
+        """
         is_sim_active = adaptivity_data[1]
         global_active_sims = np.count_nonzero(is_sim_active)
         global_inactive_sims = np.count_nonzero(is_sim_active == False)
 
-        logger.log_info_one_rank(
+        self._metrics_logger.log_info_one_rank(
             "{},{},{},{},{}".format(
                 n,
                 np.mean(global_active_sims),
