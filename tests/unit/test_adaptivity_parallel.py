@@ -108,6 +108,7 @@ class TestGlobalAdaptivity(TestCase):
         configurator.get_adaptivity_refining_const = MagicMock(return_value=0.05)
         configurator.get_adaptivity_coarsening_const = MagicMock(return_value=0.2)
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L2rel")
+
         adaptivity_controller = GlobalAdaptivityCalculator(
             configurator, 5, global_ids, rank=self._rank, comm=self._comm
         )
@@ -136,16 +137,20 @@ class TestGlobalAdaptivity(TestCase):
         for i in global_ids:
             dummy_micro_sims.append(MicroSimulation(i))
 
-        adaptivity_data = adaptivity_controller.compute_adaptivity(
+        adaptivity_controller.compute_adaptivity(
             0.1,
             dummy_micro_sims,
-            adaptivity_data,
             data_for_adaptivity,
         )
 
-        self.assertTrue(np.array_equal(expected_is_sim_active, adaptivity_data[1]))
         self.assertTrue(
-            np.array_equal(expected_sim_is_associated_to, adaptivity_data[2])
+            np.array_equal(expected_is_sim_active, adaptivity_controller._is_sim_active)
+        )
+        self.assertTrue(
+            np.array_equal(
+                expected_sim_is_associated_to,
+                adaptivity_controller._sim_is_associated_to,
+            )
         )
 
     def test_communicate_micro_output(self):
@@ -165,11 +170,8 @@ class TestGlobalAdaptivity(TestCase):
             sim_output = [output_1, None]
             expected_sim_output = [output_1, output_0]
 
-        adaptivity_data = []
-        adaptivity_data.append(
-            np.array([False, False, True, True, False])
-        )  # is_sim_active
-        adaptivity_data.append([3, 3, -2, -2, 2])  # sim_is_associated_to
+        is_sim_active = np.array([False, False, True, True, False])  # is_sim_active
+        sim_is_associated_to = [3, 3, -2, -2, 2]  # sim_is_associated_to
 
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
@@ -177,6 +179,8 @@ class TestGlobalAdaptivity(TestCase):
             configurator, 5, global_ids, rank=self._rank, comm=self._comm
         )
 
-        adaptivity_controller._communicate_micro_output(adaptivity_data, sim_output)
+        adaptivity_controller._communicate_micro_output(
+            is_sim_active, sim_is_associated_to, sim_output
+        )
 
         self.assertTrue(np.array_equal(expected_sim_output, sim_output))

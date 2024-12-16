@@ -106,10 +106,7 @@ class MicroManagerCoupling(MicroManager):
         self._is_adaptivity_on = self._config.turn_on_adaptivity()
 
         if self._is_adaptivity_on:
-            self._number_of_sims_for_adaptivity: int = 0
-
             self._data_for_adaptivity: Dict[str, np.ndarray] = dict()
-            self._adaptivity_type = self._config.get_adaptivity_type()
 
             self._adaptivity_data_names = self._config.get_data_for_adaptivity()
 
@@ -153,49 +150,22 @@ class MicroManagerCoupling(MicroManager):
         """
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
-        adaptivity_data_cp: list = []
         sim_states_cp = [None] * self._local_number_of_sims
 
         micro_sim_solve = self._get_solve_variant()
 
         dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
-        # adaptivity_data is a list of numpy arrays:
-        # 1. similarity_dists (2D array having similarity distances between each micro simulation pair)
-        # 2. is_sim_active (1D array having state (active or inactive) of each micro simulation)
-        # 3. sim_is_associated_to (1D array with values of associated simulations of inactive simulations. Active simulations have None)
-        adaptivity_data: list = []
-
         if self._is_adaptivity_on:
-            adaptivity_data.append(
-                np.zeros(
-                    (
-                        self._number_of_sims_for_adaptivity,
-                        self._number_of_sims_for_adaptivity,
-                    )
-                )
-            )
-
-            # Start adaptivity calculation with all sims active
-            adaptivity_data.append(
-                np.array([True] * self._number_of_sims_for_adaptivity)
-            )
-
-            # Active sims do not have an associated sim
-            adaptivity_data.append(
-                np.full((self._number_of_sims_for_adaptivity), -2, dtype=np.intc)
-            )
-
             # If micro simulations have been initialized, compute adaptivity before starting the coupling
             if self._micro_sims_init:
                 self._logger.log_info_one_rank(
                     "Micro simulations have been initialized, so adaptivity will be computed before the coupling begins."
                 )
 
-                adaptivity_data = self._adaptivity_controller.compute_adaptivity(
+                self._adaptivity_controller.compute_adaptivity(
                     dt,
                     self._micro_sims,
-                    adaptivity_data,
                     self._data_for_adaptivity,
                 )
 
@@ -215,21 +185,19 @@ class MicroManagerCoupling(MicroManager):
                 if self._is_adaptivity_on:
                     if not self._adaptivity_in_every_implicit_step:
                         start_time = time.process_time()
-                        adaptivity_data = (
-                            self._adaptivity_controller.compute_adaptivity(
-                                dt,
-                                self._micro_sims,
-                                adaptivity_data,
-                                self._data_for_adaptivity,
-                            )
+                        self._adaptivity_controller.compute_adaptivity(
+                            dt,
+                            self._micro_sims,
+                            self._data_for_adaptivity,
                         )
+
                         end_time = time.process_time()
 
                         adaptivity_cpu_time = end_time - start_time
 
                         # Only checkpoint the adaptivity configuration if adaptivity is computed
                         # once in every time window
-                        adaptivity_data_cp = deepcopy(adaptivity_data)
+                        self._adaptivity_controller.write_checkpoint()
 
                         active_sim_ids = (
                             self._adaptivity_controller.get_active_sim_ids()
@@ -240,7 +208,7 @@ class MicroManagerCoupling(MicroManager):
 
             micro_sims_input = self._read_data_from_precice(dt)
 
-            micro_sims_output = micro_sim_solve(micro_sims_input, dt, adaptivity_data)
+            micro_sims_output = micro_sim_solve(micro_sims_input, dt)
 
             if self._output_adaptivity_cpu_time:
                 for i in range(self._local_number_of_sims):
@@ -288,7 +256,7 @@ class MicroManagerCoupling(MicroManager):
                 # If adaptivity is computed only once per time window, the states of sims need to be reset too
                 if self._is_adaptivity_on:
                     if not self._adaptivity_in_every_implicit_step:
-                        adaptivity_data = deepcopy(adaptivity_data_cp)
+                        self._adaptivity_controller.read_checkpoint()
 
             if (
                 self._participant.is_time_window_complete()
@@ -303,7 +271,7 @@ class MicroManagerCoupling(MicroManager):
                     and n % self._adaptivity_output_n == 0
                     and self._rank == 0
                 ):
-                    self._adaptivity_controller.log_metrics(adaptivity_data, n)
+                    self._adaptivity_controller.log_metrics(n)
 
                 self._logger.log_info_one_rank("Time window {} converged.".format(n))
 
@@ -441,12 +409,13 @@ class MicroManagerCoupling(MicroManager):
             )
 
         if self._is_adaptivity_on:
-            if self._adaptivity_type == "local":
+            if self._config.get_adaptivity_type() == "local":
                 self._adaptivity_controller: LocalAdaptivityCalculator = (
-                    LocalAdaptivityCalculator(self._config, self._comm)
+                    LocalAdaptivityCalculator(
+                        self._config, self._comm, self._local_number_of_sims
+                    )
                 )
-                self._number_of_sims_for_adaptivity = self._local_number_of_sims
-            elif self._adaptivity_type == "global":
+            elif self._config.get_adaptivity_type() == "global":
                 self._adaptivity_controller: GlobalAdaptivityCalculator = (
                     GlobalAdaptivityCalculator(
                         self._config,
@@ -456,7 +425,6 @@ class MicroManagerCoupling(MicroManager):
                         self._comm,
                     )
                 )
-                self._number_of_sims_for_adaptivity = self._global_number_of_sims
 
             self._micro_sims_active_steps = np.zeros(
                 self._local_number_of_sims
@@ -662,9 +630,7 @@ class MicroManagerCoupling(MicroManager):
                     self._macro_mesh_name, dname, [], np.array([])
                 )
 
-    def _solve_micro_simulations(
-        self, micro_sims_input: list, dt: float, adaptivity_data=None
-    ) -> list:
+    def _solve_micro_simulations(self, micro_sims_input: list, dt: float) -> list:
         """
         Solve all micro simulations and assemble the micro simulations outputs in a list of dicts format.
 
@@ -675,8 +641,6 @@ class MicroManagerCoupling(MicroManager):
             solve a micro simulation.
         dt : float
             Time step size.
-        adaptivity_data : list
-            Dummy parameter to match the signature of the function with the function _solve_micro_simulations_with_adaptivity.
 
         Returns
         -------
@@ -743,10 +707,7 @@ class MicroManagerCoupling(MicroManager):
         return micro_sims_output
 
     def _solve_micro_simulations_with_adaptivity(
-        self,
-        micro_sims_input: list,
-        dt: float,
-        adaptivity_data: list,
+        self, micro_sims_input: list, dt: float
     ) -> list:
         """
         Adaptively solve micro simulations and assemble the micro simulations outputs in a list of dicts format.
@@ -758,8 +719,6 @@ class MicroManagerCoupling(MicroManager):
             solve a micro simulation.
         dt : float
             Time step size.
-        adaptivity_data : list
-            List of numpy arrays: similarity_dists (2D array having similarity distances between each micro simulation pair), is_sim_active (1D array having state (active or inactive) of each micro simulation), sim_is_associated_to (1D array with values of associated simulations of inactive simulations. Active simulations have None)
 
         Returns
         -------
@@ -768,26 +727,19 @@ class MicroManagerCoupling(MicroManager):
             simulations.
         """
         if self._adaptivity_in_every_implicit_step:
-            adaptivity_data = self._adaptivity_controller.compute_adaptivity(
+            self._adaptivity_controller.compute_adaptivity(
                 dt,
                 self._micro_sims,
-                adaptivity_data,
                 self._data_for_adaptivity,
             )
 
-            active_sim_ids = self._adaptivity_controller.get_active_sim_ids(
-                adaptivity_data[1]
-            )
+            active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
 
             for active_id in active_sim_ids:
                 self._micro_sims_active_steps[active_id] += 1
 
-        active_sim_ids = self._adaptivity_controller.get_active_sim_ids(
-            adaptivity_data[1]
-        )
-        inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids(
-            adaptivity_data[1]
-        )
+        active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+        inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
 
         micro_sims_output = [None] * self._local_number_of_sims
 
@@ -857,7 +809,7 @@ class MicroManagerCoupling(MicroManager):
                 )
 
         micro_sims_output = self._adaptivity_controller.get_full_field_micro_output(
-            adaptivity_data, micro_sims_output
+            micro_sims_output
         )
 
         # Resolve micro sim output data for inactive simulations
@@ -877,7 +829,7 @@ class MicroManagerCoupling(MicroManager):
 
         return micro_sims_output
 
-    def _get_solve_variant(self) -> Callable[[list, float, list], list]:
+    def _get_solve_variant(self) -> Callable[[list, float], list]:
         """
         Get the solve variant function based on the adaptivity type.
 
