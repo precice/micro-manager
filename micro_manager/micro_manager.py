@@ -17,7 +17,6 @@ import os
 import sys
 import time
 import inspect
-from copy import deepcopy
 from typing import Dict
 from warnings import warn
 from typing import Callable
@@ -412,7 +411,7 @@ class MicroManagerCoupling(MicroManager):
             if self._config.get_adaptivity_type() == "local":
                 self._adaptivity_controller: LocalAdaptivityCalculator = (
                     LocalAdaptivityCalculator(
-                        self._config, self._comm, self._local_number_of_sims
+                        self._config, self._rank, self._comm, self._local_number_of_sims
                     )
                 )
             elif self._config.get_adaptivity_type() == "global":
