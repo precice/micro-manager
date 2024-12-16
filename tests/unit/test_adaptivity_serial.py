@@ -68,7 +68,7 @@ class TestLocalAdaptivity(TestCase):
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        adaptivity_controller = AdaptivityCalculator(configurator)
+        adaptivity_controller = AdaptivityCalculator(configurator, 0)
         adaptivity_controller._hist_param = 0.5
         adaptivity_controller._adaptivity_data_names = [
             "micro-scalar-data",
@@ -102,7 +102,7 @@ class TestLocalAdaptivity(TestCase):
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        adaptivity_controller = AdaptivityCalculator(configurator)
+        adaptivity_controller = AdaptivityCalculator(configurator, 0)
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
@@ -127,7 +127,7 @@ class TestLocalAdaptivity(TestCase):
         """
         Test functionality for calculating similarity criteria between pairs of simulations using different norms in class AdaptivityCalculator.
         """
-        calc = AdaptivityCalculator(Config("micro-manager-config.json"))
+        calc = AdaptivityCalculator(Config("micro-manager-config.json"), 0)
 
         fake_data = np.array([[1], [2], [3]])
         self.assertTrue(
@@ -208,7 +208,7 @@ class TestLocalAdaptivity(TestCase):
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        adaptivity_controller = AdaptivityCalculator(configurator)
+        adaptivity_controller = AdaptivityCalculator(configurator, 0)
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
@@ -235,7 +235,9 @@ class TestLocalAdaptivity(TestCase):
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        adaptivity_controller = LocalAdaptivityCalculator(configurator, MagicMock())
+        adaptivity_controller = LocalAdaptivityCalculator(
+            configurator, 0, MagicMock(), 5
+        )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
