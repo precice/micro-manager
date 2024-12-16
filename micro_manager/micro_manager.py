@@ -238,12 +238,10 @@ class MicroManagerCoupling(MicroManager):
 
             self._write_data_to_precice(micro_sims_output)
 
-            t += dt  # increase internal time when time step is done.
-            n += 1  # increase counter
+            t += dt
+            n += 1
 
-            self._participant.advance(
-                dt
-            )  # notify preCICE that time step of size dt is complete
+            self._participant.advance(dt)
 
             # Revert micro simulations to their last checkpoints if required
             if self._participant.requires_reading_checkpoint():
