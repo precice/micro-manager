@@ -668,7 +668,7 @@ class MicroManagerCoupling(MicroManager):
                         )
 
                     if self._is_micro_solve_mem_use_required:
-                        micro_sims_output[count]["memory_use"] = post_peak - pre_peak
+                        micro_sims_output[count]["solve_mem_use"] = post_peak - pre_peak
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
