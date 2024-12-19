@@ -168,9 +168,9 @@ class MicroManagerCoupling(MicroManager):
                     self._data_for_adaptivity,
                 )
 
-        while self._participant.is_coupling_ongoing():
+        adaptivity_cpu_time = 0.0
 
-            adaptivity_cpu_time = 0.0
+        while self._participant.is_coupling_ongoing():
 
             dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
