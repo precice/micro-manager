@@ -209,6 +209,12 @@ class MicroManagerCoupling(MicroManager):
 
             micro_sims_output = micro_sim_solve(micro_sims_input, dt)
 
+            print(
+                "Rank {}: adaptivity_cpu_time: {}".format(
+                    self._rank, adaptivity_cpu_time
+                )
+            )
+
             if self._output_adaptivity_cpu_time:
                 for i in range(self._local_number_of_sims):
                     micro_sims_output[i]["adaptivity_cpu_time"] = adaptivity_cpu_time
