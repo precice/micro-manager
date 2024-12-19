@@ -23,6 +23,7 @@ from typing import Callable
 
 import numpy as np
 import time
+import tracemalloc
 
 import precice
 
@@ -76,8 +77,8 @@ class MicroManagerCoupling(MicroManager):
 
         self._is_micro_solve_mem_use_required = self._config.write_micro_mem_use()
 
-        if self._is_micro_solve_mem_use_required:
-            tracemalloc = importlib.import_module("tracemalloc")
+        # if self._is_micro_solve_mem_use_required:
+        #     tracemalloc = importlib.import_module("tracemalloc")
 
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
@@ -648,19 +649,26 @@ class MicroManagerCoupling(MicroManager):
         """
         micro_sims_output: list[dict] = [None] * self._local_number_of_sims
 
+        tracemalloc.reset_peak()
+
         for count, sim in enumerate(self._micro_sims):
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[count]:
                 # Attempt to solve the micro simulation
                 try:
                     start_time = time.process_time()
+                    pre_size, pre_peak = tracemalloc.get_traced_memory()
                     micro_sims_output[count] = sim.solve(micro_sims_input[count], dt)
+                    post_size, post_peak = tracemalloc.get_traced_memory()
                     end_time = time.process_time()
                     # Write solve time of the macro simulation if required and the simulation has not crashed
                     if self._is_micro_solve_time_required:
                         micro_sims_output[count]["solve_cpu_time"] = (
                             end_time - start_time
                         )
+
+                    if self._is_micro_solve_mem_use_required:
+                        micro_sims_output[count]["memory_use"] = post_peak - pre_peak
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
