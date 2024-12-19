@@ -656,11 +656,11 @@ class MicroManagerCoupling(MicroManager):
             if not self._has_sim_crashed[count]:
                 # Attempt to solve the micro simulation
                 try:
+                    _, pre_peak = tracemalloc.get_traced_memory()
                     start_time = time.process_time()
-                    pre_size, pre_peak = tracemalloc.get_traced_memory()
                     micro_sims_output[count] = sim.solve(micro_sims_input[count], dt)
-                    post_size, post_peak = tracemalloc.get_traced_memory()
                     end_time = time.process_time()
+                    _, post_peak = tracemalloc.get_traced_memory()
                     # Write solve time of the macro simulation if required and the simulation has not crashed
                     if self._is_micro_solve_time_required:
                         micro_sims_output[count]["solve_cpu_time"] = (
@@ -761,15 +761,22 @@ class MicroManagerCoupling(MicroManager):
             if not self._has_sim_crashed[active_id]:
                 # Attempt to solve the micro simulation
                 try:
+                    _, pre_peak = tracemalloc.get_traced_memory()
                     start_time = time.process_time()
                     micro_sims_output[active_id] = self._micro_sims[active_id].solve(
                         micro_sims_input[active_id], dt
                     )
                     end_time = time.process_time()
+                    _, post_peak = tracemalloc.get_traced_memory()
                     # Write solve time of the macro simulation if required and the simulation has not crashed
                     if self._is_micro_solve_time_required:
                         micro_sims_output[active_id]["solve_cpu_time"] = (
                             end_time - start_time
+                        )
+
+                    if self._is_micro_solve_mem_use_required:
+                        micro_sims_output[active_id]["solve_mem_use"] = (
+                            post_peak - pre_peak
                         )
 
                     # Mark the micro sim as active for export
@@ -837,6 +844,9 @@ class MicroManagerCoupling(MicroManager):
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[inactive_id]["solve_cpu_time"] = 0
+
+            if self._is_micro_solve_mem_use_required:
+                micro_sims_output[inactive_id]["solve_mem_use"] = 0
 
         # Collect micro sim output for adaptivity calculation
         for i in range(self._local_number_of_sims):
