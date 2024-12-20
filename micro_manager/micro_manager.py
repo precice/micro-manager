@@ -649,7 +649,7 @@ class MicroManagerCoupling(MicroManager):
         """
         micro_sims_output: list[dict] = [None] * self._local_number_of_sims
 
-        tracemalloc.reset_peak()
+        tracemalloc.start()
 
         for count, sim in enumerate(self._micro_sims):
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
@@ -710,6 +710,8 @@ class MicroManagerCoupling(MicroManager):
                     micro_sims_input, micro_sims_output, unset_sim
                 )
 
+        tracemalloc.reset_peak()
+
         return micro_sims_output, 0.0
 
     def _solve_micro_simulations_with_adaptivity(
@@ -754,6 +756,8 @@ class MicroManagerCoupling(MicroManager):
         inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
 
         micro_sims_output = [None] * self._local_number_of_sims
+
+        tracemalloc.reset_peak()
 
         # Solve all active micro simulations
         for active_id in active_sim_ids:
