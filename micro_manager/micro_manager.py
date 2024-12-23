@@ -23,7 +23,6 @@ from typing import Callable
 
 import numpy as np
 import time
-import tracemalloc
 
 import precice
 
@@ -742,8 +741,6 @@ class MicroManagerCoupling(MicroManager):
         inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
 
         micro_sims_output = [None] * self._local_number_of_sims
-
-        tracemalloc.reset_peak()
 
         # Solve all active micro simulations
         for active_id in active_sim_ids:
