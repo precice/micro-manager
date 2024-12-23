@@ -75,11 +75,6 @@ class MicroManagerCoupling(MicroManager):
 
         self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
-        self._is_micro_solve_mem_use_required = self._config.write_micro_mem_use()
-
-        # if self._is_micro_solve_mem_use_required:
-        #     tracemalloc = importlib.import_module("tracemalloc")
-
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
         self._macro_bounds = self._config.get_macro_domain_bounds()
@@ -649,26 +644,19 @@ class MicroManagerCoupling(MicroManager):
         """
         micro_sims_output: list[dict] = [None] * self._local_number_of_sims
 
-        tracemalloc.start()
-
         for count, sim in enumerate(self._micro_sims):
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[count]:
                 # Attempt to solve the micro simulation
                 try:
-                    _, pre_peak = tracemalloc.get_traced_memory()
                     start_time = time.process_time()
                     micro_sims_output[count] = sim.solve(micro_sims_input[count], dt)
                     end_time = time.process_time()
-                    _, post_peak = tracemalloc.get_traced_memory()
                     # Write solve time of the macro simulation if required and the simulation has not crashed
                     if self._is_micro_solve_time_required:
                         micro_sims_output[count]["solve_cpu_time"] = (
                             end_time - start_time
                         )
-
-                    if self._is_micro_solve_mem_use_required:
-                        micro_sims_output[count]["solve_mem_use"] = post_peak - pre_peak
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
@@ -709,8 +697,6 @@ class MicroManagerCoupling(MicroManager):
                 micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
                     micro_sims_input, micro_sims_output, unset_sim
                 )
-
-        tracemalloc.reset_peak()
 
         return micro_sims_output, 0.0
 
@@ -765,22 +751,15 @@ class MicroManagerCoupling(MicroManager):
             if not self._has_sim_crashed[active_id]:
                 # Attempt to solve the micro simulation
                 try:
-                    _, pre_peak = tracemalloc.get_traced_memory()
                     start_time = time.process_time()
                     micro_sims_output[active_id] = self._micro_sims[active_id].solve(
                         micro_sims_input[active_id], dt
                     )
                     end_time = time.process_time()
-                    _, post_peak = tracemalloc.get_traced_memory()
                     # Write solve time of the macro simulation if required and the simulation has not crashed
                     if self._is_micro_solve_time_required:
                         micro_sims_output[active_id]["solve_cpu_time"] = (
                             end_time - start_time
-                        )
-
-                    if self._is_micro_solve_mem_use_required:
-                        micro_sims_output[active_id]["solve_mem_use"] = (
-                            post_peak - pre_peak
                         )
 
                     # Mark the micro sim as active for export
@@ -848,9 +827,6 @@ class MicroManagerCoupling(MicroManager):
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[inactive_id]["solve_cpu_time"] = 0
-
-            if self._is_micro_solve_mem_use_required:
-                micro_sims_output[inactive_id]["solve_mem_use"] = 0
 
         # Collect micro sim output for adaptivity calculation
         for i in range(self._local_number_of_sims):
