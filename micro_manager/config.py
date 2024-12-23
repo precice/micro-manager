@@ -38,7 +38,6 @@ class Config:
         self._diagnostics_data_names = dict()
 
         self._output_micro_sim_time = False
-        self._output_micro_mem_use = False
 
         self._interpolate_crash = False
 
@@ -141,18 +140,6 @@ class Config:
         except BaseException:
             self._logger.log_info_one_rank(
                 "Micro manager will not output time required to solve each micro simulation."
-            )
-
-        try:
-            if self._data["diagnostics"]["output_micro_sim_solve_mem_use"] == "True":
-                self._output_micro_mem_use = True
-                self._write_data_names["solve_mem_use"] = False
-                self._logger.log_info_one_rank(
-                    "Calculating memory usage of the solve call of each micro micro simulation will slow down the Micro Manager. This option is intended for diagnostic purposes."
-                )
-        except BaseException:
-            self._logger.log_info_one_rank(
-                "Micro manager will not output memory usage for solving each micro simulation."
             )
 
     def read_json_micro_manager(self):
@@ -483,17 +470,6 @@ class Config:
             True if micro simulation solve time is required.
         """
         return self._output_micro_sim_time
-
-    def write_micro_mem_use(self):
-        """
-        Depending on user input, micro manager will calculate memory usage of solve() step of every micro simulation
-
-        Returns
-        -------
-        output_micro_mem_use : bool
-            True if micro simulation memory usage is required.
-        """
-        return self._output_micro_mem_use
 
     def turn_on_adaptivity(self):
         """

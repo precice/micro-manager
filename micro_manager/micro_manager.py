@@ -74,11 +74,6 @@ class MicroManagerCoupling(MicroManager):
 
         self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
-        self._is_micro_solve_mem_use_required = self._config.write_micro_mem_use()
-
-        if self._is_micro_solve_mem_use_required:
-            tracemalloc = importlib.import_module("tracemalloc")
-
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
         self._macro_bounds = self._config.get_macro_domain_bounds()
@@ -168,9 +163,9 @@ class MicroManagerCoupling(MicroManager):
                     self._data_for_adaptivity,
                 )
 
-        while self._participant.is_coupling_ongoing():
+        adaptivity_cpu_time = 0.0
 
-            adaptivity_cpu_time = 0.0
+        while self._participant.is_coupling_ongoing():
 
             dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
@@ -207,9 +202,10 @@ class MicroManagerCoupling(MicroManager):
 
             micro_sims_input = self._read_data_from_precice(dt)
 
-            micro_sims_output = micro_sim_solve(micro_sims_input, dt)
+            micro_sims_output, adaptivity_time = micro_sim_solve(micro_sims_input, dt)
 
             if self._output_adaptivity_cpu_time:
+                adaptivity_cpu_time += adaptivity_time
                 for i in range(self._local_number_of_sims):
                     micro_sims_output[i]["adaptivity_cpu_time"] = adaptivity_cpu_time
 
@@ -627,7 +623,7 @@ class MicroManagerCoupling(MicroManager):
                     self._macro_mesh_name, dname, [], np.array([])
                 )
 
-    def _solve_micro_simulations(self, micro_sims_input: list, dt: float) -> list:
+    def _solve_micro_simulations(self, micro_sims_input: list, dt: float) -> tuple:
         """
         Solve all micro simulations and assemble the micro simulations outputs in a list of dicts format.
 
@@ -701,11 +697,11 @@ class MicroManagerCoupling(MicroManager):
                     micro_sims_input, micro_sims_output, unset_sim
                 )
 
-        return micro_sims_output
+        return micro_sims_output, 0.0
 
     def _solve_micro_simulations_with_adaptivity(
         self, micro_sims_input: list, dt: float
-    ) -> list:
+    ) -> tuple:
         """
         Adaptively solve micro simulations and assemble the micro simulations outputs in a list of dicts format.
 
@@ -723,12 +719,18 @@ class MicroManagerCoupling(MicroManager):
             List of dicts in which keys are names of data and the values are the data of the output of the micro
             simulations.
         """
+        adaptivity_cpu_time = 0.0
+
         if self._adaptivity_in_every_implicit_step:
+            start_time = time.process_time()
             self._adaptivity_controller.compute_adaptivity(
                 dt,
                 self._micro_sims,
                 self._data_for_adaptivity,
             )
+            end_time = time.process_time()
+
+            adaptivity_cpu_time = end_time - start_time
 
             active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
 
@@ -805,9 +807,13 @@ class MicroManagerCoupling(MicroManager):
                     micro_sims_input, micro_sims_output, unset_sim, active_sim_ids
                 )
 
+        start_time = time.process_time()
         micro_sims_output = self._adaptivity_controller.get_full_field_micro_output(
             micro_sims_output
         )
+        end_time = time.process_time()
+
+        adaptivity_cpu_time += end_time - start_time
 
         # Resolve micro sim output data for inactive simulations
         for inactive_id in inactive_sim_ids:
@@ -824,7 +830,7 @@ class MicroManagerCoupling(MicroManager):
             for name in self._adaptivity_micro_data_names:
                 self._data_for_adaptivity[name][i] = micro_sims_output[i][name]
 
-        return micro_sims_output
+        return micro_sims_output, adaptivity_cpu_time
 
     def _get_solve_variant(self) -> Callable[[list, float], list]:
         """
