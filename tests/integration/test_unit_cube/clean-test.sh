@@ -9,3 +9,4 @@ rm -fv *.err
 rm -fv output/*.vtu
 rm -fv output/*.pvtu
 rm -r -fv __pycache__
+rm -fv *.csv

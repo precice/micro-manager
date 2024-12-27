@@ -1,7 +1,7 @@
 {
     "micro_file_name": "test_micro_manager",
     "coupling_params": {
-        "config_file_name": "dummy-config.xml",
+        "precice_config_file_name": "dummy-config.xml",
         "macro_mesh_name": "dummy-macro-mesh",
         "read_data_names": {"macro-scalar-data": "scalar", "macro-vector-data": "vector"},
         "write_data_names": {"micro-scalar-data": "scalar", "micro-vector-data": "vector"}

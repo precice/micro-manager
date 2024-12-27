@@ -5,12 +5,13 @@ import sys
 from math import exp
 from typing import Callable
 from warnings import warn
+from micro_manager.tools.logging_wrapper import Logger
 
 import numpy as np
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, logger) -> None:
+    def __init__(self, configurator, rank) -> None:
         """
         Class constructor.
 
@@ -18,7 +19,8 @@ class AdaptivityCalculator:
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
-        logger : Logger defined from the standard package logging
+        rank : int
+            Rank of the MPI communicator.
         """
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
@@ -27,13 +29,21 @@ class AdaptivityCalculator:
         self._adaptivity_type = configurator.get_adaptivity_type()
         self._micro_file_name = configurator.get_micro_file_name()
 
-        self._logger = logger
-
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
 
+        self._rank = rank
+
         self._similarity_measure = self._get_similarity_measure(
             configurator.get_adaptivity_similarity_measure()
+        )
+
+        self._metrics_logger = Logger(
+            "Adaptivity", "adaptivity-metrics.csv", rank, csv_logger=True
+        )
+
+        self._metrics_logger.log_info_one_rank(
+            "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive"
         )
 
     def _get_similarity_dists(
