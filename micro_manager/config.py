@@ -58,8 +58,6 @@ class Config:
         self._postprocessing_file_name = None
         self._initialize_once = False
 
-        self._output_micro_sim_time = False
-
     def set_logger(self, logger):
         """
         Set the logger for the Config class.
