@@ -68,6 +68,8 @@ class TestLocalAdaptivity(TestCase):
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.get_output_dir = MagicMock(return_value="output_dir")
+
         adaptivity_controller = AdaptivityCalculator(configurator, 0)
         adaptivity_controller._hist_param = 0.5
         adaptivity_controller._adaptivity_data_names = [
@@ -102,6 +104,8 @@ class TestLocalAdaptivity(TestCase):
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.get_output_dir = MagicMock(return_value="output_dir")
+
         adaptivity_controller = AdaptivityCalculator(configurator, 0)
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -208,6 +212,8 @@ class TestLocalAdaptivity(TestCase):
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.get_output_dir = MagicMock(return_value="output_dir")
+
         adaptivity_controller = AdaptivityCalculator(configurator, 0)
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -235,6 +241,8 @@ class TestLocalAdaptivity(TestCase):
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.get_output_dir = MagicMock(return_value="output_dir")
+
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator, 0, MagicMock(), 5
         )
