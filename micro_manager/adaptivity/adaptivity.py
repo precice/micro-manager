@@ -37,9 +37,16 @@ class AdaptivityCalculator:
             configurator.get_adaptivity_similarity_measure()
         )
 
-        self._metrics_logger = Logger(
-            "Adaptivity", "adaptivity-metrics.csv", rank, csv_logger=True
-        )
+        output_dir = configurator.get_output_dir()
+
+        if output_dir is not None:
+            self._metrics_logger = Logger(
+                __name__, output_dir + "adaptivity-metrics.csv", rank, csv_logger=True
+            )
+        else:
+            self._metrics_logger = Logger(
+                __name__, "adaptivity-metrics.csv", rank=rank, csv_logger=True
+            )
 
         self._metrics_logger.log_info_one_rank(
             "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive"
