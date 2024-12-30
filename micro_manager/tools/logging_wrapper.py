@@ -44,9 +44,10 @@ class Logger:
             formatter = logging.Formatter("%(message)s")
         else:
             formatter = logging.Formatter(
-                "["
+                "("
                 + str(self._rank)
-                + "] %(asctime)s - %(name)s - %(levelname)s - %(message)s"
+                + ") %(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                datefmt="%m/%d/%Y %I:%M:%S %p",
             )
 
         handler.setFormatter(formatter)
