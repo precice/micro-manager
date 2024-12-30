@@ -58,6 +58,8 @@ class Config:
         self._postprocessing_file_name = None
         self._initialize_once = False
 
+        self._output_dir = None
+
     def set_logger(self, logger):
         """
         Set the logger for the Config class.
@@ -90,6 +92,13 @@ class Config:
             .replace("\\", ".")
             .replace(".py", "")
         )
+
+        try:
+            self._output_dir = self._data["output_dir"]
+        except BaseException:
+            self._logger.log_info_one_rank(
+                "No output directory provided. Output (including logging) will be saved in the current working directory."
+            )
 
         try:
             self._write_data_names = self._data["coupling_params"]["write_data_names"]
@@ -640,3 +649,14 @@ class Config:
             True if initialization is done only once, False otherwise.
         """
         return self._initialize_once
+
+    def get_output_dir(self):
+        """
+        Get the name of the output directory.
+
+        Returns
+        -------
+        output_dir : string
+            Name of the output folder.
+        """
+        return self._output_dir
