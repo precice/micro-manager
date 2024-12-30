@@ -3,6 +3,7 @@
 Provides a logging wrapper for the Micro Manager classes.
 """
 import logging
+import sys
 
 
 class Logger:
@@ -33,7 +34,7 @@ class Logger:
         self._rank = rank
 
         if log_file is None:
-            handler = logging.StreamHandler()
+            handler = logging.StreamHandler(sys.stdout)
         else:
             handler = logging.FileHandler(log_file)
 
