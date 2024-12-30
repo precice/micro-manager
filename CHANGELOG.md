@@ -2,6 +2,7 @@
 
 ## latest
 
+- Set default logger to stdout and add output directory setting option for file loggers https://github.com/precice/micro-manager/pull/139
 - Remove the `adaptivity_data` data structure and handle all adaptivity data internally https://github.com/precice/micro-manager/pull/137
 - Improve logging by wrapping Python logger in a class https://github.com/precice/micro-manager/pull/133
 - Refactor large parts of solve and adaptivity to group datasets and simplify handling https://github.com/precice/micro-manager/pull/135
