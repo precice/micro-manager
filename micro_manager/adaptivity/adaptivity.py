@@ -5,6 +5,7 @@ import sys
 from math import exp
 from typing import Callable
 from warnings import warn
+import subprocess
 from micro_manager.tools.logging_wrapper import Logger
 
 import numpy as np
@@ -40,8 +41,9 @@ class AdaptivityCalculator:
         output_dir = configurator.get_output_dir()
 
         if output_dir is not None:
+            subprocess.run(["mkdir", "-p", output_dir])  # Create output directory
             self._metrics_logger = Logger(
-                __name__, output_dir + "adaptivity-metrics.csv", rank, csv_logger=True
+                __name__, output_dir + "/adaptivity-metrics.csv", rank, csv_logger=True
             )
         else:
             self._metrics_logger = Logger(

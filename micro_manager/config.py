@@ -650,7 +650,7 @@ class Config:
         """
         return self._initialize_once
 
-    def get_output_dir_name(self):
+    def get_output_dir(self):
         """
         Get the name of the output directory.
 
