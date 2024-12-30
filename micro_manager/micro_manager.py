@@ -57,7 +57,7 @@ class MicroManagerCoupling(MicroManager):
         """
         super().__init__(config_file)
 
-        self._logger = Logger(__name__, self._rank)
+        self._logger = Logger(__name__, None, self._rank)
 
         self._config.set_logger(self._logger)
         self._config.read_json_micro_manager()

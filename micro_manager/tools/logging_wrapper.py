@@ -21,7 +21,7 @@ class Logger:
         name : string
             Name of the logger.
         log_file : string
-            Name of the log file (default is "micro-manager.log").
+            Name of the log file (default is None).
         rank : int, optional
             Rank of the logger (default is 0).
         level : int, optional
