@@ -52,6 +52,7 @@ class Config:
         self._adaptivity_output_n = 1
         self._adaptivity_output_cpu_time = False
         self._adaptivity_output_mem_usage = False
+        self._adaptivity_is_load_balancing = False
 
         # Snapshot information
         self._parameter_file_name = None
@@ -259,6 +260,19 @@ class Config:
             if not self._adaptivity_every_implicit_iteration:
                 self._logger.log_info_one_rank(
                     "Micro Manager will compute adaptivity once at the start of every time window"
+                )
+
+            try:
+                if (
+                    self._data["simulation_params"]["adaptivity_settings"][
+                        "load_balancing"
+                    ]
+                    == "True"
+                ):
+                    self._adaptivity_is_load_balancing = True
+            except BaseException:
+                self._logger.log_info_one_rank(
+                    "Micro Manager will not dynamically balance work load for the adaptivity computation."
                 )
 
             self._write_data_names["active_state"] = False
@@ -593,6 +607,17 @@ class Config:
             True if CPU time of the adaptivity computation needs to be output, False otherwise.
         """
         return self._adaptivity_output_cpu_time
+
+    def is_adaptivity_with_load_balancing(self):
+        """
+        Check if adaptivity computation needs to be done with load balancing.
+
+        Returns
+        -------
+        adaptivity_is_load_balancing : bool
+            True if adaptivity computation needs to be done with load balancing, False otherwise.
+        """
+        return self._adaptivity_is_load_balancing
 
     def get_micro_dt(self):
         """

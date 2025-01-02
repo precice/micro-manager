@@ -26,12 +26,11 @@ import time
 
 import precice
 
-import csv
-
 from .micro_manager_base import MicroManager
 
 from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
+from .adaptivity.global_adaptivity_lb import GlobalAdaptivityLBCalculator
 
 from .domain_decomposition import DomainDecomposer
 
@@ -145,7 +144,6 @@ class MicroManagerCoupling(MicroManager):
         t, n = 0, 0
         t_checkpoint, n_checkpoint = 0, 0
         sim_states_cp = [None] * self._local_number_of_sims
-        number_of_active_sims = []
 
         micro_sim_solve = self._get_solve_variant()
 
@@ -270,21 +268,6 @@ class MicroManagerCoupling(MicroManager):
                 self._logger.log_info_one_rank("Time window {} converged.".format(n))
 
         self._participant.finalize()
-
-        if self._is_adaptivity_on:
-            avg_active_sims = np.mean(number_of_active_sims)
-
-            if self._rank == 0:
-                avg_active_sims_all_ranks = self._comm.gather(avg_active_sims, root=0)
-                with open(
-                    "active_sims_data.csv",
-                    "w",
-                    newline="",
-                ) as file:
-                    writer = csv.writer(file)
-                    writer.writerow(["Rank", "Average number of active simulations"])
-                    for i in range(self._size):
-                        writer.writerow([i, avg_active_sims_all_ranks[i]])
 
     def initialize(self) -> None:
         """
@@ -425,15 +408,26 @@ class MicroManagerCoupling(MicroManager):
                     )
                 )
             elif self._config.get_adaptivity_type() == "global":
-                self._adaptivity_controller: GlobalAdaptivityCalculator = (
-                    GlobalAdaptivityCalculator(
-                        self._config,
-                        self._global_number_of_sims,
-                        self._global_ids_of_local_sims,
-                        self._rank,
-                        self._comm,
+                if self._config._adaptivity_is_load_balancing():
+                    self._adaptivity_controller: GlobalAdaptivityLBCalculator = (
+                        GlobalAdaptivityLBCalculator(
+                            self._config,
+                            self._global_number_of_sims,
+                            self._global_ids_of_local_sims,
+                            self._rank,
+                            self._comm,
+                        )
                     )
-                )
+                else:
+                    self._adaptivity_controller: GlobalAdaptivityCalculator = (
+                        GlobalAdaptivityCalculator(
+                            self._config,
+                            self._global_number_of_sims,
+                            self._global_ids_of_local_sims,
+                            self._rank,
+                            self._comm,
+                        )
+                    )
 
             self._micro_sims_active_steps = np.zeros(
                 self._local_number_of_sims
