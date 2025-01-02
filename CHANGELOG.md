@@ -2,6 +2,18 @@
 
 ## latest
 
+- Set default logger to stdout and add output directory setting option for file loggers https://github.com/precice/micro-manager/pull/139
+- Remove the `adaptivity_data` data structure and handle all adaptivity data internally https://github.com/precice/micro-manager/pull/137
+- Improve logging by wrapping Python logger in a class https://github.com/precice/micro-manager/pull/133
+- Refactor large parts of solve and adaptivity to group datasets and simplify handling https://github.com/precice/micro-manager/pull/135
+- Add information about adaptivity tuning parameters https://github.com/precice/micro-manager/pull/131
+- Put computation of counting active steps inside the adaptivity variant `if` condition https://github.com/precice/micro-manager/pull/130
+
+## v0.5.0
+
+- Use absolute values to calculate normalizing factor for relative norms in adaptivity https://github.com/precice/micro-manager/pull/125
+- Add option to use only one micro simulation object in the snapshot computation https://github.com/precice/micro-manager/pull/123
+- Explicitly check if time window has converged using the API function `is_time_window_complete()` https://github.com/precice/micro-manager/pull/118
 - Add `MicroManagerSnapshot` enabling snapshot computation and storage of microdata in HDF5 format https://github.com/precice/micro-manager/pull/101
 - Make `sklearn` an optional dependency
 - Move the config variable `micro_dt` from the coupling parameters section to the simulation parameters section https://github.com/precice/micro-manager/pull/114

@@ -13,14 +13,14 @@ The Micro Manager is configured with a JSON file. An example configuration file 
 {
     "micro_file_name": "micro_solver",
     "coupling_params": {
-        "config_file_name": "precice-config.xml",
+        "precice_config_file_name": "precice-config.xml",
         "macro_mesh_name": "macro-mesh",
         "read_data_names": {"temperature": "scalar", "heat-flux": "vector"},
-        "write_data_names": {"porosity": "scalar", "conductivity": "vector"},
-        "micro_time_window_size": 1.0
+        "write_data_names": {"porosity": "scalar", "conductivity": "vector"}
     },
     "simulation_params": {
         "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
+        "micro_dt": 1.0
     },
     "diagnostics": {
       "output_micro_sim_solve_time": "True"
@@ -38,11 +38,10 @@ There are three main sections in the configuration file, the `coupling_params`, 
 
 Parameter | Description
 --- | ---
-`config_file_name` |  Path to the preCICE XML configuration file from the current working directory.
+`precice_config_file_name` |  Path to the preCICE XML configuration file from the current working directory.
 `macro_mesh_name` |  Name of the macro mesh as stated in the preCICE configuration.
 `read_data_names` |  A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"`  as values depending on the nature of the data.
 `write_data_names` |  A Python dictionary with the names of the data to be written to preCICE as keys and `"scalar"` or `"vector"`  as values depending on the nature of the data.
-`micro_dt` | Initial time window size (dt) of the micro simulation.
 
 ## Simulation Parameters
 
@@ -51,6 +50,7 @@ Parameter | Description
 `macro_domain_bounds`| Minimum and maximum bounds of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]` in 3D and `[xmin, xmax, ymin, ymax]` in 2D.
 Domain decomposition parameters | See section on [domain decomposition](#domain-decomposition). But default, the Micro Manager assumes that it will be run in serial.
 Adaptivity parameters | See section on [adaptivity](#adaptivity). By default, adaptivity is disabled.
+`micro_dt` | Initial time window size (dt) of the micro simulation.
 
 ## Diagnostics
 
@@ -74,14 +74,14 @@ If the parameter `data_from_micro_sims` is set, the data to be output needs to b
 </participant>
 ```
 
-If `output_micro_sim_solve_time` is set, add similar entries for the data `micro_sim_time` in the following way:
+If `output_micro_sim_solve_time` is set, add similar entries for the data `solve_cpu_time` in the following way:
 
 ```xml
-<data:scalar name="micro_sim_time"/>
+<data:scalar name="solve_cpu_time"/>
 
 <participant name="Micro-Manager">
   ...
-  <write-data name="micro_sim_time" mesh="macro-mesh"/>
+  <write-data name="solve_cpu_time" mesh="macro-mesh"/>
   <export:vtu directory="Micro-Manager-output" every-n-time-windows="5"/>
 </participant>
 ```
@@ -116,10 +116,17 @@ Parameter | Description
 `type` | Set to either `local` or `global`. The type of adaptivity matters when the Micro Manager is run in parallel. `local` means comparing micro simulations within a local partitioned domain for similarity. `global` means comparing micro simulations from all partitions, so over the entire domain.
 `data` | List of names of data which are to be used to calculate if micro-simulations are similar or not. For example `["temperature", "porosity"]`.
 `history_param` | History parameter $$ \Lambda $$, set as $$ \Lambda >= 0 $$.
-`coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ C_c < 1 $$.
-`refining_constant` | Refining constant $$ C_r $$, set as $$ C_r >= 0 $$.
+`coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ 0 =< C_c < 1 $$.
+`refining_constant` | Refining constant $$ C_r $$, set as $$ 0 =< C_r < 1 $$.
 `every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
 `similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.
+`output_cpu_time` | Write CPU time of the adaptivity computation to preCICE, to be exported. This parameter is *optional*.
+
+The primary tuning parameters for adaptivity are the history parameter $$ \Lambda $$, the coarsening constant $$ C_c $$, and the refining constant $$ C_r $$. Their effects can be interpreted as:
+
+- Higher values of the history parameter $$ \Lambda $$ imply lower significance of the similarity measures in the previous timestep on the similarity measure and thus adaptivity state in the current timestep.
+- Higher values of the coarsening constant $$ C_c $$ imply that more active simulations from the previous timestep will remain active in the current timestep.
+- Higher values of the refining constant $$ C_r $$ imply that less inactive points from the previous timestep will become active in the current timestep.
 
 Example of adaptivity configuration is
 
@@ -164,9 +171,11 @@ The Micro Manager uses the output functionality of preCICE, hence these data set
 </participant>
 ```
 
+If the parameter `output_cpu_time` in `adaptivity_settings` is set to `True`, a scalar data field `adaptivity_cpu_time` needs to be added in the same way as described above.
+
 ## Interpolate a crashed micro simulation
 
-If the optional dependency `sklearn' is installed, the Micro Manager will derive the output of a crashed micro simulation by interpolating outputs from similar simulations. To enable this, set
+If the optional dependency `sklearn` is installed, the Micro Manager will derive the output of a crashed micro simulation by interpolating outputs from similar simulations. To enable this, set
 `"interpolate_crash": "True"` in the `simulation_params` section of the configuration file.
 
 For more details on the interpolation see the [crash handling documentation](tooling-micro-manager-running.html/#what-happens-when-a-micro-simulation-crashes).

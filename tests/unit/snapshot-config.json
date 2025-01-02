@@ -9,6 +9,7 @@
         "micro_dt": 1.0
     },
     "snapshot_params": {
-        "post_processing_file_name": "snapshot_post_processing"
+        "post_processing_file_name": "snapshot_post_processing",
+        "initialize_once": "True"
     }
 }

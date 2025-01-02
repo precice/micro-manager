@@ -5,12 +5,14 @@ import sys
 from math import exp
 from typing import Callable
 from warnings import warn
+import subprocess
+from micro_manager.tools.logging_wrapper import Logger
 
 import numpy as np
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, logger) -> None:
+    def __init__(self, configurator, rank) -> None:
         """
         Class constructor.
 
@@ -18,7 +20,8 @@ class AdaptivityCalculator:
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
-        logger : Logger defined from the standard package logging
+        rank : int
+            Rank of the MPI communicator.
         """
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
@@ -26,13 +29,29 @@ class AdaptivityCalculator:
         self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
 
-        self._logger = logger
-
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
 
+        self._rank = rank
+
         self._similarity_measure = self._get_similarity_measure(
             configurator.get_adaptivity_similarity_measure()
+        )
+
+        output_dir = configurator.get_output_dir()
+
+        if output_dir is not None:
+            subprocess.run(["mkdir", "-p", output_dir])  # Create output directory
+            self._metrics_logger = Logger(
+                __name__, output_dir + "/adaptivity-metrics.csv", rank, csv_logger=True
+            )
+        else:
+            self._metrics_logger = Logger(
+                __name__, "adaptivity-metrics.csv", rank=rank, csv_logger=True
+            )
+
+        self._metrics_logger.log_info_one_rank(
+            "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive"
         )
 
     def _get_similarity_dists(
@@ -61,7 +80,7 @@ class AdaptivityCalculator:
         for name in data.keys():
             data_vals = data[name]
             if data_vals.ndim == 1:
-                # If the adaptivity-data is a scalar for each simulation,
+                # If the adaptivity data is a scalar for each simulation,
                 # expand the dimension to make it a 2D array to unify the calculation.
                 # The axis is later reduced with a norm.
                 data_vals = np.expand_dims(data_vals, axis=1)
@@ -274,7 +293,7 @@ class AdaptivityCalculator:
     def _l1rel(self, data: np.ndarray) -> np.ndarray:
         """
         Calculate L1 norm of relative difference of data.
-        The relative difference is calculated by dividing the difference of two data points by the maximum of the two data points.
+        The relative difference is calculated by dividing the difference of two data points by the maximum of the absolute value of the two data points.
 
         Parameters
         ----------
@@ -288,16 +307,21 @@ class AdaptivityCalculator:
         """
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
-        # divide i,j by max(data[i],data[j]) to get relative difference
+        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
         relative = np.nan_to_num(
-            (pointwise_diff / np.maximum(data[np.newaxis, :], data[:, np.newaxis]))
+            (
+                pointwise_diff
+                / np.maximum(
+                    np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
+                )
+            )
         )
         return np.linalg.norm(relative, ord=1, axis=-1)
 
     def _l2rel(self, data: np.ndarray) -> np.ndarray:
         """
         Calculate L2 norm of relative difference of data.
-        The relative difference is calculated by dividing the difference of two data points by the maximum of the two data points.
+        The relative difference is calculated by dividing the difference of two data points by the maximum of the absolute value of the two data points.
 
         Parameters
         ----------
@@ -311,8 +335,13 @@ class AdaptivityCalculator:
         """
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
-        # divide i,j by max(data[i],data[j]) to get relative difference
+        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
         relative = np.nan_to_num(
-            (pointwise_diff / np.maximum(data[np.newaxis, :], data[:, np.newaxis]))
+            (
+                pointwise_diff
+                / np.maximum(
+                    np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
+                )
+            )
         )
         return np.linalg.norm(relative, ord=2, axis=-1)

@@ -219,7 +219,7 @@ class ReadWriteHDF:
 
     def set_status(self, file_path: str, status: str):
         """
-        Set the status of the file to "finished" to indicate that it is no longer accessed.
+        Set the status of file to the given status.
 
         Parameters
         ----------
