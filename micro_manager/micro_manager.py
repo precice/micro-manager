@@ -635,9 +635,8 @@ class MicroManagerCoupling(MicroManager):
 
         Returns
         -------
-        micro_sims_output : list
-            List of dicts in which keys are names of data and the values are the data of the output of the micro
-            simulations.
+        tuple
+            A tuple of micro_sims_output (list of Dicts) and dummy adaptivity computation CPU time.
         """
         micro_sims_output: list[dict] = [None] * self._local_number_of_sims
 
@@ -713,9 +712,8 @@ class MicroManagerCoupling(MicroManager):
 
         Returns
         -------
-        micro_sims_output : list
-            List of dicts in which keys are names of data and the values are the data of the output of the micro
-            simulations.
+        tuple
+            A tuple of micro_sims_output (list of Dicts) and adaptivity computation CPU time.
         """
         adaptivity_cpu_time = 0.0
 

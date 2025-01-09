@@ -18,6 +18,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
+        rank : int
+            Rank of the current MPI process.
         comm : MPI.COMM_WORLD
             Global communicator of MPI.
         num_sims : int
@@ -142,6 +144,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         Parameters
         ----------
+        n : int
+            Current time step
         """
         # MPI Gather is necessary as local adaptivity only stores local data
         local_active_sims = np.count_nonzero(self._is_sim_active)
