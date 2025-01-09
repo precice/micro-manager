@@ -119,6 +119,10 @@ class MicroManagerCoupling(MicroManager):
             )
             self._micro_sims_active_steps = None
 
+            self._is_adaptivity_with_load_balancing = (
+                self._config.is_adaptivity_with_load_balancing()
+            )
+
         self._adaptivity_output_n = self._config.get_adaptivity_output_n()
         self._output_adaptivity_cpu_time = self._config.output_adaptivity_cpu_time()
 
@@ -294,9 +298,14 @@ class MicroManagerCoupling(MicroManager):
         else:
             coupling_mesh_bounds = self._macro_bounds
 
-        self._participant.set_mesh_access_region(
-            self._macro_mesh_name, coupling_mesh_bounds
-        )
+        if not self._is_adaptivity_with_load_balancing:
+            self._participant.set_mesh_access_region(
+                self._macro_mesh_name, coupling_mesh_bounds
+            )
+        else:  # When load balancing is on, each rank accesses the complete macro mesh
+            self._participant.set_mesh_access_region(
+                self._macro_mesh_name, self._macro_bounds
+            )
 
         # initialize preCICE
         self._participant.initialize()
@@ -307,7 +316,15 @@ class MicroManagerCoupling(MicroManager):
         ) = self._participant.get_mesh_vertex_ids_and_coordinates(self._macro_mesh_name)
         assert self._mesh_vertex_coords.size != 0, "Macro mesh has no vertices."
 
-        self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
+        if not self._is_adaptivity_with_load_balancing:
+            self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
+        else:  # When load balancing, each rank needs to manually determine how many micro simulations it starts with
+            total_number_of_sims, _ = self._mesh_vertex_coords.shape
+            quotient, remainder = divmod(total_number_of_sims, self._size)  # cp
+            cpu_wise_number_of_sims = [quotient + 1] * remainder + [quotient] * (
+                self._size - remainder
+            )  # cp
+            self._local_number_of_sims = cpu_wise_number_of_sims[self._rank]
 
         if self._local_number_of_sims == 0:
             if self._is_parallel:

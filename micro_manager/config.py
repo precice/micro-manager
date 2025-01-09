@@ -53,6 +53,7 @@ class Config:
         self._adaptivity_output_cpu_time = False
         self._adaptivity_output_mem_usage = False
         self._adaptivity_is_load_balancing = False
+        self._load_balancing_n = 1
 
         # Snapshot information
         self._parameter_file_name = None
@@ -274,6 +275,16 @@ class Config:
                 self._logger.log_info_one_rank(
                     "Micro Manager will not dynamically balance work load for the adaptivity computation."
                 )
+
+            if self._adaptivity_is_load_balancing:
+                try:
+                    self._load_balancing_n = self._data["simulation_params"][
+                        "adaptivity_settings"
+                    ]["load_balancing_n"]
+                except BaseException:
+                    self._logger.log_info_one_rank(
+                        "No load balancing interval provided. Load balancing will be performed every time window. THIS IS NOT RECOMMENDED."
+                    )
 
             self._write_data_names["active_state"] = False
             self._write_data_names["active_steps"] = False
@@ -618,6 +629,17 @@ class Config:
             True if adaptivity computation needs to be done with load balancing, False otherwise.
         """
         return self._adaptivity_is_load_balancing
+
+    def get_load_balancing_n(self):
+        """
+        Get the load balancing frequency.
+
+        Returns
+        -------
+        load_balancing_n : int
+            Load balancing frequency
+        """
+        return self._load_balancing_n
 
     def get_micro_dt(self):
         """
