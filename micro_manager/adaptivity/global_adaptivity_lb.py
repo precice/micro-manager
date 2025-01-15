@@ -44,4 +44,4 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         comm : MPI.COMM_WORLD
             Global communicator of MPI.
         """
-        super().__init__(configurator, rank)
+        super().__init__(configurator, global_number_of_sims, global_ids, rank, comm)

@@ -36,6 +36,7 @@ from .domain_decomposition import DomainDecomposer
 
 from .micro_simulation import create_simulation_class
 from .tools.logging_wrapper import Logger
+from .tools.misc import divide_in_parts
 
 
 try:
@@ -122,6 +123,9 @@ class MicroManagerCoupling(MicroManager):
             self._is_adaptivity_with_load_balancing = (
                 self._config.is_adaptivity_with_load_balancing()
             )
+
+            if self._is_adaptivity_with_load_balancing:
+                self._load_balancing_n = self._config.get_load_balancing_n()
 
         self._adaptivity_output_n = self._config.get_adaptivity_output_n()
         self._output_adaptivity_cpu_time = self._config.output_adaptivity_cpu_time()
@@ -320,10 +324,7 @@ class MicroManagerCoupling(MicroManager):
             self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
         else:  # When load balancing, each rank needs to manually determine how many micro simulations it starts with
             total_number_of_sims, _ = self._mesh_vertex_coords.shape
-            quotient, remainder = divmod(total_number_of_sims, self._size)  # cp
-            cpu_wise_number_of_sims = [quotient + 1] * remainder + [quotient] * (
-                self._size - remainder
-            )  # cp
+            cpu_wise_number_of_sims = divide_in_parts(total_number_of_sims, self._size)
             self._local_number_of_sims = cpu_wise_number_of_sims[self._rank]
 
         if self._local_number_of_sims == 0:
@@ -589,6 +590,39 @@ class MicroManagerCoupling(MicroManager):
     def _read_data_from_precice(self, dt) -> list:
         """
         Read data from preCICE.
+
+        Parameters
+        ----------
+        dt : float
+            Time step size at which data is to be read from preCICE.
+
+        Returns
+        -------
+        local_read_data : list
+            List of dicts in which keys are names of data being read and the values are the data from preCICE.
+        """
+        read_data: Dict[str, list] = dict()
+        for name in self._read_data_names.keys():
+            read_data[name] = []
+
+        for name in self._read_data_names.keys():
+            read_data.update(
+                {
+                    name: self._participant.read_data(
+                        self._macro_mesh_name, name, self._mesh_vertex_ids, dt
+                    )
+                }
+            )
+
+            if self._is_adaptivity_on:
+                if name in self._adaptivity_macro_data_names:
+                    self._data_for_adaptivity[name] = read_data[name]
+
+        return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
+
+    def read_data_from_precice_lb(self, dt) -> list:
+        """
+        Read data from preCICE for load balancing.
 
         Parameters
         ----------
