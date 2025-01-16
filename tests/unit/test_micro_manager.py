@@ -24,20 +24,17 @@ class MicroSimulation:
 
 class TestFunctioncalls(TestCase):
     def setUp(self):
-        self.fake_read_data_names = {
-            "macro-scalar-data": False,
-            "macro-vector-data": True,
-        }
+        self.fake_read_data_names = ["macro-scalar-data", "macro-vector-data"]
         self.fake_read_data = [
             {"macro-scalar-data": 1, "macro-vector-data": np.array([0, 1, 2])}
         ] * 4
-        self.fake_write_data_names = {
-            "micro-scalar-data": False,
-            "micro-vector-data": True,
-            "solve_cpu_time": False,
-            "active_state": False,
-            "active_steps": False,
-        }
+        self.fake_write_data_names = [
+            "micro-scalar-data",
+            "micro-vector-data",
+            "solve_cpu_time",
+            "active_state",
+            "active_steps",
+        ]
         self.fake_write_data = [
             {
                 "micro-scalar-data": 1,
@@ -56,8 +53,8 @@ class TestFunctioncalls(TestCase):
         manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
 
         self.assertListEqual(manager._macro_bounds, self.macro_bounds)
-        self.assertDictEqual(manager._read_data_names, self.fake_read_data_names)
-        self.assertDictEqual(self.fake_write_data_names, manager._write_data_names)
+        self.assertListEqual(manager._read_data_names, self.fake_read_data_names)
+        self.assertListEqual(self.fake_write_data_names, manager._write_data_names)
         self.assertEqual(manager._micro_n_out, 10)
 
     def test_initialization(self):
@@ -75,8 +72,8 @@ class TestFunctioncalls(TestCase):
         self.assertEqual(
             manager._micro_sims[0].very_important_value, 0
         )  # test inheritance
-        self.assertDictEqual(manager._read_data_names, self.fake_read_data_names)
-        self.assertDictEqual(self.fake_write_data_names, manager._write_data_names)
+        self.assertListEqual(manager._read_data_names, self.fake_read_data_names)
+        self.assertListEqual(self.fake_write_data_names, manager._write_data_names)
 
     def test_read_write_data_from_precice(self):
         """
@@ -130,10 +127,10 @@ class TestFunctioncalls(TestCase):
         self.assertEqual(config._micro_file_name, "test_micro_manager")
         self.assertEqual(config._macro_mesh_name, "dummy-macro-mesh")
         self.assertEqual(config._micro_output_n, 10)
-        self.assertDictEqual(config._read_data_names, self.fake_read_data_names)
-        self.assertDictEqual(self.fake_write_data_names, config._write_data_names)
+        self.assertListEqual(config._read_data_names, self.fake_read_data_names)
+        self.assertListEqual(self.fake_write_data_names, config._write_data_names)
         self.assertEqual(config._adaptivity, True)
-        self.assertDictEqual(config._data_for_adaptivity, self.fake_read_data_names)
+        self.assertListEqual(config._data_for_adaptivity, self.fake_read_data_names)
         self.assertEqual(config._adaptivity_type, "local")
         self.assertEqual(config._adaptivity_history_param, 0.5)
         self.assertEqual(config._adaptivity_coarsening_constant, 0.3)
