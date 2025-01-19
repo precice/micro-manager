@@ -60,7 +60,7 @@ class Config:
 
         self._output_dir = None
 
-        self._micro_sims_lazy_init = False
+        self._just_in_time_init = False
 
     def set_logger(self, logger):
         """
@@ -207,10 +207,12 @@ class Config:
                 raise Exception("Adaptivity type can be either local or global.")
 
             if (
-                self._data["simulation_params"]["adaptivity_settings"].get("lazy_init")
+                self._data["simulation_params"]["adaptivity_settings"].get(
+                    "just_in_time_init"
+                )
                 == "True"
             ):
-                self._micro_sims_lazy_init = True
+                self._just_in_time_init = True
 
             exchange_data = {**self._read_data_names, **self._write_data_names}
             for dname in self._data["simulation_params"]["adaptivity_settings"]["data"]:
@@ -591,9 +593,9 @@ class Config:
         """
         return self._adaptivity_every_implicit_iteration
 
-    def micro_sims_lazy_init(self):
+    def initialize_sims_just_in_time(self):
         """
-        Boolean stating whether micro simulations are created in a lazy manner.
+        Check if simulations are to be created just in time.
 
         Returns
         -------
@@ -601,7 +603,7 @@ class Config:
             True if micro simulations are created only when needed, False otherwise.
 
         """
-        return self._micro_sims_lazy_init
+        return self._just_in_time_init
 
     def output_adaptivity_cpu_time(self):
         """

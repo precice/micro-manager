@@ -97,11 +97,9 @@ class MicroManagerCoupling(MicroManager):
 
         self._is_adaptivity_on = self._config.turn_on_adaptivity()
 
-        self._micro_sims_lazy_init = (
-            self._is_adaptivity_on and self._config.micro_sims_lazy_init()
-        )
-
         if self._is_adaptivity_on:
+            self._init_sims_just_in_time = self._config.initialize_sims_just_in_time()
+
             self._data_for_adaptivity: Dict[str, np.ndarray] = dict()
 
             self._adaptivity_data_names = self._config.get_data_for_adaptivity()
@@ -154,7 +152,7 @@ class MicroManagerCoupling(MicroManager):
 
         if self._is_adaptivity_on:
             # If micro simulations have been initialized, compute adaptivity before starting the coupling
-            if self._micro_sims_init or self._micro_sims_lazy_init:
+            if self._micro_sims_init or self._init_sims_just_in_time:
                 self._logger.log_info_one_rank(
                     "Micro simulations have been initialized, so adaptivity will be computed before the coupling begins."
                 )
@@ -164,7 +162,7 @@ class MicroManagerCoupling(MicroManager):
                     self._micro_sims,
                     self._data_for_adaptivity,
                 )
-            if self._micro_sims_lazy_init:
+            if self._init_sims_just_in_time:
                 active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
                 micro_problem = getattr(
                     importlib.import_module(
@@ -426,7 +424,7 @@ class MicroManagerCoupling(MicroManager):
 
         # Create micro simulation objects
         self._micro_sims = []
-        if not self._micro_sims_lazy_init:
+        if not self._init_sims_just_in_time:
             for i in range(self._local_number_of_sims):
                 self._micro_sims.append(
                     create_simulation_class(micro_problem)(
@@ -463,7 +461,7 @@ class MicroManagerCoupling(MicroManager):
 
         if not initial_data:
             is_initial_data_available = False
-            if self._micro_sims_lazy_init:
+            if self._init_sims_just_in_time:
                 raise Exception(
                     "no initial macro data available, lazy initialization would result in only one active simulation."
                 )
@@ -477,7 +475,7 @@ class MicroManagerCoupling(MicroManager):
         if hasattr(micro_problem, "initialize") and callable(
             getattr(micro_problem, "initialize")
         ):
-            if self._micro_sims_lazy_init:
+            if self._init_sims_just_in_time:
                 raise Exception(
                     "Adaptivity can't use data returned by initialize function of micro sims when using lazy initialization."
                 )
