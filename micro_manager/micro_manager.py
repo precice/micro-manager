@@ -57,9 +57,7 @@ class MicroManagerCoupling(MicroManager):
         """
         super().__init__(config_file)
 
-        self._logger = Logger(
-            "MicroManagerCoupling", "micro-manager-coupling.log", self._rank
-        )
+        self._logger = Logger(__name__, None, self._rank)
 
         self._config.set_logger(self._logger)
         self._config.read_json_micro_manager()
@@ -680,9 +678,8 @@ class MicroManagerCoupling(MicroManager):
 
         Returns
         -------
-        micro_sims_output : list
-            List of dicts in which keys are names of data and the values are the data of the output of the micro
-            simulations.
+        tuple
+            A tuple of micro_sims_output (list of Dicts) and dummy adaptivity computation CPU time.
         """
         micro_sims_output: list[dict] = [None] * self._local_number_of_sims
 
@@ -758,9 +755,8 @@ class MicroManagerCoupling(MicroManager):
 
         Returns
         -------
-        micro_sims_output : list
-            List of dicts in which keys are names of data and the values are the data of the output of the micro
-            simulations.
+        tuple
+            A tuple of micro_sims_output (list of Dicts) and adaptivity computation CPU time.
         """
         adaptivity_cpu_time = 0.0
 

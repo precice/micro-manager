@@ -1,5 +1,6 @@
 {
     "micro_file_name": "micro_dummy",
+    "output_dir": "adaptivity_output",
     "coupling_params": {
         "precice_config_file_name": "precice-config.xml",
         "macro_mesh_name": "macro-cube-mesh",

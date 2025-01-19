@@ -30,6 +30,8 @@ class TestGlobalAdaptivity(TestCase):
 
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.get_output_dir = MagicMock(return_value="output_dir")
+
         adaptivity_controller = GlobalAdaptivityCalculator(
             configurator, 5, global_ids, rank=self._rank, comm=self._comm
         )
@@ -108,6 +110,7 @@ class TestGlobalAdaptivity(TestCase):
         configurator.get_adaptivity_refining_const = MagicMock(return_value=0.05)
         configurator.get_adaptivity_coarsening_const = MagicMock(return_value=0.2)
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L2rel")
+        configurator.get_output_dir = MagicMock(return_value="output_dir")
 
         adaptivity_controller = GlobalAdaptivityCalculator(
             configurator, 5, global_ids, rank=self._rank, comm=self._comm
@@ -175,6 +178,8 @@ class TestGlobalAdaptivity(TestCase):
 
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.get_output_dir = MagicMock(return_value="output_dir")
+
         adaptivity_controller = GlobalAdaptivityCalculator(
             configurator, 5, global_ids, rank=self._rank, comm=self._comm
         )

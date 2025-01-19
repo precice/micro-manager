@@ -33,8 +33,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
-        logger : object of logging
-            Logger defined from the standard package logging
         global_number_of_sims : int
             Total number of simulations in the macro-micro coupled problem.
         global_ids : list
