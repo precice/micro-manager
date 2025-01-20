@@ -423,13 +423,11 @@ class MicroManagerCoupling(MicroManager):
         )
 
         # Create micro simulation objects
-        self._micro_sims = []
+        self._micro_sims = [0] * self._local_number_of_sims
         if not self._init_sims_just_in_time:
             for i in range(self._local_number_of_sims):
-                self._micro_sims.append(
-                    create_simulation_class(micro_problem)(
-                        self._global_ids_of_local_sims[i]
-                    )
+                self._micro_sims[i] = create_simulation_class(micro_problem)(
+                    self._global_ids_of_local_sims[i]
                 )
 
         if self._is_adaptivity_on:
