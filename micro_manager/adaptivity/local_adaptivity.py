@@ -235,7 +235,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         return _is_sim_active, _sim_is_associated_to
 
-    def _update_inactive_sims_w_init_jit(
+    def _update_inactive_sims_lazy_init(
         self,
         similarity_dists: np.ndarray,
         is_sim_active: np.ndarray,
@@ -314,7 +314,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         function
             Function which updates the set of inactive micro simulations.
         """
-        if self._init_sims_just_in_time:
-            return self._update_inactive_sims_w_init_jit
+        if self._lazy_init:
+            return self._update_inactive_sims_lazy_init
         else:
             return self._update_inactive_sims
