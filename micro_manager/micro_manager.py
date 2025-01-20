@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+7  #!/usr/bin/env python3
 """
 Micro Manager is a tool to initialize and adaptively control micro simulations and couple them via preCICE to a macro simulation.
 This files the class MicroManager which has the following callable public methods:
@@ -95,11 +95,11 @@ class MicroManagerCoupling(MicroManager):
         self._mesh_vertex_ids = None  # IDs of macro vertices as set by preCICE
         self._micro_n_out = self._config.get_micro_output_n()
 
+        self._init_sims_just_in_time = self._config.initialize_sims_just_in_time()
+
         self._is_adaptivity_on = self._config.turn_on_adaptivity()
 
         if self._is_adaptivity_on:
-            self._init_sims_just_in_time = self._config.initialize_sims_just_in_time()
-
             self._data_for_adaptivity: Dict[str, np.ndarray] = dict()
 
             self._adaptivity_data_names = self._config.get_data_for_adaptivity()
