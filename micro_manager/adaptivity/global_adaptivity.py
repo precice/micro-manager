@@ -358,11 +358,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                         ]
 
         sim_states_and_global_ids = []
-        for local_id, sim in enumerate(micro_sims):
-            if sim == None:
-                sim_states_and_global_ids.append((None, self._global_ids[local_id]))
-            else:
-                sim_states_and_global_ids.append((sim.get_state(), sim.get_global_id()))
+        for sim in micro_sims:
+            sim_states_and_global_ids.append((sim.get_state(), sim.get_global_id()))
 
         recv_reqs = self._p2p_comm(
             list(to_be_activated_map.keys()), sim_states_and_global_ids
