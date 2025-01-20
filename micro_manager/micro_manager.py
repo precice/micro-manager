@@ -1,4 +1,4 @@
-7  #!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 Micro Manager is a tool to initialize and adaptively control micro simulations and couple them via preCICE to a macro simulation.
 This files the class MicroManager which has the following callable public methods:
