@@ -40,8 +40,8 @@ Parameter | Description
 --- | ---
 `precice_config_file_name` |  Path to the preCICE XML configuration file from the current working directory.
 `macro_mesh_name` |  Name of the macro mesh as stated in the preCICE configuration.
-`read_data_names` |  A Python list with the names of the data to be read from preCICE.
-`write_data_names` |  A Python list with the names of the data to be written to preCICE.
+`read_data_names` |  A list with the names of the data to be read from preCICE.
+`write_data_names` |  A list with the names of the data to be written to preCICE.
 
 ## Simulation Parameters
 
