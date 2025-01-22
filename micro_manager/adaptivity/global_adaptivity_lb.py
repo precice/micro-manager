@@ -70,21 +70,23 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
     def _get_ranks_of_sims(self) -> np.ndarray:
         """
-        Get the ranks of the simulations.
+        Get the ranks of all simulations.
 
         Returns
         -------
         ranks_of_sim : np.ndarray
             Array of ranks on which simulations exist.
         """
-        # Create a map of micro simulation global IDs and the ranks on which they are
-        micro_sims_on_this_rank = np.zeros(self._local_number_of_sims, dtype=np.intc)
-        for i in range(self._local_number_of_sims):
-            micro_sims_on_this_rank[i] = self._rank
+        local_gids_to_rank = dict()
+        for gid in self._global_ids:
+            local_gids_to_rank[gid] = self._rank
+
+        ranks_maps_as_list = self._comm.allgather(local_gids_to_rank)
 
         ranks_of_sim = np.zeros(self._global_number_of_sims, dtype=np.intc)
-
-        self._comm.Allgatherv(micro_sims_on_this_rank, ranks_of_sim)
+        for ranks_map in ranks_maps_as_list:
+            for gid, rank in ranks_map.items():
+                ranks_of_sim[gid] = rank
 
         return ranks_of_sim
 
@@ -117,7 +119,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                 counter += 1
 
         send_map: Dict[
-            int, list
+            int, int
         ] = (
             dict()
         )  # keys are global IDs of sim states to send, values are ranks to send the sims to
@@ -127,7 +129,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             dict()
         )  # keys are global IDs of sim states to receive, values are ranks to receive from
 
-        for i in range(self._global_number_of_sims):
+        for i in range(np.count_nonzero(self._is_sim_active)):
             if current_ranks_of_active_sims[i] != new_ranks_of_active_sims[i]:
                 if current_ranks_of_active_sims[i] == self._rank:
                     send_map[i] = new_ranks_of_active_sims[i]
@@ -136,13 +138,12 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         # Asynchronous send operations
         send_reqs = []
-        for global_id, send_ranks in send_map.items():
-            for send_rank in send_ranks:
-                tag = self._create_tag(global_id, self._rank, send_rank)
-                req = self._comm.isend(
-                    micro_sims[global_id].get_state(), dest=send_rank, tag=tag
-                )
-                send_reqs.append(req)
+        for global_id, send_rank in send_map.items():
+            tag = self._create_tag(global_id, self._rank, send_rank)
+            req = self._comm.isend(
+                micro_sims[global_id].get_state(), dest=send_rank, tag=tag
+            )
+            send_reqs.append(req)
 
         # Asynchronous receive operations
         recv_reqs = []
@@ -161,6 +162,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         for global_id in send_map.keys():
             micro_sims[global_id] = None
             self._local_number_of_sims -= 1
+            self._global_ids.remove(global_id)
 
         # Create micro simulations and set them to the received states
         for req in recv_reqs:
@@ -171,9 +173,12 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                 )
                 micro_sims[global_id].set_state(output)
                 self._local_number_of_sims += 1
+                self._global_ids.append(global_id)
 
     def _redistribute_inactive_sims(self, micro_sims):
-        """ """
+        """
+        ...
+        """
         ranks_of_sims = self._get_ranks_of_sims()
 
         current_ranks_of_active_sims = []
@@ -199,7 +204,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                     ] = current_ranks_of_active_sims[active_gid]
 
         send_map: Dict[
-            int, list
+            int, int
         ] = (
             dict()
         )  # keys are global IDs of sim states to send, values are ranks to send the sims to
@@ -209,7 +214,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             dict()
         )  # keys are global IDs of sim states to receive, values are ranks to receive from
 
-        for i in range(self._global_number_of_sims):
+        for i in range(np.count_nonzero(self._is_sim_active == False)):
             if current_ranks_of_inactive_sims[i] != new_ranks_of_inactive_sims[i]:
                 if current_ranks_of_active_sims[i] == self._rank:
                     send_map[i] = new_ranks_of_inactive_sims[i]
@@ -218,13 +223,12 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         # Asynchronous send operations
         send_reqs = []
-        for global_id, send_ranks in send_map.items():
-            for send_rank in send_ranks:
-                tag = self._create_tag(global_id, self._rank, send_rank)
-                req = self._comm.isend(
-                    micro_sims[global_id].get_state(), dest=send_rank, tag=tag
-                )
-                send_reqs.append(req)
+        for global_id, send_rank in send_map.items():
+            tag = self._create_tag(global_id, self._rank, send_rank)
+            req = self._comm.isend(
+                micro_sims[global_id].get_state(), dest=send_rank, tag=tag
+            )
+            send_reqs.append(req)
 
         # Asynchronous receive operations
         recv_reqs = []

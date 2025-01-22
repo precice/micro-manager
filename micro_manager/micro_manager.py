@@ -99,6 +99,10 @@ class MicroManagerCoupling(MicroManager):
 
         self._is_adaptivity_on = self._config.turn_on_adaptivity()
 
+        self._is_adaptivity_with_load_balancing = (
+            self._config.is_adaptivity_with_load_balancing()
+        )
+
         if self._is_adaptivity_on:
             self._data_for_adaptivity: Dict[str, np.ndarray] = dict()
 
@@ -119,10 +123,6 @@ class MicroManagerCoupling(MicroManager):
                 self._config.is_adaptivity_required_in_every_implicit_iteration()
             )
             self._micro_sims_active_steps = None
-
-            self._is_adaptivity_with_load_balancing = (
-                self._config.is_adaptivity_with_load_balancing()
-            )
 
             if self._is_adaptivity_with_load_balancing:
                 self._load_balancing_n = self._config.get_load_balancing_n()
@@ -414,7 +414,7 @@ class MicroManagerCoupling(MicroManager):
                     )
                 )
             elif self._config.get_adaptivity_type() == "global":
-                if self._config._adaptivity_is_load_balancing():
+                if self._config._is_adaptivity_with_load_balancing():
                     self._adaptivity_controller: GlobalAdaptivityLBCalculator = (
                         GlobalAdaptivityLBCalculator(
                             self._config,
