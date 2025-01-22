@@ -105,15 +105,15 @@ class MicroManagerCoupling(MicroManager):
             self._adaptivity_data_names = self._config.get_data_for_adaptivity()
 
             # Names of macro data to be used for adaptivity computation
-            self._adaptivity_macro_data_names = dict()
+            self._adaptivity_macro_data_names: list = []
 
             # Names of micro data to be used for adaptivity computation
-            self._adaptivity_micro_data_names = dict()
-            for name, is_data_vector in self._adaptivity_data_names.items():
+            self._adaptivity_micro_data_names: list = []
+            for name in self._adaptivity_data_names:
                 if name in self._read_data_names:
-                    self._adaptivity_macro_data_names[name] = is_data_vector
+                    self._adaptivity_macro_data_names.append(name)
                 if name in self._write_data_names:
-                    self._adaptivity_micro_data_names[name] = is_data_vector
+                    self._adaptivity_micro_data_names.append(name)
 
             self._adaptivity_in_every_implicit_step = (
                 self._config.is_adaptivity_required_in_every_implicit_iteration()
@@ -375,20 +375,8 @@ class MicroManagerCoupling(MicroManager):
         )
 
         if self._is_adaptivity_on:
-            for name, is_data_vector in self._adaptivity_data_names.items():
-                if is_data_vector:
-                    self._data_for_adaptivity[name] = np.zeros(
-                        (
-                            self._local_number_of_sims,
-                            self._participant.get_data_dimensions(
-                                self._macro_mesh_name, name
-                            ),
-                        )
-                    )
-                else:
-                    self._data_for_adaptivity[name] = np.zeros(
-                        (self._local_number_of_sims)
-                    )
+            for name in self._adaptivity_data_names:
+                self._data_for_adaptivity[name] = np.zeros((self._local_number_of_sims))
 
         # Create lists of local and global IDs
         sim_id = np.sum(nms_all_ranks[: self._rank])
@@ -602,10 +590,11 @@ class MicroManagerCoupling(MicroManager):
             List of dicts in which keys are names of data being read and the values are the data from preCICE.
         """
         read_data: Dict[str, list] = dict()
-        for name in self._read_data_names.keys():
+
+        for name in self._read_data_names:
             read_data[name] = []
 
-        for name in self._read_data_names.keys():
+        for name in self._read_data_names:
             read_data.update(
                 {
                     name: self._participant.read_data(
@@ -671,7 +660,7 @@ class MicroManagerCoupling(MicroManager):
                 for name, values in d.items():
                     data_dict[name].append(values)
 
-            for dname in self._write_data_names.keys():
+            for dname in self._write_data_names:
                 self._participant.write_data(
                     self._macro_mesh_name,
                     dname,
@@ -679,7 +668,7 @@ class MicroManagerCoupling(MicroManager):
                     data_dict[dname],
                 )
         else:
-            for dname in self._write_data_names.keys():
+            for dname in self._write_data_names:
                 self._participant.write_data(
                     self._macro_mesh_name, dname, [], np.array([])
                 )
@@ -698,9 +687,8 @@ class MicroManagerCoupling(MicroManager):
 
         Returns
         -------
-        micro_sims_output : list
-            List of dicts in which keys are names of data and the values are the data of the output of the micro
-            simulations.
+        tuple
+            A tuple of micro_sims_output (list of Dicts) and dummy adaptivity computation CPU time.
         """
         micro_sims_output: list[dict] = [None] * self._local_number_of_sims
 
@@ -776,9 +764,8 @@ class MicroManagerCoupling(MicroManager):
 
         Returns
         -------
-        micro_sims_output : list
-            List of dicts in which keys are names of data and the values are the data of the output of the micro
-            simulations.
+        tuple
+            A tuple of micro_sims_output (list of Dicts) and adaptivity computation CPU time.
         """
         adaptivity_cpu_time = 0.0
 
