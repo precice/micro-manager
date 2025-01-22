@@ -22,19 +22,13 @@ class MicroSimulation:
 
 class TestFunctionCalls(TestCase):
     def setUp(self):
-        self.fake_read_data_names = {
-            "macro-scalar-data": False,
-            "macro-vector-data": True,
-        }
+        self.fake_read_data_names = ["macro-scalar-data", "macro-vector-data"]
         self.fake_read_data = {
             "macro-scalar-data": 1,
             "macro-vector-data": np.array([0, 1, 2]),
         }
 
-        self.fake_write_data_names = {
-            "micro-scalar-data": False,
-            "micro-vector-data": True,
-        }
+        self.fake_write_data_names = ["micro-scalar-data", "micro-vector-data"]
         self.fake_write_data = [
             {
                 "micro-scalar-data": 1,
@@ -48,10 +42,10 @@ class TestFunctionCalls(TestCase):
         """
         snapshot_object = MicroManagerSnapshot("snapshot-config.json")
 
-        self.assertDictEqual(
+        self.assertListEqual(
             snapshot_object._read_data_names, self.fake_read_data_names
         )
-        self.assertDictEqual(
+        self.assertListEqual(
             snapshot_object._write_data_names, self.fake_write_data_names
         )
         self.assertEqual(
@@ -72,10 +66,10 @@ class TestFunctionCalls(TestCase):
 
         snapshot_object.initialize()
         self.assertEqual(snapshot_object._global_number_of_sims, 1)
-        self.assertDictEqual(
+        self.assertListEqual(
             snapshot_object._read_data_names, self.fake_read_data_names
         )
-        self.assertDictEqual(
+        self.assertListEqual(
             snapshot_object._write_data_names, self.fake_write_data_names
         )
         self.assertTrue(os.path.isfile(complete_path))
@@ -144,8 +138,8 @@ class TestFunctionCalls(TestCase):
             config._parameter_file_name.split("/")[-1], "test_parameter.hdf5"
         )
         self.assertEqual(config._micro_file_name, "test_snapshot_computation")
-        self.assertDictEqual(config._read_data_names, self.fake_read_data_names)
-        self.assertDictEqual(config._write_data_names, self.fake_write_data_names)
+        self.assertListEqual(config._read_data_names, self.fake_read_data_names)
+        self.assertListEqual(config._write_data_names, self.fake_write_data_names)
         self.assertEqual(config._postprocessing_file_name, "snapshot_post_processing")
         self.assertTrue(config._initialize_once)
 

@@ -28,14 +28,14 @@ class Config:
 
         self._precice_config_file_name = None
         self._macro_mesh_name = None
-        self._read_data_names = dict()
-        self._write_data_names = dict()
+        self._read_data_names = None
+        self._write_data_names = None
         self._micro_dt = None
 
         self._macro_domain_bounds = None
         self._ranks_per_axis = None
         self._micro_output_n = 1
-        self._diagnostics_data_names = dict()
+        self._diagnostics_data_names = None
 
         self._output_micro_sim_time = False
 
@@ -105,17 +105,8 @@ class Config:
         try:
             self._write_data_names = self._data["coupling_params"]["write_data_names"]
             assert isinstance(
-                self._write_data_names, dict
-            ), "Write data entry is not a dictionary"
-            for key, value in self._write_data_names.items():
-                if value == "scalar":
-                    self._write_data_names[key] = False
-                elif value == "vector":
-                    self._write_data_names[key] = True
-                else:
-                    raise Exception(
-                        "Write data dictionary as a value other than 'scalar' or 'vector'"
-                    )
+                self._write_data_names, list
+            ), "Write data entry is not a list"
         except BaseException:
             self._logger.log_info_one_rank(
                 "No write data names provided. Micro manager will only read data from preCICE."
@@ -124,17 +115,8 @@ class Config:
         try:
             self._read_data_names = self._data["coupling_params"]["read_data_names"]
             assert isinstance(
-                self._read_data_names, dict
-            ), "Read data entry is not a dictionary"
-            for key, value in self._read_data_names.items():
-                if value == "scalar":
-                    self._read_data_names[key] = False
-                elif value == "vector":
-                    self._read_data_names[key] = True
-                else:
-                    raise Exception(
-                        "Read data dictionary as a value other than 'scalar' or 'vector'"
-                    )
+                self._read_data_names, list
+            ), "Read data entry is not a list"
         except BaseException:
             self._logger.log_info_one_rank(
                 "No read data names provided. Micro manager will only write data to preCICE."
@@ -145,7 +127,7 @@ class Config:
         try:
             if self._data["diagnostics"]["output_micro_sim_solve_time"] == "True":
                 self._output_micro_sim_time = True
-                self._write_data_names["solve_cpu_time"] = False
+                self._write_data_names.append("solve_cpu_time")
         except BaseException:
             self._logger.log_info_one_rank(
                 "Micro manager will not output time required to solve each micro simulation."
@@ -214,11 +196,11 @@ class Config:
             ):
                 self._lazy_initialization = True
 
-            exchange_data = {**self._read_data_names, **self._write_data_names}
-            for dname in self._data["simulation_params"]["adaptivity_settings"]["data"]:
-                self._data_for_adaptivity[dname] = exchange_data[dname]
+            self._data_for_adaptivity = self._data["simulation_params"][
+                "adaptivity_settings"
+            ]["data"]
 
-            if self._data_for_adaptivity.keys() == self._write_data_names.keys():
+            if self._data_for_adaptivity == self._write_data_names:
                 self._logger.log_info_one_rank(
                     "Only micro simulation data is used for similarity computation in adaptivity. This would lead to the"
                     " same set of active and inactive simulations for the entire simulation time. If this is not intended,"
@@ -271,8 +253,8 @@ class Config:
                     "Micro Manager will compute adaptivity once at the start of every time window"
                 )
 
-            self._write_data_names["active_state"] = False
-            self._write_data_names["active_steps"] = False
+            self._write_data_names.append("active_state")
+            self._write_data_names.append("active_steps")
 
             try:
                 if (
@@ -282,7 +264,7 @@ class Config:
                     == "True"
                 ):
                     self._adaptivity_output_cpu_time = True
-                    self._write_data_names["adaptivity_cpu_time"] = False
+                    self._write_data_names.append("adaptivity_cpu_time")
             except BaseException:
                 self._logger.log_info_one_rank(
                     "Micro Manager will not output CPU time of the adaptivity computation."
@@ -296,7 +278,7 @@ class Config:
                     == "True"
                 ):
                     self._adaptivity_output_mem_usage = True
-                    self._write_data_names["adaptivity_mem_usage"] = False
+                    self._write_data_names.append("adaptivity_mem_usage")
             except BaseException:
                 self._logger.log_info_one_rank(
                     "Micro Manager will not output CPU time of the adaptivity computation."
@@ -309,17 +291,8 @@ class Config:
         try:
             diagnostics_data_names = self._data["diagnostics"]["data_from_micro_sims"]
             assert isinstance(
-                diagnostics_data_names, dict
-            ), "Diagnostics data is not a dictionary"
-            for key, value in diagnostics_data_names.items():
-                if value == "scalar":
-                    self._write_data_names[key] = False
-                elif value == "vector":
-                    self._write_data_names[key] = True
-                else:
-                    raise Exception(
-                        "Diagnostics data dictionary as a value other than 'scalar' or 'vector'"
-                    )
+                diagnostics_data_names, list
+            ), "Diagnostics data is not a list"
         except BaseException:
             self._logger.log_info_one_rank(
                 "No diagnostics data is defined. Micro Manager will not output any diagnostics data."
@@ -359,17 +332,8 @@ class Config:
         try:
             diagnostics_data_names = self._data["diagnostics"]["data_from_micro_sims"]
             assert isinstance(
-                diagnostics_data_names, dict
-            ), "Diagnostics data is not a dictionary"
-            for key, value in diagnostics_data_names.items():
-                if value == "scalar":
-                    self._write_data_names[key] = False
-                elif value == "vector":
-                    self._write_data_names[key] = True
-                else:
-                    raise Exception(
-                        "Diagnostics data dictionary has a value other than 'scalar' or 'vector'"
-                    )
+                diagnostics_data_names, list
+            ), "Diagnostics data is not a list"
         except BaseException:
             self._logger.log_info_one_rank(
                 "No diagnostics data is defined. Snapshot computation will not output any diagnostics data."
