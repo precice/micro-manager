@@ -53,7 +53,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             "MicroSimulation",
         )
 
-        self._global_number_of_sims = global_number_of_sims
         self._local_number_of_sims = len(global_ids)
 
     def redistribute_sims(self, micro_sims: list) -> None:
@@ -68,28 +67,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         self._redistribute_active_sims(micro_sims)
         self._redistribute_inactive_sims(micro_sims)
 
-    def _get_ranks_of_sims(self) -> np.ndarray:
-        """
-        Get the ranks of all simulations.
-
-        Returns
-        -------
-        ranks_of_sim : np.ndarray
-            Array of ranks on which simulations exist.
-        """
-        local_gids_to_rank = dict()
-        for gid in self._global_ids:
-            local_gids_to_rank[gid] = self._rank
-
-        ranks_maps_as_list = self._comm.allgather(local_gids_to_rank)
-
-        ranks_of_sim = np.zeros(self._global_number_of_sims, dtype=np.intc)
-        for ranks_map in ranks_maps_as_list:
-            for gid, rank in ranks_map.items():
-                ranks_of_sim[gid] = rank
-
-        return ranks_of_sim
-
     def _redistribute_active_sims(self, micro_sims: list) -> None:
         """
         Redistribute simulations among ranks.
@@ -100,6 +77,8 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             List of objects of class MicroProblem, which are the micro simulations
         """
         ranks_of_sim = self._get_ranks_of_sims()
+
+        active_global_ids = np.where(self._is_sim_active)[0]
 
         current_ranks_of_active_sims = []
         for i in np.where(self._is_sim_active)[0]:
@@ -112,7 +91,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         counter = 0
         # Get the ranks to which active simulations are to be located at
-        new_ranks_of_active_sims = np.copy(current_ranks_of_active_sims)
+        new_ranks_of_active_sims = current_ranks_of_active_sims.copy()
         for rank, n in enumerate(active_sims_per_rank):
             for i in range(n):
                 new_ranks_of_active_sims[counter] = rank
@@ -131,10 +110,11 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         for i in range(np.count_nonzero(self._is_sim_active)):
             if current_ranks_of_active_sims[i] != new_ranks_of_active_sims[i]:
+                active_gid = active_global_ids[i]
                 if current_ranks_of_active_sims[i] == self._rank:
-                    send_map[i] = new_ranks_of_active_sims[i]
+                    send_map[active_gid] = new_ranks_of_active_sims[i]
                 if new_ranks_of_active_sims[i] == self._rank:
-                    recv_map[i] = current_ranks_of_active_sims[i]
+                    recv_map[active_gid] = current_ranks_of_active_sims[i]
 
         # Asynchronous send operations
         send_reqs = []
@@ -181,27 +161,46 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         """
         ranks_of_sims = self._get_ranks_of_sims()
 
+        inactive_global_ids = np.where(self._is_sim_active == False)[0]
+        active_global_ids = np.where(self._is_sim_active)[0]
+
         current_ranks_of_active_sims = []
-        for i in np.where(self._is_sim_active)[0]:
-            current_ranks_of_active_sims.append(ranks_of_sims[i])
+        associated_inactive_sims = (
+            dict()
+        )  # Keys are global IDs of active sims, values are lists of global IDs of inactive sims associated to them
 
-        current_ranks_of_inactive_sims = []
-        for i in np.where(self._is_sim_active)[0] == False:
-            current_ranks_of_inactive_sims.append(ranks_of_sims[i])
+        for active_gid in active_global_ids:
+            current_ranks_of_active_sims.append(ranks_of_sims[active_gid])
 
-        associated_inactive_sims = dict()
-        for active_gid in range(len(current_ranks_of_active_sims)):
             associated_inactive_sims[active_gid] = [
                 i for i, x in enumerate(self._sim_is_associated_to) if x == active_gid
             ]
 
-        new_ranks_of_inactive_sims = np.copy(current_ranks_of_inactive_sims)
+        current_ranks_of_inactive_sims = []
+        for inactive_gid in inactive_global_ids:
+            current_ranks_of_inactive_sims.append(ranks_of_sims[inactive_gid])
+
+        print(
+            "Rank {}: current_ranks_of_inactive_sims = {}".format(
+                self._rank, current_ranks_of_inactive_sims
+            )
+        )
+
+        new_ranks_of_inactive_sims = current_ranks_of_inactive_sims.copy()
+
         for active_gid, assoc_inactive_gids in associated_inactive_sims.items():
-            if current_ranks_of_active_sims[active_gid] != self._rank:
-                for inactive_id in assoc_inactive_gids:
-                    new_ranks_of_inactive_sims[
-                        inactive_id
-                    ] = current_ranks_of_active_sims[active_gid]
+            for inactive_gid in assoc_inactive_gids:
+                inactive_idx = np.where(inactive_global_ids == inactive_gid)[0][0]
+                active_idx = np.where(active_global_ids == active_gid)[0][0]
+                new_ranks_of_inactive_sims[inactive_idx] = current_ranks_of_active_sims[
+                    active_idx
+                ]
+
+        print(
+            "Rank {}: new_ranks_of_inactive_sims = {}".format(
+                self._rank, new_ranks_of_inactive_sims
+            )
+        )
 
         send_map: Dict[
             int, int
@@ -216,10 +215,11 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         for i in range(np.count_nonzero(self._is_sim_active == False)):
             if current_ranks_of_inactive_sims[i] != new_ranks_of_inactive_sims[i]:
-                if current_ranks_of_active_sims[i] == self._rank:
-                    send_map[i] = new_ranks_of_inactive_sims[i]
+                inactive_gid = inactive_global_ids[i]
+                if current_ranks_of_inactive_sims[i] == self._rank:
+                    send_map[inactive_gid] = new_ranks_of_inactive_sims[i]
                 if new_ranks_of_inactive_sims[i] == self._rank:
-                    recv_map[i] = current_ranks_of_inactive_sims[i]
+                    recv_map[inactive_gid] = current_ranks_of_inactive_sims[i]
 
         # Asynchronous send operations
         send_reqs = []
@@ -239,3 +239,23 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             )  # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
             req = self._comm.irecv(bufsize, source=recv_rank, tag=tag)
             recv_reqs.append(req)
+
+        # Wait for all non-blocking communication to complete
+        MPI.Request.Waitall(send_reqs)
+
+        # Delete the micro simulations which no longer exist on this rank
+        for global_id in send_map.keys():
+            micro_sims[global_id] = None
+            self._local_number_of_sims -= 1
+            self._global_ids.remove(global_id)
+
+        # Create micro simulations and set them to the received states
+        for req in recv_reqs:
+            output = req.wait()
+            for global_id in recv_map.keys():
+                micro_sims[global_id] = create_simulation_class(self._micro_problem)(
+                    global_id
+                )
+                micro_sims[global_id].set_state(output)
+                self._local_number_of_sims += 1
+                self._global_ids.append(global_id)

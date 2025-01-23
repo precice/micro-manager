@@ -98,6 +98,10 @@ jobs:
         working-directory: micro-manager
         run: pip3 install --user .
 
-      - name: Run unit tests
+      - name: Run unit tests for global adaptivity
         working-directory: micro-manager/tests/unit
         run: mpiexec -n 2 --allow-run-as-root python3 -m unittest test_adaptivity_parallel.py
+
+      - name: Run unit tests for global adaptivity with dynamic load balancing
+        working-directory: micro-manager/tests/unit
+        run: mpiexec -n 2 --allow-run-as-root python3 -m unittest test_global_adaptivity_lb.py
