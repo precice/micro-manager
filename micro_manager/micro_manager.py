@@ -154,6 +154,8 @@ class MicroManagerCoupling(MicroManager):
         sim_states_cp = [None] * self._local_number_of_sims
 
         micro_sim_solve = self._get_solve_variant()
+        precice_read_data = self._get_read_data_variant()
+        precice_write_data = self._get_write_data_variant()
 
         dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
@@ -207,7 +209,7 @@ class MicroManagerCoupling(MicroManager):
                         for active_id in active_sim_ids:
                             self._micro_sims_active_steps[active_id] += 1
 
-            micro_sims_input = self._read_data_from_precice(dt)
+            micro_sims_input = precice_read_data(dt)
 
             micro_sims_output, adaptivity_time = micro_sim_solve(micro_sims_input, dt)
 
@@ -239,7 +241,7 @@ class MicroManagerCoupling(MicroManager):
                     )
                     sys.exit()
 
-            self._write_data_to_precice(micro_sims_output)
+            precice_write_data(micro_sims_output)
 
             t += dt
             n += 1
@@ -624,17 +626,19 @@ class MicroManagerCoupling(MicroManager):
             List of dicts in which keys are names of data being read and the values are the data from preCICE.
         """
         read_data: Dict[str, list] = dict()
-        for name in self._read_data_names.keys():
+        for name in self._read_data_names:
             read_data[name] = []
 
-        for name in self._read_data_names.keys():
-            read_data.update(
-                {
-                    name: self._participant.read_data(
-                        self._macro_mesh_name, name, self._mesh_vertex_ids, dt
-                    )
-                }
+        for name in self._read_data_names:
+            global_read_data = self._participant.read_data(
+                self._macro_mesh_name, name, self._mesh_vertex_ids, dt
             )
+
+            local_read_data = []
+            for global_id in self._global_ids_of_local_sims:
+                local_read_data.append(global_read_data[global_id])
+
+            read_data.update({name: local_read_data})
 
             if self._is_adaptivity_on:
                 if name in self._adaptivity_macro_data_names:
@@ -659,6 +663,39 @@ class MicroManagerCoupling(MicroManager):
             for d in data:
                 for name, values in d.items():
                     data_dict[name].append(values)
+
+            for dname in self._write_data_names:
+                self._participant.write_data(
+                    self._macro_mesh_name,
+                    dname,
+                    self._mesh_vertex_ids,
+                    data_dict[dname],
+                )
+        else:
+            for dname in self._write_data_names:
+                self._participant.write_data(
+                    self._macro_mesh_name, dname, [], np.array([])
+                )
+
+    def _write_data_to_precice_lb(self, data: list) -> None:
+        """
+        Write data to preCICE.
+
+        Parameters
+        ----------
+        data : list
+            List of dicts in which keys are names of data and the values are the data to be written to preCICE.
+        """
+        data_dict: Dict[str, list] = dict()
+        if not self._is_rank_empty:
+            for name in data[0]:
+                data_dict[name] = [0] * self._global_number_of_sims
+
+            for d in data:
+                index = 0
+                for name, values in d.items():
+                    data_dict[name][self._global_ids_of_local_sims[index]] = values
+                    index += 1
 
             for dname in self._write_data_names:
                 self._participant.write_data(
@@ -872,8 +909,15 @@ class MicroManagerCoupling(MicroManager):
             if self._is_micro_solve_time_required:
                 micro_sims_output[inactive_id]["solve_cpu_time"] = 0
 
+        print(
+            "Rank {}: data_for_adaptivity = {}".format(
+                self._rank, self._data_for_adaptivity
+            )
+        )
+
         # Collect micro sim output for adaptivity calculation
         for i in range(self._local_number_of_sims):
+            print("Rank {}: i = {}".format(self._rank, i))
             for name in self._adaptivity_micro_data_names:
                 self._data_for_adaptivity[name][i] = micro_sims_output[i][name]
 
@@ -894,6 +938,38 @@ class MicroManagerCoupling(MicroManager):
             solve_variant = self._solve_micro_simulations
 
         return solve_variant
+
+    def _get_read_data_variant(self) -> Callable[[float], list]:
+        """
+        Get the read data variant function based on the adaptivity type.
+
+        Returns
+        -------
+        read_data_variant : Callable
+            Read data variant function based on the adaptivity type.
+        """
+        if self._is_adaptivity_with_load_balancing:
+            read_data_variant = self.read_data_from_precice_lb
+        else:
+            read_data_variant = self._read_data_from_precice
+
+        return read_data_variant
+
+    def _get_write_data_variant(self) -> Callable[[list], None]:
+        """
+        Get the write data variant function based on the adaptivity type.
+
+        Returns
+        -------
+        write_data_variant : Callable
+            Write data variant function based on the adaptivity type.
+        """
+        if self._is_adaptivity_with_load_balancing:
+            write_data_variant = self._write_data_to_precice_lb
+        else:
+            write_data_variant = self._write_data_to_precice
+
+        return write_data_variant
 
     def _interpolate_output_for_crashed_sim(
         self,

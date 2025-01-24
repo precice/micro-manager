@@ -1,0 +1,30 @@
+{
+    "micro_file_name": "micro_dummy",
+    "output_dir": "adaptivity_output",
+    "coupling_params": {
+        "precice_config_file_name": "precice-config.xml",
+        "macro_mesh_name": "macro-cube-mesh",
+        "read_data_names": ["macro-scalar-data", "macro-vector-data"],
+        "write_data_names": ["micro-scalar-data", "micro-vector-data"]
+    },
+    "simulation_params": {
+        "micro_dt": 1.0,
+        "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
+        "decomposition": [2, 1, 1],
+        "adaptivity": "True",
+        "adaptivity_settings": {
+            "type": "global",
+            "load_balancing": "True",
+            "load_balancing_n": 5,
+            "data": ["macro-scalar-data", "micro-vector-data"],
+            "history_param": 0.5,
+            "coarsening_constant": 0.3,
+            "refining_constant": 0.4,
+            "every_implicit_iteration": "True",
+	        "output_cpu_time": "True"
+        }
+    },
+    "diagnostics": {
+        "output_micro_sim_solve_time": "True"
+    }
+}

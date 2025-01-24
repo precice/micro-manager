@@ -68,6 +68,11 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         self._rank_of_sim = self._get_ranks_of_sims()
 
+        self._is_sim_on_this_rank = [False] * global_number_of_sims  # DECLARATION
+        for i in range(global_number_of_sims):
+            if self._rank_of_sim[i] == self._rank:
+                self._is_sim_on_this_rank[i] = True
+
         # Copies of variables for checkpointing
         self._similarity_dists_cp = None
         self._is_sim_active_cp = None
