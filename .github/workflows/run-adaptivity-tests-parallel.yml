@@ -38,7 +38,7 @@ jobs:
         working-directory: micro-manager
         run: pip3 install .
 
-       - name: Run integration test with global adaptivity in parallel
+      - name: Run integration test with global adaptivity in parallel
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube
         run: |
