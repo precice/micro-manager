@@ -1,4 +1,4 @@
-name: Test adaptivity functionality
+name: Test adaptivity functionality in serial
 on:
   push:
     branches:
@@ -9,7 +9,7 @@ on:
       - "*"
 jobs:
   adaptivity_integration_tests:
-    name: Run adaptivity integration tests
+    name: Adaptivity integration tests in serial
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
@@ -67,41 +67,3 @@ jobs:
       - name: Run unit tests
         working-directory: micro-manager/tests/unit
         run: python3 -m unittest test_adaptivity_serial.py
-
-  adaptivity_unit_tests_parallel:
-    name: Run adaptivity unit tests in parallel
-    runs-on: ubuntu-latest
-    container: precice/precice:nightly
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-        with:
-          path: micro-manager
-
-      - name: Install sudo for MPI
-        working-directory: micro-manager
-        run: |
-          apt-get -qq update
-          apt-get -qq install sudo
-
-      - name: Use mpi4py
-        uses: mpi4py/setup-mpi@v1
-
-      - name: Install Dependencies
-        working-directory: micro-manager
-        run: |
-          apt-get -qq update
-          apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
-          pip3 install --upgrade pip
-
-      - name: Install Micro Manager
-        working-directory: micro-manager
-        run: pip3 install --user .
-
-      - name: Run unit tests for global adaptivity
-        working-directory: micro-manager/tests/unit
-        run: mpiexec -n 2 --allow-run-as-root python3 -m unittest test_adaptivity_parallel.py
-
-      - name: Run unit tests for global adaptivity with dynamic load balancing
-        working-directory: micro-manager/tests/unit
-        run: mpiexec -n 2 --allow-run-as-root python3 -m unittest test_global_adaptivity_lb.py

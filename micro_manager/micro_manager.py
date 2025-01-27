@@ -104,7 +104,7 @@ class MicroManagerCoupling(MicroManager):
         )
 
         if self._is_adaptivity_on:
-            self._data_for_adaptivity: Dict[str, np.ndarray] = dict()
+            self._data_for_adaptivity: Dict[str, list] = dict()
 
             self._adaptivity_data_names = self._config.get_data_for_adaptivity()
 
@@ -378,7 +378,7 @@ class MicroManagerCoupling(MicroManager):
 
         if self._is_adaptivity_on:
             for name in self._adaptivity_data_names:
-                self._data_for_adaptivity[name] = np.zeros((self._local_number_of_sims))
+                self._data_for_adaptivity[name] = [0] * self._local_number_of_sims
 
         # Create lists of local and global IDs
         sim_id = np.sum(nms_all_ranks[: self._rank])
@@ -825,7 +825,7 @@ class MicroManagerCoupling(MicroManager):
         active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
         inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
 
-        micro_sims_output = [None] * self._local_number_of_sims
+        micro_sims_output = [0] * self._local_number_of_sims
 
         # Solve all active micro simulations
         for active_id in active_sim_ids:
@@ -875,7 +875,7 @@ class MicroManagerCoupling(MicroManager):
         # Interpolate result for crashed simulation
         unset_sims = []
         for active_id in active_sim_ids:
-            if micro_sims_output[active_id] is None:
+            if micro_sims_output[active_id] == 0:
                 unset_sims.append(active_id)
 
         # Iterate over all crashed simulations to interpolate output
