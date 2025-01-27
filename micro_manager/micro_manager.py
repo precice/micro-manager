@@ -725,6 +725,9 @@ class MicroManagerCoupling(MicroManager):
         active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
         inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
 
+        print("DEBUG active_sim_ids: ", active_sim_ids)
+        print("DEBUG inactive_sim_ids: ", inactive_sim_ids)
+
         micro_sims_output = [0] * self._local_number_of_sims
 
         # Solve all active micro simulations
@@ -760,6 +763,8 @@ class MicroManagerCoupling(MicroManager):
                     )
                     self._logger.log_error_any_rank(error_message)
                     self._has_sim_crashed[active_id] = True
+
+        print("DEBUG _has_sim_crashed: ", self._has_sim_crashed)
 
         # If interpolate is off, terminate after crash
         if not self._interpolate_crashed_sims:
