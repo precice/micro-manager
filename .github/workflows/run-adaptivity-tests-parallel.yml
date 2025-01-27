@@ -42,7 +42,7 @@ jobs:
         timeout-minutes: 3
         working-directory: micro-manager/tests/integration/test_unit_cube
         run: |
-          mpiexec -n 2 --allow-run-as-root micro-manager-precice micro-manager-config-global-adaptivity.json &
+          mpiexec -n 2 --allow-run-as-root micro-manager-precice micro-manager-config-global-adaptivity-parallel.json &
           python3 unit_cube.py
 
   adaptivity_unit_tests_parallel:
