@@ -2,6 +2,7 @@
 
 ## latest
 
+- Fix bug in handling of vector data returned by the MicroSimulation `solve()` method, for scenarios with adaptivity https://github.com/precice/micro-manager/pull/143
 - Remove the `scalar` and `vector` keyword values from data names in configuration https://github.com/precice/micro-manager/pull/142
 - Set default logger to stdout and add output directory setting option for file loggers https://github.com/precice/micro-manager/pull/139
 - Remove the `adaptivity_data` data structure and handle all adaptivity data internally https://github.com/precice/micro-manager/pull/137
