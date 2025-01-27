@@ -800,6 +800,8 @@ class MicroManagerCoupling(MicroManager):
 
         adaptivity_cpu_time += end_time - start_time
 
+        print("DEBUG micro_sim_output: ", micro_sims_output)
+
         # Resolve micro sim output data for inactive simulations
         for inactive_id in inactive_sim_ids:
             micro_sims_output[inactive_id]["active_state"] = 0
