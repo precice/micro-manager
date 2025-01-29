@@ -112,18 +112,20 @@ class TestGlobalAdaptivityLB(TestCase):
     def test_redistribute_active_sims_four_ranks(self):
         """
         Test load balancing functionality to redistribute active simulations.
-        Run this test in parallel using MPI with 2 ranks.
+        Run this test in parallel using MPI with 4 ranks.
         """
         if self._rank == 0:
             global_ids = [0, 1, 2, 3]
-            expected_global_ids = [1, 2]
+            expected_global_ids = [1, 2, 3]
         elif self._rank == 1:
             global_ids = [4, 5, 6, 7, 8, 9]
             expected_global_ids = [0, 3, 4]
         elif self._rank == 2:
             global_ids = [10, 11, 12, 13, 14, 15]
+            expected_global_ids = [5, 6, 7]
         elif self._rank == 3:
             global_ids = [16, 17, 18, 19]
+            expected_global_ids = [8, 9]
 
         expected_ranks_of_sims = [1, 0, 0, 1, 1]
 
@@ -136,9 +138,41 @@ class TestGlobalAdaptivityLB(TestCase):
         )
 
         adaptivity_controller._is_sim_active = np.array(
-            [True, True, False, False, False]
+            [
+                True,
+                True,
+                True,
+                False,
+                False,
+                False,
+                False,
+                False,
+                True,
+                False,
+                False,
+                False,
+                True,
+                True,
+                True,
+            ]
         )
-        adaptivity_controller._sim_is_associated_to = [-2, -2, 0, 1, 0]
+        adaptivity_controller._sim_is_associated_to = [
+            -2,
+            -2,
+            -2,
+            0,
+            0,
+            0,
+            12,
+            12,
+            -2,
+            1,
+            2,
+            8,
+            -2,
+            -2,
+            -2,
+        ]
 
         micro_sims = []
         for i in range(self._global_number_of_sims):

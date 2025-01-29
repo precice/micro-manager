@@ -52,8 +52,10 @@ class Config:
         self._adaptivity_output_n = 1
         self._adaptivity_output_cpu_time = False
         self._adaptivity_output_mem_usage = False
+
         self._adaptivity_is_load_balancing = False
         self._load_balancing_n = 1
+        self._two_step_load_balancing = False
 
         # Snapshot information
         self._parameter_file_name = None
@@ -266,6 +268,15 @@ class Config:
                 except BaseException:
                     self._logger.log_info_one_rank(
                         "No load balancing interval provided. Load balancing will be performed every time window. THIS IS NOT RECOMMENDED."
+                    )
+
+                try:
+                    self._two_step_load_balancing = self._data["simulation_params"][
+                        "adaptivity_settings"
+                    ]["two_step_load_balancing"]
+                except BaseException:
+                    self._logger.log_info_one_rank(
+                        "Two-step load balancing is not specified. Micro Manager will only try to balance the load in one sweep."  # TODO: Need a better log message here.
                     )
 
             self._write_data_names.append("active_state")
