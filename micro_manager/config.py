@@ -56,7 +56,7 @@ class Config:
         self._adaptivity_is_load_balancing = False
         self._load_balancing_n = 1
         self._two_step_load_balancing = False
-        self._load_balancing_threshold = 1
+        self._load_balancing_threshold = 0
 
         # Snapshot information
         self._parameter_file_name = None
