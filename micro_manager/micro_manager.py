@@ -909,15 +909,8 @@ class MicroManagerCoupling(MicroManager):
             if self._is_micro_solve_time_required:
                 micro_sims_output[inactive_id]["solve_cpu_time"] = 0
 
-        print(
-            "Rank {}: data_for_adaptivity = {}".format(
-                self._rank, self._data_for_adaptivity
-            )
-        )
-
         # Collect micro sim output for adaptivity calculation
         for i in range(self._local_number_of_sims):
-            print("Rank {}: i = {}".format(self._rank, i))
             for name in self._adaptivity_micro_data_names:
                 self._data_for_adaptivity[name][i] = micro_sims_output[i][name]
 

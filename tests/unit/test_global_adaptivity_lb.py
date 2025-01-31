@@ -38,34 +38,18 @@ class TestGlobalAdaptivityLB(TestCase):
         )
         self._configurator.get_output_dir = MagicMock(return_value="output_dir")
 
-        self._global_number_of_sims = 5
+        self._configurator.is_load_balancing_two_step = MagicMock(return_value=False)
 
-    def test_get_ranks_of_sims(self):
-        """ """
-        if self._rank == 0:
-            global_ids = [0, 1, 2]
-            expected_ranks_of_sims = [0, 0, 0, 1, 1]
-        elif self._rank == 1:
-            global_ids = [3, 4]
-            expected_ranks_of_sims = [0, 0, 0, 1, 1]
-
-        adaptivity_controller = GlobalAdaptivityLBCalculator(
-            self._configurator,
-            self._global_number_of_sims,
-            global_ids,
-            rank=self._rank,
-            comm=self._comm,
-        )
-
-        actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
-
-        self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
-
+    @unittest.skipUnless(
+        MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
+    )
     def test_redistribute_active_sims_two_ranks(self):
         """
         Test load balancing functionality to redistribute active simulations.
         Run this test in parallel using MPI with 2 ranks.
         """
+        global_number_of_sims = 5
+
         if self._rank == 0:
             global_ids = [0, 1, 2]
             expected_global_ids = [1, 2]
@@ -77,7 +61,58 @@ class TestGlobalAdaptivityLB(TestCase):
 
         adaptivity_controller = GlobalAdaptivityLBCalculator(
             self._configurator,
-            self._global_number_of_sims,
+            global_number_of_sims,
+            global_ids,
+            rank=self._rank,
+            comm=self._comm,
+        )
+
+        adaptivity_controller._is_sim_active = np.array(
+            [True, True, False, False, False]
+        )
+
+        micro_sims = []
+        for i in range(global_number_of_sims):
+            if i in global_ids:
+                micro_sims.append(MicroSimulation(i))
+            else:
+                micro_sims.append(None)
+
+        adaptivity_controller._redistribute_active_sims(micro_sims)
+
+        actual_global_ids = []
+        for i in range(global_number_of_sims):
+            if micro_sims[i] is not None:
+                actual_global_ids.append(micro_sims[i].get_global_id())
+
+        self.assertEqual(actual_global_ids, expected_global_ids)
+
+        actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
+
+        self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
+
+    @unittest.skipUnless(
+        MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
+    )
+    def test_redistribute_inactive_sims_two_ranks(self):
+        """
+        Test load balancing functionality to redistribute inactive simulations.
+        Run this test in parallel using MPI with 2 ranks.
+        """
+        global_number_of_sims = 5
+
+        if self._rank == 0:
+            global_ids = [0, 2]
+            expected_global_ids = [0, 2, 4]
+        elif self._rank == 1:
+            global_ids = [1, 3, 4]
+            expected_global_ids = [1, 3]
+
+        expected_ranks_of_sims = [0, 1, 0, 1, 0]
+
+        adaptivity_controller = GlobalAdaptivityLBCalculator(
+            self._configurator,
+            global_number_of_sims,
             global_ids,
             rank=self._rank,
             comm=self._comm,
@@ -89,16 +124,16 @@ class TestGlobalAdaptivityLB(TestCase):
         adaptivity_controller._sim_is_associated_to = [-2, -2, 0, 1, 0]
 
         micro_sims = []
-        for i in range(self._global_number_of_sims):
+        for i in range(global_number_of_sims):
             if i in global_ids:
                 micro_sims.append(MicroSimulation(i))
             else:
                 micro_sims.append(None)
 
-        adaptivity_controller._redistribute_active_sims(micro_sims)
+        adaptivity_controller._redistribute_inactive_sims(micro_sims)
 
         actual_global_ids = []
-        for i in range(self._global_number_of_sims):
+        for i in range(global_number_of_sims):
             if micro_sims[i] is not None:
                 actual_global_ids.append(micro_sims[i].get_global_id())
 
@@ -108,30 +143,181 @@ class TestGlobalAdaptivityLB(TestCase):
 
         self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
 
-    @unittest.skip("This test is not fully implemented yet.")
-    def test_redistribute_active_sims_four_ranks(self):
+    @unittest.skipUnless(
+        MPI.COMM_WORLD.Get_size() == 4, "This test only works with 4 ranks."
+    )
+    def test_redistribute_active_sims_four_ranks_one_step(self):
         """
-        Test load balancing functionality to redistribute active simulations.
+        Test load balancing functionality to redistribute active simulations. The load balancing is done in one step.
         Run this test in parallel using MPI with 4 ranks.
         """
+        global_number_of_sims = 15
+
+        if self._rank == 0:
+            global_ids = [0, 1, 2, 3]
+            expected_global_ids = [0, 1, 2, 3]
+        elif self._rank == 1:
+            global_ids = [4, 5, 6, 7]
+            expected_global_ids = [4, 5, 6, 7, 12]
+        elif self._rank == 2:
+            global_ids = [8, 9, 10, 11]
+            expected_global_ids = [8, 9, 10, 11]
+        elif self._rank == 3:
+            global_ids = [12, 13, 14]
+            expected_global_ids = [13, 14]
+
+        expected_ranks_of_sims = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 3, 3]
+
+        adaptivity_controller = GlobalAdaptivityLBCalculator(
+            self._configurator,
+            global_number_of_sims,
+            global_ids,
+            rank=self._rank,
+            comm=self._comm,
+        )
+
+        adaptivity_controller._is_sim_active = np.array(
+            [
+                True,
+                True,
+                True,
+                False,
+                False,
+                False,
+                False,
+                False,
+                True,
+                False,
+                False,
+                False,
+                True,
+                True,
+                True,
+            ]
+        )
+
+        micro_sims = []
+        for i in range(global_number_of_sims):
+            if i in global_ids:
+                micro_sims.append(MicroSimulation(i))
+            else:
+                micro_sims.append(None)
+
+        adaptivity_controller._redistribute_active_sims(micro_sims)
+
+        actual_global_ids = []
+        for i in range(global_number_of_sims):
+            if micro_sims[i] is not None:
+                actual_global_ids.append(micro_sims[i].get_global_id())
+
+        self.assertEqual(actual_global_ids, expected_global_ids)
+
+        actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
+
+        self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
+
+    @unittest.skipUnless(
+        MPI.COMM_WORLD.Get_size() == 4, "This test only works with 4 ranks."
+    )
+    def test_redistribute_active_sims_four_ranks_two_steps(self):
+        """
+        Test load balancing functionality to redistribute active simulations. The load balancing is one in two steps.
+        Run this test in parallel using MPI with 4 ranks.
+        """
+        global_number_of_sims = 15
+
         if self._rank == 0:
             global_ids = [0, 1, 2, 3]
             expected_global_ids = [1, 2, 3]
         elif self._rank == 1:
-            global_ids = [4, 5, 6, 7, 8, 9]
-            expected_global_ids = [0, 3, 4]
+            global_ids = [4, 5, 6, 7]
+            expected_global_ids = [4, 5, 6, 7, 12]
         elif self._rank == 2:
-            global_ids = [10, 11, 12, 13, 14, 15]
-            expected_global_ids = [5, 6, 7]
+            global_ids = [8, 9, 10, 11]
+            expected_global_ids = [0, 8, 9, 10, 11]
         elif self._rank == 3:
-            global_ids = [16, 17, 18, 19]
-            expected_global_ids = [8, 9]
+            global_ids = [12, 13, 14]
+            expected_global_ids = [13, 14]
 
-        expected_ranks_of_sims = [1, 0, 0, 1, 1]
+        expected_ranks_of_sims = [2, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 3, 3]
+
+        self._configurator.is_load_balancing_two_step = MagicMock(return_value=True)
 
         adaptivity_controller = GlobalAdaptivityLBCalculator(
             self._configurator,
-            self._global_number_of_sims,
+            global_number_of_sims,
+            global_ids,
+            rank=self._rank,
+            comm=self._comm,
+        )
+
+        adaptivity_controller._is_sim_active = np.array(
+            [
+                True,
+                True,
+                True,
+                False,
+                False,
+                False,
+                False,
+                False,
+                True,
+                False,
+                False,
+                False,
+                True,
+                True,
+                True,
+            ]
+        )
+
+        micro_sims = []
+        for i in range(global_number_of_sims):
+            if i in global_ids:
+                micro_sims.append(MicroSimulation(i))
+            else:
+                micro_sims.append(None)
+
+        adaptivity_controller._redistribute_active_sims(micro_sims)
+
+        actual_global_ids = []
+        for i in range(global_number_of_sims):
+            if micro_sims[i] is not None:
+                actual_global_ids.append(micro_sims[i].get_global_id())
+
+        self.assertEqual(actual_global_ids, expected_global_ids)
+
+        actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
+
+        self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
+
+    @unittest.skipUnless(
+        MPI.COMM_WORLD.Get_size() == 4, "This test only works with 4 ranks."
+    )
+    def test_redistribute_inactive_sims_four_ranks(self):
+        """
+        ...
+        """
+        global_number_of_sims = 15
+
+        if self._rank == 0:
+            global_ids = [1, 2, 3]
+            expected_global_ids = [1, 2, 4, 9, 10]
+        elif self._rank == 1:
+            global_ids = [4, 5, 6, 7, 12]
+            expected_global_ids = [6, 7, 12]
+        elif self._rank == 2:
+            global_ids = [0, 8, 9, 10, 11]
+            expected_global_ids = [0, 3, 8, 11]
+        elif self._rank == 3:
+            global_ids = [13, 14]
+            expected_global_ids = [5, 13, 14]
+
+        expected_ranks_of_sims = [2, 0, 0, 2, 0, 3, 1, 1, 2, 0, 0, 2, 1, 3, 3]
+
+        adaptivity_controller = GlobalAdaptivityLBCalculator(
+            self._configurator,
+            global_number_of_sims,
             global_ids,
             rank=self._rank,
             comm=self._comm,
@@ -161,8 +347,8 @@ class TestGlobalAdaptivityLB(TestCase):
             -2,
             -2,
             0,
-            0,
-            0,
+            1,
+            13,
             12,
             12,
             -2,
@@ -175,54 +361,7 @@ class TestGlobalAdaptivityLB(TestCase):
         ]
 
         micro_sims = []
-        for i in range(self._global_number_of_sims):
-            if i in global_ids:
-                micro_sims.append(MicroSimulation(i))
-            else:
-                micro_sims.append(None)
-
-        adaptivity_controller._redistribute_active_sims(micro_sims)
-
-        actual_global_ids = []
-        for i in range(self._global_number_of_sims):
-            if micro_sims[i] is not None:
-                actual_global_ids.append(micro_sims[i].get_global_id())
-
-        self.assertEqual(actual_global_ids, expected_global_ids)
-
-        actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
-
-        self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
-
-    def test_redistribute_inactive_sims(self):
-        """
-        Test load balancing functionality to redistribute active simulations.
-        Run this test in parallel using MPI with 2 ranks.
-        """
-        if self._rank == 0:
-            global_ids = [0, 2]
-            expected_global_ids = [0, 2, 4]
-        elif self._rank == 1:
-            global_ids = [1, 3, 4]
-            expected_global_ids = [1, 3]
-
-        expected_ranks_of_sims = [0, 1, 0, 1, 0]
-
-        adaptivity_controller = GlobalAdaptivityLBCalculator(
-            self._configurator,
-            self._global_number_of_sims,
-            global_ids,
-            rank=self._rank,
-            comm=self._comm,
-        )
-
-        adaptivity_controller._is_sim_active = np.array(
-            [True, True, False, False, False]
-        )
-        adaptivity_controller._sim_is_associated_to = [-2, -2, 0, 1, 0]
-
-        micro_sims = []
-        for i in range(self._global_number_of_sims):
+        for i in range(global_number_of_sims):
             if i in global_ids:
                 micro_sims.append(MicroSimulation(i))
             else:
@@ -231,9 +370,11 @@ class TestGlobalAdaptivityLB(TestCase):
         adaptivity_controller._redistribute_inactive_sims(micro_sims)
 
         actual_global_ids = []
-        for i in range(self._global_number_of_sims):
+        for i in range(global_number_of_sims):
             if micro_sims[i] is not None:
                 actual_global_ids.append(micro_sims[i].get_global_id())
+
+        # print("Rank {}: Actual global IDs: {}".format(self._rank, actual_global_ids))
 
         self.assertEqual(actual_global_ids, expected_global_ids)
 

@@ -271,9 +271,13 @@ class Config:
                     )
 
                 try:
-                    self._two_step_load_balancing = self._data["simulation_params"][
-                        "adaptivity_settings"
-                    ]["two_step_load_balancing"]
+                    if (
+                        self._data["simulation_params"]["adaptivity_settings"][
+                            "two_step_load_balancing"
+                        ]
+                        == "True"
+                    ):
+                        self._two_step_load_balancing = True
                 except BaseException:
                     self._logger.log_info_one_rank(
                         "Two-step load balancing is not specified. Micro Manager will only try to balance the load in one sweep."  # TODO: Need a better log message here.
@@ -615,6 +619,17 @@ class Config:
             Load balancing frequency
         """
         return self._load_balancing_n
+
+    def is_load_balancing_two_step(self):
+        """
+        Check if two-step load balancing is required.
+
+        Returns
+        -------
+        two_step_load_balancing : bool
+            True if two-step load balancing is required, False otherwise.
+        """
+        return self._two_step_load_balancing
 
     def get_micro_dt(self):
         """

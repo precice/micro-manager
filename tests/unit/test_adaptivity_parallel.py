@@ -189,3 +189,24 @@ class TestGlobalAdaptivity(TestCase):
         )
 
         self.assertTrue(np.array_equal(expected_sim_output, sim_output))
+
+    def test_get_ranks_of_sims(self):
+        """ """
+        if self._rank == 0:
+            global_ids = [0, 1, 2]
+            expected_ranks_of_sims = [0, 0, 0, 1, 1]
+        elif self._rank == 1:
+            global_ids = [3, 4]
+            expected_ranks_of_sims = [0, 0, 0, 1, 1]
+
+        adaptivity_controller = GlobalAdaptivityCalculator(
+            self._configurator,
+            self._global_number_of_sims,
+            global_ids,
+            rank=self._rank,
+            comm=self._comm,
+        )
+
+        actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
+
+        self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
