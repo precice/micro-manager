@@ -39,6 +39,7 @@ class TestGlobalAdaptivityLB(TestCase):
         self._configurator.get_output_dir = MagicMock(return_value="output_dir")
 
         self._configurator.is_load_balancing_two_step = MagicMock(return_value=False)
+        self._configurator.get_load_balancing_threshold = MagicMock(return_value=1)
 
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
