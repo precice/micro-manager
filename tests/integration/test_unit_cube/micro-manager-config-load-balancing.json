@@ -15,7 +15,11 @@
         "adaptivity_settings": {
             "type": "global",
             "load_balancing": "True",
-            "load_balancing_n": 5,
+            "load_balancing_settings": {
+                "load_balancing_n": 5,
+                "two_step_load_balancing": "True",
+                "balancing_threshold": 2
+            },
             "data": ["macro-scalar-data", "micro-vector-data"],
             "history_param": 0.5,
             "coarsening_constant": 0.3,

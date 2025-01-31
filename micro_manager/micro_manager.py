@@ -209,6 +209,10 @@ class MicroManagerCoupling(MicroManager):
                         for active_id in active_sim_ids:
                             self._micro_sims_active_steps[active_id] += 1
 
+            if self._is_adaptivity_with_load_balancing:
+                if n % self._load_balancing_n == 0:
+                    self._adaptivity_controller.redistribute_sims(self._micro_sims)
+
             micro_sims_input = precice_read_data(dt)
 
             micro_sims_output, adaptivity_time = micro_sim_solve(micro_sims_input, dt)

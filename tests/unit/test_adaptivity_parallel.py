@@ -201,7 +201,7 @@ class TestGlobalAdaptivity(TestCase):
 
         adaptivity_controller = GlobalAdaptivityCalculator(
             self._configurator,
-            self._global_number_of_sims,
+            5,
             global_ids,
             rank=self._rank,
             comm=self._comm,

@@ -287,7 +287,7 @@ class Config:
                 try:
                     self._load_balancing_threshold = self._data["simulation_params"][
                         "adaptivity_settings"
-                    ]["load_balancing_settings"]["load_balancing_threshold"]
+                    ]["load_balancing_settings"]["balancing_threshold"]
                 except BaseException:
                     self._logger.log_info_one_rank(
                         "No load balancing threshold provided. The default threshold of 1 will be used."
