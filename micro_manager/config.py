@@ -56,6 +56,7 @@ class Config:
         self._adaptivity_is_load_balancing = False
         self._load_balancing_n = 1
         self._two_step_load_balancing = False
+        self._load_balancing_threshold = 1
 
         # Snapshot information
         self._parameter_file_name = None
@@ -264,7 +265,7 @@ class Config:
                 try:
                     self._load_balancing_n = self._data["simulation_params"][
                         "adaptivity_settings"
-                    ]["load_balancing_n"]
+                    ]["load_balancing_settings"]["load_balancing_n"]
                 except BaseException:
                     self._logger.log_info_one_rank(
                         "No load balancing interval provided. Load balancing will be performed every time window. THIS IS NOT RECOMMENDED."
@@ -273,14 +274,23 @@ class Config:
                 try:
                     if (
                         self._data["simulation_params"]["adaptivity_settings"][
-                            "two_step_load_balancing"
-                        ]
+                            "load_balancing_settings"
+                        ]["two_step_load_balancing"]
                         == "True"
                     ):
                         self._two_step_load_balancing = True
                 except BaseException:
                     self._logger.log_info_one_rank(
                         "Two-step load balancing is not specified. Micro Manager will only try to balance the load in one sweep."  # TODO: Need a better log message here.
+                    )
+
+                try:
+                    self._load_balancing_threshold = self._data["simulation_params"][
+                        "adaptivity_settings"
+                    ]["load_balancing_settings"]["load_balancing_threshold"]
+                except BaseException:
+                    self._logger.log_info_one_rank(
+                        "No load balancing threshold provided. The default threshold of 1 will be used."
                     )
 
             self._write_data_names.append("active_state")
@@ -630,6 +640,17 @@ class Config:
             True if two-step load balancing is required, False otherwise.
         """
         return self._two_step_load_balancing
+
+    def get_load_balancing_threshold(self):
+        """
+        Get the load balancing threshold to control how balanced the micro simulations need to be.
+
+        Returns
+        -------
+        load_balancing_threshold : float
+            Load balancing threshold
+        """
+        return self._load_balancing_threshold
 
     def get_micro_dt(self):
         """

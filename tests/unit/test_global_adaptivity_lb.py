@@ -374,8 +374,6 @@ class TestGlobalAdaptivityLB(TestCase):
             if micro_sims[i] is not None:
                 actual_global_ids.append(micro_sims[i].get_global_id())
 
-        # print("Rank {}: Actual global IDs: {}".format(self._rank, actual_global_ids))
-
         self.assertEqual(actual_global_ids, expected_global_ids)
 
         actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()

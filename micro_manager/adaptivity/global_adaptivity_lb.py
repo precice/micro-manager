@@ -55,6 +55,8 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             configurator.is_load_balancing_two_step()
         )
 
+        self._threshold = configurator.get_load_balancing_threshold()
+
     def redistribute_sims(self, micro_sims: list) -> None:
         """
         Redistribute simulations among ranks to balance compute load.
@@ -87,8 +89,8 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         psend_sims = 0
         precv_sims = 0
 
-        f_avg_active_sims = math.floor(avg_active_sims)
-        c_avg_active_sims = math.ceil(avg_active_sims)
+        f_avg_active_sims = math.floor(avg_active_sims) - self._threshold
+        c_avg_active_sims = math.ceil(avg_active_sims) + self._threshold
 
         if n_active_sims_local == f_avg_active_sims:
             # Simulations to potentially receive
