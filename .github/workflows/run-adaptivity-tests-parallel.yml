@@ -43,7 +43,7 @@ jobs:
         working-directory: micro-manager/tests/integration/test_unit_cube
         run: |
           mpiexec -n 2 --allow-run-as-root micro-manager-precice micro-manager-config-global-adaptivity-parallel.json &
-          python3 unit_cube.py
+          python3 unit_cube.py 2
 
   adaptivity_unit_tests_parallel:
     name: Adaptivity unit tests in parallel
