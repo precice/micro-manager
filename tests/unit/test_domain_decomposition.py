@@ -1,8 +1,5 @@
-import unittest
 from unittest import TestCase
-
 import numpy as np
-
 from micro_manager.domain_decomposition import DomainDecomposer
 
 
@@ -29,8 +26,6 @@ class TestDomainDecomposition(TestCase):
         mesh_bounds = domain_decomposer.decompose_macro_domain(
             self._macro_bounds_3d, ranks_per_axis
         )
-
-        print("mesh_bounds", mesh_bounds)
 
         self.assertTrue(np.allclose(mesh_bounds, [0.0, 1, -2, 0.0, -2, 8]))
 
