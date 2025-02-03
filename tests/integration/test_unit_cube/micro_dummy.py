@@ -14,8 +14,6 @@ class MicroSimulation:
         """
         self._sim_id = sim_id
 
-        self._n = 0
-
         sim_types = [4, 88, 37, 12, 1, 23, 134]
 
         self._this_sim_type = random.choice(sim_types)
