@@ -34,14 +34,14 @@ class MicroSimulation:
         }
 
     def solve(self, macro_data, dt):
-        time.sleep(self._this_sim_type_1 * 0.001)
+        time.sleep(self._this_sim_type * 0.001)
 
         return {
-            "micro-data-1": self._this_sim_type_1 * 0.5,
+            "micro-data-1": self._this_sim_type * 0.5,
             "micro-data-2": [
-                self._this_sim_type_1 * 2,
-                self._this_sim_type_1 * 3,
-                self._this_sim_type_1 * 4,
+                self._this_sim_type * 2,
+                self._this_sim_type * 3,
+                self._this_sim_type * 4,
             ],
         }
 
