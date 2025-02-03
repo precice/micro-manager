@@ -4,20 +4,18 @@
     <sink type="stream" output="stdout" filter="%Severity% > debug" enabled="true" />
   </log>
 
-  <data:scalar name="macro-scalar-data" />
-  <data:vector name="macro-vector-data" />
-  <data:scalar name="micro-scalar-data" />
-  <data:vector name="micro-vector-data" />
+  <data:scalar name="micro-data-1" />
+  <data:vector name="micro-data-2" />
+  <data:scalar name="macro-data-1" />
   <data:scalar name="active_state" />
   <data:scalar name="active_steps" />
   <data:scalar name="adaptivity_cpu_time" />
   <data:scalar name="solve_cpu_time" />
 
   <mesh name="macro-cube-mesh" dimensions="3">
-    <use-data name="macro-scalar-data" />
-    <use-data name="macro-vector-data" />
-    <use-data name="micro-scalar-data" />
-    <use-data name="micro-vector-data" />
+    <use-data name="micro-data-1" />
+    <use-data name="micro-data-2" />
+    <use-data name="macro-data-1" />
     <use-data name="active_state" />
     <use-data name="active_steps" />
     <use-data name="adaptivity_cpu_time" />
@@ -26,18 +24,16 @@
 
   <participant name="macro-cube">
     <provide-mesh name="macro-cube-mesh" />
-    <read-data name="micro-scalar-data" mesh="macro-cube-mesh" />
-    <read-data name="micro-vector-data" mesh="macro-cube-mesh" />
-    <write-data name="macro-scalar-data" mesh="macro-cube-mesh" />
-    <write-data name="macro-vector-data" mesh="macro-cube-mesh" />
+    <read-data name="micro-data-1" mesh="macro-cube-mesh" />
+    <read-data name="micro-data-2" mesh="macro-cube-mesh" />
+    <write-data name="macro-data-1" mesh="macro-cube-mesh" />
   </participant>
 
   <participant name="Micro-Manager">
     <receive-mesh name="macro-cube-mesh" from="macro-cube" direct-access="true" safety-factor="0" />
-    <read-data name="macro-scalar-data" mesh="macro-cube-mesh" />
-    <read-data name="macro-vector-data" mesh="macro-cube-mesh" />
-    <write-data name="micro-scalar-data" mesh="macro-cube-mesh" />
-    <write-data name="micro-vector-data" mesh="macro-cube-mesh" />
+    <read-data name="macro-data-1" mesh="macro-cube-mesh" />
+    <write-data name="micro-data-1" mesh="macro-cube-mesh" />
+    <write-data name="micro-data-2" mesh="macro-cube-mesh" />
     <write-data name="active_state" mesh="macro-cube-mesh" />
     <write-data name="active_steps" mesh="macro-cube-mesh" />
     <write-data name="adaptivity_cpu_time" mesh="macro-cube-mesh" />
@@ -51,25 +47,8 @@
     <participants first="Micro-Manager" second="macro-cube" />
     <max-time value="10" />
     <time-window-size value="1" />
-    <exchange
-      data="micro-scalar-data"
-      mesh="macro-cube-mesh"
-      from="Micro-Manager"
-      to="macro-cube" />
-    <exchange
-      data="micro-vector-data"
-      mesh="macro-cube-mesh"
-      from="Micro-Manager"
-      to="macro-cube" />
-    <exchange
-      data="macro-scalar-data"
-      mesh="macro-cube-mesh"
-      from="macro-cube"
-      to="Micro-Manager" />
-    <exchange
-      data="macro-vector-data"
-      mesh="macro-cube-mesh"
-      from="macro-cube"
-      to="Micro-Manager" />
+    <exchange data="micro-data-1" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube" />
+    <exchange data="micro-data-2" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube" />
+    <exchange data="macro-data-1" mesh="macro-cube-mesh" from="macro-cube" to="Micro-Manager" />
   </coupling-scheme:serial-explicit>
 </precice-configuration>

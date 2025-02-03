@@ -162,6 +162,7 @@ class MicroManagerCoupling(MicroManager):
                 )
 
         adaptivity_cpu_time = 0.0
+        first_iteration = True
 
         while self._participant.is_coupling_ongoing():
 
@@ -173,30 +174,29 @@ class MicroManagerCoupling(MicroManager):
                     sim_states_cp[i] = self._micro_sims[i].get_state()
                 t_checkpoint = t
                 n_checkpoint = n
+                first_iteration = True
 
-                if self._is_adaptivity_on:
-                    if not self._adaptivity_in_every_implicit_step:
-                        start_time = time.process_time()
-                        self._adaptivity_controller.compute_adaptivity(
-                            dt,
-                            self._micro_sims,
-                            self._data_for_adaptivity,
-                        )
+            if self._is_adaptivity_on:
+                if self._adaptivity_in_every_implicit_step or first_iteration:
+                    start_time = time.process_time()
+                    self._adaptivity_controller.compute_adaptivity(
+                        dt,
+                        self._micro_sims,
+                        self._data_for_adaptivity,
+                    )
 
-                        end_time = time.process_time()
+                    end_time = time.process_time()
 
-                        adaptivity_cpu_time = end_time - start_time
+                    adaptivity_cpu_time = end_time - start_time
 
-                        # Only checkpoint the adaptivity configuration if adaptivity is computed
-                        # once in every time window
-                        self._adaptivity_controller.write_checkpoint()
+                    # Only checkpoint the adaptivity configuration if adaptivity is computed
+                    # once in every time window
+                    self._adaptivity_controller.write_checkpoint()
 
-                        active_sim_ids = (
-                            self._adaptivity_controller.get_active_sim_ids()
-                        )
+                    active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
 
-                        for active_id in active_sim_ids:
-                            self._micro_sims_active_steps[active_id] += 1
+                    for active_id in active_sim_ids:
+                        self._micro_sims_active_steps[active_id] += 1
 
             micro_sims_input = self._read_data_from_precice(dt)
 
@@ -243,6 +243,7 @@ class MicroManagerCoupling(MicroManager):
                     self._micro_sims[i].set_state(sim_states_cp[i])
                 n = n_checkpoint
                 t = t_checkpoint
+                first_iteration = False
 
                 # If adaptivity is computed only once per time window, the states of sims need to be reset too
                 if self._is_adaptivity_on:
@@ -462,12 +463,7 @@ class MicroManagerCoupling(MicroManager):
 
         if is_initial_data_required and not is_initial_data_available:
             raise Exception(
-                "The initialize() method of the Micro simulation requires initial data, but no initial data has been provided."
-            )
-
-        if not is_initial_data_required and is_initial_data_available:
-            warn(
-                "The initialize() method is only allowed to return data which is required for the adaptivity calculation."
+                "The initialize() method of the Micro simulation requires initial data, but no initial macro data has been provided."
             )
 
         # Get initial data from micro simulations if initialize() method exists
