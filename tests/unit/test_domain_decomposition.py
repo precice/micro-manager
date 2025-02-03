@@ -1,5 +1,5 @@
+import unittest
 from unittest import TestCase
-from unittest.mock import MagicMock
 
 import numpy as np
 
@@ -16,6 +16,23 @@ class TestDomainDecomposition(TestCase):
             -2,
             8,
         ]  # Cuboid which is not symmetric around origin
+
+    def test_rank1_out_of_4_3d(self):
+        """
+        Check bounds for rank 1 in a setting of axis-wise ranks: [2, 2, 1]
+        """
+        rank = 1
+        size = 4
+        ranks_per_axis = [2, 2, 1]
+        domain_decomposer = DomainDecomposer(3, rank, size)
+        domain_decomposer._dims = 3
+        mesh_bounds = domain_decomposer.decompose_macro_domain(
+            self._macro_bounds_3d, ranks_per_axis
+        )
+
+        print("mesh_bounds", mesh_bounds)
+
+        self.assertTrue(np.allclose(mesh_bounds, [0.0, 1, -2, 0.0, -2, 8]))
 
     def test_rank5_outof_10_3d(self):
         """

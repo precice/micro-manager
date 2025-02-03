@@ -48,39 +48,22 @@ class DomainDecomposer:
             np.prod(ranks_per_axis) == self._size
         ), "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
 
+        for z in range(ranks_per_axis[2]):
+            for y in range(ranks_per_axis[1]):
+                for x in range(ranks_per_axis[0]):
+                    n = (
+                        x
+                        + y * ranks_per_axis[0]
+                        + z * ranks_per_axis[0] * ranks_per_axis[1]
+                    )
+                    if n == self._rank:
+                        rank_in_axis = [x, y, z]
+
         dx = []
         for d in range(self._dims):
             dx.append(
                 abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / ranks_per_axis[d]
             )
-
-        rank_in_axis: list[int] = [0] * self._dims
-        if ranks_per_axis[0] == 1:  # if serial in x axis
-            rank_in_axis[0] = 0
-        else:
-            rank_in_axis[0] = self._rank % ranks_per_axis[0]  # x axis
-
-        if self._dims == 2:
-            if ranks_per_axis[1] == 1:  # if serial in y axis
-                rank_in_axis[1] = 0
-            else:
-                rank_in_axis[1] = int(self._rank / ranks_per_axis[0])  # y axis
-        elif self._dims == 3:
-            if ranks_per_axis[2] == 1:  # if serial in z axis
-                rank_in_axis[2] = 0
-            else:
-                rank_in_axis[2] = int(
-                    self._rank / (ranks_per_axis[0] * ranks_per_axis[1])
-                )  # z axis
-
-            if ranks_per_axis[1] == 1:  # if serial in y axis
-                rank_in_axis[1] = 0
-            else:
-                rank_in_axis[1] = (
-                    self._rank - ranks_per_axis[0] * ranks_per_axis[1] * rank_in_axis[2]
-                ) % ranks_per_axis[
-                    2
-                ]  # y axis
 
         mesh_bounds = []
         for d in range(self._dims):
