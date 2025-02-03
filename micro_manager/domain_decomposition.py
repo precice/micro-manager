@@ -6,14 +6,12 @@ import numpy as np
 
 
 class DomainDecomposer:
-    def __init__(self, dims, rank, size) -> None:
+    def __init__(self, rank, size) -> None:
         """
         Class constructor.
 
         Parameters
         ----------
-        dims : int
-            Dimensions of the problem.
         rank : int
             MPI rank.
         size : int
@@ -21,7 +19,6 @@ class DomainDecomposer:
         """
         self._rank = rank
         self._size = size
-        self._dims = dims
 
     def decompose_macro_domain(self, macro_bounds: list, ranks_per_axis: list) -> list:
         """
@@ -48,25 +45,34 @@ class DomainDecomposer:
             np.prod(ranks_per_axis) == self._size
         ), "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
 
-        for z in range(ranks_per_axis[2]):
+        dims = len(ranks_per_axis)
+
+        if dims == 3:
+            for z in range(ranks_per_axis[2]):
+                for y in range(ranks_per_axis[1]):
+                    for x in range(ranks_per_axis[0]):
+                        n = (
+                            x
+                            + y * ranks_per_axis[0]
+                            + z * ranks_per_axis[0] * ranks_per_axis[1]
+                        )
+                        if n == self._rank:
+                            rank_in_axis = [x, y, z]
+        elif dims == 2:
             for y in range(ranks_per_axis[1]):
                 for x in range(ranks_per_axis[0]):
-                    n = (
-                        x
-                        + y * ranks_per_axis[0]
-                        + z * ranks_per_axis[0] * ranks_per_axis[1]
-                    )
+                    n = x + y * ranks_per_axis[0]
                     if n == self._rank:
-                        rank_in_axis = [x, y, z]
+                        rank_in_axis = [x, y]
 
         dx = []
-        for d in range(self._dims):
+        for d in range(dims):
             dx.append(
                 abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / ranks_per_axis[d]
             )
 
         mesh_bounds = []
-        for d in range(self._dims):
+        for d in range(dims):
             if rank_in_axis[d] > 0:
                 mesh_bounds.append(macro_bounds[d * 2] + rank_in_axis[d] * dx[d])
                 mesh_bounds.append(macro_bounds[d * 2] + (rank_in_axis[d] + 1) * dx[d])
