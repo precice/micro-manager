@@ -41,7 +41,7 @@ jobs:
         working-directory: micro-manager/tests/integration/test_unit_cube
         run: |
           micro-manager-precice micro-manager-config-global-adaptivity.json &
-          python3 unit_cube.py
+          python3 unit_cube.py 2
 
   adaptivity_unit_tests_serial:
     name: Run adaptivity unit tests in serial
