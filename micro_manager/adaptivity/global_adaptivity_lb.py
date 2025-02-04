@@ -57,6 +57,10 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         self._threshold = configurator.get_load_balancing_threshold()
 
+        self._balance_inactive_sims = configurator.balance_inactive_sims()
+
+        self._nothing_to_balance = False
+
     def redistribute_sims(self, micro_sims: list) -> None:
         """
         Redistribute simulations among ranks to balance compute load.
@@ -66,8 +70,12 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
+        self._nothing_to_balance = False
+
         self._redistribute_active_sims(micro_sims)
-        self._redistribute_inactive_sims(micro_sims)
+
+        if not self._nothing_to_balance and self._balance_inactive_sims:
+            self._redistribute_inactive_sims(micro_sims)
 
     def _redistribute_active_sims(self, micro_sims: list) -> None:
         """
@@ -115,6 +123,10 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         n_global_send_sims = sum(global_send_sims)
         n_global_recv_sims = sum(global_recv_sims)
+
+        if n_global_send_sims == 0 and n_global_recv_sims == 0:
+            self._nothing_to_balance = True
+            return
 
         if n_global_send_sims < n_global_recv_sims:
             excess_recv_sims = n_global_recv_sims - n_global_send_sims
@@ -178,10 +190,14 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
             new_ranks_of_inactive_sims.append(ranks_of_sims[assoc_active_gid])
 
-        # keys are global IDs of sim states to send, values are ranks to send the sims to
+        # Dict of
+        # keys: global IDs of sim states to send from this rank
+        # values: ranks to send the sims to
         send_map: dict[int, int] = dict()
 
-        # keys are global IDs of sim states to receive, values are ranks to receive from
+        # Dict of
+        # keys: global IDs of sim states to receive on this rank
+        # values: are ranks to receive from
         recv_map: dict[int, int] = dict()
 
         for i in range(np.count_nonzero(self._is_sim_active == False)):
@@ -298,8 +314,9 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         send_reqs = []
         for global_id, send_rank in send_map.items():
             tag = self._create_tag(global_id, self._rank, send_rank)
+            local_id = self._global_ids.index(global_id)
             req = self._comm.isend(
-                micro_sims[global_id].get_state(), dest=send_rank, tag=tag
+                (micro_sims[local_id].get_state(), global_id), dest=send_rank, tag=tag
             )
             send_reqs.append(req)
 
@@ -318,17 +335,17 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         # Delete the micro simulations which no longer exist on this rank
         for global_id in send_map.keys():
-            micro_sims[global_id] = None
+            local_id = self._global_ids.index(global_id)
+            del micro_sims[local_id]
             self._local_number_of_sims -= 1
             self._global_ids.remove(global_id)
+            self._is_sim_on_this_rank[global_id] = False
 
         # Create micro simulations and set them to the received states
         for req in recv_reqs:
-            output = req.wait()
-            for global_id in recv_map.keys():
-                micro_sims[global_id] = create_simulation_class(self._micro_problem)(
-                    global_id
-                )
-                micro_sims[global_id].set_state(output)
-                self._local_number_of_sims += 1
-                self._global_ids.append(global_id)
+            output, global_id = req.wait()
+            micro_sims.append(create_simulation_class(self._micro_problem)(global_id))
+            micro_sims[-1].set_state(output)
+            self._local_number_of_sims += 1
+            self._global_ids.append(global_id)
+            self._is_sim_on_this_rank[global_id] = True

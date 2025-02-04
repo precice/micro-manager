@@ -138,9 +138,12 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         numpy array
             1D array of active simulation ids
         """
-        return np.where(
-            self._is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1]
-        )[0]
+        active_sim_ids = []
+        for global_id in self._global_ids:
+            if self._is_sim_active[global_id]:
+                active_sim_ids.append(self._global_ids.index(global_id))
+
+        return np.array(active_sim_ids)
 
     def get_inactive_sim_ids(self) -> np.ndarray:
         """
@@ -151,9 +154,12 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         numpy array
             1D array of inactive simulation ids
         """
-        return np.where(
-            self._is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1] == False
-        )[0]
+        inactive_sim_ids = []
+        for global_id in self._global_ids:
+            if not self._is_sim_active[global_id]:
+                inactive_sim_ids.append(self._global_ids.index(global_id))
+
+        return np.array(inactive_sim_ids)
 
     def get_full_field_micro_output(self, micro_output: list) -> list:
         """
@@ -170,9 +176,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
         """
         micro_sims_output = deepcopy(micro_output)
-        self._communicate_micro_output(
-            self._is_sim_active, self._sim_is_associated_to, micro_sims_output
-        )
+        self._communicate_micro_output(micro_sims_output)
 
         return micro_sims_output
 
@@ -216,8 +220,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
     def _communicate_micro_output(
         self,
-        is_sim_active: np.ndarray,
-        sim_is_associated_to: np.ndarray,
         micro_output: list,
     ) -> None:
         """
@@ -226,21 +228,15 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         Parameters
         ----------
-        is_sim_active : np.ndarray
-            1D array having state (active or inactive) of each micro simulation
-        sim_is_associated_to : np.ndarray
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
         micro_output : list
             List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
         """
 
-        inactive_local_ids = np.where(
-            is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1] == False
-        )[0]
+        inactive_local_ids = self.get_inactive_sim_ids()
 
-        local_sim_is_associated_to = sim_is_associated_to[
-            self._global_ids[0] : self._global_ids[-1] + 1
-        ]
+        local_sim_is_associated_to = []
+        for global_id in self._global_ids:
+            local_sim_is_associated_to.append(self._sim_is_associated_to[global_id])
 
         # Keys are global IDs of active simulations associated to inactive
         # simulations on this rank. Values are global IDs of the inactive
@@ -319,9 +315,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     if self._is_sim_on_this_rank[i]:
                         to_be_activated_ids.append(i)
 
-        local_sim_is_associated_to = _sim_is_associated_to[
-            self._global_ids[0] : self._global_ids[-1] + 1
-        ]
+        local_sim_is_associated_to = []
+        for global_id in self._global_ids:
+            local_sim_is_associated_to.append(self._sim_is_associated_to[global_id])
 
         # Keys are global IDs of active sims not on this rank, values are lists of local and
         # global IDs of inactive sims associated to the active sims which are on this rank

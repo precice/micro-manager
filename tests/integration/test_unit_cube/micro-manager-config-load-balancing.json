@@ -4,8 +4,8 @@
     "coupling_params": {
         "precice_config_file_name": "precice-config.xml",
         "macro_mesh_name": "macro-cube-mesh",
-        "read_data_names": ["macro-scalar-data", "macro-vector-data"],
-        "write_data_names": ["micro-scalar-data", "micro-vector-data"]
+        "write_data_names": ["micro-data-1", "micro-data-2"],
+        "read_data_names": ["macro-data-1"]
     },
     "simulation_params": {
         "micro_dt": 1.0,
@@ -17,10 +17,9 @@
             "load_balancing": "True",
             "load_balancing_settings": {
                 "load_balancing_n": 5,
-                "two_step_load_balancing": "True",
-                "balancing_threshold": 2
-            },
-            "data": ["macro-scalar-data", "micro-vector-data"],
+                "balance_inactive_sims": "True"
+	    },
+            "data": ["micro-data-1", "micro-data-2"],
             "history_param": 0.5,
             "coarsening_constant": 0.3,
             "refining_constant": 0.4,

@@ -57,6 +57,7 @@ class Config:
         self._load_balancing_n = 1
         self._two_step_load_balancing = False
         self._load_balancing_threshold = 0
+        self._balance_inactive_sims = False
 
         # Snapshot information
         self._parameter_file_name = None
@@ -291,6 +292,15 @@ class Config:
                 except BaseException:
                     self._logger.log_info_one_rank(
                         "No load balancing threshold provided. The default threshold of 1 will be used."
+                    )
+
+                try:
+                    self._balance_inactive_sims = self._data["simulation_params"][
+                        "adaptivity_settings"
+                    ]["load_balancing_settings"]["balance_inactive_sims"]
+                except BaseException:
+                    self._logger.log_info_one_rank(
+                        "Micro Manager will not redistribute inactive simulations in the load balancing. Only active simulations will be redistributed. Note that this may significantly increase the communication cost of the adaptivity."
                     )
 
             self._write_data_names.append("active_state")
@@ -651,6 +661,17 @@ class Config:
             Load balancing threshold
         """
         return self._load_balancing_threshold
+
+    def balance_inactive_sims(self):
+        """
+        Check if inactive simulations are to be redistributed in the load balancing.
+
+        Returns
+        -------
+        balance_inactive_sims : bool
+            True if inactive simulations are to be redistributed in the load balancing, False otherwise.
+        """
+        return self._balance_inactive_sims
 
     def get_micro_dt(self):
         """
