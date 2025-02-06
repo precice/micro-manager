@@ -210,7 +210,19 @@ class MicroManagerCoupling(MicroManager):
 
                 if self._is_adaptivity_with_load_balancing:
                     if n % self._load_balancing_n == 0 and not first_time_window:
+                        print(
+                            "Rank {} has the following sims before load balancing: {}".format(
+                                self._rank, self._global_ids_of_local_sims
+                            )
+                        )
+
                         self._adaptivity_controller.redistribute_sims(self._micro_sims)
+
+                        print(
+                            "Rank {} has the following sims after load balancing: {}".format(
+                                self._rank, self._global_ids_of_local_sims
+                            )
+                        )
 
                         self._local_number_of_sims = len(self._global_ids_of_local_sims)
 
@@ -831,23 +843,6 @@ class MicroManagerCoupling(MicroManager):
             A tuple of micro_sims_output (list of Dicts) and adaptivity computation CPU time.
         """
         adaptivity_cpu_time = 0.0
-
-        if self._adaptivity_in_every_implicit_step:
-            start_time = time.process_time()
-            self._adaptivity_controller.compute_adaptivity(
-                dt,
-                self._micro_sims,
-                self._data_for_adaptivity,
-            )
-            end_time = time.process_time()
-
-            adaptivity_cpu_time = end_time - start_time
-
-            active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
-
-            for active_id in active_sim_ids:
-                global_id = self._global_ids_of_local_sims[active_id]
-                self._micro_sims_active_steps[global_id] += 1
 
         active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
         inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()

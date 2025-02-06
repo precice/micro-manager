@@ -66,11 +66,11 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         for i in range(local_number_of_sims):
             micro_sims_on_this_rank[i] = self._rank
 
-        self._rank_of_sim = self._get_ranks_of_sims()
+        rank_of_sim = self._get_ranks_of_sims()
 
         self._is_sim_on_this_rank = [False] * global_number_of_sims  # DECLARATION
         for i in range(global_number_of_sims):
-            if self._rank_of_sim[i] == self._rank:
+            if rank_of_sim[i] == self._rank:
                 self._is_sim_on_this_rank[i] = True
 
         # Copies of variables for checkpointing
@@ -231,30 +231,24 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_output : list
             List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
         """
-
-        inactive_local_ids = self.get_inactive_sim_ids()
-
-        local_sim_is_associated_to = []
-        for global_id in self._global_ids:
-            local_sim_is_associated_to.append(self._sim_is_associated_to[global_id])
-
-        # Keys are global IDs of active simulations associated to inactive
-        # simulations on this rank. Values are global IDs of the inactive
-        # simulations.
+        # Keys are global IDs of active simulations NOT on this rank.
+        # Values are global IDs of the inactive simulations on this rank associated to the active simulations (keys).
         active_to_inactive_map: Dict[int, list] = dict()
 
-        for i in inactive_local_ids:
-            assoc_active_id = local_sim_is_associated_to[i]
-            # Gather global IDs of associated active simulations not on this rank
-            if not self._is_sim_on_this_rank[assoc_active_id]:
-                if assoc_active_id in active_to_inactive_map:
-                    active_to_inactive_map[assoc_active_id].append(i)
-                else:
-                    active_to_inactive_map[assoc_active_id] = [i]
-            else:  # If associated active simulation is on this rank, copy the output directly
-                micro_output[i] = deepcopy(
-                    micro_output[self._global_ids.index(assoc_active_id)]
-                )
+        for global_id in self._global_ids:
+            if not self._is_sim_active[global_id]:
+                assoc_active_gid = self._sim_is_associated_to[global_id]
+                # Gather global IDs of associated active simulations not on this rank
+                if not self._is_sim_on_this_rank[assoc_active_gid]:
+                    if assoc_active_gid in active_to_inactive_map:
+                        active_to_inactive_map[assoc_active_gid].append(global_id)
+                    else:
+                        active_to_inactive_map[assoc_active_gid] = [global_id]
+                else:  # If associated active simulation is on this rank, copy the output directly
+                    local_id = self._global_ids.index(global_id)
+                    micro_output[local_id] = deepcopy(
+                        micro_output[self._global_ids.index(assoc_active_gid)]
+                    )
 
         assoc_active_ids = list(active_to_inactive_map.keys())
 
@@ -263,7 +257,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         # Add received output of active sims to inactive sims on this rank
         for count, req in enumerate(recv_reqs):
             output = req.wait()
-            for local_id in active_to_inactive_map[assoc_active_ids[count]]:
+            for global_id in active_to_inactive_map[assoc_active_ids[count]]:
+                local_id = self._global_ids.index(global_id)
                 micro_output[local_id] = deepcopy(output)
 
     def _update_inactive_sims(
@@ -405,6 +400,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         recv_reqs : list
             List of MPI requests of receive operations.
         """
+        rank_of_sim = self._get_ranks_of_sims()
+
         send_map_local: Dict[
             int, int
         ] = dict()  # keys are global IDs, values are rank to send to
@@ -419,7 +416,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         for i in assoc_active_ids:
             # Add simulation and its rank to receive map
-            recv_map[i] = self._rank_of_sim[i]
+            recv_map[i] = rank_of_sim[i]
             # Add simulation and this rank to local sending map
             send_map_local[i] = self._rank
 
