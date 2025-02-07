@@ -97,7 +97,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         psend_sims = 0
         precv_sims = 0
 
-        print("Rank {} threshold: {}".format(self._rank, self._threshold))
         f_avg_active_sims = math.floor(avg_active_sims) - self._threshold
         c_avg_active_sims = math.ceil(avg_active_sims) + self._threshold
 
@@ -118,26 +117,14 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         global_send_sims = self._comm.allgather(send_sims)
         global_recv_sims = self._comm.allgather(recv_sims)
 
-        print(
-            "Rank {} global_send_sims: {}, global_recv_sims: {}".format(
-                self._rank, global_send_sims, global_recv_sims
-            )
-        )
-
         # Number of active sims that each rank potentially wants to send and receive
         global_psend_sims = self._comm.allgather(psend_sims)
         global_precv_sims = self._comm.allgather(precv_sims)
 
-        print(
-            "Rank {} global_psend_sims: {}, global_precv_sims: {}".format(
-                self._rank, global_psend_sims, global_precv_sims
-            )
-        )
-
         n_global_send_sims = sum(global_send_sims)
         n_global_recv_sims = sum(global_recv_sims)
 
-        if n_global_send_sims == 0 and n_global_recv_sims == 0:
+        if n_global_send_sims == 0 or n_global_recv_sims == 0:
             self._nothing_to_balance = True
             return
 
@@ -172,12 +159,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
                         if excess_send_sims == 0:
                             break
-
-        print(
-            "Rank {} global_send_sims: {}, global_recv_sims: {}".format(
-                self._rank, global_send_sims, global_recv_sims
-            )
-        )
 
         send_map, recv_map = self._get_communication_maps(
             global_send_sims, global_recv_sims
