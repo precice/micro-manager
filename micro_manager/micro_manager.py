@@ -202,14 +202,38 @@ class MicroManagerCoupling(MicroManager):
 
                     active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
 
+                    active_sim_gids = []
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
+                        active_sim_gids.append(
+                            self._global_ids_of_local_sims[active_id]
+                        )
+
+                    inactive_sim_ids = (
+                        self._adaptivity_controller.get_inactive_sim_ids()
+                    )
+                    inactive_sim_gids = []
+                    for inactive_id in inactive_sim_ids:
+                        inactive_sim_gids.append(
+                            self._global_ids_of_local_sims[inactive_id]
+                        )
+
+                    print(
+                        "Rank {} has active sims: {}".format(
+                            self._rank, active_sim_gids
+                        )
+                    )
+                    print(
+                        "Rank {} has inactive sims: {}".format(
+                            self._rank, inactive_sim_gids
+                        )
+                    )
 
                 if self._is_adaptivity_with_load_balancing:
                     if n % self._load_balancing_n == 0 and not first_time_window:
                         print(
                             "Rank {} has {} sims before load balancing".format(
-                                self._rank, len(self._global_ids_of_local_sims)
+                                self._rank, self._global_ids_of_local_sims
                             )
                         )
 
@@ -217,7 +241,7 @@ class MicroManagerCoupling(MicroManager):
 
                         print(
                             "Rank {} has {} sims after load balancing".format(
-                                self._rank, len(self._global_ids_of_local_sims)
+                                self._rank, self._global_ids_of_local_sims
                             )
                         )
 
@@ -429,7 +453,7 @@ class MicroManagerCoupling(MicroManager):
                 self._global_ids_of_local_sims.append(sim_id)
                 sim_id += 1
         else:
-            self._global_ids_of_local_sims = self._mesh_vertex_ids.copy()
+            self._global_ids_of_local_sims = list(self._mesh_vertex_ids)
 
         # Setup for simulation crashes
         self._has_sim_crashed = [False] * self._local_number_of_sims

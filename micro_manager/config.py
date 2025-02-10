@@ -249,59 +249,54 @@ class Config:
                     "Micro Manager will compute adaptivity once at the start of every time window"
                 )
 
+        try:
+            if self._data["simulation_params"]["load_balancing"] == "True":
+                self._adaptivity_is_load_balancing = True
+        except BaseException:
+            self._logger.log_info_one_rank(
+                "Micro Manager will not dynamically balance work load for the adaptivity computation."
+            )
+
+        if self._adaptivity_is_load_balancing:
+            self._load_balancing_n = self._data["simulation_params"][
+                "load_balancing_settings"
+            ]["load_balancing_n"]
+
             try:
                 if (
-                    self._data["simulation_params"]["adaptivity_settings"][
-                        "load_balancing"
+                    self._data["simulation_params"]["load_balancing_settings"][
+                        "two_step_load_balancing"
                     ]
                     == "True"
                 ):
-                    self._adaptivity_is_load_balancing = True
+                    self._two_step_load_balancing = True
             except BaseException:
                 self._logger.log_info_one_rank(
-                    "Micro Manager will not dynamically balance work load for the adaptivity computation."
+                    "Two-step load balancing is not specified. Micro Manager will only try to balance the load in one sweep."  # TODO: Need a better log message here.
                 )
 
-            if self._adaptivity_is_load_balancing:
-                try:
-                    self._load_balancing_n = self._data["simulation_params"][
-                        "adaptivity_settings"
-                    ]["load_balancing_settings"]["load_balancing_n"]
-                except BaseException:
-                    self._logger.log_info_one_rank(
-                        "No load balancing interval provided. Load balancing will be performed every time window. THIS IS NOT RECOMMENDED."
-                    )
+            try:
+                self._load_balancing_threshold = self._data["simulation_params"][
+                    "load_balancing_settings"
+                ]["balancing_threshold"]
+            except BaseException:
+                self._logger.log_info_one_rank(
+                    "No load balancing threshold provided. The threshold will be set to 0."
+                )
 
-                try:
-                    if (
-                        self._data["simulation_params"]["adaptivity_settings"][
-                            "load_balancing_settings"
-                        ]["two_step_load_balancing"]
-                        == "True"
-                    ):
-                        self._two_step_load_balancing = True
-                except BaseException:
-                    self._logger.log_info_one_rank(
-                        "Two-step load balancing is not specified. Micro Manager will only try to balance the load in one sweep."  # TODO: Need a better log message here.
-                    )
-
-                try:
-                    self._load_balancing_threshold = self._data["simulation_params"][
-                        "adaptivity_settings"
-                    ]["load_balancing_settings"]["balancing_threshold"]
-                except BaseException:
-                    self._logger.log_info_one_rank(
-                        "No load balancing threshold provided. The threshold will be set to 0."
-                    )
-
-                try:
-                    self._balance_inactive_sims = self._data["simulation_params"][
-                        "adaptivity_settings"
-                    ]["load_balancing_settings"]["balance_inactive_sims"]
-                except BaseException:
-                    self._logger.log_info_one_rank(
-                        "Micro Manager will not redistribute inactive simulations in the load balancing. Only active simulations will be redistributed. Note that this may significantly increase the communication cost of the adaptivity."
-                    )
+            try:
+                if (
+                    self._data["simulation_params"]["load_balancing_settings"][
+                        "balance_inactive_sims"
+                    ]
+                    == "True"
+                ):
+                    print("Balance inactive sims TRUE")
+                    self._balance_inactive_sims = True
+            except BaseException:
+                self._logger.log_info_one_rank(
+                    "Micro Manager will not redistribute inactive simulations in the load balancing. Only active simulations will be redistributed. Note that this may significantly increase the communication cost of the adaptivity."
+                )
 
             self._write_data_names.append("active_state")
             self._write_data_names.append("active_steps")

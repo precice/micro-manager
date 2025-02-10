@@ -74,7 +74,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         self._redistribute_active_sims(micro_sims)
 
-        if not self._nothing_to_balance and self._balance_inactive_sims:
+        if (not self._nothing_to_balance) and self._balance_inactive_sims:
             self._redistribute_inactive_sims(micro_sims)
 
     def _redistribute_active_sims(self, micro_sims: list) -> None:
@@ -167,11 +167,13 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         self._communicate_micro_sims(micro_sims, send_map, recv_map)
 
         if self._is_load_balancing_done_in_two_steps:
-            send_map, recv_map = self._get_communication_maps(
-                global_psend_sims, global_precv_sims
-            )
+            if sum(global_psend_sims) != 0 and sum(global_precv_sims) != 0:
+                send_map, recv_map = self._get_communication_maps(
+                    global_psend_sims, global_precv_sims
+                )
 
-            self._communicate_micro_sims(micro_sims, send_map, recv_map)
+                self._communicate_micro_sims(micro_sims, send_map, recv_map)
+            # TODO: Add a warning if the probable send or receive requests are zero, because then two step load balancing does not happen
 
     def _redistribute_inactive_sims(self, micro_sims):
         """

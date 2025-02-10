@@ -11,6 +11,7 @@
   <data:scalar name="active_steps" />
   <data:scalar name="adaptivity_cpu_time" />
   <data:scalar name="solve_cpu_time" />
+  <data:scalar name="rank_of_sim" />
 
   <mesh name="macro-cube-mesh" dimensions="3">
     <use-data name="micro-data-1" />
@@ -20,6 +21,7 @@
     <use-data name="active_steps" />
     <use-data name="adaptivity_cpu_time" />
     <use-data name="solve_cpu_time" />
+    <use-data name="rank_of_sim" />
   </mesh>
 
   <participant name="macro-cube">
@@ -38,6 +40,7 @@
     <write-data name="active_steps" mesh="macro-cube-mesh" />
     <write-data name="adaptivity_cpu_time" mesh="macro-cube-mesh" />
     <write-data name="solve_cpu_time" mesh="macro-cube-mesh" />
+    <write-data name="rank_of_sim" mesh="macro-cube-mesh" />
     <export:vtu directory="output" />
   </participant>
 
@@ -45,7 +48,7 @@
 
   <coupling-scheme:serial-explicit>
     <participants first="Micro-Manager" second="macro-cube" />
-    <max-time value="10" />
+    <max-time value="3" />
     <time-window-size value="1" />
     <exchange data="micro-data-1" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube" />
     <exchange data="micro-data-2" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube" />

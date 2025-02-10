@@ -81,6 +81,8 @@ class TestFunctioncalls(TestCase):
         """
         manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
 
+        manager._global_ids_of_local_sims = 4
+
         manager._write_data_to_precice(self.fake_write_data)
         read_data = manager._read_data_from_precice(1.0)
 
