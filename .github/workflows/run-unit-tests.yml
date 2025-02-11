@@ -39,11 +39,8 @@ jobs:
           python3 -m unittest test_interpolation.py
 
       - name: Install Micro Manager and run micro simulation crash unit test
-        working-directory: micro-manager/
+        working-directory: micro-manager/tests/unit/
         run: |
-          pip3 install --user .
-          pip3 uninstall -y pyprecice
-          cd tests/unit
           python3 -m unittest test_micro_simulation_crash_handling.py
 
       - name: Install Micro Manager and run HDF5 read and write unit tests
@@ -55,9 +52,6 @@ jobs:
           python3 -m unittest test_hdf5_functionality.py
 
       - name: Install Micro Manager and run snapshot_computation unit tests
-        working-directory: micro-manager/
+        working-directory: micro-manager/tests/unit/
         run: |
-          pip3 install --user .[snapshot]
-          pip3 uninstall -y pyprecice
-          cd tests/unit
           python3 -m unittest test_snapshot_computation.py
