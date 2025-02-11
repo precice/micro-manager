@@ -9,7 +9,6 @@
   <data:scalar name="macro-data-1" />
   <data:scalar name="active_state" />
   <data:scalar name="active_steps" />
-  <data:scalar name="adaptivity_cpu_time" />
   <data:scalar name="solve_cpu_time" />
   <data:scalar name="rank_of_sim" />
 
@@ -19,7 +18,6 @@
     <use-data name="macro-data-1" />
     <use-data name="active_state" />
     <use-data name="active_steps" />
-    <use-data name="adaptivity_cpu_time" />
     <use-data name="solve_cpu_time" />
     <use-data name="rank_of_sim" />
   </mesh>
@@ -38,7 +36,6 @@
     <write-data name="micro-data-2" mesh="macro-cube-mesh" />
     <write-data name="active_state" mesh="macro-cube-mesh" />
     <write-data name="active_steps" mesh="macro-cube-mesh" />
-    <write-data name="adaptivity_cpu_time" mesh="macro-cube-mesh" />
     <write-data name="solve_cpu_time" mesh="macro-cube-mesh" />
     <write-data name="rank_of_sim" mesh="macro-cube-mesh" />
     <export:vtu directory="output" />

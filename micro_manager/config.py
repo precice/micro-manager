@@ -50,8 +50,6 @@ class Config:
         self._adaptivity_every_implicit_iteration = False
         self._adaptivity_similarity_measure = "L1"
         self._adaptivity_output_n = 1
-        self._adaptivity_output_cpu_time = False
-        self._adaptivity_output_mem_usage = False
 
         self._adaptivity_is_load_balancing = False
         self._load_balancing_n = 1
@@ -251,34 +249,6 @@ class Config:
 
             self._write_data_names.append("active_state")
             self._write_data_names.append("active_steps")
-
-            try:
-                if (
-                    self._data["simulation_params"]["adaptivity_settings"][
-                        "output_cpu_time"
-                    ]
-                    == "True"
-                ):
-                    self._adaptivity_output_cpu_time = True
-                    self._write_data_names.append("adaptivity_cpu_time")
-            except BaseException:
-                self._logger.log_info_one_rank(
-                    "Micro Manager will not output CPU time of the adaptivity computation."
-                )
-
-            try:
-                if (
-                    self._data["simulation_params"]["adaptivity_settings"][
-                        "output_mem_usage"
-                    ]
-                    == "True"
-                ):
-                    self._adaptivity_output_mem_usage = True
-                    self._write_data_names.append("adaptivity_mem_usage")
-            except BaseException:
-                self._logger.log_info_one_rank(
-                    "Micro Manager will not output CPU time of the adaptivity computation."
-                )
 
         try:
             if self._data["simulation_params"]["load_balancing"] == "True":
@@ -601,17 +571,6 @@ class Config:
             True if adaptivity needs to be calculated in every time iteration, False otherwise.
         """
         return self._adaptivity_every_implicit_iteration
-
-    def output_adaptivity_cpu_time(self):
-        """
-        Check if CPU time of the adaptivity computation needs to be output.
-
-        Returns
-        -------
-        adaptivity_cpu_time : bool
-            True if CPU time of the adaptivity computation needs to be output, False otherwise.
-        """
-        return self._adaptivity_output_cpu_time
 
     def is_adaptivity_with_load_balancing(self):
         """

@@ -125,7 +125,6 @@ class MicroManagerCoupling(MicroManager):
                 self._load_balancing_n = self._config.get_load_balancing_n()
 
         self._adaptivity_output_n = self._config.get_adaptivity_output_n()
-        self._output_adaptivity_cpu_time = self._config.output_adaptivity_cpu_time()
 
         # Define the preCICE Participant
         self._participant = precice.Participant(
@@ -266,10 +265,7 @@ class MicroManagerCoupling(MicroManager):
 
             micro_sims_output, adaptivity_time = micro_sim_solve(micro_sims_input, dt)
 
-            if self._output_adaptivity_cpu_time:
-                adaptivity_cpu_time += adaptivity_time
-                for i in range(self._local_number_of_sims):
-                    micro_sims_output[i]["adaptivity_cpu_time"] = adaptivity_cpu_time
+            adaptivity_cpu_time += adaptivity_time
 
             if self._is_adaptivity_with_load_balancing:
                 for i in range(self._local_number_of_sims):
@@ -334,7 +330,7 @@ class MicroManagerCoupling(MicroManager):
                     and n % self._adaptivity_output_n == 0
                     and self._rank == 0
                 ):
-                    self._adaptivity_controller.log_metrics(n)
+                    self._adaptivity_controller.log_metrics(n, adaptivity_cpu_time)
 
                 self._logger.log_info_one_rank("Time window {} converged.".format(n))
 
@@ -810,7 +806,6 @@ class MicroManagerCoupling(MicroManager):
         adaptivity_cpu_time = 0.0
 
         active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
-        inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
 
         micro_sims_output = [0] * self._local_number_of_sims
 
@@ -885,7 +880,9 @@ class MicroManagerCoupling(MicroManager):
         )
         end_time = time.process_time()
 
-        adaptivity_cpu_time += end_time - start_time
+        adaptivity_cpu_time = end_time - start_time
+
+        inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
 
         # Resolve micro sim output data for inactive simulations
         for inactive_id in inactive_sim_ids:

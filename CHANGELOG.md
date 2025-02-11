@@ -3,6 +3,7 @@
 ## latest
 
 - Add dynamic load balancing capability to global adaptivity https://github.com/precice/micro-manager/pull/141
+- Move adaptivity CPU time output from preCICE export to metrics logging https://github.com/precice/micro-manager/pull/149
 - Fix bug in the domain decomposition which was returning incorrect bounding box limits for the decomposition of `[2, 2, 1]` and similar https://github.com/precice/micro-manager/pull/146
 - Fix bug in calling of the adaptivity computation for explicit coupling scenarios https://github.com/precice/micro-manager/pull/145
 - Fix bug in handling of vector data returned by the MicroSimulation `solve()` method, for scenarios with adaptivity https://github.com/precice/micro-manager/pull/143
