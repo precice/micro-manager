@@ -295,34 +295,33 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         _is_sim_active = np.copy(
             is_sim_active
         )  # Input is_sim_active is not longer used after this point
-        _sim_is_associated_to = np.copy(sim_is_associated_to)
         _sim_is_associated_to_updated = np.copy(sim_is_associated_to)
+
+        global_number_of_sims = len(_is_sim_active)
 
         # Check inactive simulations for activation and collect IDs of those to be activated
         to_be_activated_ids = []  # Global IDs to be activated
-        for i in range(_is_sim_active.size):
-            if not _is_sim_active[i]:  # if id is inactive
-                if self._check_for_activation(i, similarity_dists, _is_sim_active):
-                    _is_sim_active[i] = True
+        for global_id in range(global_number_of_sims):
+            if not _is_sim_active[global_id]:  # if id is inactive
+                if self._check_for_activation(
+                    global_id, similarity_dists, _is_sim_active
+                ):
+                    _is_sim_active[global_id] = True
                     _sim_is_associated_to_updated[
-                        i
+                        global_id
                     ] = -2  # Active sim cannot have an associated sim
-                    if self._is_sim_on_this_rank[i]:
-                        to_be_activated_ids.append(i)
-
-        local_sim_is_associated_to = []
-        for global_id in self._global_ids:
-            local_sim_is_associated_to.append(self._sim_is_associated_to[global_id])
+                    if self._is_sim_on_this_rank[global_id]:
+                        to_be_activated_ids.append(global_id)
 
         # Keys are global IDs of active sims not on this rank, values are lists of local and
         # global IDs of inactive sims associated to the active sims which are on this rank
         to_be_activated_map: Dict[int, list] = dict()
 
-        for i in to_be_activated_ids:
-            # Only handle activation of simulations on this rank -- LOCAL SCOPE HERE ON
-            if self._is_sim_on_this_rank[i]:
-                to_be_activated_local_id = self._global_ids.index(i)
-                assoc_active_id = local_sim_is_associated_to[to_be_activated_local_id]
+        # Only handle activation of simulations on this rank -- LOCAL SCOPE HERE ON
+        for global_id in to_be_activated_ids:
+            if self._is_sim_on_this_rank[global_id]:
+                to_be_activated_local_id = self._global_ids.index(global_id)
+                assoc_active_id = sim_is_associated_to[global_id]
 
                 if self._is_sim_on_this_rank[
                     assoc_active_id
