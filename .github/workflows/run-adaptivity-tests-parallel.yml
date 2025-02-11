@@ -76,13 +76,16 @@ jobs:
         run: pip3 install --user .
 
       - name: Run adaptivity unit tests in parallel
+        timeout-minutes: 3
         working-directory: micro-manager/tests/unit
         run: mpiexec -n 2 --allow-run-as-root python3 -m unittest test_adaptivity_parallel.py
 
       - name: Run load balancing unit tests with 2 ranks
+        timeout-minutes: 3
         working-directory: micro-manager/tests/unit
         run: mpiexec -n 2 --allow-run-as-root python3 -m unittest test_global_adaptivity_lb.py
 
       - name: Run load balancing tests with 4 ranks
+        timeout-minutes: 3
         working-directory: micro-manager/tests/unit
         run: mpiexec -n 4 --allow-run-as-root --oversubscribe python3 -m unittest test_global_adaptivity_lb.py

@@ -49,16 +49,16 @@ class TestGlobalAdaptivityLB(TestCase):
         Test load balancing functionality to redistribute active simulations.
         Run this test in parallel using MPI with 2 ranks.
         """
-        global_number_of_sims = 5
+        global_number_of_sims = 8
 
         if self._rank == 0:
-            global_ids = [0, 1, 2]
-            expected_global_ids = [1, 2]
+            global_ids = [0, 1, 2, 3]
+            expected_global_ids = [2, 3]
         elif self._rank == 1:
-            global_ids = [3, 4]
-            expected_global_ids = [0, 3, 4]
+            global_ids = [4, 5, 6, 7]
+            expected_global_ids = [4, 5, 6, 7, 0, 1]
 
-        expected_ranks_of_sims = [1, 0, 0, 1, 1]
+        expected_ranks_of_sims = [1, 1, 0, 0, 1, 1, 1, 1]
 
         adaptivity_controller = GlobalAdaptivityLBCalculator(
             self._configurator,
@@ -69,22 +69,18 @@ class TestGlobalAdaptivityLB(TestCase):
         )
 
         adaptivity_controller._is_sim_active = np.array(
-            [True, True, False, False, False]
+            [True, True, True, True, False, False, False, False]
         )
 
         micro_sims = []
-        for i in range(global_number_of_sims):
-            if i in global_ids:
-                micro_sims.append(MicroSimulation(i))
-            else:
-                micro_sims.append(None)
+        for i in global_ids:
+            micro_sims.append(MicroSimulation(i))
 
         adaptivity_controller._redistribute_active_sims(micro_sims)
 
         actual_global_ids = []
-        for i in range(global_number_of_sims):
-            if micro_sims[i] is not None:
-                actual_global_ids.append(micro_sims[i].get_global_id())
+        for sim in micro_sims:
+            actual_global_ids.append(sim.get_global_id())
 
         self.assertEqual(actual_global_ids, expected_global_ids)
 
@@ -125,18 +121,14 @@ class TestGlobalAdaptivityLB(TestCase):
         adaptivity_controller._sim_is_associated_to = [-2, -2, 0, 1, 0]
 
         micro_sims = []
-        for i in range(global_number_of_sims):
-            if i in global_ids:
-                micro_sims.append(MicroSimulation(i))
-            else:
-                micro_sims.append(None)
+        for i in global_ids:
+            micro_sims.append(MicroSimulation(i))
 
         adaptivity_controller._redistribute_inactive_sims(micro_sims)
 
         actual_global_ids = []
-        for i in range(global_number_of_sims):
-            if micro_sims[i] is not None:
-                actual_global_ids.append(micro_sims[i].get_global_id())
+        for sim in micro_sims:
+            actual_global_ids.append(sim.get_global_id())
 
         self.assertEqual(actual_global_ids, expected_global_ids)
 
@@ -198,18 +190,14 @@ class TestGlobalAdaptivityLB(TestCase):
         )
 
         micro_sims = []
-        for i in range(global_number_of_sims):
-            if i in global_ids:
-                micro_sims.append(MicroSimulation(i))
-            else:
-                micro_sims.append(None)
+        for i in global_ids:
+            micro_sims.append(MicroSimulation(i))
 
         adaptivity_controller._redistribute_active_sims(micro_sims)
 
         actual_global_ids = []
-        for i in range(global_number_of_sims):
-            if micro_sims[i] is not None:
-                actual_global_ids.append(micro_sims[i].get_global_id())
+        for sim in micro_sims:
+            actual_global_ids.append(sim.get_global_id())
 
         self.assertEqual(actual_global_ids, expected_global_ids)
 
@@ -273,18 +261,14 @@ class TestGlobalAdaptivityLB(TestCase):
         )
 
         micro_sims = []
-        for i in range(global_number_of_sims):
-            if i in global_ids:
-                micro_sims.append(MicroSimulation(i))
-            else:
-                micro_sims.append(None)
+        for i in global_ids:
+            micro_sims.append(MicroSimulation(i))
 
         adaptivity_controller._redistribute_active_sims(micro_sims)
 
         actual_global_ids = []
-        for i in range(global_number_of_sims):
-            if micro_sims[i] is not None:
-                actual_global_ids.append(micro_sims[i].get_global_id())
+        for sim in micro_sims:
+            actual_global_ids.append(sim.get_global_id())
 
         self.assertEqual(actual_global_ids, expected_global_ids)
 
@@ -362,18 +346,14 @@ class TestGlobalAdaptivityLB(TestCase):
         ]
 
         micro_sims = []
-        for i in range(global_number_of_sims):
-            if i in global_ids:
-                micro_sims.append(MicroSimulation(i))
-            else:
-                micro_sims.append(None)
+        for i in global_ids:
+            micro_sims.append(MicroSimulation(i))
 
         adaptivity_controller._redistribute_inactive_sims(micro_sims)
 
         actual_global_ids = []
-        for i in range(global_number_of_sims):
-            if micro_sims[i] is not None:
-                actual_global_ids.append(micro_sims[i].get_global_id())
+        for sim in micro_sims:
+            actual_global_ids.append(sim.get_global_id())
 
         self.assertEqual(actual_global_ids, expected_global_ids)
 
