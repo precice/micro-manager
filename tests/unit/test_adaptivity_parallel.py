@@ -175,16 +175,22 @@ class TestGlobalAdaptivity(TestCase):
             sim_output = [output_1, None]
             expected_sim_output = [output_1, output_0]
 
-        is_sim_active = np.array([False, False, True, True, False])  # is_sim_active
-        sim_is_associated_to = [3, 3, -2, -2, 2]  # sim_is_associated_to
-
         adaptivity_controller = GlobalAdaptivityCalculator(
             self._configurator, 5, global_ids, rank=self._rank, comm=self._comm
         )
 
-        adaptivity_controller._communicate_micro_output(
-            is_sim_active, sim_is_associated_to, sim_output
-        )
+        adaptivity_controller._is_sim_active = np.array(
+            [False, False, True, True, False]
+        )  # is_sim_active
+        adaptivity_controller._sim_is_associated_to = [
+            3,
+            3,
+            -2,
+            -2,
+            2,
+        ]  # sim_is_associated_to
+
+        adaptivity_controller._communicate_micro_output(sim_output)
 
         self.assertTrue(np.array_equal(expected_sim_output, sim_output))
 

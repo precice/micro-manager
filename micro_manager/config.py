@@ -249,6 +249,37 @@ class Config:
                     "Micro Manager will compute adaptivity once at the start of every time window"
                 )
 
+            self._write_data_names.append("active_state")
+            self._write_data_names.append("active_steps")
+
+            try:
+                if (
+                    self._data["simulation_params"]["adaptivity_settings"][
+                        "output_cpu_time"
+                    ]
+                    == "True"
+                ):
+                    self._adaptivity_output_cpu_time = True
+                    self._write_data_names.append("adaptivity_cpu_time")
+            except BaseException:
+                self._logger.log_info_one_rank(
+                    "Micro Manager will not output CPU time of the adaptivity computation."
+                )
+
+            try:
+                if (
+                    self._data["simulation_params"]["adaptivity_settings"][
+                        "output_mem_usage"
+                    ]
+                    == "True"
+                ):
+                    self._adaptivity_output_mem_usage = True
+                    self._write_data_names.append("adaptivity_mem_usage")
+            except BaseException:
+                self._logger.log_info_one_rank(
+                    "Micro Manager will not output CPU time of the adaptivity computation."
+                )
+
         try:
             if self._data["simulation_params"]["load_balancing"] == "True":
                 self._adaptivity_is_load_balancing = True
@@ -296,37 +327,6 @@ class Config:
             except BaseException:
                 self._logger.log_info_one_rank(
                     "Micro Manager will not redistribute inactive simulations in the load balancing. Only active simulations will be redistributed. Note that this may significantly increase the communication cost of the adaptivity."
-                )
-
-            self._write_data_names.append("active_state")
-            self._write_data_names.append("active_steps")
-
-            try:
-                if (
-                    self._data["simulation_params"]["adaptivity_settings"][
-                        "output_cpu_time"
-                    ]
-                    == "True"
-                ):
-                    self._adaptivity_output_cpu_time = True
-                    self._write_data_names.append("adaptivity_cpu_time")
-            except BaseException:
-                self._logger.log_info_one_rank(
-                    "Micro Manager will not output CPU time of the adaptivity computation."
-                )
-
-            try:
-                if (
-                    self._data["simulation_params"]["adaptivity_settings"][
-                        "output_mem_usage"
-                    ]
-                    == "True"
-                ):
-                    self._adaptivity_output_mem_usage = True
-                    self._write_data_names.append("adaptivity_mem_usage")
-            except BaseException:
-                self._logger.log_info_one_rank(
-                    "Micro Manager will not output CPU time of the adaptivity computation."
                 )
 
         if "interpolate_crash" in self._data["simulation_params"]:
