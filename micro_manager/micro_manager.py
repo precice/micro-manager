@@ -89,7 +89,7 @@ class MicroManagerCoupling(MicroManager):
                 )
                 self._interpolate_crashed_sims = False
             else:
-                # The following parameters can potentially become configurable by the user in the future
+                # TODO: Make these parameters configurable
                 self._crash_threshold = 0.2
                 self._number_of_nearest_neighbors = 4
 
@@ -446,14 +446,11 @@ class MicroManagerCoupling(MicroManager):
                 self._data_for_adaptivity[name] = [0] * self._local_number_of_sims
 
         # Create lists of local and global IDs
-        if self._is_adaptivity_with_load_balancing:
-            sim_id = np.sum(nms_all_ranks[: self._rank])
-            self._global_ids_of_local_sims = []  # DECLARATION
-            for i in range(self._local_number_of_sims):
-                self._global_ids_of_local_sims.append(sim_id)
-                sim_id += 1
-        else:
-            self._global_ids_of_local_sims = list(self._mesh_vertex_ids)
+        sim_id = np.sum(nms_all_ranks[: self._rank])
+        self._global_ids_of_local_sims = []  # DECLARATION
+        for i in range(self._local_number_of_sims):
+            self._global_ids_of_local_sims.append(sim_id)
+            sim_id += 1
 
         # Setup for simulation crashes
         self._has_sim_crashed = [False] * self._local_number_of_sims
@@ -656,6 +653,11 @@ class MicroManagerCoupling(MicroManager):
         """
         read_data: dict[str, list] = dict()
 
+        if self._is_adaptivity_with_load_balancing:
+            read_vertex_ids = self._global_ids_of_local_sims
+        else:
+            read_vertex_ids = self._mesh_vertex_ids
+
         for name in self._read_data_names:
             read_data[name] = []
 
@@ -663,7 +665,7 @@ class MicroManagerCoupling(MicroManager):
             read_data.update(
                 {
                     name: self._participant.read_data(
-                        self._macro_mesh_name, name, self._global_ids_of_local_sims, dt
+                        self._macro_mesh_name, name, read_vertex_ids, dt
                     )
                 }
             )
@@ -683,6 +685,11 @@ class MicroManagerCoupling(MicroManager):
         data : list
             List of dicts in which keys are names of data and the values are the data to be written to preCICE.
         """
+        if self._is_adaptivity_with_load_balancing:
+            write_vertex_ids = self._global_ids_of_local_sims
+        else:
+            write_vertex_ids = self._mesh_vertex_ids
+
         data_dict: dict[str, list] = dict()
         if not self._is_rank_empty:
             for name in data[0]:
@@ -696,7 +703,7 @@ class MicroManagerCoupling(MicroManager):
                 self._participant.write_data(
                     self._macro_mesh_name,
                     dname,
-                    self._global_ids_of_local_sims,
+                    write_vertex_ids,
                     data_dict[dname],
                 )
         else:

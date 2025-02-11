@@ -79,7 +79,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
     def _redistribute_active_sims(self, micro_sims: list) -> None:
         """
-        Redistribute simulations among ranks.
+        Redistribute active simulations as per the configured load balancing settings.
 
         Parameters
         ----------
@@ -126,6 +126,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         if n_global_send_sims == 0 or n_global_recv_sims == 0:
             self._nothing_to_balance = True
+            # TODO: Add a warning log before returning
             return
 
         if n_global_send_sims < n_global_recv_sims:
@@ -175,9 +176,14 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                 self._communicate_micro_sims(micro_sims, send_map, recv_map)
             # TODO: Add a warning if the probable send or receive requests are zero, because then two step load balancing does not happen
 
-    def _redistribute_inactive_sims(self, micro_sims):
+    def _redistribute_inactive_sims(self, micro_sims: list) -> None:
         """
-        ...
+        Redistribute inactive simulations based on where the associated active simulations are.
+
+        Parameters
+        ----------
+        micro_sims : list
+            List of objects of class MicroProblem, which are the micro simulations
         """
         ranks_of_sims = self._get_ranks_of_sims()
 
