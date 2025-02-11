@@ -118,7 +118,6 @@ class MicroManagerCoupling(MicroManager):
             )
 
         self._adaptivity_output_n = self._config.get_adaptivity_output_n()
-        self._output_adaptivity_cpu_time = self._config.output_adaptivity_cpu_time()
 
         # Define the preCICE Participant
         self._participant = precice.Participant(
@@ -201,8 +200,7 @@ class MicroManagerCoupling(MicroManager):
 
             micro_sims_output, adaptivity_time = micro_sim_solve(micro_sims_input, dt)
 
-            if self._output_adaptivity_cpu_time:
-                adaptivity_cpu_time += adaptivity_time
+            adaptivity_cpu_time += adaptivity_time
 
             # Check if more than a certain percentage of the micro simulations have crashed and terminate if threshold is exceeded
             if self._interpolate_crashed_sims:
