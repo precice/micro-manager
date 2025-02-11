@@ -5,6 +5,7 @@ on each rank is done, along with dynamic load balancing.
 
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
+import time
 import importlib
 import numpy as np
 from mpi4py import MPI
@@ -72,6 +73,8 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         self._nothing_to_balance = False
 
+        self._cpu_time = 0
+
     def redistribute_sims(self, micro_sims: list) -> None:
         """
         Redistribute simulations among ranks to balance compute load.
@@ -83,10 +86,39 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         """
         self._nothing_to_balance = False
 
+        start_time = time.process_time()
+
         self._redistribute_active_sims(micro_sims)
 
         if (not self._nothing_to_balance) and self._balance_inactive_sims:
             self._redistribute_inactive_sims(micro_sims)
+
+        end_time = time.process_time()
+
+        self._cpu_time = end_time - start_time
+
+    def log_metrics(self, n: int) -> None:
+        """
+        Log metrics of adaptivity. Headings are: time step, mean active sims, mean inactive sims, max active sims, max inactive sims, load balancing cpu time.
+
+        Parameters
+        ----------
+        n : int
+            Time step count at which the metrics are logged
+        """
+        global_active_sims = np.count_nonzero(self._is_sim_active)
+        global_inactive_sims = np.count_nonzero(self._is_sim_active == False)
+
+        self._metrics_logger.log_info_one_rank(
+            "{},{},{},{},{},{}".format(
+                n,
+                np.mean(global_active_sims),
+                np.mean(global_inactive_sims),
+                np.max(global_active_sims),
+                np.max(global_inactive_sims),
+                self._cpu_time,
+            )
+        )
 
     def _redistribute_active_sims(self, micro_sims: list) -> None:
         """
