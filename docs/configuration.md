@@ -120,7 +120,6 @@ Parameter | Description
 `refining_constant` | Refining constant $$ C_r $$, set as $$ 0 =< C_r < 1 $$.
 `every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
 `similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.
-`output_cpu_time` | Write CPU time of the adaptivity computation to preCICE, to be exported. This parameter is *optional*.
 
 The primary tuning parameters for adaptivity are the history parameter $$ \Lambda $$, the coarsening constant $$ C_c $$, and the refining constant $$ C_r $$. Their effects can be interpreted as:
 
@@ -170,8 +169,6 @@ The Micro Manager uses the output functionality of preCICE, hence these data set
     <write-data name="active_steps" mesh="macro-mesh"/>
 </participant>
 ```
-
-If the parameter `output_cpu_time` in `adaptivity_settings` is set to `True`, a scalar data field `adaptivity_cpu_time` needs to be added in the same way as described above.
 
 ## Interpolate a crashed micro simulation
 
