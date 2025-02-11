@@ -100,3 +100,26 @@ class Logger:
             Message to log.
         """
         self._logger.error(message)
+
+    def log_warning_one_rank(self, message):
+        """
+        Log a message. Only the rank 0 logs the message.
+
+        Parameters
+        ----------
+        message : string
+            Message to log.
+        """
+        if self._rank == 0:
+            self._logger.warning(message)
+
+    def log_warning_any_rank(self, message):
+        """
+        Log a message. All ranks log the message.
+
+        Parameters
+        ----------
+        message : string
+            Message to log.
+        """
+        self._logger.warning(message)

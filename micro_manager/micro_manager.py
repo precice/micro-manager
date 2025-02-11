@@ -481,12 +481,13 @@ class MicroManagerCoupling(MicroManager):
                     )
                 )
             elif self._config.get_adaptivity_type() == "global":
-                if self._config.is_adaptivity_with_load_balancing():
+                if self._is_adaptivity_with_load_balancing:
                     self._adaptivity_controller: GlobalAdaptivityLBCalculator = (
                         GlobalAdaptivityLBCalculator(
                             self._config,
                             self._global_number_of_sims,
                             self._global_ids_of_local_sims,
+                            self._logger,
                             self._rank,
                             self._comm,
                         )

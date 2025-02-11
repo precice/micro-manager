@@ -32,7 +32,7 @@
   </participant>
 
   <participant name="Micro-Manager">
-    <receive-mesh name="macro-cube-mesh" from="macro-cube" direct-access="true" safety-factor="0" />
+    <receive-mesh name="macro-cube-mesh" from="macro-cube" direct-access="true" />
     <read-data name="macro-data-1" mesh="macro-cube-mesh" />
     <write-data name="micro-data-1" mesh="macro-cube-mesh" />
     <write-data name="micro-data-2" mesh="macro-cube-mesh" />

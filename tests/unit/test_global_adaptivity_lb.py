@@ -64,6 +64,7 @@ class TestGlobalAdaptivityLB(TestCase):
             self._configurator,
             global_number_of_sims,
             global_ids,
+            logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
         )
@@ -111,6 +112,7 @@ class TestGlobalAdaptivityLB(TestCase):
             self._configurator,
             global_number_of_sims,
             global_ids,
+            logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
         )
@@ -165,6 +167,7 @@ class TestGlobalAdaptivityLB(TestCase):
             self._configurator,
             global_number_of_sims,
             global_ids,
+            logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
         )
@@ -236,6 +239,7 @@ class TestGlobalAdaptivityLB(TestCase):
             self._configurator,
             global_number_of_sims,
             global_ids,
+            logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
         )
@@ -281,7 +285,8 @@ class TestGlobalAdaptivityLB(TestCase):
     )
     def test_redistribute_inactive_sims_four_ranks(self):
         """
-        ...
+        Test load balancing functionality to redistribute inactive simulations.
+        Run this test in parallel using MPI with 4 ranks.
         """
         global_number_of_sims = 15
 
@@ -304,6 +309,7 @@ class TestGlobalAdaptivityLB(TestCase):
             self._configurator,
             global_number_of_sims,
             global_ids,
+            logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
         )

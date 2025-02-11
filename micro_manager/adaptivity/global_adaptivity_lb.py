@@ -21,6 +21,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         configurator,
         global_number_of_sims: int,
         global_ids: list,
+        logger,
         rank: int,
         comm,
     ) -> None:
@@ -35,6 +36,8 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             Total number of simulations in the macro-micro coupled problem.
         global_ids : list
             List of global IDs of simulations living on this rank.
+        logger : object of class Logger
+            Logger to log to terminal.
         rank : int
             MPI rank.
         comm : MPI.COMM_WORLD
@@ -49,13 +52,21 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             "MicroSimulation",
         )
 
+        self._base_logger = logger
+
         self._local_number_of_sims = len(global_ids)
+
+        self._threshold = configurator.get_load_balancing_threshold()
 
         self._is_load_balancing_done_in_two_steps = (
             configurator.is_load_balancing_two_step()
         )
 
-        self._threshold = configurator.get_load_balancing_threshold()
+        if self._threshold > 0 and self._is_load_balancing_done_in_two_steps:
+            self._is_load_balancing_done_in_two_steps = False
+            self._base_logger.log_warning_one_rank(
+                "Threshold is not zero, so two step load balancing is disabled."
+            )
 
         self._balance_inactive_sims = configurator.balance_inactive_sims()
 
@@ -126,7 +137,9 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         if n_global_send_sims == 0 or n_global_recv_sims == 0:
             self._nothing_to_balance = True
-            # TODO: Add a warning log before returning
+            self._base_logger.log_warning_one_rank(
+                "It appears that the micro simulations are already fairly balanced. No load balancing will be done. Try changing the threshold value to provoke load balancing."
+            )
             return
 
         if n_global_send_sims < n_global_recv_sims:
@@ -174,7 +187,10 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                 )
 
                 self._communicate_micro_sims(micro_sims, send_map, recv_map)
-            # TODO: Add a warning if the probable send or receive requests are zero, because then two step load balancing does not happen
+            else:
+                self._base_logger.log_warning_one_rank(
+                    "No load balancing was done in the second step because the micro simulations are already almost perfectly balanced."
+                )
 
     def _redistribute_inactive_sims(self, micro_sims: list) -> None:
         """
@@ -218,9 +234,26 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         self._communicate_micro_sims(micro_sims, send_map, recv_map)
 
-    def _get_communication_maps(self, global_send_sims, global_recv_sims):
+    def _get_communication_maps(
+        self, global_send_sims: list, global_recv_sims: list
+    ) -> tuple:
         """
-        ...
+        Create dictionaries which map global IDs of simulations to ranks for sending and receiving.
+
+        Parameters
+        ----------
+        global_send_sims : list
+            Number of simulations that each rank sends.
+        global_recv_sims : list
+            Number of simulations that each rank receives.
+
+        Returns
+        -------
+        tuple of dicts
+            send_map : dict
+                keys are global IDs of sim states to send, values are ranks to send the sims to
+            recv_map : dict
+                keys are global IDs of sim states to receive, values are ranks to receive from
         """
         global_ids_of_active_sims_local = []
         for global_id in self._global_ids:
@@ -290,7 +323,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                     global_recv_sims[recv_rank] -= sims
 
                     # Remove the global IDs which are already mapped for moving
-                    del self._rank_wise_global_ids_of_active_sims[send_rank][0:sims]
+                    del rank_wise_global_ids_of_active_sims[send_rank][0:sims]
 
                     sims = 0
 
@@ -314,9 +347,20 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         return send_map, recv_map
 
-    def _communicate_micro_sims(self, micro_sims, send_map, recv_map):
+    def _communicate_micro_sims(
+        self, micro_sims: list, send_map: dict, recv_map: dict
+    ) -> None:
         """
-        ...
+        Communicate micro simulation states between ranks to balance the load of solving micro simulations.
+
+        Parameters
+        ----------
+        micro_sims : list
+            List of objects of class MicroProblem, which are the micro simulations
+        send_map : dict
+            keys are global IDs of sim states to send, values are ranks to send the sims to
+        recv_map : dict
+            keys are global IDs of sim states to receive, values are ranks to receive from
         """
         # Asynchronous send operations
         send_reqs = []
