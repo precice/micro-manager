@@ -223,7 +223,7 @@ class TestGlobalAdaptivityLB(TestCase):
             expected_global_ids = [4, 5, 6, 7, 12]
         elif self._rank == 2:
             global_ids = [8, 9, 10, 11]
-            expected_global_ids = [0, 8, 9, 10, 11]
+            expected_global_ids = [8, 9, 10, 11, 0]
         elif self._rank == 3:
             global_ids = [12, 13, 14]
             expected_global_ids = [13, 14]
@@ -293,10 +293,10 @@ class TestGlobalAdaptivityLB(TestCase):
             expected_global_ids = [6, 7, 12]
         elif self._rank == 2:
             global_ids = [0, 8, 9, 10, 11]
-            expected_global_ids = [0, 3, 8, 11]
+            expected_global_ids = [0, 8, 11, 3]
         elif self._rank == 3:
             global_ids = [13, 14]
-            expected_global_ids = [5, 13, 14]
+            expected_global_ids = [13, 14, 5]
 
         expected_ranks_of_sims = [2, 0, 0, 2, 0, 3, 1, 1, 2, 0, 0, 2, 1, 3, 3]
 

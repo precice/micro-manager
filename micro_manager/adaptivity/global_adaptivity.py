@@ -460,7 +460,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         Returns
         -------
-        ranks_of_sim : np.ndarray
+        ranks_of_sims : np.ndarray
             Array of ranks on which simulations exist.
         """
         local_gids_to_rank = dict()
@@ -469,9 +469,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         ranks_maps_as_list = self._comm.allgather(local_gids_to_rank)
 
-        ranks_of_sim = np.zeros(self._global_number_of_sims, dtype=np.intc)
+        ranks_of_sims = np.zeros(self._global_number_of_sims, dtype=np.intc)
         for ranks_map in ranks_maps_as_list:
             for gid, rank in ranks_map.items():
-                ranks_of_sim[gid] = rank
+                ranks_of_sims[gid] = rank
 
-        return ranks_of_sim
+        return ranks_of_sims
