@@ -179,7 +179,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return micro_sims_output
 
-    def log_metrics(self, n: int, adaptivity_cpu_time) -> None:
+    def log_metrics(self, n: int, adaptivity_cpu_time: float) -> None:
         """
         Log metrics for global adaptivity.
 
