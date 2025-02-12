@@ -560,7 +560,7 @@ class MicroManagerCoupling(MicroManager):
             if (
                 initial_micro_output is None
             ):  # Check if the detected initialize() method returns any data
-                warn(
+                self._logger.log_warning_one_rank(
                     "The initialize() call of the Micro simulation has not returned any initial data."
                     " This means that the initialize() call has no effect on the adaptivity. The initialize method will nevertheless still be called."
                 )
@@ -603,7 +603,7 @@ class MicroManagerCoupling(MicroManager):
                                     i
                                 ] = initial_micro_output[name]
                 else:
-                    warn(
+                    self._logger.log_warning_one_rank(
                         "The initialize() method of the Micro simulation returns initial data, but adaptivity is turned off. The returned data will be ignored. The initialize method will nevertheless still be called."
                     )
                     if is_initial_data_required:
@@ -618,6 +618,7 @@ class MicroManagerCoupling(MicroManager):
             getattr(micro_problem, "output")
         ):
             self._micro_sims_have_output = True
+        print("Rank {} has initialized the Micro Manager.".format(self._rank))
 
     # ***************
     # Private methods
