@@ -5,6 +5,7 @@ each other. A global comparison is not done.
 """
 import numpy as np
 from copy import deepcopy
+import time
 
 from .adaptivity import AdaptivityCalculator
 
@@ -64,6 +65,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             the data are scalar or vector as values.
 
         """
+        start_time = time.process_time()
+
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
                 raise ValueError(
@@ -90,6 +93,10 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._similarity_dists = similarity_dists
         self._is_sim_active = is_sim_active
         self._sim_is_associated_to = sim_is_associated_to
+
+        end_time = time.process_time()
+
+        self._adaptivity_cpu_time = end_time - start_time
 
     def get_active_sim_ids(self) -> np.ndarray:
         """
@@ -138,7 +145,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         return micro_sims_output
 
-    def log_metrics(self, n: int, adaptivity_cpu_time: float) -> None:
+    def log_metrics(self, n: int) -> None:
         """
         Log metrics for local adaptivity.
 
@@ -146,8 +153,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         n : int
             Current time step
-        adaptivity_cpu_time : float
-            CPU time taken for adaptivity calculation
         """
         # MPI Gather is necessary as local adaptivity only stores local data
         local_active_sims = np.count_nonzero(self._is_sim_active)
@@ -163,7 +168,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                 np.mean(global_inactive_sims),
                 np.max(global_active_sims),
                 np.max(global_inactive_sims),
-                adaptivity_cpu_time,
+                self._adaptivity_cpu_time,
             )
         )
 

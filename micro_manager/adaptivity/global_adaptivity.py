@@ -8,7 +8,7 @@ Note: All ID variables used in the methods of this class are global IDs, unless 
 import hashlib
 from copy import deepcopy
 from typing import Dict
-
+import time
 import numpy as np
 from mpi4py import MPI
 
@@ -23,6 +23,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         global_ids: list,
         rank: int,
         comm,
+        is_load_balancing=False,
     ) -> None:
         """
         Class constructor.
@@ -39,6 +40,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             MPI rank.
         comm : MPI.COMM_WORLD
             Global communicator of MPI.
+        is_load_balancing : bool
+            Flag to indicate if load balancing is to be done.
         """
         super().__init__(configurator, rank)
         self._global_number_of_sims = global_number_of_sims
@@ -78,6 +81,11 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._is_sim_active_cp = None
         self._sim_is_associated_to_cp = None
 
+        if not is_load_balancing:
+            self._metrics_logger.log_info_one_rank(
+                "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive,Adaptivity CPU Time"
+            )
+
     def compute_adaptivity(
         self,
         dt: float,
@@ -96,6 +104,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         data_for_adaptivity : dict
             Dictionary with keys as names of data to be used in the similarity calculation, and values as the respective data for the micro simulations
         """
+        start_time = time.process_time()
+
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
                 raise ValueError(
@@ -128,6 +138,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._similarity_dists = similarity_dists
         self._is_sim_active = is_sim_active
         self._sim_is_associated_to = sim_is_associated_to
+
+        end_time = time.process_time()
+
+        self._adaptivity_cpu_time = end_time - start_time
 
     def get_active_sim_ids(self) -> np.ndarray:
         """
@@ -175,12 +189,18 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_output : list
             List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
         """
+        start_time = time.process_time()
+
         micro_sims_output = deepcopy(micro_output)
         self._communicate_micro_output(micro_sims_output)
 
+        end_time = time.process_time()
+
+        self._adaptivity_cpu_time += end_time - start_time
+
         return micro_sims_output
 
-    def log_metrics(self, n: int, adaptivity_cpu_time: float) -> None:
+    def log_metrics(self, n: int) -> None:
         """
         Log metrics for global adaptivity.
 
@@ -188,8 +208,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         n : int
             Time step count at which the metrics are logged
-        adaptivity_cpu_time : float
-            CPU time taken for adaptivity calculation
         """
         global_active_sims = np.count_nonzero(self._is_sim_active)
         global_inactive_sims = np.count_nonzero(self._is_sim_active == False)
@@ -201,7 +219,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 np.mean(global_inactive_sims),
                 np.max(global_active_sims),
                 np.max(global_inactive_sims),
-                adaptivity_cpu_time,
+                self._adaptivity_cpu_time,
             )
         )
 
