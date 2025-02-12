@@ -209,16 +209,16 @@ class MicroManagerCoupling(MicroManager):
                             self._global_ids_of_local_sims[inactive_id]
                         )
 
-                    print(
-                        "Rank {} has active sims: {}".format(
-                            self._rank, active_sim_gids
-                        )
-                    )
-                    print(
-                        "Rank {} has inactive sims: {}".format(
-                            self._rank, inactive_sim_gids
-                        )
-                    )
+                    # print(
+                    #     "Rank {} has active sims: {}".format(
+                    #         self._rank, active_sim_gids
+                    #     )
+                    # )
+                    # print(
+                    #     "Rank {} has inactive sims: {}".format(
+                    #         self._rank, inactive_sim_gids
+                    #     )
+                    # )
 
                 if self._is_adaptivity_with_load_balancing:
                     if n % self._load_balancing_n == 0 and not first_time_window:
