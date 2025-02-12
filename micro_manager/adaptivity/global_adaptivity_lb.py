@@ -44,7 +44,14 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         comm : MPI.COMM_WORLD
             Global communicator of MPI.
         """
-        super().__init__(configurator, global_number_of_sims, global_ids, rank, comm)
+        super().__init__(
+            configurator,
+            global_number_of_sims,
+            global_ids,
+            rank,
+            comm,
+            is_load_balancing=True,
+        )
 
         self._micro_problem = getattr(
             importlib.import_module(
@@ -73,7 +80,11 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         self._nothing_to_balance = False
 
-        self._cpu_time = 0
+        self._lb_cpu_time = 0.0
+
+        self._metrics_logger.log_info_one_rank(
+            "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive,Adaptivity CPU Time,Load Balancing CPU Time"
+        )
 
     def redistribute_sims(self, micro_sims: list) -> None:
         """
@@ -95,7 +106,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         end_time = time.process_time()
 
-        self._cpu_time = end_time - start_time
+        self._lb_cpu_time = end_time - start_time
 
     def log_metrics(self, n: int) -> None:
         """
@@ -105,18 +116,21 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         ----------
         n : int
             Time step count at which the metrics are logged
+        cpu_time : float
+            CPU time taken to redistribute the simulations
         """
         global_active_sims = np.count_nonzero(self._is_sim_active)
         global_inactive_sims = np.count_nonzero(self._is_sim_active == False)
 
         self._metrics_logger.log_info_one_rank(
-            "{},{},{},{},{},{}".format(
+            "{},{},{},{},{},{},{}".format(
                 n,
                 np.mean(global_active_sims),
                 np.mean(global_inactive_sims),
                 np.max(global_active_sims),
                 np.max(global_inactive_sims),
-                self._cpu_time,
+                self._adaptivity_cpu_time,
+                self._lb_cpu_time,
             )
         )
 

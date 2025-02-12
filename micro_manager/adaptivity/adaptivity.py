@@ -50,10 +50,6 @@ class AdaptivityCalculator:
                 __name__, "adaptivity-metrics.csv", rank=rank, csv_logger=True
             )
 
-        self._metrics_logger.log_info_one_rank(
-            "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive"
-        )
-
     def _get_similarity_dists(
         self, dt: float, similarity_dists: np.ndarray, data: dict
     ) -> np.ndarray:
