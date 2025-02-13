@@ -17,7 +17,6 @@ import os
 import sys
 import time
 import inspect
-from warnings import warn
 from typing import Callable
 import numpy as np
 
@@ -166,17 +165,13 @@ class MicroManagerCoupling(MicroManager):
         first_iteration = True
         first_time_window = True
 
+        sim_states_cp = []
+
         while self._participant.is_coupling_ongoing():
 
             dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
-            # Write a checkpoint
             if self._participant.requires_writing_checkpoint():
-                sim_states_cp = []
-                for i in range(self._local_number_of_sims):
-                    sim_states_cp.append(self._micro_sims[i].get_state())
-                t_checkpoint = t
-                n_checkpoint = n
                 first_iteration = True
 
             if self._is_adaptivity_on:
@@ -209,32 +204,36 @@ class MicroManagerCoupling(MicroManager):
                             self._global_ids_of_local_sims[inactive_id]
                         )
 
-                    print(
-                        "Rank {} has active sims: {}".format(
-                            self._rank, active_sim_gids
-                        )
-                    )
-                    print(
-                        "Rank {} has inactive sims: {}".format(
-                            self._rank, inactive_sim_gids
-                        )
-                    )
+                    # self._logger.log_info_any_rank(
+                    #     "Rank {} has active sims: {}".format(
+                    #         self._rank, active_sim_gids
+                    #     )
+                    # )
+                    # self._logger.log_info_any_rank(
+                    #     "Rank {} has inactive sims: {}".format(
+                    #         self._rank, inactive_sim_gids
+                    #     )
+                    # )
 
                 if self._is_adaptivity_with_load_balancing:
-                    if n % self._load_balancing_n == 0 and not first_time_window:
-                        print(
-                            "Rank {} has {} sims before load balancing".format(
-                                self._rank, self._global_ids_of_local_sims
-                            )
-                        )
+                    if (
+                        n % self._load_balancing_n == 0
+                        and (not first_time_window)
+                        and first_iteration
+                    ):
+                        # self._logger.log_info_any_rank(
+                        #     "{} sims before load balancing".format(
+                        #         self._global_ids_of_local_sims
+                        #     )
+                        # )
 
                         self._adaptivity_controller.redistribute_sims(self._micro_sims)
 
-                        print(
-                            "Rank {} has {} sims after load balancing".format(
-                                self._rank, self._global_ids_of_local_sims
-                            )
-                        )
+                        # self._logger.log_info_any_rank(
+                        #     "{} sims after load balancing".format(
+                        #         self._global_ids_of_local_sims
+                        #     )
+                        # )
 
                         self._local_number_of_sims = len(self._global_ids_of_local_sims)
 
@@ -251,6 +250,16 @@ class MicroManagerCoupling(MicroManager):
 
                 number_of_sims = self._comm.allgather(self._local_number_of_sims)
                 assert self._global_number_of_sims == sum(number_of_sims)
+
+            # self._logger.log_info_any_rank("Local number of sims: {}".format(self._local_number_of_sims))
+
+            # Write a checkpoint
+            if self._participant.requires_writing_checkpoint():
+                sim_states_cp.clear()
+                for i in range(self._local_number_of_sims):
+                    sim_states_cp.append(self._micro_sims[i].get_state())
+                t_checkpoint = t
+                n_checkpoint = n
 
             # micro_sims_input = precice_read_data(dt)
             micro_sims_input = self._read_data_from_precice(dt)
@@ -618,7 +627,6 @@ class MicroManagerCoupling(MicroManager):
             getattr(micro_problem, "output")
         ):
             self._micro_sims_have_output = True
-        print("Rank {} has initialized the Micro Manager.".format(self._rank))
 
     # ***************
     # Private methods
