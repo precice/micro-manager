@@ -143,9 +143,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         self._adaptivity_cpu_time = end_time - start_time
 
-    def get_active_sim_ids(self) -> np.ndarray:
+    def get_active_sim_local_ids(self) -> np.ndarray:
         """
-        Get the ids of active simulations.
+        Get the local ids of active simulations on this rank.
 
         Returns
         -------
@@ -159,9 +159,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return np.array(active_sim_ids)
 
-    def get_inactive_sim_ids(self) -> np.ndarray:
+    def get_inactive_sim_local_ids(self) -> np.ndarray:
         """
-        Get the ids of inactive simulations.
+        Get the local ids of inactive simulations on this rank.
 
         Returns
         -------
@@ -172,6 +172,38 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         for global_id in self._global_ids:
             if not self._is_sim_active[global_id]:
                 inactive_sim_ids.append(self._global_ids.index(global_id))
+
+        return np.array(inactive_sim_ids)
+
+    def get_active_sim_global_ids(self) -> np.ndarray:
+        """
+        Get the global ids of active simulations on this rank.
+
+        Returns
+        -------
+        numpy array
+            1D array of active simulation ids
+        """
+        active_sim_ids = []
+        for global_id in self._global_ids:
+            if self._is_sim_active[global_id]:
+                active_sim_ids.append(global_id)
+
+        return np.array(active_sim_ids)
+
+    def get_inactive_sim_global_ids(self) -> np.ndarray:
+        """
+        Get the global ids of inactive simulations on this rank.
+
+        Returns
+        -------
+        numpy array
+            1D array of inactive simulation ids
+        """
+        inactive_sim_ids = []
+        for global_id in self._global_ids:
+            if not self._is_sim_active[global_id]:
+                inactive_sim_ids.append(global_id)
 
         return np.array(inactive_sim_ids)
 
@@ -209,19 +241,32 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         n : int
             Time step count at which the metrics are logged
         """
-        global_active_sims = np.count_nonzero(self._is_sim_active)
-        global_inactive_sims = np.count_nonzero(self._is_sim_active == False)
+        active_sims_on_this_rank = 0
+        inactive_sims_on_this_rank = 0
+        for global_id in self._global_ids:
+            if self._is_sim_active[global_id]:
+                active_sims_on_this_rank += 1
+            else:
+                inactive_sims_on_this_rank += 1
 
-        self._metrics_logger.log_info_one_rank(
-            "{},{},{},{},{},{}".format(
-                n,
-                np.mean(global_active_sims),
-                np.mean(global_inactive_sims),
-                np.max(global_active_sims),
-                np.max(global_inactive_sims),
-                self._adaptivity_cpu_time,
+        active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
+        inactive_sims_rankwise = self._comm.gather(inactive_sims_on_this_rank, root=0)
+
+        if self._rank == 0:
+            size = self._comm.Get_size()
+
+            self._metrics_logger.log_info_one_rank(
+                "{},{},{},{},{},{}".format(
+                    n,
+                    sum(active_sims_rankwise) / size,
+                    sum(inactive_sims_rankwise) / size,
+                    max(active_sims_rankwise),
+                    max(inactive_sims_rankwise),
+                    self._adaptivity_cpu_time,
+                )
             )
-        )
+
+        self._adaptivity_cpu_time = 0.0
 
     def write_checkpoint(self) -> None:
         """

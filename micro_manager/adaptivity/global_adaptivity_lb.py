@@ -107,6 +107,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         end_time = time.process_time()
 
         self._lb_cpu_time = end_time - start_time
+        print("Rank ", self._rank, " LB CPU Time: ", self._lb_cpu_time)
 
     def log_metrics(self, n: int) -> None:
         """
@@ -119,20 +120,34 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         cpu_time : float
             CPU time taken to redistribute the simulations
         """
-        global_active_sims = np.count_nonzero(self._is_sim_active)
-        global_inactive_sims = np.count_nonzero(self._is_sim_active == False)
+        active_sims_on_this_rank = 0
+        inactive_sims_on_this_rank = 0
+        for global_id in self._global_ids:
+            if self._is_sim_active[global_id]:
+                active_sims_on_this_rank += 1
+            else:
+                inactive_sims_on_this_rank += 1
 
-        self._metrics_logger.log_info_one_rank(
-            "{},{},{},{},{},{},{}".format(
-                n,
-                np.mean(global_active_sims),
-                np.mean(global_inactive_sims),
-                np.max(global_active_sims),
-                np.max(global_inactive_sims),
-                self._adaptivity_cpu_time,
-                self._lb_cpu_time,
+        active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
+        inactive_sims_rankwise = self._comm.gather(inactive_sims_on_this_rank, root=0)
+
+        if self._rank == 0:
+            size = self._comm.Get_size()
+
+            self._metrics_logger.log_info_one_rank(
+                "{},{},{},{},{},{},{}".format(
+                    n,
+                    sum(active_sims_rankwise) / size,
+                    sum(inactive_sims_rankwise) / size,
+                    max(active_sims_rankwise),
+                    max(inactive_sims_rankwise),
+                    self._adaptivity_cpu_time,
+                    self._lb_cpu_time,
+                )
             )
-        )
+
+        self._lb_cpu_time = 0.0
+        self._adaptivity_cpu_time = 0.0
 
     def _redistribute_active_sims(self, micro_sims: list) -> None:
         """

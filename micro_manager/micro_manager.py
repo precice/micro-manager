@@ -143,7 +143,6 @@ class MicroManagerCoupling(MicroManager):
         - If adaptivity is on, compute micro simulations adaptively.
         """
         t, n = 0, 0
-        t_checkpoint, n_checkpoint = 0, 0
 
         micro_sim_solve = self._get_solve_variant()
 
@@ -182,45 +181,25 @@ class MicroManagerCoupling(MicroManager):
                         self._data_for_adaptivity,
                     )
 
-                    # Only checkpoint the adaptivity configuration if adaptivity is computed
-                    # once in every time window
-                    self._adaptivity_controller.write_checkpoint()
-
-                    active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
-
-                    active_sim_gids = []
-                    for active_id in active_sim_ids:
-                        self._micro_sims_active_steps[active_id] += 1
-                        active_sim_gids.append(
-                            self._global_ids_of_local_sims[active_id]
-                        )
-
-                    inactive_sim_ids = (
-                        self._adaptivity_controller.get_inactive_sim_ids()
-                    )
-                    inactive_sim_gids = []
-                    for inactive_id in inactive_sim_ids:
-                        inactive_sim_gids.append(
-                            self._global_ids_of_local_sims[inactive_id]
-                        )
-
-                    # self._logger.log_info_any_rank(
-                    #     "Rank {} has active sims: {}".format(
-                    #         self._rank, active_sim_gids
-                    #     )
-                    # )
-                    # self._logger.log_info_any_rank(
-                    #     "Rank {} has inactive sims: {}".format(
-                    #         self._rank, inactive_sim_gids
-                    #     )
-                    # )
-
                 if self._is_adaptivity_with_load_balancing:
                     if (
                         n % self._load_balancing_n == 0
                         and (not first_time_window)
                         and first_iteration
                     ):
+                        # active_sim_gids = self._adaptivity_controller.get_active_sim_global_ids()
+                        # inactive_sim_gids = self._adaptivity_controller.get_inactive_sim_global_ids()
+                        # self._logger.log_info_any_rank(
+                        #     "Active sims before load balancing: {}".format(
+                        #         active_sim_gids
+                        #     )
+                        # )
+                        # self._logger.log_info_any_rank(
+                        #     "Inactive sims before load balancing: {}".format(
+                        #         inactive_sim_gids
+                        #     )
+                        # )
+
                         # self._logger.log_info_any_rank(
                         #     "{} sims before load balancing".format(
                         #         self._global_ids_of_local_sims
@@ -232,6 +211,19 @@ class MicroManagerCoupling(MicroManager):
                         # self._logger.log_info_any_rank(
                         #     "{} sims after load balancing".format(
                         #         self._global_ids_of_local_sims
+                        #     )
+                        # )
+
+                        # active_sim_gids = self._adaptivity_controller.get_active_sim_global_ids()
+                        # inactive_sim_gids = self._adaptivity_controller.get_inactive_sim_global_ids()
+                        # self._logger.log_info_any_rank(
+                        #     "Active sims after load balancing: {}".format(
+                        #         active_sim_gids
+                        #     )
+                        # )
+                        # self._logger.log_info_any_rank(
+                        #     "Inactive sims after load balancing: {}".format(
+                        #         inactive_sim_gids
                         #     )
                         # )
 
@@ -251,15 +243,13 @@ class MicroManagerCoupling(MicroManager):
                 number_of_sims = self._comm.allgather(self._local_number_of_sims)
                 assert self._global_number_of_sims == sum(number_of_sims)
 
-            # self._logger.log_info_any_rank("Local number of sims: {}".format(self._local_number_of_sims))
-
             # Write a checkpoint
             if self._participant.requires_writing_checkpoint():
                 sim_states_cp.clear()
                 for i in range(self._local_number_of_sims):
                     sim_states_cp.append(self._micro_sims[i].get_state())
-                t_checkpoint = t
-                n_checkpoint = n
+
+                self._adaptivity_controller.write_checkpoint()
 
             # micro_sims_input = precice_read_data(dt)
             micro_sims_input = self._read_data_from_precice(dt)
@@ -295,9 +285,6 @@ class MicroManagerCoupling(MicroManager):
 
             self._write_data_to_precice(micro_sims_output)
 
-            t += dt
-            n += 1
-
             self._participant.advance(dt)
 
             first_time_window = False
@@ -306,8 +293,7 @@ class MicroManagerCoupling(MicroManager):
             if self._participant.requires_reading_checkpoint():
                 for i in range(self._local_number_of_sims):
                     self._micro_sims[i].set_state(sim_states_cp[i])
-                n = n_checkpoint
-                t = t_checkpoint
+
                 first_iteration = False
 
                 # If adaptivity is computed only once per time window, the states of sims need to be reset too
@@ -315,20 +301,17 @@ class MicroManagerCoupling(MicroManager):
                     if not self._adaptivity_in_every_implicit_step:
                         self._adaptivity_controller.read_checkpoint()
 
-            if (
-                self._participant.is_time_window_complete()
-            ):  # Time window has converged, now micro output can be generated
+            if self._participant.is_time_window_complete():
                 if self._micro_sims_have_output:
                     if n % self._micro_n_out == 0:
                         for sim in self._micro_sims:
                             sim.output()
 
-                if (
-                    self._is_adaptivity_on
-                    and n % self._adaptivity_output_n == 0
-                    and self._rank == 0
-                ):
+                if self._is_adaptivity_on and n % self._adaptivity_output_n == 0:
                     self._adaptivity_controller.log_metrics(n)
+
+                t += dt
+                n += 1
 
                 self._logger.log_info_one_rank("Time window {} converged.".format(n))
 
@@ -801,12 +784,12 @@ class MicroManagerCoupling(MicroManager):
         micro_sims_output : list
             List of dicts containing output of micro simulations.
         """
-        active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+        active_sim_local_ids = self._adaptivity_controller.get_active_sim_local_ids()
 
         micro_sims_output = [0] * self._local_number_of_sims
 
         # Solve all active micro simulations
-        for active_id in active_sim_ids:
+        for active_id in active_sim_local_ids:
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[active_id]:
                 try:
@@ -853,7 +836,7 @@ class MicroManagerCoupling(MicroManager):
 
         # Interpolate result for crashed simulation
         unset_sims = []
-        for active_id in active_sim_ids:
+        for active_id in active_sim_local_ids:
             if micro_sims_output[active_id] == 0:
                 unset_sims.append(active_id)
 
@@ -867,17 +850,19 @@ class MicroManagerCoupling(MicroManager):
                 )
 
                 micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
-                    micro_sims_input, micro_sims_output, unset_sim, active_sim_ids
+                    micro_sims_input, micro_sims_output, unset_sim, active_sim_local_ids
                 )
 
         micro_sims_output = self._adaptivity_controller.get_full_field_micro_output(
             micro_sims_output
         )
 
-        inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
+        inactive_sim_local_ids = (
+            self._adaptivity_controller.get_inactive_sim_local_ids()
+        )
 
         # Resolve micro sim output data for inactive simulations
-        for inactive_id in inactive_sim_ids:
+        for inactive_id in inactive_sim_local_ids:
             micro_sims_output[inactive_id]["active_state"] = 0
             global_id = self._global_ids_of_local_sims[inactive_id]
             micro_sims_output[inactive_id][

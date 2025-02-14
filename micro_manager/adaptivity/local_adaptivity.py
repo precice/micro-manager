@@ -98,9 +98,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         self._adaptivity_cpu_time = end_time - start_time
 
-    def get_active_sim_ids(self) -> np.ndarray:
+    def get_active_sim_local_ids(self) -> np.ndarray:
         """
-        Get the ids of active simulations.
+        Get the local ids of active simulations on this rank.
 
         Returns
         -------
@@ -109,9 +109,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         return np.where(self._is_sim_active)[0]
 
-    def get_inactive_sim_ids(self) -> np.ndarray:
+    def get_inactive_sim_local_ids(self) -> np.ndarray:
         """
-        Get the ids of inactive simulations.
+        Get the local ids of inactive simulations on this rank.
 
         Returns
         -------
