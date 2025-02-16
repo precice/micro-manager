@@ -136,7 +136,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         micro_sims_output = deepcopy(micro_output)
 
-        inactive_sim_ids = self.get_inactive_sim_ids()
+        inactive_sim_ids = self.get_inactive_sim_local_ids()
 
         for inactive_id in inactive_sim_ids:
             micro_sims_output[inactive_id] = deepcopy(

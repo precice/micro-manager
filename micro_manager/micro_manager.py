@@ -249,7 +249,8 @@ class MicroManagerCoupling(MicroManager):
                 for i in range(self._local_number_of_sims):
                     sim_states_cp.append(self._micro_sims[i].get_state())
 
-                self._adaptivity_controller.write_checkpoint()
+                if self._is_adaptivity_on:
+                    self._adaptivity_controller.write_checkpoint()
 
             # micro_sims_input = precice_read_data(dt)
             micro_sims_input = self._read_data_from_precice(dt)
