@@ -113,12 +113,12 @@ class MicroManagerSnapshot(MicroManager):
                                 micro_sims_output
                             )
                         else:
-                            self._logger.log_info_one_rank(
+                            self._logger.log_info_rank_zero(
                                 "No post-processing script with the provided path found. Skipping post-processing."
                             )
                             self._post_processing_file_name = None
                     except Exception:
-                        self._logger.log_info_one_rank(
+                        self._logger.log_info_rank_zero(
                             "No post-processing script with the provided path found. Skipping post-processing."
                         )
                         self._post_processing_file_name = None
@@ -131,7 +131,7 @@ class MicroManagerSnapshot(MicroManager):
                 )
             # Log error and write macro data to database if simulation has crashed
             else:
-                self._logger.log_info_one_rank(
+                self._logger.log_info_rank_zero(
                     "Skipping snapshot storage for crashed simulation."
                 )
                 self._data_storage.write_output_to_hdf(
@@ -166,7 +166,7 @@ class MicroManagerSnapshot(MicroManager):
         else:
             self._data_storage.set_status(self._output_file_path, "finished")
         if self._rank == 0:
-            self._logger.log_info_one_rank("Snapshot computation completed.")
+            self._logger.log_info_rank_zero("Snapshot computation completed.")
 
     def initialize(self) -> None:
         """

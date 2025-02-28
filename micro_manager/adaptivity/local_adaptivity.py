@@ -40,11 +40,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         # Active sims do not have an associated sim
         self._sim_is_associated_to = np.full((num_sims), -2, dtype=np.intc)
 
-        # Copies of variables for checkpointing
-        self._similarity_dists_cp = None
-        self._is_sim_active_cp = None
-        self._sim_is_associated_to_cp = None
-
     def compute_adaptivity(
         self,
         dt,
@@ -161,7 +156,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         local_inactive_sims = np.count_nonzero(self._is_sim_active == False)
         global_inactive_sims = self._comm.gather(local_inactive_sims)
 
-        self._metrics_logger.log_info_one_rank(
+        self._metrics_logger.log_info_rank_zero(
             "{},{},{},{},{},{}".format(
                 n,
                 np.mean(global_active_sims),

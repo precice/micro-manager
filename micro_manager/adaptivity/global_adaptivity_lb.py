@@ -22,6 +22,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         configurator,
         global_number_of_sims: int,
         global_ids: list,
+        participant,
         logger,
         rank: int,
         comm,
@@ -37,6 +38,8 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             Total number of simulations in the macro-micro coupled problem.
         global_ids : list
             List of global IDs of simulations living on this rank.
+        participant : object of class Participant
+            Object of the class Participant using which the preCICE API is called.
         logger : object of class Logger
             Logger to log to terminal.
         rank : int
@@ -48,6 +51,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             configurator,
             global_number_of_sims,
             global_ids,
+            participant,
             rank,
             comm,
             is_load_balancing=True,
@@ -72,7 +76,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         if self._threshold > 0 and self._is_load_balancing_done_in_two_steps:
             self._is_load_balancing_done_in_two_steps = False
-            self._base_logger.log_warning_one_rank(
+            self._base_logger.log_warning_rank_zero(
                 "Threshold is not zero, so two step load balancing is disabled."
             )
 
@@ -82,7 +86,9 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         self._lb_cpu_time = 0.0
 
-        self._metrics_logger.log_info_one_rank(
+        self._precice_participant = participant
+
+        self._metrics_logger.log_info_rank_zero(
             "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive,Adaptivity CPU Time,Load Balancing CPU Time"
         )
 
@@ -97,6 +103,10 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         """
         self._nothing_to_balance = False
 
+        # Using the experimental profiling API
+        self._precice_participant.start_profiling_section(
+            "load_balancing.redistribute_simulations"
+        )
         start_time = time.process_time()
 
         self._redistribute_active_sims(micro_sims)
@@ -104,6 +114,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         if (not self._nothing_to_balance) and self._balance_inactive_sims:
             self._redistribute_inactive_sims(micro_sims)
 
+        self._precice_participant.stop_last_profiling_section()
         end_time = time.process_time()
 
         self._lb_cpu_time = end_time - start_time
@@ -134,7 +145,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         if self._rank == 0:
             size = self._comm.Get_size()
 
-            self._metrics_logger.log_info_one_rank(
+            self._metrics_logger.log_info_rank_zero(
                 "{},{},{},{},{},{},{}".format(
                     n,
                     sum(active_sims_rankwise) / size,
@@ -198,7 +209,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         if n_global_send_sims == 0 or n_global_recv_sims == 0:
             self._nothing_to_balance = True
-            self._base_logger.log_warning_one_rank(
+            self._base_logger.log_warning_rank_zero(
                 "It appears that the micro simulations are already fairly balanced. No load balancing will be done. Try changing the threshold value to provoke load balancing."
             )
             return
@@ -249,7 +260,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
                 self._communicate_micro_sims(micro_sims, send_map, recv_map)
             else:
-                self._base_logger.log_warning_one_rank(
+                self._base_logger.log_warning_rank_zero(
                     "No load balancing was done in the second step because the micro simulations are already almost perfectly balanced."
                 )
 

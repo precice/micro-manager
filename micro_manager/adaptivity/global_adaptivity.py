@@ -21,6 +21,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         configurator,
         global_number_of_sims: int,
         global_ids: list,
+        participant,
         rank: int,
         comm,
         is_load_balancing=False,
@@ -36,6 +37,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Total number of simulations in the macro-micro coupled problem.
         global_ids : list
             List of global IDs of simulations living on this rank.
+        participant : object of class Participant
+            Object of the class Participant using which the preCICE API is called.
         rank : int
             MPI rank.
         comm : MPI.COMM_WORLD
@@ -76,15 +79,14 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             if rank_of_sim[i] == self._rank:
                 self._is_sim_on_this_rank[i] = True
 
-        # Copies of variables for checkpointing
-        self._similarity_dists_cp = None
-        self._is_sim_active_cp = None
-        self._sim_is_associated_to_cp = None
-
         if not is_load_balancing:
-            self._metrics_logger.log_info_one_rank(
+            self._metrics_logger.log_info_rank_zero(
                 "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive,Adaptivity CPU Time"
             )
+
+        self._adaptivity_cpu_time = 0.0
+
+        self._precice_participant = participant
 
     def compute_adaptivity(
         self,
@@ -105,6 +107,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Dictionary with keys as names of data to be used in the similarity calculation, and values as the respective data for the micro simulations
         """
         start_time = time.process_time()
+        self._precice_participant.start_profiling_section(
+            "global_adaptivity.compute_adaptivity"
+        )
 
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
@@ -140,6 +145,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._sim_is_associated_to = sim_is_associated_to
 
         end_time = time.process_time()
+        self._precice_participant.stop_last_profiling_section()
 
         self._adaptivity_cpu_time = end_time - start_time
 
@@ -222,10 +228,14 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
         """
         start_time = time.process_time()
+        self._precice_participant.start_profiling_section(
+            "global_adaptivity.get_full_field_micro_output"
+        )
 
         micro_sims_output = deepcopy(micro_output)
         self._communicate_micro_output(micro_sims_output)
 
+        self._precice_participant.stop_last_profiling_section()
         end_time = time.process_time()
 
         self._adaptivity_cpu_time += end_time - start_time
@@ -255,7 +265,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         if self._rank == 0:
             size = self._comm.Get_size()
 
-            self._metrics_logger.log_info_one_rank(
+            self._metrics_logger.log_info_every_rank(
                 "{},{},{},{},{},{}".format(
                     n,
                     sum(active_sims_rankwise) / size,

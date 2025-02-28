@@ -81,7 +81,7 @@ class MicroManagerCoupling(MicroManager):
         self._interpolate_crashed_sims = self._config.interpolate_crashed_micro_sim()
         if self._interpolate_crashed_sims:
             if Interpolation is None:
-                self._logger.log_info_one_rank(
+                self._logger.log_info_rank_zero(
                     "Interpolation is turned off as the required package is not installed."
                 )
                 self._interpolate_crashed_sims = False
@@ -151,7 +151,7 @@ class MicroManagerCoupling(MicroManager):
         if self._is_adaptivity_on:
             # If micro simulations have been initialized, compute adaptivity before starting the coupling
             if self._micro_sims_init:
-                self._logger.log_info_one_rank(
+                self._logger.log_info_rank_zero(
                     "Micro simulations have been initialized, so adaptivity will be computed before the coupling begins."
                 )
 
@@ -187,45 +187,7 @@ class MicroManagerCoupling(MicroManager):
                         and (not first_time_window)
                         and first_iteration
                     ):
-                        # active_sim_gids = self._adaptivity_controller.get_active_sim_global_ids()
-                        # inactive_sim_gids = self._adaptivity_controller.get_inactive_sim_global_ids()
-                        # self._logger.log_info_any_rank(
-                        #     "Active sims before load balancing: {}".format(
-                        #         active_sim_gids
-                        #     )
-                        # )
-                        # self._logger.log_info_any_rank(
-                        #     "Inactive sims before load balancing: {}".format(
-                        #         inactive_sim_gids
-                        #     )
-                        # )
-
-                        # self._logger.log_info_any_rank(
-                        #     "{} sims before load balancing".format(
-                        #         self._global_ids_of_local_sims
-                        #     )
-                        # )
-
                         self._adaptivity_controller.redistribute_sims(self._micro_sims)
-
-                        # self._logger.log_info_any_rank(
-                        #     "{} sims after load balancing".format(
-                        #         self._global_ids_of_local_sims
-                        #     )
-                        # )
-
-                        # active_sim_gids = self._adaptivity_controller.get_active_sim_global_ids()
-                        # inactive_sim_gids = self._adaptivity_controller.get_inactive_sim_global_ids()
-                        # self._logger.log_info_any_rank(
-                        #     "Active sims after load balancing: {}".format(
-                        #         active_sim_gids
-                        #     )
-                        # )
-                        # self._logger.log_info_any_rank(
-                        #     "Inactive sims after load balancing: {}".format(
-                        #         inactive_sim_gids
-                        #     )
-                        # )
 
                         self._local_number_of_sims = len(self._global_ids_of_local_sims)
 
@@ -240,8 +202,8 @@ class MicroManagerCoupling(MicroManager):
 
                         self._has_sim_crashed = [False] * self._local_number_of_sims
 
-                number_of_sims = self._comm.allgather(self._local_number_of_sims)
-                assert self._global_number_of_sims == sum(number_of_sims)
+                # number_of_sims = self._comm.allgather(self._local_number_of_sims)
+                # assert self._global_number_of_sims == sum(number_of_sims)
 
             # Write a checkpoint
             if self._participant.requires_writing_checkpoint():
@@ -278,7 +240,7 @@ class MicroManagerCoupling(MicroManager):
                     )
 
                 if crash_ratio > self._crash_threshold:
-                    self._logger.log_info_any_rank(
+                    self._logger.log_info_every_rank(
                         "{:.1%} of the micro simulations have crashed exceeding the threshold of {:.1%}. "
                         "Exiting simulation.".format(crash_ratio, self._crash_threshold)
                     )
@@ -314,7 +276,7 @@ class MicroManagerCoupling(MicroManager):
                 t += dt
                 n += 1
 
-                self._logger.log_info_one_rank("Time window {} converged.".format(n))
+                self._logger.log_info_rank_zero("Time window {} converged.".format(n))
 
         self._participant.finalize()
 
@@ -374,7 +336,7 @@ class MicroManagerCoupling(MicroManager):
 
         if self._local_number_of_sims == 0:
             if self._is_parallel:
-                self._logger.log_info_any_rank(
+                self._logger.log_info_every_rank(
                     "Rank {} has no micro simulations and hence will not do any computation.".format(
                         self._rank
                     )
@@ -395,18 +357,18 @@ class MicroManagerCoupling(MicroManager):
         if (
             max_nms != min_nms
         ):  # if the number of maximum and minimum micro simulations per rank are different
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "The following ranks have the maximum number of micro simulations ({}): {}".format(
                     max_nms, np.where(nms_all_ranks == max_nms)[0]
                 )
             )
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "The following ranks have the minimum number of micro simulations ({}): {}".format(
                     min_nms, np.where(nms_all_ranks == min_nms)[0]
                 )
             )
         else:  # if the number of maximum and minimum micro simulations per rank are the same
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "All ranks have the same number of micro simulations: {}".format(
                     max_nms
                 )
@@ -415,7 +377,7 @@ class MicroManagerCoupling(MicroManager):
         # Get global number of micro simulations
         self._global_number_of_sims: int = np.sum(nms_all_ranks)
 
-        self._logger.log_info_one_rank(
+        self._logger.log_info_rank_zero(
             "Total number of micro simulations: {}".format(self._global_number_of_sims)
         )
 
@@ -465,6 +427,7 @@ class MicroManagerCoupling(MicroManager):
                             self._config,
                             self._global_number_of_sims,
                             self._global_ids_of_local_sims,
+                            self._participant,
                             self._logger,
                             self._rank,
                             self._comm,
@@ -476,6 +439,7 @@ class MicroManagerCoupling(MicroManager):
                             self._config,
                             self._global_number_of_sims,
                             self._global_ids_of_local_sims,
+                            self._participant,
                             self._rank,
                             self._comm,
                         )
@@ -517,7 +481,7 @@ class MicroManagerCoupling(MicroManager):
                         "The initialize() method of the Micro simulation has an incorrect number of arguments."
                     )
             except TypeError:
-                self._logger.log_info_one_rank(
+                self._logger.log_info_rank_zero(
                     "The signature of initialize() method of the micro simulation cannot be determined. Trying to determine the signature by calling the method."
                 )
                 # Try to get the signature of the initialize() method, if it is not written in Python
@@ -525,7 +489,7 @@ class MicroManagerCoupling(MicroManager):
                     self._micro_sims[0].initialize()
                     is_initial_data_required = False
                 except TypeError:
-                    self._logger.log_info_one_rank(
+                    self._logger.log_info_rank_zero(
                         "The initialize() method of the micro simulation has arguments. Attempting to call it again with initial data."
                     )
                     try:  # Try to call the initialize() method with initial data
@@ -553,7 +517,7 @@ class MicroManagerCoupling(MicroManager):
             if (
                 initial_micro_output is None
             ):  # Check if the detected initialize() method returns any data
-                self._logger.log_warning_one_rank(
+                self._logger.log_warning_rank_zero(
                     "The initialize() call of the Micro simulation has not returned any initial data."
                     " This means that the initialize() call has no effect on the adaptivity. The initialize method will nevertheless still be called."
                 )
@@ -596,7 +560,7 @@ class MicroManagerCoupling(MicroManager):
                                     i
                                 ] = initial_micro_output[name]
                 else:
-                    self._logger.log_warning_one_rank(
+                    self._logger.log_warning_rank_zero(
                         "The initialize() method of the Micro simulation returns initial data, but adaptivity is turned off. The returned data will be ignored. The initialize method will nevertheless still be called."
                     )
                     if is_initial_data_required:
@@ -726,13 +690,13 @@ class MicroManagerCoupling(MicroManager):
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
-                    self._logger.log_error_any_rank(
+                    self._logger.log_error_every_rank(
                         "Micro simulation at macro coordinates {} with input {} has experienced an error. "
                         "See next entry on this rank for error message.".format(
                             self._mesh_vertex_coords[count], micro_sims_input[count]
                         )
                     )
-                    self._logger.log_error_any_rank(error_message)
+                    self._logger.log_error_every_rank(error_message)
                     self._has_sim_crashed[count] = True
 
         # If interpolate is off, terminate after crash
@@ -742,7 +706,7 @@ class MicroManagerCoupling(MicroManager):
                 np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
             )
             if sum(crashed_sims_on_all_ranks) > 0:
-                self._logger.log_info_any_rank(
+                self._logger.log_info_every_rank(
                     "Exiting simulation after micro simulation crash."
                 )
                 sys.exit()
@@ -755,7 +719,7 @@ class MicroManagerCoupling(MicroManager):
         # Iterate over all crashed simulations to interpolate output
         if self._interpolate_crashed_sims:
             for unset_sim in unset_sims:
-                self._logger.log_info_any_rank(
+                self._logger.log_info_every_rank(
                     "Interpolating output for crashed simulation at macro vertex {}.".format(
                         self._mesh_vertex_coords[unset_sim]
                     )
@@ -814,13 +778,13 @@ class MicroManagerCoupling(MicroManager):
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
-                    self._logger.log_error_any_rank(
+                    self._logger.log_error_every_rank(
                         "Micro simulation at macro coordinates {} has experienced an error. "
                         "See next entry on this rank for error message.".format(
                             self._mesh_vertex_coords[active_id]
                         )
                     )
-                    self._logger.log_error_any_rank(error_message)
+                    self._logger.log_error_every_rank(error_message)
                     self._has_sim_crashed[active_id] = True
 
         # If interpolate is off, terminate after crash
@@ -830,7 +794,7 @@ class MicroManagerCoupling(MicroManager):
                 np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
             )
             if sum(crashed_sims_on_all_ranks) > 0:
-                self._logger.log_error_any_rank(
+                self._logger.log_error_every_rank(
                     "Exiting simulation after micro simulation crash."
                 )
                 sys.exit()
@@ -844,7 +808,7 @@ class MicroManagerCoupling(MicroManager):
         # Iterate over all crashed simulations to interpolate output
         if self._interpolate_crashed_sims:
             for unset_sim in unset_sims:
-                self._logger.log_info_any_rank(
+                self._logger.log_info_every_rank(
                     "Interpolating output for crashed simulation at macro vertex {}.".format(
                         self._mesh_vertex_coords[unset_sim]
                     )
@@ -953,7 +917,7 @@ class MicroManagerCoupling(MicroManager):
                 micro_sims_active_values.append(micro_sims_output[i].copy())
         # Find nearest neighbors
         if len(micro_sims_active_input_lists) == 0:
-            self._logger.log_error_any_rank(
+            self._logger.log_error_every_rank(
                 "No active neighbors available for interpolation at macro vertex {}. Value cannot be interpolated".format(
                     self._mesh_vertex_coords[unset_sim]
                 )
