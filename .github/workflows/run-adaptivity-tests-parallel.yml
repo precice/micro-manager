@@ -32,6 +32,9 @@ jobs:
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev git pipx pkg-config
+          pipx ensurepath  # Add ~/.local/bin to PATH
+          pipx install pipx  # Update pipx
+          apt purge --autoremove pipx  # Remove old pipx
 
       - name: Install Micro Manager
         working-directory: micro-manager
@@ -68,6 +71,9 @@ jobs:
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev pipx git pkg-config
+          pipx ensurepath  # Add ~/.local/bin to PATH
+          pipx install pipx  # Update pipx
+          apt purge --autoremove pipx  # Remove old pipx
 
       - name: Install Micro Manager
         working-directory: micro-manager
