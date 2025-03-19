@@ -5,7 +5,6 @@ on each rank is done, along with dynamic load balancing.
 
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
-import time
 import importlib
 import numpy as np
 from mpi4py import MPI
@@ -54,7 +53,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             participant,
             rank,
             comm,
-            is_load_balancing=True,
         )
 
         self._micro_problem = getattr(
@@ -84,13 +82,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         self._nothing_to_balance = False
 
-        self._lb_cpu_time = 0.0
-
         self._precice_participant = participant
-
-        self._metrics_logger.log_info_rank_zero(
-            "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive,Adaptivity CPU Time,Load Balancing CPU Time"
-        )
 
     def redistribute_sims(self, micro_sims: list) -> None:
         """
@@ -107,7 +99,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         self._precice_participant.start_profiling_section(
             "load_balancing.redistribute_simulations"
         )
-        start_time = time.process_time()
 
         self._redistribute_active_sims(micro_sims)
 
@@ -115,50 +106,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             self._redistribute_inactive_sims(micro_sims)
 
         self._precice_participant.stop_last_profiling_section()
-        end_time = time.process_time()
-
-        self._lb_cpu_time = end_time - start_time
-        print("Rank ", self._rank, " LB CPU Time: ", self._lb_cpu_time)
-
-    def log_metrics(self, n: int) -> None:
-        """
-        Log metrics of adaptivity. Headings are: time step, mean active sims, mean inactive sims, max active sims, max inactive sims, load balancing cpu time.
-
-        Parameters
-        ----------
-        n : int
-            Time step count at which the metrics are logged
-        cpu_time : float
-            CPU time taken to redistribute the simulations
-        """
-        active_sims_on_this_rank = 0
-        inactive_sims_on_this_rank = 0
-        for global_id in self._global_ids:
-            if self._is_sim_active[global_id]:
-                active_sims_on_this_rank += 1
-            else:
-                inactive_sims_on_this_rank += 1
-
-        active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
-        inactive_sims_rankwise = self._comm.gather(inactive_sims_on_this_rank, root=0)
-
-        if self._rank == 0:
-            size = self._comm.Get_size()
-
-            self._metrics_logger.log_info_rank_zero(
-                "{},{},{},{},{},{},{}".format(
-                    n,
-                    sum(active_sims_rankwise) / size,
-                    sum(inactive_sims_rankwise) / size,
-                    max(active_sims_rankwise),
-                    max(inactive_sims_rankwise),
-                    self._adaptivity_cpu_time,
-                    self._lb_cpu_time,
-                )
-            )
-
-        self._lb_cpu_time = 0.0
-        self._adaptivity_cpu_time = 0.0
 
     def _redistribute_active_sims(self, micro_sims: list) -> None:
         """

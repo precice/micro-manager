@@ -8,11 +8,12 @@ Note: All ID variables used in the methods of this class are global IDs, unless 
 import hashlib
 from copy import deepcopy
 from typing import Dict
-import time
 import numpy as np
 from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
+
+np.printoptions(suppress=True)
 
 
 class GlobalAdaptivityCalculator(AdaptivityCalculator):
@@ -24,7 +25,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         participant,
         rank: int,
         comm,
-        is_load_balancing=False,
     ) -> None:
         """
         Class constructor.
@@ -79,12 +79,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             if rank_of_sim[i] == self._rank:
                 self._is_sim_on_this_rank[i] = True
 
-        if not is_load_balancing:
-            self._metrics_logger.log_info_rank_zero(
-                "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive,Adaptivity CPU Time"
-            )
-
-        self._adaptivity_cpu_time = 0.0
+        self._metrics_logger.log_info("t,n active,n inactive,assoc ranks")
 
         self._precice_participant = participant
 
@@ -106,7 +101,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         data_for_adaptivity : dict
             Dictionary with keys as names of data to be used in the similarity calculation, and values as the respective data for the micro simulations
         """
-        start_time = time.process_time()
         self._precice_participant.start_profiling_section(
             "global_adaptivity.compute_adaptivity"
         )
@@ -144,10 +138,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._is_sim_active = is_sim_active
         self._sim_is_associated_to = sim_is_associated_to
 
-        end_time = time.process_time()
         self._precice_participant.stop_last_profiling_section()
-
-        self._adaptivity_cpu_time = end_time - start_time
 
     def get_active_sim_local_ids(self) -> np.ndarray:
         """
@@ -227,7 +218,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_output : list
             List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
         """
-        start_time = time.process_time()
         self._precice_participant.start_profiling_section(
             "global_adaptivity.get_full_field_micro_output"
         )
@@ -236,15 +226,14 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._communicate_micro_output(micro_sims_output)
 
         self._precice_participant.stop_last_profiling_section()
-        end_time = time.process_time()
-
-        self._adaptivity_cpu_time += end_time - start_time
 
         return micro_sims_output
 
     def log_metrics(self, n: int) -> None:
         """
-        Log metrics for global adaptivity.
+        Log global adaptivity metrics and metrics for every rank.
+
+        TODO: Add more information about which metrics are logged.
 
         Parameters
         ----------
@@ -259,24 +248,39 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             else:
                 inactive_sims_on_this_rank += 1
 
+        ranks_of_sims = self._get_ranks_of_sims()
+
+        assoc_ranks = []  # Ranks to which inactive sims on this rank are associated
+        for global_id in self._global_ids:
+            if not self._is_sim_active[global_id]:
+                assoc_rank = int(ranks_of_sims[self._sim_is_associated_to[global_id]])
+                if not assoc_rank in assoc_ranks:
+                    assoc_ranks.append(assoc_rank)
+
+        self._metrics_logger.log_info(
+            "{},{},{},{}".format(
+                n,
+                active_sims_on_this_rank,
+                inactive_sims_on_this_rank,
+                assoc_ranks,
+            )
+        )
+
         active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
         inactive_sims_rankwise = self._comm.gather(inactive_sims_on_this_rank, root=0)
 
         if self._rank == 0:
             size = self._comm.Get_size()
 
-            self._metrics_logger.log_info_every_rank(
-                "{},{},{},{},{},{}".format(
+            self._global_metrics_logger.log_info(
+                "{},{},{},{},{}".format(
                     n,
                     sum(active_sims_rankwise) / size,
                     sum(inactive_sims_rankwise) / size,
                     max(active_sims_rankwise),
                     max(inactive_sims_rankwise),
-                    self._adaptivity_cpu_time,
                 )
             )
-
-        self._adaptivity_cpu_time = 0.0
 
     def write_checkpoint(self) -> None:
         """

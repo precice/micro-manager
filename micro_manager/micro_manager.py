@@ -240,7 +240,7 @@ class MicroManagerCoupling(MicroManager):
                     )
 
                 if crash_ratio > self._crash_threshold:
-                    self._logger.log_info_every_rank(
+                    self._logger.log_info(
                         "{:.1%} of the micro simulations have crashed exceeding the threshold of {:.1%}. "
                         "Exiting simulation.".format(crash_ratio, self._crash_threshold)
                     )
@@ -336,7 +336,7 @@ class MicroManagerCoupling(MicroManager):
 
         if self._local_number_of_sims == 0:
             if self._is_parallel:
-                self._logger.log_info_every_rank(
+                self._logger.log_info(
                     "Rank {} has no micro simulations and hence will not do any computation.".format(
                         self._rank
                     )
@@ -690,13 +690,13 @@ class MicroManagerCoupling(MicroManager):
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
-                    self._logger.log_error_every_rank(
+                    self._logger.log_error(
                         "Micro simulation at macro coordinates {} with input {} has experienced an error. "
                         "See next entry on this rank for error message.".format(
                             self._mesh_vertex_coords[count], micro_sims_input[count]
                         )
                     )
-                    self._logger.log_error_every_rank(error_message)
+                    self._logger.log_error(error_message)
                     self._has_sim_crashed[count] = True
 
         # If interpolate is off, terminate after crash
@@ -706,7 +706,7 @@ class MicroManagerCoupling(MicroManager):
                 np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
             )
             if sum(crashed_sims_on_all_ranks) > 0:
-                self._logger.log_info_every_rank(
+                self._logger.log_info(
                     "Exiting simulation after micro simulation crash."
                 )
                 sys.exit()
@@ -719,7 +719,7 @@ class MicroManagerCoupling(MicroManager):
         # Iterate over all crashed simulations to interpolate output
         if self._interpolate_crashed_sims:
             for unset_sim in unset_sims:
-                self._logger.log_info_every_rank(
+                self._logger.log_info(
                     "Interpolating output for crashed simulation at macro vertex {}.".format(
                         self._mesh_vertex_coords[unset_sim]
                     )
@@ -778,13 +778,13 @@ class MicroManagerCoupling(MicroManager):
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
-                    self._logger.log_error_every_rank(
+                    self._logger.log_error(
                         "Micro simulation at macro coordinates {} has experienced an error. "
                         "See next entry on this rank for error message.".format(
                             self._mesh_vertex_coords[active_id]
                         )
                     )
-                    self._logger.log_error_every_rank(error_message)
+                    self._logger.log_error(error_message)
                     self._has_sim_crashed[active_id] = True
 
         # If interpolate is off, terminate after crash
@@ -794,7 +794,7 @@ class MicroManagerCoupling(MicroManager):
                 np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
             )
             if sum(crashed_sims_on_all_ranks) > 0:
-                self._logger.log_error_every_rank(
+                self._logger.log_error(
                     "Exiting simulation after micro simulation crash."
                 )
                 sys.exit()
@@ -808,7 +808,7 @@ class MicroManagerCoupling(MicroManager):
         # Iterate over all crashed simulations to interpolate output
         if self._interpolate_crashed_sims:
             for unset_sim in unset_sims:
-                self._logger.log_info_every_rank(
+                self._logger.log_info(
                     "Interpolating output for crashed simulation at macro vertex {}.".format(
                         self._mesh_vertex_coords[unset_sim]
                     )
@@ -917,7 +917,7 @@ class MicroManagerCoupling(MicroManager):
                 micro_sims_active_values.append(micro_sims_output[i].copy())
         # Find nearest neighbors
         if len(micro_sims_active_input_lists) == 0:
-            self._logger.log_error_every_rank(
+            self._logger.log_error(
                 "No active neighbors available for interpolation at macro vertex {}. Value cannot be interpolated".format(
                     self._mesh_vertex_coords[unset_sim]
                 )

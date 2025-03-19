@@ -5,7 +5,6 @@ each other. A global comparison is not done.
 """
 import numpy as np
 from copy import deepcopy
-import time
 
 from .adaptivity import AdaptivityCalculator
 
@@ -40,6 +39,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         # Active sims do not have an associated sim
         self._sim_is_associated_to = np.full((num_sims), -2, dtype=np.intc)
 
+        self._metrics_logger.log_info("t,n active,n inactive")
+
     def compute_adaptivity(
         self,
         dt,
@@ -60,8 +61,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             the data are scalar or vector as values.
 
         """
-        start_time = time.process_time()
-
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
                 raise ValueError(
@@ -88,10 +87,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._similarity_dists = similarity_dists
         self._is_sim_active = is_sim_active
         self._sim_is_associated_to = sim_is_associated_to
-
-        end_time = time.process_time()
-
-        self._adaptivity_cpu_time = end_time - start_time
 
     def get_active_sim_local_ids(self) -> np.ndarray:
         """
@@ -142,30 +137,46 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
     def log_metrics(self, n: int) -> None:
         """
-        Log metrics for local adaptivity.
+        Log global adaptivity metrics and metrics for every rank.
+
+        TODO: Add more information about which metrics are logged.
 
         Parameters
         ----------
         n : int
-            Current time step
+            Time step count at which the metrics are logged
         """
-        # MPI Gather is necessary as local adaptivity only stores local data
-        local_active_sims = np.count_nonzero(self._is_sim_active)
-        global_active_sims = self._comm.gather(local_active_sims)
+        active_sims_on_this_rank = 0
+        inactive_sims_on_this_rank = 0
+        for local_id in range(self._is_sim_active.size):
+            if self._is_sim_active[local_id]:
+                active_sims_on_this_rank += 1
+            else:
+                inactive_sims_on_this_rank += 1
 
-        local_inactive_sims = np.count_nonzero(self._is_sim_active == False)
-        global_inactive_sims = self._comm.gather(local_inactive_sims)
-
-        self._metrics_logger.log_info_rank_zero(
-            "{},{},{},{},{},{}".format(
+        self._metrics_logger.log_info(
+            "{},{},{}".format(
                 n,
-                np.mean(global_active_sims),
-                np.mean(global_inactive_sims),
-                np.max(global_active_sims),
-                np.max(global_inactive_sims),
-                self._adaptivity_cpu_time,
+                active_sims_on_this_rank,
+                inactive_sims_on_this_rank,
             )
         )
+
+        active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
+        inactive_sims_rankwise = self._comm.gather(inactive_sims_on_this_rank, root=0)
+
+        if self._rank == 0:
+            size = self._comm.Get_size()
+
+            self._global_metrics_logger.log_info_rank_zero(
+                "{},{},{},{},{}".format(
+                    n,
+                    sum(active_sims_rankwise) / size,
+                    sum(inactive_sims_rankwise) / size,
+                    max(active_sims_rankwise),
+                    max(inactive_sims_rankwise),
+                )
+            )
 
     def write_checkpoint(self) -> None:
         """
