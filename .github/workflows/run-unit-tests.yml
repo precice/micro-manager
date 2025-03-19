@@ -19,41 +19,52 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get -qq update
-          apt-get -qq install python3-dev pipx git pkg-config
-          pipx ensurepath  # Add ~/.local/bin to PATH
-          pipx install pipx  # Update pipx
-          apt purge --autoremove pipx  # Remove old pipx
+          apt-get -qq install python3-dev python3-venv git pkg-config
 
-      - name: Install Micro Manager and run micro_manager unit test
-        working-directory: micro-manager/
+      - name: Create a virtual environment and install Micro Manager in it
+        timeout-minutes: 3
+        working-directory: micro-manager
         run: |
-          pipx install .
-          pipx uninstall -y pyprecice
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install .
+
+      - name: Run micro_manager unit test
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          pip uninstall -y pyprecice
           cd tests/unit
           python3 -m unittest test_micro_manager.py
 
       - name: Install Micro Manager and run interpolation unit test
-        working-directory: micro-manager/
+        working-directory: micro-manager
         run: |
-          pipx install .[sklearn]
-          pipx uninstall -y pyprecice
+          . .venv/bin/activate
+          pip install .[sklearn]
+          pip uninstall -y pyprecice
           cd tests/unit
           python3 -m unittest test_interpolation.py
 
       - name: Install Micro Manager and run micro simulation crash unit test
-        working-directory: micro-manager/tests/unit/
+        working-directory: micro-manager
         run: |
+          . .venv/bin/activate
+          cd tests/unit
           python3 -m unittest test_micro_simulation_crash_handling.py
 
       - name: Install Micro Manager and run HDF5 read and write unit tests
         working-directory: micro-manager/
         run: |
-          pipx install .[snapshot]
-          pipx uninstall -y pyprecice
+          . .venv/bin/activate
+          pip install .[snapshot]
+          pip uninstall -y pyprecice
           cd tests/unit
           python3 -m unittest test_hdf5_functionality.py
 
       - name: Install Micro Manager and run snapshot_computation unit tests
-        working-directory: micro-manager/tests/unit/
+        working-directory: micro-manager
         run: |
+          . .venv/bin/activate
+          cd tests/unit
           python3 -m unittest test_snapshot_computation.py

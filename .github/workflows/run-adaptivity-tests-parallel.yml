@@ -31,7 +31,7 @@ jobs:
         working-directory: micro-manager
         run: |
           apt-get -qq update
-          apt-get -qq install python3-dev git python3.10-venv pkg-config
+          apt-get -qq install python3-dev git python3-venv pkg-config
 
       - name: Create a virtual environment and install Micro Manager in it
         working-directory: micro-manager
