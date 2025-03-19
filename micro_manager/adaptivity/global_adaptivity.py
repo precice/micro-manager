@@ -13,8 +13,6 @@ from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
 
-np.printoptions(suppress=True)
-
 
 class GlobalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(

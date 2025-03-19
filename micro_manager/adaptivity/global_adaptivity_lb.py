@@ -95,17 +95,10 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         """
         self._nothing_to_balance = False
 
-        # Using the experimental profiling API
-        self._precice_participant.start_profiling_section(
-            "load_balancing.redistribute_simulations"
-        )
-
         self._redistribute_active_sims(micro_sims)
 
         if (not self._nothing_to_balance) and self._balance_inactive_sims:
             self._redistribute_inactive_sims(micro_sims)
-
-        self._precice_participant.stop_last_profiling_section()
 
     def _redistribute_active_sims(self, micro_sims: list) -> None:
         """
@@ -116,6 +109,10 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
+        self._precice_participant.start_profiling_section(
+            "load_balancing._redistribute_active_sims"
+        )
+
         avg_active_sims = np.count_nonzero(self._is_sim_active) / self._comm.size
 
         n_active_sims_local = np.count_nonzero(
@@ -211,6 +208,8 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                     "No load balancing was done in the second step because the micro simulations are already almost perfectly balanced."
                 )
 
+        self._precice_participant.stop_last_profiling_section()
+
     def _redistribute_inactive_sims(self, micro_sims: list) -> None:
         """
         Redistribute inactive simulations based on where the associated active simulations are.
@@ -220,6 +219,10 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
+        self._precice_participant.start_profiling_section(
+            "load_balancing._redistribute_inactive_sims"
+        )
+
         ranks_of_sims = self._get_ranks_of_sims()
 
         global_ids_of_inactive_sims = np.where(self._is_sim_active == False)[0]
@@ -252,6 +255,8 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                     recv_map[inactive_gid] = current_ranks_of_inactive_sims[i]
 
         self._communicate_micro_sims(micro_sims, send_map, recv_map)
+
+        self._precice_participant.stop_last_profiling_section()
 
     def _get_communication_maps(
         self, global_send_sims: list, global_recv_sims: list
