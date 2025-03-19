@@ -22,12 +22,11 @@ jobs:
         working-directory: micro-manager
         run: |
           apt-get -qq update
-          apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
-          pip3 install --upgrade pip
+          apt-get -qq install python3-dev pipx git pkg-config
 
       - name: Install Micro Manager
         working-directory: micro-manager
-        run: pip3 install .
+        run: pipx install .
 
       - name: Run integration test with local adaptivity
         timeout-minutes: 3
@@ -57,12 +56,11 @@ jobs:
         working-directory: micro-manager
         run: |
           apt-get -qq update
-          apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
-          pip3 install --upgrade pip
+          apt-get -qq install python3-dev pipx git pkg-config
 
       - name: Install Micro Manager
         working-directory: micro-manager
-        run: pip3 install --user .
+        run: pipx install .
 
       - name: Run unit tests
         working-directory: micro-manager/tests/unit

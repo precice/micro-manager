@@ -19,22 +19,21 @@ jobs:
       - name: Install dependencies
         run: |
           apt-get -qq update
-          apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
-          pip3 install --upgrade pip
+          apt-get -qq install python3-dev pipx git pkg-config
 
       - name: Install Micro Manager and run micro_manager unit test
         working-directory: micro-manager/
         run: |
-          pip3 install --user .
-          pip3 uninstall -y pyprecice
+          pipx install .
+          pipx uninstall -y pyprecice
           cd tests/unit
           python3 -m unittest test_micro_manager.py
 
       - name: Install Micro Manager and run interpolation unit test
         working-directory: micro-manager/
         run: |
-          pip3 install --user .[sklearn]
-          pip3 uninstall -y pyprecice
+          pipx install .[sklearn]
+          pipx uninstall -y pyprecice
           cd tests/unit
           python3 -m unittest test_interpolation.py
 
@@ -46,8 +45,8 @@ jobs:
       - name: Install Micro Manager and run HDF5 read and write unit tests
         working-directory: micro-manager/
         run: |
-          pip3 install --user .[snapshot]
-          pip3 uninstall -y pyprecice
+          pipx install .[snapshot]
+          pipx uninstall -y pyprecice
           cd tests/unit
           python3 -m unittest test_hdf5_functionality.py
 
