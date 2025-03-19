@@ -41,6 +41,7 @@ jobs:
           cd examples/
           micro-manager-precice micro-manager-python-config.json &
           python3 macro_dummy.py
+          ./clean-example.sh
 
       - name: Run python dummy with adaptivity
         timeout-minutes: 3
@@ -50,6 +51,7 @@ jobs:
           cd examples/
           micro-manager-precice micro-manager-python-adaptivity-config.json &
           python3 macro_dummy.py
+          ./clean-example.sh
 
       - name: Run C++ dummy
         timeout-minutes: 3
@@ -62,6 +64,7 @@ jobs:
           cd ../
           micro-manager-precice micro-manager-cpp-config.json &
           python3 macro_dummy.py
+          ./clean-example.sh
 
       - name: Run adaptive C++ dummy
         timeout-minutes: 3
@@ -71,3 +74,4 @@ jobs:
           cd examples/
           micro-manager-precice micro-manager-cpp-adaptivity-config.json &
           python3 macro_dummy.py
+          ./clean-example.sh
