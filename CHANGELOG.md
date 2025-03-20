@@ -3,6 +3,7 @@
 ## latest
 
 - Add dynamic load balancing capability to global adaptivity https://github.com/precice/micro-manager/pull/141
+- Replace `Allgatherv` with `allgather` to avoid running into the error of size buffer https://github.com/precice/micro-manager/pull/151
 - Update Actions workflows due to updates in `precice/precice:nightly` https://github.com/precice/micro-manager/pull/150
 - Move adaptivity CPU time output from preCICE export to metrics logging https://github.com/precice/micro-manager/pull/149
 - Fix bug in the domain decomposition which was returning incorrect bounding box limits for the decomposition of `[2, 2, 1]` and similar https://github.com/precice/micro-manager/pull/146
