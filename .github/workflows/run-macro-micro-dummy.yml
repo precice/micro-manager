@@ -23,43 +23,55 @@ jobs:
         working-directory: micro-manager
         run: |
           apt-get -qq update
-          apt-get -qq install python3-dev python3-pip git python-is-python3 pkg-config
-          apt-get -qq install sudo
-          pip3 install --upgrade pip
+          apt-get -qq install python3-dev python3-venv git pkg-config
 
-      - name: Install micro-manager
+      - name: Create a virtual environment and install Micro Manager in it
+        timeout-minutes: 6
         working-directory: micro-manager
         run: |
-          pip3 install .
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install .
 
-      - name: Run python macro-micro dummy
+      - name: Run python dummy
         timeout-minutes: 3
-        working-directory: micro-manager/examples
+        working-directory: micro-manager
         run: |
+          . .venv/bin/activate
+          cd examples/
           micro-manager-precice micro-manager-python-config.json &
-          python3 macro_dummy.py
+          python3 macro_dummy.py no_adaptivity
+          ./clean-example.sh
 
-      - name: Run adaptive python macro-micro dummy
+      - name: Run python dummy with adaptivity
         timeout-minutes: 3
-        working-directory: micro-manager/examples
+        working-directory: micro-manager
         run: |
+          . .venv/bin/activate
+          cd examples/
           micro-manager-precice micro-manager-python-adaptivity-config.json &
-          python3 macro_dummy.py
+          python3 macro_dummy.py adaptivity
+          ./clean-example.sh
 
-      - name: Run c++ macro-micro dummy
+      - name: Run C++ dummy
         timeout-minutes: 3
-        working-directory: micro-manager/examples
+        working-directory: micro-manager
         run: |
-          cd cpp-dummy/
+          . .venv/bin/activate
+          cd examples/cpp-dummy/
           pip install pybind11
           c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy$(python3-config --extension-suffix)
           cd ../
           micro-manager-precice micro-manager-cpp-config.json &
-          python3 macro_dummy.py
+          python3 macro_dummy.py no_adaptivity
+          ./clean-example.sh
 
-      - name: Run adaptive c++ macro-micro dummy
+      - name: Run adaptive C++ dummy
         timeout-minutes: 3
-        working-directory: micro-manager/examples
+        working-directory: micro-manager
         run: |
+          . .venv/bin/activate
+          cd examples/
           micro-manager-precice micro-manager-cpp-adaptivity-config.json &
-          python3 macro_dummy.py
+          python3 macro_dummy.py adaptivity
+          ./clean-example.sh
