@@ -412,6 +412,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         recv_reqs : list
             List of MPI requests of receive operations.
         """
+        rank_of_sim = self._get_ranks_of_sims()
+
         send_map_local: Dict[
             int, int
         ] = dict()  # keys are global IDs, values are rank to send to
@@ -426,7 +428,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         for i in assoc_active_ids:
             # Add simulation and its rank to receive map
-            recv_map[i] = self._rank_of_sim[i]
+            recv_map[i] = rank_of_sim[i]
             # Add simulation and this rank to local sending map
             send_map_local[i] = self._rank
 
