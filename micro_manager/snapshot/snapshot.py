@@ -152,7 +152,7 @@ class MicroManagerSnapshot(MicroManager):
 
         # Merge output files
         if self._is_parallel:
-            self._logger.log_info_any_rank(
+            self._logger.log_info(
                 "Snapshots have been computed and stored. Merging output files"
             )
             self._data_storage.set_status(self._output_file_path, "reading/deleting")
@@ -219,17 +219,15 @@ class MicroManagerSnapshot(MicroManager):
             self._output_subdirectory, self._file_name
         )
         self._data_storage.create_file(self._output_file_path)
-        self._logger.log_error_any_rank(
-            "Output file created: {}".format(self._output_file_path)
-        )
+        self._logger.log_error("Output file created: {}".format(self._output_file_path))
         self._local_number_of_sims = len(self._macro_parameters)
-        self._logger.log_info_any_rank(
+        self._logger.log_info(
             "Number of local micro simulations = {}".format(self._local_number_of_sims)
         )
 
         if self._local_number_of_sims == 0:
             if self._is_parallel:
-                self._logger.log_info_any_rank(
+                self._logger.log_info(
                     "Rank {} has no micro simulations and hence will not do any computation.".format(
                         self._rank
                     )
@@ -297,10 +295,10 @@ class MicroManagerSnapshot(MicroManager):
             return micro_sims_output
         # Handle simulation crash
         except Exception as e:
-            self._logger.log_error_any_rank(
+            self._logger.log_error(
                 "Micro simulation with input {} has crashed. See next entry on this rank for error message".format(
                     micro_sims_input
                 )
             )
-            self._logger.error(e)
+            self._logger.log_error(e)
             return None
