@@ -3,19 +3,37 @@
 
 import numpy as np
 import precice
+import argparse
 
 
 def main():
     """
     Dummy macro simulation which is coupled to a set of micro simulations via preCICE and the Micro Manager
     """
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "adaptivity",
+        help="the simulation is run with adaptivity",
+        type=str,
+        choices=["adaptivity"],
+        default="no adaptivity",
+    )
+    args = parser.parse_args()
+
     nv = 25  # number of vertices
 
     n = n_checkpoint = 0
     t = t_checkpoint = 0
 
     # preCICE setup
-    interface = precice.Participant("Macro-dummy", "precice-config.xml", 0, 1)
+    if args.adaptivity == "no adaptivity":
+        interface = precice.Participant("Macro-dummy", "precice-config.xml", 0, 1)
+    elif args.adaptivity == "adaptivity":
+        interface = precice.Participant(
+            "Macro-dummy", "precice-config-adaptivity.xml", 0, 1
+        )
+    else:
+        raise ValueError("Unknown adaptivity setting")
 
     # define coupling meshes
     read_mesh_name = write_mesh_name = "macro-mesh"
