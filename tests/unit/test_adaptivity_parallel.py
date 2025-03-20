@@ -35,7 +35,12 @@ class TestGlobalAdaptivity(TestCase):
         expected_sim_is_associated_to = [-2, 3, -2, -2, -2]
 
         adaptivity_controller = GlobalAdaptivityCalculator(
-            self._configurator, 5, global_ids, rank=self._rank, comm=self._comm
+            self._configurator,
+            5,
+            global_ids,
+            participant=MagicMock(),
+            rank=self._rank,
+            comm=self._comm,
         )
 
         # Force the activation of sim #0 and #4
@@ -115,7 +120,12 @@ class TestGlobalAdaptivity(TestCase):
         )
 
         adaptivity_controller = GlobalAdaptivityCalculator(
-            self._configurator, 5, global_ids, rank=self._rank, comm=self._comm
+            self._configurator,
+            5,
+            global_ids,
+            participant=MagicMock(),
+            rank=self._rank,
+            comm=self._comm,
         )
 
         adaptivity_controller._adaptivity_data_names = {
@@ -176,7 +186,12 @@ class TestGlobalAdaptivity(TestCase):
             expected_sim_output = [output_1, output_0]
 
         adaptivity_controller = GlobalAdaptivityCalculator(
-            self._configurator, 5, global_ids, rank=self._rank, comm=self._comm
+            self._configurator,
+            5,
+            global_ids,
+            participant=MagicMock(),
+            rank=self._rank,
+            comm=self._comm,
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -209,6 +224,7 @@ class TestGlobalAdaptivity(TestCase):
             self._configurator,
             5,
             global_ids,
+            participant=MagicMock(),
             rank=self._rank,
             comm=self._comm,
         )
