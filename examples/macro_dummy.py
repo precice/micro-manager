@@ -15,8 +15,7 @@ def main():
         "adaptivity",
         help="the simulation is run with adaptivity",
         type=str,
-        choices=["adaptivity"],
-        default="no adaptivity",
+        choices=["adaptivity", "no_adaptivity"],
     )
     args = parser.parse_args()
 
@@ -26,7 +25,7 @@ def main():
     t = t_checkpoint = 0
 
     # preCICE setup
-    if args.adaptivity == "no adaptivity":
+    if args.adaptivity == "no_adaptivity":
         interface = precice.Participant("Macro-dummy", "precice-config.xml", 0, 1)
     elif args.adaptivity == "adaptivity":
         interface = precice.Participant(
