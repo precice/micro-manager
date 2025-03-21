@@ -43,6 +43,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Global communicator of MPI.
         """
         super().__init__(configurator, rank)
+        self._global_number_of_sims = global_number_of_sims
         self._global_ids = global_ids
         self._comm = comm
         self._rank = rank
@@ -67,15 +68,11 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         for i in range(local_number_of_sims):
             micro_sims_on_this_rank[i] = self._rank
 
-        self._rank_of_sim = np.zeros(
-            global_number_of_sims, dtype=np.intc
-        )  # DECLARATION
-
-        self._comm.Allgatherv(micro_sims_on_this_rank, self._rank_of_sim)
+        rank_of_sim = self._get_ranks_of_sims()
 
         self._is_sim_on_this_rank = [False] * global_number_of_sims  # DECLARATION
         for i in range(global_number_of_sims):
-            if self._rank_of_sim[i] == self._rank:
+            if rank_of_sim[i] == self._rank:
                 self._is_sim_on_this_rank[i] = True
 
         # Copies of variables for checkpointing
@@ -183,7 +180,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return micro_sims_output
 
-    def log_metrics(self, n: int) -> None:
+    def log_metrics(self, n: int, adaptivity_cpu_time: float) -> None:
         """
         Log metrics for global adaptivity.
 
@@ -191,17 +188,20 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         n : int
             Time step count at which the metrics are logged
+        adaptivity_cpu_time : float
+            CPU time taken for adaptivity calculation
         """
         global_active_sims = np.count_nonzero(self._is_sim_active)
         global_inactive_sims = np.count_nonzero(self._is_sim_active == False)
 
         self._metrics_logger.log_info_one_rank(
-            "{},{},{},{},{}".format(
+            "{},{},{},{},{},{}".format(
                 n,
                 np.mean(global_active_sims),
                 np.mean(global_inactive_sims),
                 np.max(global_active_sims),
                 np.max(global_inactive_sims),
+                adaptivity_cpu_time,
             )
         )
 
@@ -549,6 +549,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         recv_reqs : list
             List of MPI requests of receive operations.
         """
+        rank_of_sim = self._get_ranks_of_sims()
+
         send_map_local: Dict[
             int, int
         ] = dict()  # keys are global IDs, values are rank to send to
@@ -563,7 +565,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         for i in assoc_active_ids:
             # Add simulation and its rank to receive map
-            recv_map[i] = self._rank_of_sim[i]
+            recv_map[i] = rank_of_sim[i]
             # Add simulation and this rank to local sending map
             send_map_local[i] = self._rank
 
@@ -601,3 +603,24 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         MPI.Request.Waitall(send_reqs)
 
         return recv_reqs
+
+    def _get_ranks_of_sims(self) -> np.ndarray:
+        """
+        Get the ranks of all simulations.
+        Returns
+        -------
+        ranks_of_sims : np.ndarray
+            Array of ranks on which simulations exist.
+        """
+        local_gids_to_rank = dict()
+        for gid in self._global_ids:
+            local_gids_to_rank[gid] = self._rank
+
+        ranks_maps_as_list = self._comm.allgather(local_gids_to_rank)
+
+        ranks_of_sims = np.zeros(self._global_number_of_sims, dtype=np.intc)
+        for ranks_map in ranks_maps_as_list:
+            for gid, rank in ranks_map.items():
+                ranks_of_sims[gid] = rank
+
+        return ranks_of_sims

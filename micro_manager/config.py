@@ -50,8 +50,6 @@ class Config:
         self._adaptivity_every_implicit_iteration = False
         self._adaptivity_similarity_measure = "L1"
         self._adaptivity_output_n = 1
-        self._adaptivity_output_cpu_time = False
-        self._adaptivity_output_mem_usage = False
 
         # Snapshot information
         self._parameter_file_name = None
@@ -255,34 +253,6 @@ class Config:
 
             self._write_data_names.append("active_state")
             self._write_data_names.append("active_steps")
-
-            try:
-                if (
-                    self._data["simulation_params"]["adaptivity_settings"][
-                        "output_cpu_time"
-                    ]
-                    == "True"
-                ):
-                    self._adaptivity_output_cpu_time = True
-                    self._write_data_names.append("adaptivity_cpu_time")
-            except BaseException:
-                self._logger.log_info_one_rank(
-                    "Micro Manager will not output CPU time of the adaptivity computation."
-                )
-
-            try:
-                if (
-                    self._data["simulation_params"]["adaptivity_settings"][
-                        "output_mem_usage"
-                    ]
-                    == "True"
-                ):
-                    self._adaptivity_output_mem_usage = True
-                    self._write_data_names.append("adaptivity_mem_usage")
-            except BaseException:
-                self._logger.log_info_one_rank(
-                    "Micro Manager will not output CPU time of the adaptivity computation."
-                )
 
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"] == "True":

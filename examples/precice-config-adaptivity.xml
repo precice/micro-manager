@@ -13,7 +13,6 @@
     <data:scalar name="solve_cpu_time"/>
     <data:scalar name="active_state"/>
     <data:scalar name="active_steps"/>
-    <data:scalar name="adaptivity_cpu_time"/>
 
     <mesh name="macro-mesh" dimensions="3">
        <use-data name="macro-scalar-data"/>
@@ -23,7 +22,6 @@
        <use-data name="solve_cpu_time"/>
        <use-data name="active_state"/>
        <use-data name="active_steps"/>
-       <use-data name="adaptivity_cpu_time"/>
     </mesh>
 
     <participant name="Macro-dummy">
@@ -43,7 +41,6 @@
       <write-data name="solve_cpu_time" mesh="macro-mesh"/>
       <write-data name="active_state" mesh="macro-mesh"/>
       <write-data name="active_steps" mesh="macro-mesh"/>
-      <write-data name="adaptivity_cpu_time" mesh="macro-mesh"/>
     </participant>
 
     <m2n:sockets acceptor="Micro-Manager" connector="Macro-dummy"/>

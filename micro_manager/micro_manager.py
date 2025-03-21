@@ -100,7 +100,7 @@ class MicroManagerCoupling(MicroManager):
         self._is_adaptivity_on = self._config.turn_on_adaptivity()
 
         if self._is_adaptivity_on:
-            self._data_for_adaptivity: Dict[str, np.ndarray] = dict()
+            self._data_for_adaptivity: Dict[str, list] = dict()
 
             self._adaptivity_data_names = self._config.get_data_for_adaptivity()
 
@@ -118,10 +118,8 @@ class MicroManagerCoupling(MicroManager):
             self._adaptivity_in_every_implicit_step = (
                 self._config.is_adaptivity_required_in_every_implicit_iteration()
             )
-            self._micro_sims_active_steps = None
 
         self._adaptivity_output_n = self._config.get_adaptivity_output_n()
-        self._output_adaptivity_cpu_time = self._config.output_adaptivity_cpu_time()
 
         # Define the preCICE Participant
         self._participant = precice.Participant(
@@ -182,6 +180,7 @@ class MicroManagerCoupling(MicroManager):
                     )
 
         adaptivity_cpu_time = 0.0
+        first_iteration = True
 
         while self._participant.is_coupling_ongoing():
 
@@ -195,47 +194,43 @@ class MicroManagerCoupling(MicroManager):
                     )
                 t_checkpoint = t
                 n_checkpoint = n
+                first_iteration = True
 
-                if self._is_adaptivity_on:
-                    if not self._adaptivity_in_every_implicit_step:
-                        start_time = time.process_time()
-                        self._adaptivity_controller.compute_adaptivity(
-                            dt,
-                            self._micro_sims,
-                            self._data_for_adaptivity,
-                        )
+            if self._is_adaptivity_on:
+                if self._adaptivity_in_every_implicit_step or first_iteration:
+                    start_time = time.process_time()
+                    self._adaptivity_controller.compute_adaptivity(
+                        dt,
+                        self._micro_sims,
+                        self._data_for_adaptivity,
+                    )
 
-                        end_time = time.process_time()
+                    end_time = time.process_time()
 
-                        adaptivity_cpu_time = end_time - start_time
+                    adaptivity_cpu_time = end_time - start_time
 
-                        # Only checkpoint the adaptivity configuration if adaptivity is computed
-                        # once in every time window
-                        self._adaptivity_controller.write_checkpoint()
+                    # Only checkpoint the adaptivity configuration if adaptivity is computed
+                    # once in every time window
+                    self._adaptivity_controller.write_checkpoint()
 
-                        active_sim_ids = (
-                            self._adaptivity_controller.get_active_sim_ids()
-                        )
+                    active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
 
-                        for active_id in active_sim_ids:
-                            self._micro_sims_active_steps[active_id] += 1
+                    for active_id in active_sim_ids:
+                        self._micro_sims_active_steps[active_id] += 1
 
-                            if sim_states_cp[active_id] == None:
-                                sim_states_cp[active_id] = self._micro_sims[
-                                    active_id
-                                ].get_state()
-                                self._logger.info(
-                                    f"state of lazily initialized micro sim {self._global_ids_of_local_sims[active_id]} successfully checkpointed"
-                                )
+                        if sim_states_cp[active_id] == None:
+                            sim_states_cp[active_id] = self._micro_sims[
+                                active_id
+                            ].get_state()
+                            self._logger.info(
+                                f"state of lazily initialized micro sim {self._global_ids_of_local_sims[active_id]} successfully checkpointed"
+                            )
 
             micro_sims_input = self._read_data_from_precice(dt)
 
             micro_sims_output, adaptivity_time = micro_sim_solve(micro_sims_input, dt)
 
-            if self._output_adaptivity_cpu_time:
-                adaptivity_cpu_time += adaptivity_time
-                for i in range(self._local_number_of_sims):
-                    micro_sims_output[i]["adaptivity_cpu_time"] = adaptivity_cpu_time
+            adaptivity_cpu_time += adaptivity_time
 
             # Check if more than a certain percentage of the micro simulations have crashed and terminate if threshold is exceeded
             if self._interpolate_crashed_sims:
@@ -274,6 +269,7 @@ class MicroManagerCoupling(MicroManager):
                         self._micro_sims[i].set_state(sim_states_cp[i])
                 n = n_checkpoint
                 t = t_checkpoint
+                first_iteration = False
 
                 # If adaptivity is computed only once per time window, the states of sims need to be reset too
                 if self._is_adaptivity_on:
@@ -294,7 +290,7 @@ class MicroManagerCoupling(MicroManager):
                     and n % self._adaptivity_output_n == 0
                     and self._rank == 0
                 ):
-                    self._adaptivity_controller.log_metrics(n)
+                    self._adaptivity_controller.log_metrics(n, adaptivity_cpu_time)
 
                 self._logger.log_info_one_rank("Time window {} converged.".format(n))
 
@@ -313,9 +309,13 @@ class MicroManagerCoupling(MicroManager):
         assert len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(
             self._macro_mesh_name
         ), "Provided macro mesh bounds are of incorrect dimension"
+
         if self._is_parallel:
+            assert len(self._ranks_per_axis) == self._participant.get_mesh_dimensions(
+                self._macro_mesh_name
+            ), "Provided ranks combination is of incorrect dimension"
+
             domain_decomposer = DomainDecomposer(
-                self._participant.get_mesh_dimensions(self._macro_mesh_name),
                 self._rank,
                 self._size,
             )
@@ -389,7 +389,7 @@ class MicroManagerCoupling(MicroManager):
 
         if self._is_adaptivity_on:
             for name in self._adaptivity_data_names:
-                self._data_for_adaptivity[name] = np.zeros((self._local_number_of_sims))
+                self._data_for_adaptivity[name] = [0] * self._local_number_of_sims
 
         # Create lists of local and global IDs
         sim_id = np.sum(nms_all_ranks[: self._rank])
@@ -501,12 +501,7 @@ class MicroManagerCoupling(MicroManager):
 
         if is_initial_data_required and not is_initial_data_available:
             raise Exception(
-                "The initialize() method of the Micro simulation requires initial data, but no initial data has been provided."
-            )
-
-        if not is_initial_data_required and is_initial_data_available:
-            warn(
-                "The initialize() method is only allowed to return data which is required for the adaptivity calculation."
+                "The initialize() method of the Micro simulation requires initial data, but no initial macro data has been provided."
             )
 
         # Get initial data from micro simulations if initialize() method exists
@@ -743,28 +738,9 @@ class MicroManagerCoupling(MicroManager):
         tuple
             A tuple of micro_sims_output (list of Dicts) and adaptivity computation CPU time.
         """
-        adaptivity_cpu_time = 0.0
-
-        if self._adaptivity_in_every_implicit_step:
-            start_time = time.process_time()
-            self._adaptivity_controller.compute_adaptivity(
-                dt,
-                self._micro_sims,
-                self._data_for_adaptivity,
-            )
-            end_time = time.process_time()
-
-            adaptivity_cpu_time = end_time - start_time
-
-            active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
-
-            for active_id in active_sim_ids:
-                self._micro_sims_active_steps[active_id] += 1
-
         active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
-        inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
 
-        micro_sims_output = [None] * self._local_number_of_sims
+        micro_sims_output = [0] * self._local_number_of_sims
 
         # Solve all active micro simulations
         for active_id in active_sim_ids:
@@ -815,7 +791,7 @@ class MicroManagerCoupling(MicroManager):
         # Interpolate result for crashed simulation
         unset_sims = []
         for active_id in active_sim_ids:
-            if micro_sims_output[active_id] is None:
+            if micro_sims_output[active_id] == 0:
                 unset_sims.append(active_id)
 
         # Iterate over all crashed simulations to interpolate output
@@ -837,7 +813,9 @@ class MicroManagerCoupling(MicroManager):
         )
         end_time = time.process_time()
 
-        adaptivity_cpu_time += end_time - start_time
+        adaptivity_cpu_time = end_time - start_time
+
+        inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
 
         # Resolve micro sim output data for inactive simulations
         for inactive_id in inactive_sim_ids:
