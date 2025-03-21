@@ -222,7 +222,7 @@ class MicroManagerCoupling(MicroManager):
                             sim_states_cp[active_id] = self._micro_sims[
                                 active_id
                             ].get_state()
-                            self._logger.info(
+                            self._logger.log_info_any_rank(
                                 f"state of lazily initialized micro sim {self._global_ids_of_local_sims[active_id]} successfully checkpointed"
                             )
 
