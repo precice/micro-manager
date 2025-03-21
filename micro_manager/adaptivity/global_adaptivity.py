@@ -475,7 +475,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         # TODO: could be moved to before the lazy initialization above
         sim_states_and_global_ids = []
         for local_id, sim in enumerate(micro_sims):
-            if sim == None:
+            if sim == 0:
                 sim_states_and_global_ids.append((None, self._global_ids[local_id]))
             else:
                 sim_states_and_global_ids.append((sim.get_state(), sim.get_global_id()))
