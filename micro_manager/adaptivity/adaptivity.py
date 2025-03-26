@@ -32,6 +32,9 @@ class AdaptivityCalculator:
         self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
         self._config_file_name = configurator.get_config_file_name()
+        self._convergence_measure = []
+        self._convergence_status = []
+        self._min_addition = 1.0
 
         self._logger = logger
 
@@ -109,7 +112,7 @@ class AdaptivityCalculator:
 
         return exp(-self._hist_param * dt) * _similarity_dists + dt * data_diff
 
-    def _get_adaptive_similarity_const(self, similarity_const: float) -> float:
+    def _get_addition(self, similarity_const: float) -> float:
         """
         Get adapted coarsening/refining constant based on limit values in preCICE configuration file and convergence measurements in preCICE
 
@@ -120,30 +123,28 @@ class AdaptivityCalculator:
 
         # read convergence value from precice-Mysolver-convergence.log file
         convergence_values = []  # last iteration
-        convergence_values_LI = []  # last 2nd iteration
-        convergence_rate = 1.0
+        # convergence_rate = 1.0
+        additional = 0.0
 
         file_path = None
         file_name_suffix = "-convergence.log"
 
-        # Search for the file in the current directory and its subdirectories
         for root, _, files in os.walk(os.getcwd()):
             for file_name in files:
                 if file_name.endswith(file_name_suffix):
                     file_path = os.path.join(root, file_name)
                     break
-
-        if file_path:
-            with open(file_path, "r") as file:
-                lines = file.readlines()
-            if len(lines) < 2:
-                print("File does not contain enough lines.")
-                adaptive_similarity_const = similarity_const
-            else:
-                # Read the header line and last line of the file
-                # Assuming columns are tab-separated
-                header_line = lines[0].strip().split()
-                last_line = lines[-1].strip().split()
+        with open(file_path, "r") as file:
+            lines = file.readlines()
+        if len(lines) < 1:
+            print("File is empty.")
+        else:
+            if len(lines) > len(self._convergence_measure):
+                if len(lines) == 2:
+                    self._convergence_measure.append(lines[0].strip().split())
+                self._convergence_measure.append(lines[-1].strip().split())
+                header_line = self._convergence_measure[0]
+                last_line = self._convergence_measure[-1]
                 for data in self.data_values:
                     for element in header_line:
                         if data in element:
@@ -159,45 +160,46 @@ class AdaptivityCalculator:
                     self.limit_values, dtype=float)/np.array(convergence_values, dtype=float)))
                 if last_line[1] == "60":
                     min_convergence = max(0.0, min_convergence)
+                self._convergence_status.append(min_convergence)
 
-                use_rate = False
-                alpha = 1
-                if use_rate:
-                    if int(last_line[1]) >= 2:
-                        last_sec_line = lines[-2].strip().split()
-                        for data in self.data_values:
-                            for element in header_line:
-                                if data in element:
-                                    index = header_line.index(element)
-                                    if last_sec_line[index] == "inf":
-                                        convergence_values_LI.append(1e+20)
-                                    else:
-                                        index_config = self.data_values.index(
-                                            data)
-                                        convergence_values_LI.append(max(
-                                            float(last_sec_line[index]),
-                                            float(self.limit_values[index_config])))
-                        min_convergence_LI = np.log10(np.prod(np.array(
-                            self.limit_values, dtype=float)/np.array(convergence_values_LI, dtype=float)))
-                        convergence_rate = min_convergence/min_convergence_LI
-                    addtional = (1 + 1.0 / (min(0.0, min_convergence) - 1.0))**min(
-                        (alpha/(convergence_rate), 10.0)) * (1 - similarity_const)
-                else:
-                    addtional = (
-                        1 + 1.0 / (min(0.0, min_convergence) - 1.0))**alpha * (1 - similarity_const)
-                adaptive_similarity_const = addtional + similarity_const
-        else:
-            print(
-                "Convergence log not found in the current directory (A) or its subdirectories.")
+            # use_rate = 1 # 0 for no use, 1 for divide, 2 for multiplication
+            alpha = 3.0
+            # convergence_rate = 1.0
 
-        self._logger.info("adaptive_similarity_const: {} ".format(
-            adaptive_similarity_const))
+            # if use_rate > 0 and len(self._convergence_status) > 2:
+            #     if abs(self._convergence_status[-1]) and abs(self._convergence_status[-2]) > 1e-10:
+            #         convergence_rate = self._convergence_status[-1]/self._convergence_status[-2]
+            #     self._logger.info("min Convergence: {} convergence rate: {} ".format(
+            #         self._convergence_status[-1], convergence_rate))
+            #     if use_rate == 1:
+            #         additional = (1 + 1.0 / (min(0.0, self._convergence_status[-1]) - 1.0))**min((alpha/(convergence_rate), 10.0))
+            #     elif use_rate == 2:
+            #         additional = (1 + 1.0 / (min(0.0, self._convergence_status[-1]) - 1.0))**(alpha*convergence_rate)
+            #     else:
+            #         print("use_rate setting not accepted")
+            # else:
+            #     if len(self._convergence_status) <= 2:
+            #         self._min_addition = 1.0
+            #         self._logger.info("less than two iterations, relax")
+            #     self._logger.info("min Convergence: {} ".format(self._convergence_status[-1]))
+            #     additional = (1 + 1.0 / (min(0.0, self._convergence_status[-1]) - 1.0))**alpha
+            if len(self._convergence_status) <= 2:
+                self._min_addition = 1.0
+                self._logger.info("less than two iterations, relax")
+            self._logger.info("min Convergence: {} ".format(self._convergence_status[-1]))
+            additional = (1 + 1.0 / (min(0.0, self._convergence_status[-1]) - 1.0))**alpha
 
-        return adaptive_similarity_const
+        return additional
+
+    def _get_adaptive_coarsening_const(self) -> float:
+        return self._coarse_const
+
+    def _get_adaptive_refining_const(self) -> float:
+        return self._refine_const
 
     def _update_active_sims(
-        self, similarity_dists: np.ndarray, is_sim_active: np.ndarray
-    ) -> np.ndarray:
+        self, similarity_dists: np.ndarray, is_sim_active: np.ndarray, use_dyn_coarse_tol: bool = False, use_dyn_ref_tol: bool = False
+    ) -> tuple:
         """
         Update set of active micro simulations. Active micro simulations are compared to each other
         and if found similar, one of them is deactivated.
@@ -214,14 +216,17 @@ class AdaptivityCalculator:
         _is_sim_active : numpy array
             Updated 1D array having state (active or inactive) of each micro simulation
         """
-        if self._adaptive_coarse_const:
-            self._coarse_const = self._get_adaptive_similarity_const(
-                self._coarse_const_input)
-            print(f"Adaptive coarse constant: {self._coarse_const}")
-        if self._adaptive_refine_const:
-            self._refine_const = self._get_adaptive_similarity_const(
-                self._refine_const_input)
-            print(f"Adaptive refine constant: {self._refine_const}")
+        if use_dyn_ref_tol and self._adaptive_refine_const:
+            additional = self._get_addition(self._refine_const_input)*(1-self._refine_const_input)
+            self._min_addition = min(self._min_addition, additional)
+            additional = self._min_addition
+            if additional > 0.0:
+                _refine_const = additional+ self._refine_const_input
+            else:
+                _refine_const = self._refine_const_input
+            self._logger.info("Adaptive refine constant: {}".format(self._refine_const))
+        else:
+            _refine_const = self._refine_const_input
 
         max_similarity_dist = np.amax(similarity_dists)
 
@@ -232,7 +237,7 @@ class AdaptivityCalculator:
             self._coarse_tol = sys.float_info.min
         else:
             self._coarse_tol = (
-                self._coarse_const * self._refine_const * max_similarity_dist
+                self._coarse_const * _refine_const * max_similarity_dist
             )
 
         _is_sim_active = np.copy(
@@ -245,7 +250,7 @@ class AdaptivityCalculator:
                 if self._check_for_deactivation(i, similarity_dists, _is_sim_active):
                     _is_sim_active[i] = False
 
-        return _is_sim_active
+        return _is_sim_active, _refine_const
 
     def _associate_inactive_to_active(
         self,

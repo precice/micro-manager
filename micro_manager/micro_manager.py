@@ -294,6 +294,8 @@ class MicroManagerCoupling(MicroManager):
                         t,
                     )
                 )
+                if self._is_adaptivity_on:
+                    self._adaptivity_controller._convergence_status = [] # Clear convergence status
 
                 if self._micro_sims_have_output:
                     if n % self._micro_n_out == 0:
@@ -847,6 +849,17 @@ class MicroManagerCoupling(MicroManager):
         for i in range(self._local_number_of_sims):
             for name in self._adaptivity_micro_data_names:
                 self._data_for_adaptivity[name][i] = micro_sims_output[i][name]
+
+        # Add similarity constants to the output
+        car_const = self._adaptivity_controller._get_adaptive_coarsening_const()
+        ref_const = self._adaptivity_controller._get_adaptive_refining_const()
+        self._logger.info("getting adaptivity constants to send to macro {}, {}".format(car_const,ref_const))
+        for inactive_id in inactive_sim_ids:
+            micro_sims_output[inactive_id]["coarse_const"] = car_const
+            micro_sims_output[inactive_id]["refine_const"] = ref_const
+        for active_id in active_sim_ids:
+            micro_sims_output[active_id]["coarse_const"] = car_const
+            micro_sims_output[active_id]["refine_const"] = ref_const
 
         return micro_sims_output
 

@@ -221,7 +221,7 @@ class Config:
                 )
                 self._adaptivity_similarity_measure = "L1"
 
-            adaptivity_every_implicit_iteration = self.data["simulation_params"][
+            adaptivity_every_implicit_iteration = self._data["simulation_params"][
                 "adaptivity_settings"
             ]["every_implicit_iteration"]
 
@@ -229,6 +229,8 @@ class Config:
                 self._adaptivity_every_implicit_iteration = True
             elif adaptivity_every_implicit_iteration == "False":
                 self._adaptivity_every_implicit_iteration = False
+
+            adaptivity_for_coarsening_constant = self._data["simulation_params"]["adaptivity_settings"]["adaptive_coarsening_constant"]
 
             if adaptivity_for_coarsening_constant == "True":
                 self._adaptivity_for_coarsening_constant = True
@@ -240,6 +242,7 @@ class Config:
                 )
             )
 
+            adaptivity_for_refining_constant = self._data["simulation_params"]["adaptivity_settings"]["adaptive_refining_constant"]
             if adaptivity_for_refining_constant == "True":
                 self._adaptivity_for_refining_constant = True
             elif adaptivity_for_refining_constant == "False":
@@ -257,6 +260,8 @@ class Config:
 
             self._write_data_names["active_state"] = False
             self._write_data_names["active_steps"] = False
+            self._write_data_names["coarse_const"] = 0.0
+            self._write_data_names["refine_const"] = 0.0
 
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"] == "True":

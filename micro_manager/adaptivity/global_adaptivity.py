@@ -227,8 +227,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         _sim_is_associated_to : numpy array
             1D array with values of associated simulations of inactive simulations. Active simulations have None
         """
-        if self._adaptive_refine_const:
-            self._refine_const = self._get_adaptive_similarity_const(self._refine_const_input)
         self._ref_tol = self._refine_const * np.amax(similarity_dists)
 
         _is_sim_active = np.copy(
