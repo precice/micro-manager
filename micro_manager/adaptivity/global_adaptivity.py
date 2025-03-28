@@ -118,11 +118,24 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             dt, similarity_dists_nm1, global_data_for_adaptivity
         )
 
-        is_sim_active = self._update_active_sims(similarity_dists, is_sim_active_nm1)
-
-        is_sim_active, sim_is_associated_to = self._update_inactive_sims(
-            similarity_dists, is_sim_active, sim_is_associated_to_nm1, micro_sims
+        is_sim_active_dyn, refine_const_dyn = self._update_active_sims(similarity_dists, is_sim_active_nm1, True)
+        is_sim_active_dyn, sim_is_associated_to_dyn = self._update_inactive_sims(
+            similarity_dists, is_sim_active_dyn, sim_is_associated_to_nm1, micro_sims, refine_const_dyn
         )
+
+        is_sim_active_sta, refine_const_sta = self._update_active_sims(similarity_dists, is_sim_active_nm1, False)
+        is_sim_active_sta, sim_is_associated_to_sta = self._update_inactive_sims(similarity_dists, is_sim_active_sta, sim_is_associated_to_nm1, micro_sims, refine_const_sta
+        )
+
+        if np.array_equal(is_sim_active_dyn, is_sim_active_sta) and np.array_equal(sim_is_associated_to_dyn, sim_is_associated_to_sta):
+            is_sim_active = is_sim_active_sta
+            sim_is_associated_to = sim_is_associated_to_sta
+            self._refine_const = refine_const_sta
+        else:
+            is_sim_active = is_sim_active_dyn
+            sim_is_associated_to = sim_is_associated_to_dyn
+            self._refine_const = refine_const_dyn
+
         sim_is_associated_to = self._associate_inactive_to_active(
             similarity_dists, is_sim_active, sim_is_associated_to
         )
@@ -204,6 +217,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         is_sim_active: np.ndarray,
         sim_is_associated_to: np.ndarray,
         micro_sims: list,
+        refine_const: float,
     ) -> tuple:
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
@@ -227,7 +241,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         _sim_is_associated_to : numpy array
             1D array with values of associated simulations of inactive simulations. Active simulations have None
         """
-        self._ref_tol = self._refine_const * np.amax(similarity_dists)
+        self._ref_tol = refine_const * np.amax(similarity_dists)
 
         _is_sim_active = np.copy(
             is_sim_active

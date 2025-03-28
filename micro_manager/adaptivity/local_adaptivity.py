@@ -70,12 +70,12 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         )
 
         # Operation done globally if global adaptivity is chosen
-        is_sim_active_dyn, refine_const_dyn = self._update_active_sims(similarity_dists, is_sim_active_nm1, False, True)
+        is_sim_active_dyn, refine_const_dyn = self._update_active_sims(similarity_dists, is_sim_active_nm1, True)
         is_sim_active_dyn, sim_is_associated_to_dyn = self._update_inactive_sims(
             similarity_dists, is_sim_active_dyn, sim_is_associated_to_nm1, micro_sims, refine_const_dyn
         )
 
-        is_sim_active_sta, refine_const_sta = self._update_active_sims(similarity_dists, is_sim_active_nm1, False, False)
+        is_sim_active_sta, refine_const_sta = self._update_active_sims(similarity_dists, is_sim_active_nm1, False)
         is_sim_active_sta, sim_is_associated_to_sta = self._update_inactive_sims(similarity_dists, is_sim_active_sta, sim_is_associated_to_nm1, micro_sims, refine_const_sta
         )
 

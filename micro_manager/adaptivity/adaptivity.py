@@ -24,10 +24,8 @@ class AdaptivityCalculator:
         """
         self._refine_const_input = configurator.get_adaptivity_refining_const()
         self._refine_const = self._refine_const_input
-        self._coarse_const_input = configurator.get_adaptivity_coarsening_const()
-        self._coarse_const = self._coarse_const_input
-        self._adaptive_coarse_const = configurator.get_adaptivity_for_coarsening_const()
         self._adaptive_refine_const = configurator.get_adaptivity_for_refining_const()
+        self._coarse_const = configurator.get_adaptivity_coarsening_const()
         self._hist_param = configurator.get_adaptivity_hist_param()
         self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
@@ -114,7 +112,7 @@ class AdaptivityCalculator:
 
     def _get_addition(self, similarity_const: float) -> float:
         """
-        Get adapted coarsening/refining constant based on limit values in preCICE configuration file and convergence measurements in preCICE
+        Get adapted refining constant based on limit values in preCICE configuration file and convergence measurements in preCICE
 
         Returns
         -------
@@ -191,14 +189,11 @@ class AdaptivityCalculator:
 
         return additional
 
-    def _get_adaptive_coarsening_const(self) -> float:
-        return self._coarse_const
-
     def _get_adaptive_refining_const(self) -> float:
         return self._refine_const
 
     def _update_active_sims(
-        self, similarity_dists: np.ndarray, is_sim_active: np.ndarray, use_dyn_coarse_tol: bool = False, use_dyn_ref_tol: bool = False
+        self, similarity_dists: np.ndarray, is_sim_active: np.ndarray, use_dyn_ref_tol: bool = False
     ) -> tuple:
         """
         Update set of active micro simulations. Active micro simulations are compared to each other
