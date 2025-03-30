@@ -212,7 +212,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         _sim_is_associated_to : numpy array
             1D array with values of associated simulations of inactive simulations. Active simulations have None
         """
-        self._ref_tol = self._refine_const * np.amax(similarity_dists)
+        # self._ref_tol = self._refine_const * np.amax(similarity_dists)
+        self._ref_tol = self._get_activate_distance(similarity_dists, is_sim_active)
 
         _is_sim_active = np.copy(
             is_sim_active
