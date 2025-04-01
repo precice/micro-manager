@@ -169,13 +169,13 @@ class MicroManagerCoupling(MicroManager):
                     "MicroSimulation",
                 )
                 for i in active_sim_ids:
-                    self._logger.log_info_any_rank(
+                    self._logger.log_info(
                         f"lazy initialization of micro sim {i} started"
                     )
                     self._micro_sims[i] = create_simulation_class(micro_problem)(
                         self._global_ids_of_local_sims[i]
                     )
-                    self._logger.log_info_any_rank(
+                    self._logger.log_info(
                         f"lazy initialization of micro sim {i} completed"
                     )
 
@@ -216,7 +216,7 @@ class MicroManagerCoupling(MicroManager):
                             sim_states_cp[active_id] = self._micro_sims[
                                 active_id
                             ].get_state()
-                            self._logger.log_info_any_rank(
+                            self._logger.log_info(
                                 f"state of lazily initialized micro sim {self._global_ids_of_local_sims[active_id]} successfully checkpointed"
                             )
 
