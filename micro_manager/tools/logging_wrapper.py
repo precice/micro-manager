@@ -67,9 +67,9 @@ class Logger:
         """
         return self._logger
 
-    def log_info_one_rank(self, message):
+    def log_info_rank_zero(self, message):
         """
-        Log a message. Only the rank 0 logs the message.
+        Rank 0 logs a message.
 
         Parameters
         ----------
@@ -79,9 +79,9 @@ class Logger:
         if self._rank == 0:
             self._logger.info(message)
 
-    def log_info_any_rank(self, message):
+    def log_info(self, message):
         """
-        Log a message. All ranks log the message.
+        Log a message.
 
         Parameters
         ----------
@@ -90,9 +90,9 @@ class Logger:
         """
         self._logger.info(message)
 
-    def log_error_any_rank(self, message):
+    def log_error(self, message):
         """
-        Log an error message. Only the rank 0 logs the message.
+        Log an error message.
 
         Parameters
         ----------
@@ -100,3 +100,26 @@ class Logger:
             Message to log.
         """
         self._logger.error(message)
+
+    def log_warning_rank_zero(self, message):
+        """
+        Rank 0 logs a warning.
+
+        Parameters
+        ----------
+        message : string
+            Message to log.
+        """
+        if self._rank == 0:
+            self._logger.warning(message)
+
+    def log_warning(self, message):
+        """
+        Log a warning.
+
+        Parameters
+        ----------
+        message : string
+            Message to log.
+        """
+        self._logger.warning(message)

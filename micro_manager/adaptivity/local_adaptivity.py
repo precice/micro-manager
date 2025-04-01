@@ -154,7 +154,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         local_inactive_sims = np.count_nonzero(self._is_sim_active == False)
         global_inactive_sims = self._comm.gather(local_inactive_sims)
 
-        self._metrics_logger.log_info_one_rank(
+        self._metrics_logger.log_info_rank_zero(
             "{},{},{},{},{}".format(
                 n,
                 np.mean(global_active_sims),
