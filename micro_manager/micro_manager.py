@@ -455,8 +455,8 @@ class MicroManagerCoupling(MicroManager):
         ):
             if self._lazy_init:
                 warn(
-                    "The initialize function of micro simulations will not be called when using lazy
-                    initialization and adaptivity can't use data returned by it."
+                    "The initialize function of micro simulations will not be called when using "
+                    "lazy initialization and adaptivity can't use data returned by it."
                 )
             else:
                 self._micro_sims_init = True  # Starting value before setting
