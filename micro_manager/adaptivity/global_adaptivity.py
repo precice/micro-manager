@@ -176,7 +176,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return micro_sims_output
 
-    def log_metrics(self, n: int, adaptivity_cpu_time: float) -> None:
+    def log_metrics(self, n: int) -> None:
         """
         Log metrics for global adaptivity.
 
@@ -184,20 +184,17 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         n : int
             Time step count at which the metrics are logged
-        adaptivity_cpu_time : float
-            CPU time taken for adaptivity calculation
         """
         global_active_sims = np.count_nonzero(self._is_sim_active)
         global_inactive_sims = np.count_nonzero(self._is_sim_active == False)
 
         self._metrics_logger.log_info_rank_zero(
-            "{},{},{},{},{},{}".format(
+            "{},{},{},{},{}".format(
                 n,
                 np.mean(global_active_sims),
                 np.mean(global_inactive_sims),
                 np.max(global_active_sims),
                 np.max(global_inactive_sims),
-                adaptivity_cpu_time,
             )
         )
 
