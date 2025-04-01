@@ -441,7 +441,7 @@ class MicroManagerCoupling(MicroManager):
             is_initial_data_available = False
             if self._lazy_init:
                 raise Exception(
-                    "no initial macro data available, lazy initialization would result in only one active simulation."
+                    "No initial macro data available, lazy initialization would result in only one active simulation."
                 )
         else:
             is_initial_data_available = True
