@@ -52,7 +52,7 @@ class TestSimulationCrashHandling(TestCase):
         )
         manager._micro_sims = [MicroSimulation(i) for i in range(4)]
 
-        micro_sims_output, _ = manager._solve_micro_simulations(macro_data, 1.0)
+        micro_sims_output = manager._solve_micro_simulations(macro_data, 1.0)
 
         # Crashed simulation has interpolated value
         data_crashed = micro_sims_output[2]
@@ -106,7 +106,7 @@ class TestSimulationCrashHandling(TestCase):
             [-2, -2, -2, -2, 2]
         )
 
-        micro_sims_output, _ = manager._solve_micro_simulations_with_adaptivity(
+        micro_sims_output = manager._solve_micro_simulations_with_adaptivity(
             macro_data, 1.0
         )
 
