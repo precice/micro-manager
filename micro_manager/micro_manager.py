@@ -192,7 +192,7 @@ class MicroManagerCoupling(MicroManager):
 
             micro_sims_input = self._read_data_from_precice(dt)
 
-            micro_sims_output, adaptivity_time = micro_sim_solve(micro_sims_input, dt)
+            micro_sims_output = micro_sim_solve(micro_sims_input, dt)
 
             # Check if more than a certain percentage of the micro simulations have crashed and terminate if threshold is exceeded
             if self._interpolate_crashed_sims:
@@ -597,7 +597,7 @@ class MicroManagerCoupling(MicroManager):
                     self._macro_mesh_name, dname, [], np.array([])
                 )
 
-    def _solve_micro_simulations(self, micro_sims_input: list, dt: float) -> tuple:
+    def _solve_micro_simulations(self, micro_sims_input: list, dt: float) -> list:
         """
         Solve all micro simulations and assemble the micro simulations outputs in a list of dicts format.
 
@@ -611,8 +611,8 @@ class MicroManagerCoupling(MicroManager):
 
         Returns
         -------
-        tuple
-            A tuple of micro_sims_output (list of Dicts) and dummy adaptivity computation CPU time.
+        micro_sims_output : list
+            List of dicts in which keys are names of data and the values are the data which are required outputs of
         """
         micro_sims_output: list[dict] = [None] * self._local_number_of_sims
 
@@ -670,11 +670,11 @@ class MicroManagerCoupling(MicroManager):
                     micro_sims_input, micro_sims_output, unset_sim
                 )
 
-        return micro_sims_output, 0.0
+        return micro_sims_output
 
     def _solve_micro_simulations_with_adaptivity(
         self, micro_sims_input: list, dt: float
-    ) -> tuple:
+    ) -> list:
         """
         Adaptively solve micro simulations and assemble the micro simulations outputs in a list of dicts format.
 
@@ -688,8 +688,8 @@ class MicroManagerCoupling(MicroManager):
 
         Returns
         -------
-        tuple
-            A tuple of micro_sims_output (list of Dicts) and adaptivity computation CPU time.
+        micro_sims_output : list
+            List of dicts in which keys are names of data and the values are the data which are required outputs of
         """
         active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
 
