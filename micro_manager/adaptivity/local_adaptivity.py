@@ -142,7 +142,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         return micro_sims_output
 
-    def log_metrics(self, n: int, adaptivity_cpu_time: float) -> None:
+    def log_metrics(self, n: int) -> None:
         """
         Log metrics for local adaptivity.
 
@@ -150,8 +150,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         n : int
             Current time step
-        adaptivity_cpu_time : float
-            CPU time taken for adaptivity calculation
         """
         # MPI Gather is necessary as local adaptivity only stores local data
         local_active_sims = np.count_nonzero(self._is_sim_active)
@@ -160,14 +158,13 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         local_inactive_sims = np.count_nonzero(self._is_sim_active == False)
         global_inactive_sims = self._comm.gather(local_inactive_sims)
 
-        self._metrics_logger.log_info_one_rank(
-            "{},{},{},{},{},{}".format(
+        self._metrics_logger.log_info_rank_zero(
+            "{},{},{},{},{}".format(
                 n,
                 np.mean(global_active_sims),
                 np.mean(global_inactive_sims),
                 np.max(global_active_sims),
                 np.max(global_inactive_sims),
-                adaptivity_cpu_time,
             )
         )
 

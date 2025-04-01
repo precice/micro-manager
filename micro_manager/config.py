@@ -96,7 +96,7 @@ class Config:
         try:
             self._output_dir = self._data["output_dir"]
         except BaseException:
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "No output directory provided. Output (including logging) will be saved in the current working directory."
             )
 
@@ -106,7 +106,7 @@ class Config:
                 self._write_data_names, list
             ), "Write data entry is not a list"
         except BaseException:
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "No write data names provided. Micro manager will only read data from preCICE."
             )
 
@@ -116,7 +116,7 @@ class Config:
                 self._read_data_names, list
             ), "Read data entry is not a list"
         except BaseException:
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "No read data names provided. Micro manager will only write data to preCICE."
             )
 
@@ -127,7 +127,7 @@ class Config:
                 self._output_micro_sim_time = True
                 self._write_data_names.append("solve_cpu_time")
         except BaseException:
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "Micro manager will not output time required to solve each micro simulation."
             )
 
@@ -150,7 +150,7 @@ class Config:
         try:
             self._ranks_per_axis = self._data["simulation_params"]["decomposition"]
         except BaseException:
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "Domain decomposition is not specified, so the Micro Manager will expect to be run in serial."
             )
 
@@ -168,7 +168,7 @@ class Config:
                         "Adaptivity settings are provided but adaptivity is turned off."
                     )
         except BaseException:
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations."
             )
 
@@ -199,7 +199,7 @@ class Config:
             ]["data"]
 
             if self._data_for_adaptivity == self._write_data_names:
-                self._logger.log_info_one_rank(
+                self._logger.log_info_rank_zero(
                     "Only micro simulation data is used for similarity computation in adaptivity. This would lead to the"
                     " same set of active and inactive simulations for the entire simulation time. If this is not intended,"
                     " please include macro simulation data as well."
@@ -210,7 +210,7 @@ class Config:
                     "adaptivity_settings"
                 ]["output_n"]
             except BaseException:
-                self._logger.log_info_one_rank(
+                self._logger.log_info_rank_zero(
                     "No output interval for adaptivity provided. Adaptivity metrics will be output every time window."
                 )
 
@@ -232,7 +232,7 @@ class Config:
                     "adaptivity_settings"
                 ]["similarity_measure"]
             else:
-                self._logger.log_info_one_rank(
+                self._logger.log_info_rank_zero(
                     "No similarity measure provided, using L1 norm as default"
                 )
                 self._adaptivity_similarity_measure = "L1"
@@ -247,7 +247,7 @@ class Config:
                 self._adaptivity_every_implicit_iteration = False
 
             if not self._adaptivity_every_implicit_iteration:
-                self._logger.log_info_one_rank(
+                self._logger.log_info_rank_zero(
                     "Micro Manager will compute adaptivity once at the start of every time window"
                 )
 
@@ -264,14 +264,14 @@ class Config:
                 diagnostics_data_names, list
             ), "Diagnostics data is not a list"
         except BaseException:
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "No diagnostics data is defined. Micro Manager will not output any diagnostics data."
             )
 
         try:
             self._micro_output_n = self._data["diagnostics"]["micro_output_n"]
         except BaseException:
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "Output interval of micro simulations not specified, if output is available then it will be called "
                 "in every time window."
             )
@@ -294,7 +294,7 @@ class Config:
                 .replace(".py", "")
             )
         except BaseException:
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "No post-processing file name provided. Snapshot computation will not perform any post-processing."
             )
             self._postprocessing_file_name = None
@@ -305,7 +305,7 @@ class Config:
                 diagnostics_data_names, list
             ), "Diagnostics data is not a list"
         except BaseException:
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "No diagnostics data is defined. Snapshot computation will not output any diagnostics data."
             )
 
@@ -313,7 +313,7 @@ class Config:
             if self._data["snapshot_params"]["initialize_once"] == "True":
                 self._initialize_once = True
         except BaseException:
-            self._logger.log_info_one_rank(
+            self._logger.log_info_rank_zero(
                 "For each snapshot a new micro simulation object will be created"
             )
 

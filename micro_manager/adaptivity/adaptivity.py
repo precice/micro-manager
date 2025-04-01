@@ -52,7 +52,7 @@ class AdaptivityCalculator:
                 __name__, "adaptivity-metrics.csv", rank=rank, csv_logger=True
             )
 
-        self._metrics_logger.log_info_one_rank(
+        self._metrics_logger.log_info_rank_zero(
             "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive"
         )
 
