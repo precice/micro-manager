@@ -58,6 +58,8 @@ class Config:
 
         self._output_dir = None
 
+        self._lazy_initialization = False
+
     def set_logger(self, logger):
         """
         Set the logger for the Config class.
@@ -183,6 +185,14 @@ class Config:
                 self._adaptivity_type = "global"
             else:
                 raise Exception("Adaptivity type can be either local or global.")
+
+            if (
+                self._data["simulation_params"]["adaptivity_settings"].get(
+                    "lazy_initialization"
+                )
+                == "True"
+            ):
+                self._lazy_initialization = True
 
             self._data_for_adaptivity = self._data["simulation_params"][
                 "adaptivity_settings"
@@ -516,6 +526,18 @@ class Config:
             True if adaptivity needs to be calculated in every time iteration, False otherwise.
         """
         return self._adaptivity_every_implicit_iteration
+
+    def initialize_sims_lazily(self):
+        """
+        Check if simulations are to be created only when they are required to be active for the very first time.
+
+        Returns
+        -------
+        adaptivity : bool
+            True if micro simulations are created only when needed, False otherwise.
+
+        """
+        return self._lazy_initialization
 
     def get_micro_dt(self):
         """

@@ -6,6 +6,7 @@ on each rank is done.
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
 import hashlib
+import importlib
 from copy import deepcopy
 from typing import Dict
 
@@ -13,6 +14,7 @@ import numpy as np
 from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
+from ..micro_simulation import create_simulation_class
 
 
 class GlobalAdaptivityCalculator(AdaptivityCalculator):
@@ -78,6 +80,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._is_sim_active_cp = None
         self._sim_is_associated_to_cp = None
 
+        self._updating_inactive_sims = self._get_update_inactive_sims_variant()
+
     def compute_adaptivity(
         self,
         dt: float,
@@ -116,7 +120,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         is_sim_active = self._update_active_sims(similarity_dists, self._is_sim_active)
 
-        is_sim_active, sim_is_associated_to = self._update_inactive_sims(
+        is_sim_active, sim_is_associated_to = self._updating_inactive_sims(
             similarity_dists, is_sim_active, self._sim_is_associated_to, micro_sims
         )
 
@@ -366,6 +370,135 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 micro_sims[local_id].set_state(state)
 
         return _is_sim_active, _sim_is_associated_to_updated
+
+    def _update_inactive_sims_lazy_init(
+        self,
+        similarity_dists: np.ndarray,
+        is_sim_active: np.ndarray,
+        sim_is_associated_to: np.ndarray,
+        micro_sims: list,
+    ) -> tuple:
+        """
+        Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones and if it is not similar to any of them, it is activated.
+
+        If a micro simulation which has been inactive since the start of the simulation is activated for the
+        first time, the simulation object is created and initialized.
+
+        Parameters
+        ----------
+        similarity_dists : numpy array
+            2D array having similarity distances between each micro simulation pair
+        is_sim_active : numpy array
+            1D array having state (active or inactive) of each micro simulation
+        sim_is_associated_to : numpy array
+            1D array with values of associated simulations of inactive simulations. Active simulations have None
+        micro_sims : list
+            List of objects of class MicroProblem, which are the micro simulations
+
+        Returns
+        -------
+        _is_sim_active : numpy array
+            Updated 1D array having state (active or inactive) of each micro simulation
+        _sim_is_associated_to : numpy array
+            1D array with values of associated simulations of inactive simulations. Active simulations have None
+        """
+        self._ref_tol = self._refine_const * np.amax(similarity_dists)
+
+        _is_sim_active = np.copy(
+            is_sim_active
+        )  # Input is_sim_active is not longer used after this point
+        _sim_is_associated_to = np.copy(sim_is_associated_to)
+        _sim_is_associated_to_updated = np.copy(sim_is_associated_to)
+
+        # Check inactive simulations for activation and collect IDs of those to be activated
+        to_be_activated_ids = []  # Global IDs to be activated
+        for i in range(_is_sim_active.size):
+            if not _is_sim_active[i]:  # if id is inactive
+                if self._check_for_activation(i, similarity_dists, _is_sim_active):
+                    _is_sim_active[i] = True
+                    _sim_is_associated_to_updated[
+                        i
+                    ] = -2  # Active sim cannot have an associated sim
+                    if self._is_sim_on_this_rank[i]:
+                        to_be_activated_ids.append(i)
+
+        local_sim_is_associated_to = _sim_is_associated_to[
+            self._global_ids[0] : self._global_ids[-1] + 1
+        ]
+
+        # Keys are global IDs of active sims not on this rank, values are lists of local and
+        # global IDs of inactive sims associated to the active sims which are on this rank
+        to_be_activated_map: Dict[int, list] = dict()
+
+        for i in to_be_activated_ids:
+            # Only handle activation of simulations on this rank -- LOCAL SCOPE HERE ON
+            if self._is_sim_on_this_rank[i]:
+                to_be_activated_local_id = self._global_ids.index(i)
+                if (
+                    micro_sims[to_be_activated_local_id] == 0
+                ):  # 0 indicates that the micro simulation object has not been created yet
+                    micro_problem = getattr(
+                        importlib.import_module(
+                            self._micro_file_name, "MicroSimulation"
+                        ),
+                        "MicroSimulation",
+                    )
+                    micro_sims[to_be_activated_local_id] = create_simulation_class(
+                        micro_problem
+                    )(i)
+                assoc_active_id = local_sim_is_associated_to[to_be_activated_local_id]
+
+                if self._is_sim_on_this_rank[
+                    assoc_active_id
+                ]:  # Associated active simulation is on the same rank
+                    assoc_active_local_id = self._global_ids.index(assoc_active_id)
+                    micro_sims[to_be_activated_local_id].set_state(
+                        micro_sims[assoc_active_local_id].get_state()
+                    )
+                else:  # Associated active simulation is not on this rank
+                    if assoc_active_id in to_be_activated_map:
+                        to_be_activated_map[assoc_active_id].append(
+                            to_be_activated_local_id
+                        )
+                    else:
+                        to_be_activated_map[assoc_active_id] = [
+                            to_be_activated_local_id
+                        ]
+
+        # TODO: could be moved to before the lazy initialization above
+        sim_states_and_global_ids = []
+        for local_id, sim in enumerate(micro_sims):
+            if sim == 0:
+                sim_states_and_global_ids.append((None, self._global_ids[local_id]))
+            else:
+                sim_states_and_global_ids.append((sim.get_state(), sim.get_global_id()))
+
+        recv_reqs = self._p2p_comm(
+            list(to_be_activated_map.keys()), sim_states_and_global_ids
+        )
+
+        # Use received micro sims to activate the required simulations
+        for req in recv_reqs:
+            state, global_id = req.wait()
+            local_ids = to_be_activated_map[global_id]
+            for local_id in local_ids:
+                micro_sims[local_id].set_state(state)
+
+        return _is_sim_active, _sim_is_associated_to_updated
+
+    def _get_update_inactive_sims_variant(self):
+        """
+        Get the variant of the function _update_inactive_sims.
+
+        Returns
+        -------
+        function
+            Function which updates the set of inactive micro simulations.
+        """
+        if self._lazy_init:
+            return self._update_inactive_sims_lazy_init
+        else:
+            return self._update_inactive_sims
 
     def _create_tag(self, sim_id: int, src_rank: int, dest_rank: int) -> int:
         """

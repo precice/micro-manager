@@ -31,7 +31,7 @@ class Interpolation:
             Local indices of the k nearest neighbors in all local points.
         """
         if len(coords) < k:
-            self._logger.log_info_any_rank(
+            self._logger.log_info(
                 "Number of desired neighbors k = {} is larger than the number of available neighbors {}. Resetting k = {}.".format(
                     k, len(coords), len(coords)
                 )
