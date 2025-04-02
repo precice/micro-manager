@@ -120,6 +120,7 @@ Parameter | Description
 `refining_constant` | Refining constant $$ C_r $$, set as $$ 0 =< C_r < 1 $$.
 `every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
 `similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.
+`lazy_initialization` | Set to `True` to lazily create and initialize micro simulations. If selected, micro simulation objects are created only when the micro simulation is activated for the first time. Default: `False`.
 
 The primary tuning parameters for adaptivity are the history parameter $$ \Lambda $$, the coarsening constant $$ C_c $$, and the refining constant $$ C_r $$. Their effects can be interpreted as:
 
@@ -139,7 +140,8 @@ Example of adaptivity configuration is
         "history_param": 0.5,
         "coarsening_constant": 0.3,
         "refining_constant": 0.4,
-        "every_implicit_iteration": "True"
+        "every_implicit_iteration": "True",
+        "lazy_initialization": "True"
     }
 }
 ```
