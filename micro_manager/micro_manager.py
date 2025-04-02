@@ -18,7 +18,6 @@ import sys
 import time
 import inspect
 from typing import Dict
-from warnings import warn
 from typing import Callable
 
 import numpy as np
@@ -169,15 +168,12 @@ class MicroManagerCoupling(MicroManager):
                     "MicroSimulation",
                 )
                 for i in active_sim_ids:
-                    self._logger.log_info(
-                        f"lazy initialization of micro sim {i} started"
-                    )
                     self._micro_sims[i] = create_simulation_class(micro_problem)(
                         self._global_ids_of_local_sims[i]
                     )
-                    self._logger.log_info(
-                        f"lazy initialization of micro sim {i} completed"
-                    )
+                self._logger.log_info_rank_zero(
+                    "Some micro simulations have been initialized lazily before the start of the coupling."
+                )
 
         first_iteration = True
 
@@ -216,9 +212,6 @@ class MicroManagerCoupling(MicroManager):
                             sim_states_cp[active_id] = self._micro_sims[
                                 active_id
                             ].get_state()
-                            self._logger.log_info(
-                                f"state of lazily initialized micro sim {self._global_ids_of_local_sims[active_id]} successfully checkpointed"
-                            )
 
             micro_sims_input = self._read_data_from_precice(dt)
 
@@ -454,7 +447,7 @@ class MicroManagerCoupling(MicroManager):
             getattr(micro_problem, "initialize")
         ):
             if self._lazy_init:
-                warn(
+                self._logger.log_warning(
                     "The initialize function of micro simulations will not be called when using "
                     "lazy initialization and adaptivity can't use data returned by it."
                 )
@@ -510,7 +503,7 @@ class MicroManagerCoupling(MicroManager):
             if (
                 initial_micro_output is None
             ):  # Check if the detected initialize() method returns any data
-                warn(
+                self._logger.log_warning(
                     "The initialize() call of the Micro simulation has not returned any initial data."
                     " This means that the initialize() call has no effect on the adaptivity. The initialize method will nevertheless still be called."
                 )
@@ -553,7 +546,7 @@ class MicroManagerCoupling(MicroManager):
                                     i
                                 ] = initial_micro_output[name]
                 else:
-                    warn(
+                    self._logger.log_warning(
                         "The initialize() method of the Micro simulation returns initial data, but adaptivity is turned off. The returned data will be ignored. The initialize method will nevertheless still be called."
                     )
                     if is_initial_data_required:

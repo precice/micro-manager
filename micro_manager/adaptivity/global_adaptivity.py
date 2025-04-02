@@ -379,8 +379,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_sims: list,
     ) -> tuple:
         """
-        Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
-        and if it is not similar to any of them, it is activated.
+        Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones and if it is not similar to any of them, it is activated.
+
+        If a micro simulation which has been inactive since the start of the simulation is activated for the
+        first time, the simulation object is created and initialized.
 
         Parameters
         ----------
@@ -435,9 +437,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 if (
                     micro_sims[to_be_activated_local_id] == 0
                 ):  # 0 indicates that the micro simulation object has not been created yet
-                    print(
-                        f"{i} to be solved, hence creating object and initializing it"
-                    )  # Debugging
                     micro_problem = getattr(
                         importlib.import_module(
                             self._micro_file_name, "MicroSimulation"
@@ -447,9 +446,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     micro_sims[to_be_activated_local_id] = create_simulation_class(
                         micro_problem
                     )(i)
-                    print(
-                        f"Created and initialized simulation [{i}] to an active state."
-                    )  # Debugging
                 assoc_active_id = local_sim_is_associated_to[to_be_activated_local_id]
 
                 if self._is_sim_on_this_rank[

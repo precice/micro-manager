@@ -282,9 +282,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                     if (
                         micro_sims[i] == 0
                     ):  # 0 indicates that the micro simulation object has not been created yet
-                        print(
-                            f"{i} to be solved, hence creating object and initializing it"
-                        )  # Debugging
                         micro_problem = getattr(
                             importlib.import_module(
                                 self._micro_file_name, "MicroSimulation"
@@ -292,9 +289,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                             "MicroSimulation",
                         )
                         micro_sims[i] = create_simulation_class(micro_problem)(i)
-                        print(
-                            f"Created and initialized simulation [{i}] to an active state."
-                        )  # Debugging
                     micro_sims[i].set_state(
                         micro_sims[associated_active_local_id].get_state()
                     )
