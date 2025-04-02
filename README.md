@@ -4,10 +4,6 @@
     <img src="https://img.shields.io/github/license/precice/micro-manager.svg" alt="GNU LGPL license">
 </a>
 
-<a style="text-decoration: none" href="https://github.com/precice/fenics-adapter/actions/workflows/build-and-test.yml" target="_blank">
-    <img src="https://github.com/precice/micro-manager/actions/workflows/run-adaptivity-test.yml/badge.svg" alt="Test Adaptivity">
-</a>
-
 <a style="text-decoration: none" href="https://pypi.org/project/micro-manager-precice/" target="_blank">
     <img src="https://github.com/precice/micro-manager/actions/workflows/pythonpublish.yml/badge.svg" alt="Upload Python Package">
 </a>

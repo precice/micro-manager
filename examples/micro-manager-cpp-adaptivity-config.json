@@ -1,10 +1,10 @@
 {
     "micro_file_name": "cpp-dummy/micro_dummy",
     "coupling_params": {
-        "config_file_name": "precice-config-adaptivity.xml",
+        "precice_config_file_name": "precice-config-adaptivity.xml",
         "macro_mesh_name": "macro-mesh",
-        "read_data_names": {"macro-scalar-data": "scalar", "macro-vector-data": "vector"},
-        "write_data_names": {"micro-scalar-data": "scalar", "micro-vector-data": "vector"}
+        "read_data_names": ["macro-scalar-data", "macro-vector-data"],
+        "write_data_names": ["micro-scalar-data", "micro-vector-data"]
     },
     "simulation_params": {
         "micro_dt": 1.0,
@@ -16,7 +16,8 @@
             "history_param": 0.5,
             "coarsening_constant": 0.3,
             "refining_constant": 0.4,
-            "every_implicit_iteration": "True"
+            "every_implicit_iteration": "True",
+            "output_cpu_time": "True"
         }
     },
     "diagnostics": {

@@ -5,12 +5,14 @@ import sys
 from math import exp
 from typing import Callable
 from warnings import warn
+import subprocess
+from micro_manager.tools.logging_wrapper import Logger
 
 import numpy as np
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, logger) -> None:
+    def __init__(self, configurator, rank) -> None:
         """
         Class constructor.
 
@@ -18,21 +20,40 @@ class AdaptivityCalculator:
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
-        logger : Logger defined from the standard package logging
+        rank : int
+            Rank of the MPI communicator.
         """
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
         self._hist_param = configurator.get_adaptivity_hist_param()
         self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
-
-        self._logger = logger
+        self._micro_file_name = configurator.get_micro_file_name()
+        self._lazy_init = configurator.initialize_sims_lazily()
 
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
 
+        self._rank = rank
+
         self._similarity_measure = self._get_similarity_measure(
             configurator.get_adaptivity_similarity_measure()
+        )
+
+        output_dir = configurator.get_output_dir()
+
+        if output_dir is not None:
+            subprocess.run(["mkdir", "-p", output_dir])  # Create output directory
+            self._metrics_logger = Logger(
+                __name__, output_dir + "/adaptivity-metrics.csv", rank, csv_logger=True
+            )
+        else:
+            self._metrics_logger = Logger(
+                __name__, "adaptivity-metrics.csv", rank=rank, csv_logger=True
+            )
+
+        self._metrics_logger.log_info_rank_zero(
+            "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive"
         )
 
     def _get_similarity_dists(
@@ -59,7 +80,7 @@ class AdaptivityCalculator:
 
         data_diff = np.zeros_like(_similarity_dists)
         for name in data.keys():
-            data_vals = data[name]
+            data_vals = np.array(data[name])
             if data_vals.ndim == 1:
                 # If the adaptivity data is a scalar for each simulation,
                 # expand the dimension to make it a 2D array to unify the calculation.

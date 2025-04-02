@@ -1,0 +1,57 @@
+name: Test adaptivity functionality in parallel
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - "*"
+jobs:
+  adaptivity_integration_parallel_tests:
+    name: Adaptivity tests in parallel
+    runs-on: ubuntu-latest
+    container: precice/precice:nightly
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: micro-manager
+
+      - name: Install sudo for MPI
+        working-directory: micro-manager
+        run: |
+          apt-get -qq update
+          apt-get -qq install sudo
+
+      - name: Use mpi4py
+        uses: mpi4py/setup-mpi@v1
+
+      - name: Install dependencies
+        working-directory: micro-manager
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-dev git python3-venv pkg-config
+
+      - name: Create a virtual environment and install Micro Manager in it
+        working-directory: micro-manager
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install .
+
+      - name: Run integration test with global adaptivity in parallel
+        timeout-minutes: 3
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          cd tests/integration/test_unit_cube/
+          mpiexec -n 2 --allow-run-as-root micro-manager-precice micro-manager-config-global-adaptivity-parallel.json &
+          python3 unit_cube.py 2
+
+      - name: Run parallel unit tests
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          cd tests/unit
+          mpiexec -n 2 --allow-run-as-root python3 -m unittest test_adaptivity_parallel.py

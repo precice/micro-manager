@@ -13,10 +13,10 @@ The Micro Manager is configured with a JSON file. An example configuration file 
 {
     "micro_file_name": "micro_solver",
     "coupling_params": {
-        "config_file_name": "precice-config.xml",
+        "precice_config_file_name": "precice-config.xml",
         "macro_mesh_name": "macro-mesh",
-        "read_data_names": {"temperature": "scalar", "heat-flux": "vector"},
-        "write_data_names": {"porosity": "scalar", "conductivity": "vector"}
+        "read_data_names": ["temperature", "heat-flux"],
+        "write_data_names": ["porosity", "conductivity"]
     },
     "simulation_params": {
         "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
@@ -38,10 +38,10 @@ There are three main sections in the configuration file, the `coupling_params`, 
 
 Parameter | Description
 --- | ---
-`config_file_name` |  Path to the preCICE XML configuration file from the current working directory.
+`precice_config_file_name` |  Path to the preCICE XML configuration file from the current working directory.
 `macro_mesh_name` |  Name of the macro mesh as stated in the preCICE configuration.
-`read_data_names` |  A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"`  as values depending on the nature of the data.
-`write_data_names` |  A Python dictionary with the names of the data to be written to preCICE as keys and `"scalar"` or `"vector"`  as values depending on the nature of the data.
+`read_data_names` |  A list with the names of the data to be read from preCICE.
+`write_data_names` |  A list with the names of the data to be written to preCICE.
 
 ## Simulation Parameters
 
@@ -74,14 +74,14 @@ If the parameter `data_from_micro_sims` is set, the data to be output needs to b
 </participant>
 ```
 
-If `output_micro_sim_solve_time` is set, add similar entries for the data `micro_sim_time` in the following way:
+If `output_micro_sim_solve_time` is set, add similar entries for the data `solve_cpu_time` in the following way:
 
 ```xml
-<data:scalar name="micro_sim_time"/>
+<data:scalar name="solve_cpu_time"/>
 
 <participant name="Micro-Manager">
   ...
-  <write-data name="micro_sim_time" mesh="macro-mesh"/>
+  <write-data name="solve_cpu_time" mesh="macro-mesh"/>
   <export:vtu directory="Micro-Manager-output" every-n-time-windows="5"/>
 </participant>
 ```
@@ -116,10 +116,17 @@ Parameter | Description
 `type` | Set to either `local` or `global`. The type of adaptivity matters when the Micro Manager is run in parallel. `local` means comparing micro simulations within a local partitioned domain for similarity. `global` means comparing micro simulations from all partitions, so over the entire domain.
 `data` | List of names of data which are to be used to calculate if micro-simulations are similar or not. For example `["temperature", "porosity"]`.
 `history_param` | History parameter $$ \Lambda $$, set as $$ \Lambda >= 0 $$.
-`coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ C_c < 1 $$.
-`refining_constant` | Refining constant $$ C_r $$, set as $$ C_r >= 0 $$.
+`coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ 0 =< C_c < 1 $$.
+`refining_constant` | Refining constant $$ C_r $$, set as $$ 0 =< C_r < 1 $$.
 `every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
 `similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.
+`lazy_initialization` | Set to `True` to lazily create and initialize micro simulations. If selected, micro simulation objects are created only when the micro simulation is activated for the first time. Default: `False`.
+
+The primary tuning parameters for adaptivity are the history parameter $$ \Lambda $$, the coarsening constant $$ C_c $$, and the refining constant $$ C_r $$. Their effects can be interpreted as:
+
+- Higher values of the history parameter $$ \Lambda $$ imply lower significance of the similarity measures in the previous timestep on the similarity measure and thus adaptivity state in the current timestep.
+- Higher values of the coarsening constant $$ C_c $$ imply that more active simulations from the previous timestep will remain active in the current timestep.
+- Higher values of the refining constant $$ C_r $$ imply that less inactive points from the previous timestep will become active in the current timestep.
 
 Example of adaptivity configuration is
 
@@ -133,7 +140,8 @@ Example of adaptivity configuration is
         "history_param": 0.5,
         "coarsening_constant": 0.3,
         "refining_constant": 0.4,
-        "every_implicit_iteration": "True"
+        "every_implicit_iteration": "True",
+        "lazy_initialization": "True"
     }
 }
 ```

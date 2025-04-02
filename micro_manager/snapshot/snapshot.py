@@ -19,6 +19,8 @@ import numpy as np
 from micro_manager.micro_manager import MicroManager
 from .dataset import ReadWriteHDF
 from micro_manager.micro_simulation import create_simulation_class
+from micro_manager.tools.logging_wrapper import Logger
+
 
 sys.path.append(os.getcwd())
 
@@ -34,7 +36,23 @@ class MicroManagerSnapshot(MicroManager):
             Name of the JSON configuration file (provided by the user).
         """
         super().__init__(config_file)
+
+        self._logger = Logger(
+            "MicroManagerSnapshot", "micro-manager-snapshot.log", self._rank
+        )
+
+        self._config.set_logger(self._logger)
         self._config.read_json_snapshot()
+
+        # Data names of data to output to the snapshot database
+        self._write_data_names = self._config.get_write_data_names()
+
+        # Data names of data to read as input parameter to the simulations
+        self._read_data_names = self._config.get_read_data_names()
+
+        self._micro_dt = self._config.get_micro_dt()
+
+        self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
         # Path to the parameter file containing input parameters for micro simulations
         self._parameter_file = self._config.get_parameter_file_name()
@@ -95,12 +113,12 @@ class MicroManagerSnapshot(MicroManager):
                                 micro_sims_output
                             )
                         else:
-                            self._logger.info(
+                            self._logger.log_info_rank_zero(
                                 "No post-processing script with the provided path found. Skipping post-processing."
                             )
                             self._post_processing_file_name = None
                     except Exception:
-                        self._logger.info(
+                        self._logger.log_info_rank_zero(
                             "No post-processing script with the provided path found. Skipping post-processing."
                         )
                         self._post_processing_file_name = None
@@ -113,7 +131,9 @@ class MicroManagerSnapshot(MicroManager):
                 )
             # Log error and write macro data to database if simulation has crashed
             else:
-                self._logger.info("Skipping snapshot storage for crashed simulation.")
+                self._logger.log_info_rank_zero(
+                    "Skipping snapshot storage for crashed simulation."
+                )
                 self._data_storage.write_output_to_hdf(
                     self._output_file_path,
                     micro_sims_input,
@@ -129,11 +149,10 @@ class MicroManagerSnapshot(MicroManager):
             self._data_storage.write_crashed_snapshots(
                 self._output_file_path, self._crashed_snapshots
             )
-        self._data_storage.set_status(self._output_file_path, "none")
 
         # Merge output files
         if self._is_parallel:
-            self._logger.info(
+            self._logger.log_info(
                 "Snapshots have been computed and stored. Merging output files"
             )
             self._data_storage.set_status(self._output_file_path, "reading/deleting")
@@ -144,7 +163,10 @@ class MicroManagerSnapshot(MicroManager):
                     list_of_output_files,
                     self._parameter_space_size,
                 )
-        self._logger.info("Snapshot computation completed.")
+        else:
+            self._data_storage.set_status(self._output_file_path, "finished")
+        if self._rank == 0:
+            self._logger.log_info_rank_zero("Snapshot computation completed.")
 
     def initialize(self) -> None:
         """
@@ -197,15 +219,15 @@ class MicroManagerSnapshot(MicroManager):
             self._output_subdirectory, self._file_name
         )
         self._data_storage.create_file(self._output_file_path)
-        self._logger.info("Output file created: {}".format(self._output_file_path))
+        self._logger.log_error("Output file created: {}".format(self._output_file_path))
         self._local_number_of_sims = len(self._macro_parameters)
-        self._logger.info(
+        self._logger.log_info(
             "Number of local micro simulations = {}".format(self._local_number_of_sims)
         )
 
         if self._local_number_of_sims == 0:
             if self._is_parallel:
-                self._logger.info(
+                self._logger.log_info(
                     "Rank {} has no micro simulations and hence will not do any computation.".format(
                         self._rank
                     )
@@ -263,17 +285,17 @@ class MicroManagerSnapshot(MicroManager):
             simulations. The return type is None if the simulation has crashed.
         """
         try:
-            start_time = time.time()
+            start_time = time.process_time()
             micro_sims_output = self._micro_sims.solve(micro_sims_input, self._micro_dt)
-            end_time = time.time()
+            end_time = time.process_time()
 
             if self._is_micro_solve_time_required:
-                micro_sims_output["micro_sim_time"] = end_time - start_time
+                micro_sims_output["solve_cpu_time"] = end_time - start_time
 
             return micro_sims_output
         # Handle simulation crash
         except Exception as e:
-            self._logger.error(
+            self._logger.log_error(
                 "Micro simulation with input {} has crashed. See next entry on this rank for error message".format(
                     micro_sims_input
                 )

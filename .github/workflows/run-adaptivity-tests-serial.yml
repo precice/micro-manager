@@ -1,0 +1,57 @@
+name: Test adaptivity functionality in serial
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - "*"
+jobs:
+  adaptivity_serial_tests:
+    name: Adaptivity tests in serial
+    runs-on: ubuntu-latest
+    container: precice/precice:nightly
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: micro-manager
+
+      - name: Install dependencies
+        working-directory: micro-manager
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-dev python3-venv git pkg-config
+
+      - name: Create a virtual environment and install the Micro Manager in it
+        working-directory: micro-manager
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install .
+
+      - name: Run integration test with local adaptivity
+        timeout-minutes: 3
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          cd tests/integration/test_unit_cube
+          micro-manager-precice micro-manager-config-local-adaptivity.json &
+          python3 unit_cube.py 2
+
+      - name: Run integration test with global adaptivity
+        timeout-minutes: 3
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          cd tests/integration/test_unit_cube
+          micro-manager-precice micro-manager-config-global-adaptivity.json &
+          python3 unit_cube.py 2
+
+      - name: Run adaptivity unit tests in serial
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          cd tests/unit
+          python3 -m unittest test_adaptivity_serial.py
