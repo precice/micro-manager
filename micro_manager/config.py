@@ -539,17 +539,6 @@ class Config:
         """
         return self._lazy_initialization
 
-    def output_adaptivity_cpu_time(self):
-        """
-        Check if CPU time of the adaptivity computation needs to be output.
-
-        Returns
-        -------
-        adaptivity_cpu_time : bool
-            True if CPU time of the adaptivity computation needs to be output, False otherwise.
-        """
-        return self._adaptivity_output_cpu_time
-
     def get_micro_dt(self):
         """
         Get the size of the micro time window.
