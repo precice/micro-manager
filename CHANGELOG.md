@@ -1,6 +1,6 @@
 # Micro Manager changelog
 
-## latest
+## v0.6.0
 
 - Add functionality for lazy creation and initialization of micro simulations https://github.com/precice/micro-manager/pull/117
 - Improve logging wrapper function names to be more clear https://github.com/precice/micro-manager/pull/153
