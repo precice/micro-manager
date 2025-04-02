@@ -3,6 +3,7 @@
 ## latest
 
 - Add dynamic load balancing capability to global adaptivity https://github.com/precice/micro-manager/pull/141
+- Add functionality for lazy creation and initialization of micro simulations https://github.com/precice/micro-manager/pull/117
 - Improve logging wrapper function names to be more clear https://github.com/precice/micro-manager/pull/153
 - Remove adaptivity computation CPU time export functionality https://github.com/precice/micro-manager/pull/152
 - Replace `Allgatherv` with `allgather` to avoid running into the error of size buffer https://github.com/precice/micro-manager/pull/151
