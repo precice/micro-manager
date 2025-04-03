@@ -182,7 +182,7 @@ class MicroManagerCoupling(MicroManager):
         first_iteration = True
         first_time_window = True
 
-        sim_states_cp = []
+        sim_states_cp = [None] * self._local_number_of_sims
 
         while self._participant.is_coupling_ongoing():
 
