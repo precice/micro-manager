@@ -164,7 +164,7 @@ class MicroManagerCoupling(MicroManager):
                     self._data_for_adaptivity,
                 )
             if self._lazy_init:
-                active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+                active_sim_ids = self._adaptivity_controller.get_active_sim_local_ids()
                 micro_problem = getattr(
                     importlib.import_module(
                         self._config.get_micro_file_name(), "MicroSimulation"
@@ -236,7 +236,9 @@ class MicroManagerCoupling(MicroManager):
                 if self._is_adaptivity_on:
                     self._adaptivity_controller.write_checkpoint()
 
-                    active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+                    active_sim_ids = (
+                        self._adaptivity_controller.get_active_sim_local_ids()
+                    )
 
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
