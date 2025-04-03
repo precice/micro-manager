@@ -1,6 +1,6 @@
 # Micro Manager changelog
 
-## latest
+## v0.6.0
 
 - Add dynamic load balancing capability to global adaptivity https://github.com/precice/micro-manager/pull/141
 - Add functionality for lazy creation and initialization of micro simulations https://github.com/precice/micro-manager/pull/117
