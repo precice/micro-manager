@@ -300,5 +300,5 @@ class MicroManagerSnapshot(MicroManager):
                     micro_sims_input
                 )
             )
-            self._logger.error(e)
+            self._logger.log_error(e)
             return None

@@ -12,7 +12,7 @@ from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator, rank, comm, num_sims) -> None:
+    def __init__(self, configurator, participant, rank, comm, num_sims) -> None:
         """
         Class constructor.
 
@@ -20,6 +20,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
+        participant : object of class Participant
+            Object of the class Participant using which the preCICE API is called.
         rank : int
             Rank of the current MPI process.
         comm : MPI.COMM_WORLD
@@ -41,10 +43,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         # Active sims do not have an associated sim
         self._sim_is_associated_to = np.full((num_sims), -2, dtype=np.intc)
 
-        # Copies of variables for checkpointing
-        self._similarity_dists_cp = None
-        self._is_sim_active_cp = None
-        self._sim_is_associated_to_cp = None
+        self._metrics_logger.log_info("t,n active,n inactive")
+
+        self._precice_participant = participant
 
         self._updating_inactive_sims = self._get_update_inactive_sims_variant()
 
@@ -66,8 +67,11 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         data_for_adaptivity : dict
             A dictionary containing the names of the data to be used in adaptivity as keys and information on whether
             the data are scalar or vector as values.
-
         """
+        self._precice_participant.start_profiling_section(
+            "local_adaptivity.compute_adaptivity"
+        )
+
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
                 raise ValueError(
@@ -95,9 +99,11 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._is_sim_active = is_sim_active
         self._sim_is_associated_to = sim_is_associated_to
 
-    def get_active_sim_ids(self) -> np.ndarray:
+        self._precice_participant.stop_last_profiling_section()
+
+    def get_active_sim_local_ids(self) -> np.ndarray:
         """
-        Get the ids of active simulations.
+        Get the local ids of active simulations on this rank.
 
         Returns
         -------
@@ -106,9 +112,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         return np.where(self._is_sim_active)[0]
 
-    def get_inactive_sim_ids(self) -> np.ndarray:
+    def get_inactive_sim_local_ids(self) -> np.ndarray:
         """
-        Get the ids of inactive simulations.
+        Get the local ids of inactive simulations on this rank.
 
         Returns
         -------
@@ -131,42 +137,65 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         micro_output : list
             List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
         """
+        self._precice_participant.start_profiling_section(
+            "local_adaptivity.get_full_field_micro_output"
+        )
+
         micro_sims_output = deepcopy(micro_output)
 
-        inactive_sim_ids = self.get_inactive_sim_ids()
+        inactive_sim_ids = self.get_inactive_sim_local_ids()
 
         for inactive_id in inactive_sim_ids:
             micro_sims_output[inactive_id] = deepcopy(
                 micro_sims_output[self._sim_is_associated_to[inactive_id]]
             )
 
+        self._precice_participant.stop_last_profiling_section()
+
         return micro_sims_output
 
     def log_metrics(self, n: int) -> None:
         """
-        Log metrics for local adaptivity.
+        Log global adaptivity metrics and metrics for every rank.
+
+        TODO: Add more information about which metrics are logged.
 
         Parameters
         ----------
         n : int
-            Current time step
+            Time step count at which the metrics are logged
         """
-        # MPI Gather is necessary as local adaptivity only stores local data
-        local_active_sims = np.count_nonzero(self._is_sim_active)
-        global_active_sims = self._comm.gather(local_active_sims)
+        active_sims_on_this_rank = 0
+        inactive_sims_on_this_rank = 0
+        for local_id in range(self._is_sim_active.size):
+            if self._is_sim_active[local_id]:
+                active_sims_on_this_rank += 1
+            else:
+                inactive_sims_on_this_rank += 1
 
-        local_inactive_sims = np.count_nonzero(self._is_sim_active == False)
-        global_inactive_sims = self._comm.gather(local_inactive_sims)
-
-        self._metrics_logger.log_info_rank_zero(
-            "{},{},{},{},{}".format(
+        self._metrics_logger.log_info(
+            "{},{},{}".format(
                 n,
-                np.mean(global_active_sims),
-                np.mean(global_inactive_sims),
-                np.max(global_active_sims),
-                np.max(global_inactive_sims),
+                active_sims_on_this_rank,
+                inactive_sims_on_this_rank,
             )
         )
+
+        active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
+        inactive_sims_rankwise = self._comm.gather(inactive_sims_on_this_rank, root=0)
+
+        if self._rank == 0:
+            size = self._comm.Get_size()
+
+            self._global_metrics_logger.log_info_rank_zero(
+                "{},{},{},{},{}".format(
+                    n,
+                    sum(active_sims_rankwise) / size,
+                    sum(inactive_sims_rankwise) / size,
+                    max(active_sims_rankwise),
+                    max(inactive_sims_rankwise),
+                )
+            )
 
     def write_checkpoint(self) -> None:
         """

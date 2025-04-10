@@ -13,6 +13,12 @@ class TestGlobalAdaptivity(TestCase):
         self._rank = self._comm.Get_rank()
         self._size = self._comm.Get_size()
 
+        self._configurator = MagicMock()
+        self._configurator.get_adaptivity_similarity_measure = MagicMock(
+            return_value="L1"
+        )
+        self._configurator.get_output_dir = MagicMock(return_value="output_dir")
+
     def test_update_inactive_sims_global_adaptivity(self):
         """
         Test functionality to update inactive simulations in a particular setting.
@@ -28,12 +34,13 @@ class TestGlobalAdaptivity(TestCase):
         expected_is_sim_active = np.array([True, False, True, True, True])
         expected_sim_is_associated_to = [-2, 3, -2, -2, -2]
 
-        configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-
         adaptivity_controller = GlobalAdaptivityCalculator(
-            configurator, 5, global_ids, rank=self._rank, comm=self._comm
+            self._configurator,
+            5,
+            global_ids,
+            participant=MagicMock(),
+            rank=self._rank,
+            comm=self._comm,
         )
 
         # Force the activation of sim #0 and #4
@@ -105,15 +112,20 @@ class TestGlobalAdaptivity(TestCase):
         expected_is_sim_active = np.array([False, False, False, False, True])
         expected_sim_is_associated_to = [4, 4, 4, 4, -2]
 
-        configurator = MagicMock()
-        configurator.get_adaptivity_hist_param = MagicMock(return_value=0.1)
-        configurator.get_adaptivity_refining_const = MagicMock(return_value=0.05)
-        configurator.get_adaptivity_coarsening_const = MagicMock(return_value=0.2)
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L2rel")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
+        self._configurator.get_adaptivity_hist_param = MagicMock(return_value=0.1)
+        self._configurator.get_adaptivity_refining_const = MagicMock(return_value=0.05)
+        self._configurator.get_adaptivity_coarsening_const = MagicMock(return_value=0.2)
+        self._configurator.get_adaptivity_similarity_measure = MagicMock(
+            return_value="L2rel"
+        )
 
         adaptivity_controller = GlobalAdaptivityCalculator(
-            configurator, 5, global_ids, rank=self._rank, comm=self._comm
+            self._configurator,
+            5,
+            global_ids,
+            participant=MagicMock(),
+            rank=self._rank,
+            comm=self._comm,
         )
 
         adaptivity_controller._adaptivity_data_names = {
@@ -173,19 +185,50 @@ class TestGlobalAdaptivity(TestCase):
             sim_output = [output_1, None]
             expected_sim_output = [output_1, output_0]
 
-        is_sim_active = np.array([False, False, True, True, False])  # is_sim_active
-        sim_is_associated_to = [3, 3, -2, -2, 2]  # sim_is_associated_to
-
-        configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-
         adaptivity_controller = GlobalAdaptivityCalculator(
-            configurator, 5, global_ids, rank=self._rank, comm=self._comm
+            self._configurator,
+            5,
+            global_ids,
+            participant=MagicMock(),
+            rank=self._rank,
+            comm=self._comm,
         )
 
-        adaptivity_controller._communicate_micro_output(
-            is_sim_active, sim_is_associated_to, sim_output
-        )
+        adaptivity_controller._is_sim_active = np.array(
+            [False, False, True, True, False]
+        )  # is_sim_active
+        adaptivity_controller._sim_is_associated_to = [
+            3,
+            3,
+            -2,
+            -2,
+            2,
+        ]  # sim_is_associated_to
+
+        adaptivity_controller._communicate_micro_output(sim_output)
 
         self.assertTrue(np.array_equal(expected_sim_output, sim_output))
+
+    def test_get_ranks_of_sims(self):
+        """
+        ...
+        """
+        if self._rank == 0:
+            global_ids = [0, 1, 2]
+            expected_ranks_of_sims = [0, 0, 0, 1, 1]
+        elif self._rank == 1:
+            global_ids = [3, 4]
+            expected_ranks_of_sims = [0, 0, 0, 1, 1]
+
+        adaptivity_controller = GlobalAdaptivityCalculator(
+            self._configurator,
+            5,
+            global_ids,
+            participant=MagicMock(),
+            rank=self._rank,
+            comm=self._comm,
+        )
+
+        actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
+
+        self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
