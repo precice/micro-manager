@@ -182,25 +182,54 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
     def log_metrics(self, n: int) -> None:
         """
-        Log metrics for global adaptivity.
+        Log metrics.
 
         Parameters
         ----------
         n : int
             Time step count at which the metrics are logged
         """
-        global_active_sims = np.count_nonzero(self._is_sim_active)
-        global_inactive_sims = np.count_nonzero(self._is_sim_active == False)
+        active_sims_on_this_rank = 0
+        inactive_sims_on_this_rank = 0
+        for global_id in self._global_ids:
+            if self._is_sim_active[global_id]:
+                active_sims_on_this_rank += 1
+            else:
+                inactive_sims_on_this_rank += 1
 
-        self._metrics_logger.log_info_rank_zero(
-            "{},{},{},{},{}".format(
+        ranks_of_sims = self._get_ranks_of_sims()
+
+        assoc_ranks = []  # Ranks to which inactive sims on this rank are associated
+        for global_id in self._global_ids:
+            if not self._is_sim_active[global_id]:
+                assoc_rank = int(ranks_of_sims[self._sim_is_associated_to[global_id]])
+                if not assoc_rank in assoc_ranks:
+                    assoc_ranks.append(assoc_rank)
+
+        self._metrics_logger.log_info(
+            "{},{},{},{}".format(
                 n,
-                np.mean(global_active_sims),
-                np.mean(global_inactive_sims),
-                np.max(global_active_sims),
-                np.max(global_inactive_sims),
+                active_sims_on_this_rank,
+                inactive_sims_on_this_rank,
+                assoc_ranks,
             )
         )
+
+        active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
+        inactive_sims_rankwise = self._comm.gather(inactive_sims_on_this_rank, root=0)
+
+        if self._rank == 0:
+            size = self._comm.Get_size()
+
+            self._global_metrics_logger.log_info(
+                "{},{},{},{},{}".format(
+                    n,
+                    sum(active_sims_rankwise) / size,
+                    sum(inactive_sims_rankwise) / size,
+                    max(active_sims_rankwise),
+                    max(inactive_sims_rankwise),
+                )
+            )
 
     def write_checkpoint(self) -> None:
         """
