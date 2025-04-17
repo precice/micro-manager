@@ -57,7 +57,7 @@ class AdaptivityCalculator:
             )
 
             self._global_metrics_logger.log_info(
-                "t,avg active,avg inactive,max active,max inactive"
+                "n,avg active,avg inactive,max active,max inactive"
             )
 
         self._metrics_logger = Logger(

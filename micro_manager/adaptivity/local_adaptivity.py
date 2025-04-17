@@ -48,7 +48,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         self._updating_inactive_sims = self._get_update_inactive_sims_variant()
 
-        self._metrics_logger.log_info("t,n active,n inactive")
+        self._metrics_logger.log_info("n,n active,n inactive")
 
     def compute_adaptivity(
         self,
@@ -146,7 +146,18 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
     def log_metrics(self, n: int) -> None:
         """
-        Log metrics.
+        Log the following metrics:
+
+        Metrics on this rank:
+        - Time window at which the metrics are logged
+        - Number of active simulations
+        - Number of inactive simulations
+
+        Global metrics:
+        - Average number of active simulations per rank
+        - Average number of inactive simulations per rank
+        - Maximum number of active simulations on a rank
+        - Maximum number of inactive simulations on a rank
 
         Parameters
         ----------
