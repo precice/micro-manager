@@ -208,7 +208,10 @@ class MicroManagerCoupling(MicroManager):
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
 
-                        if sim_states_cp[active_id] == None:
+                        if (
+                            sim_states_cp[active_id] == None
+                            and self._participant.requires_writing_checkpoint()
+                        ):
                             sim_states_cp[active_id] = self._micro_sims[
                                 active_id
                             ].get_state()
@@ -270,11 +273,7 @@ class MicroManagerCoupling(MicroManager):
                             if sim:
                                 sim.output()
 
-                if (
-                    self._is_adaptivity_on
-                    and n % self._adaptivity_output_n == 0
-                    and self._rank == 0
-                ):
+                if self._is_adaptivity_on and n % self._adaptivity_output_n == 0:
                     self._adaptivity_controller.log_metrics(n)
 
                 self._logger.log_info_rank_zero("Time window {} converged.".format(n))
