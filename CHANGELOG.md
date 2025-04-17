@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## latest
+
+- Checkpoint lazily created simulation only if a checkpoint is necessary https://github.com/precice/micro-manager/pull/161
+
 ## v0.6.0
 
 - Add functionality for lazy creation and initialization of micro simulations https://github.com/precice/micro-manager/pull/117
