@@ -208,7 +208,10 @@ class MicroManagerCoupling(MicroManager):
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
 
-                        if sim_states_cp[active_id] == None:
+                        if (
+                            sim_states_cp[active_id] == None
+                            and self._participant.requires_writing_checkpoint()
+                        ):
                             sim_states_cp[active_id] = self._micro_sims[
                                 active_id
                             ].get_state()
