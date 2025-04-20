@@ -2,6 +2,7 @@
 
 ## latest
 
+- Fix adaptivity metrics logging and add logging documentation https://github.com/precice/micro-manager/pull/160
 - Checkpoint lazily created simulation only if a checkpoint is necessary https://github.com/precice/micro-manager/pull/161
 
 ## v0.6.0
