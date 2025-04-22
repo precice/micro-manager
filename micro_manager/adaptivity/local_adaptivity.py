@@ -48,6 +48,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         self._updating_inactive_sims = self._get_update_inactive_sims_variant()
 
+        self._metrics_logger.log_info("n,n active,n inactive")
+
     def compute_adaptivity(
         self,
         dt,
@@ -144,29 +146,55 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
     def log_metrics(self, n: int) -> None:
         """
-        Log metrics for local adaptivity.
+        Log the following metrics:
+
+        Metrics on this rank:
+        - Time window at which the metrics are logged
+        - Number of active simulations
+        - Number of inactive simulations
+
+        Global metrics:
+        - Average number of active simulations per rank
+        - Average number of inactive simulations per rank
+        - Maximum number of active simulations on a rank
+        - Maximum number of inactive simulations on a rank
 
         Parameters
         ----------
         n : int
             Current time step
         """
-        # MPI Gather is necessary as local adaptivity only stores local data
-        local_active_sims = np.count_nonzero(self._is_sim_active)
-        global_active_sims = self._comm.gather(local_active_sims)
+        active_sims_on_this_rank = 0
+        inactive_sims_on_this_rank = 0
+        for local_id in range(self._is_sim_active.size):
+            if self._is_sim_active[local_id]:
+                active_sims_on_this_rank += 1
+            else:
+                inactive_sims_on_this_rank += 1
 
-        local_inactive_sims = np.count_nonzero(self._is_sim_active == False)
-        global_inactive_sims = self._comm.gather(local_inactive_sims)
-
-        self._metrics_logger.log_info_rank_zero(
-            "{},{},{},{},{}".format(
+        self._metrics_logger.log_info(
+            "{},{},{}".format(
                 n,
-                np.mean(global_active_sims),
-                np.mean(global_inactive_sims),
-                np.max(global_active_sims),
-                np.max(global_inactive_sims),
+                active_sims_on_this_rank,
+                inactive_sims_on_this_rank,
             )
         )
+
+        active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
+        inactive_sims_rankwise = self._comm.gather(inactive_sims_on_this_rank, root=0)
+
+        if self._rank == 0:
+            size = self._comm.Get_size()
+
+            self._global_metrics_logger.log_info_rank_zero(
+                "{},{},{},{},{}".format(
+                    n,
+                    sum(active_sims_rankwise) / size,
+                    sum(inactive_sims_rankwise) / size,
+                    max(active_sims_rankwise),
+                    max(inactive_sims_rankwise),
+                )
+            )
 
     def write_checkpoint(self) -> None:
         """

@@ -273,11 +273,7 @@ class MicroManagerCoupling(MicroManager):
                             if sim:
                                 sim.output()
 
-                if (
-                    self._is_adaptivity_on
-                    and n % self._adaptivity_output_n == 0
-                    and self._rank == 0
-                ):
+                if self._is_adaptivity_on and n % self._adaptivity_output_n == 0:
                     self._adaptivity_controller.log_metrics(n)
 
                 self._logger.log_info_rank_zero("Time window {} converged.".format(n))

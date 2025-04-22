@@ -44,16 +44,27 @@ class AdaptivityCalculator:
 
         if output_dir is not None:
             subprocess.run(["mkdir", "-p", output_dir])  # Create output directory
-            self._metrics_logger = Logger(
-                __name__, output_dir + "/adaptivity-metrics.csv", rank, csv_logger=True
-            )
+            metrics_output_dir = output_dir + "/adaptivity-metrics"
         else:
-            self._metrics_logger = Logger(
-                __name__, "adaptivity-metrics.csv", rank=rank, csv_logger=True
+            metrics_output_dir = "adaptivity-metrics"
+
+        if self._rank == 0:
+            self._global_metrics_logger = Logger(
+                "global-metrics-logger",
+                metrics_output_dir + "-global.csv",
+                rank,
+                csv_logger=True,
             )
 
-        self._metrics_logger.log_info_rank_zero(
-            "Time Window,Avg Active Sims,Avg Inactive Sims,Max Active,Max Inactive"
+            self._global_metrics_logger.log_info(
+                "n,avg active,avg inactive,max active,max inactive"
+            )
+
+        self._metrics_logger = Logger(
+            "metrics-logger",
+            metrics_output_dir + "-" + str(rank) + ".csv",
+            rank,
+            csv_logger=True,
         )
 
     def _get_similarity_dists(
