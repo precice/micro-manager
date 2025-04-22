@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 name="micro-manager-precice"
 dynamic = [ "version" ]
 dependencies = [
-    "pyprecice @ git+https://github.com/precice/python-bindings.git@develop", "numpy", "mpi4py"
+    "pyprecice", "numpy", "mpi4py"
 ]
 requires-python = ">=3.8"
 authors = [
