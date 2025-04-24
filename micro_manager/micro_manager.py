@@ -290,14 +290,19 @@ class MicroManagerCoupling(MicroManager):
         - If required, write initial data to preCICE.
         """
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
-        assert len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(
+        if not len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(
             self._macro_mesh_name
-        ), "Provided macro mesh bounds are of incorrect dimension"
+        ):
+            raise Exception("Provided macro mesh bounds are of incorrect dimension")
 
         if self._is_parallel:
-            assert len(self._ranks_per_axis) == self._participant.get_mesh_dimensions(
+            if not len(self._ranks_per_axis) == self._participant.get_mesh_dimensions(
                 self._macro_mesh_name
-            ), "Provided ranks combination is of incorrect dimension"
+            ):
+                raise Exception(
+                    "Provided ranks combination is of incorrect dimension"
+                    " and does not match the dimensions of the macro mesh."
+                )
 
             domain_decomposer = DomainDecomposer(
                 self._rank,
@@ -320,7 +325,9 @@ class MicroManagerCoupling(MicroManager):
             self._mesh_vertex_ids,
             self._mesh_vertex_coords,
         ) = self._participant.get_mesh_vertex_ids_and_coordinates(self._macro_mesh_name)
-        assert self._mesh_vertex_coords.size != 0, "Macro mesh has no vertices."
+
+        if self._mesh_vertex_coords.size == 0:
+            raise Exception("Macro mesh has no vertices.")
 
         self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
 
