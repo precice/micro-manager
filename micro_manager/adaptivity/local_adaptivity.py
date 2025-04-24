@@ -43,8 +43,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         # Active sims do not have an associated sim
         self._sim_is_associated_to = np.full((num_sims), -2, dtype=np.intc)
 
-        self._metrics_logger.log_info("t,n active,n inactive")
-
         self._precice_participant = participant
 
         self._updating_inactive_sims = self._get_update_inactive_sims_variant()

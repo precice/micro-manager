@@ -79,8 +79,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             if rank_of_sim[i] == self._rank:
                 self._is_sim_on_this_rank[i] = True
 
-        self._metrics_logger.log_info("t,n active,n inactive,assoc ranks")
-
         self._precice_participant = participant
 
         self._updating_inactive_sims = self._get_update_inactive_sims_variant()
