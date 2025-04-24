@@ -4,6 +4,7 @@ Class Config provides functionality to read a JSON file and pass the values to t
 
 import json
 import os
+import importlib.metadata
 
 
 class Config:
@@ -85,10 +86,17 @@ class Config:
         config_file_name : string
             Name of the JSON configuration file
         """
+        self._logger.log_info_rank_zero(
+            "Micro Manager version: "
+            + importlib.metadata.version("micro-manager-precice")
+        )
+
         self._folder = os.path.dirname(os.path.join(os.getcwd(), config_file_name))
         path = os.path.join(self._folder, os.path.basename(config_file_name))
         with open(path, "r") as read_file:
             self._data = json.load(read_file)
+
+        self._logger.log_info_rank_zero("Reading JSON configuration file: " + path)
 
         # convert paths to python-importable paths
         self._micro_file_name = (
@@ -98,8 +106,13 @@ class Config:
             .replace(".py", "")
         )
 
+        self._logger.log_info_rank_zero(
+            "Micro simulation file name: " + self._data["micro_file_name"]
+        )
+
         try:
             self._output_dir = self._data["output_dir"]
+            self._logger.log_info_rank_zero("Log output directory: " + self._output_dir)
         except BaseException:
             self._logger.log_info_rank_zero(
                 "No output directory provided. Output (including logging) will be saved in the current working directory."
@@ -107,9 +120,12 @@ class Config:
 
         try:
             self._write_data_names = self._data["coupling_params"]["write_data_names"]
-            assert isinstance(
-                self._write_data_names, list
-            ), "Write data entry is not a list"
+            if not isinstance(self._write_data_names, list):
+                raise Exception("Write data entry is not a list")
+            self._logger.log_info_rank_zero(
+                "Micro Manager is writing the following data: "
+                + str(self._write_data_names)
+            )
         except BaseException:
             self._logger.log_info_rank_zero(
                 "No write data names provided. Micro manager will only read data from preCICE."
@@ -117,9 +133,12 @@ class Config:
 
         try:
             self._read_data_names = self._data["coupling_params"]["read_data_names"]
-            assert isinstance(
-                self._read_data_names, list
-            ), "Read data entry is not a list"
+            if not isinstance(self._read_data_names, list):
+                raise Exception("Read data entry is not a list")
+            self._logger.log_info_rank_zero(
+                "Micro Manager is reading the following data: "
+                + str(self._read_data_names)
+            )
         except BaseException:
             self._logger.log_info_rank_zero(
                 "No read data names provided. Micro manager will only write data to preCICE."
@@ -146,14 +165,27 @@ class Config:
         self._precice_config_file_name = os.path.join(
             self._folder, self._data["coupling_params"]["precice_config_file_name"]
         )
+        self._logger.log_info_rank_zero(
+            "preCICE configuration file name: " + self._precice_config_file_name
+        )
+
         self._macro_mesh_name = self._data["coupling_params"]["macro_mesh_name"]
+        self._logger.log_info_rank_zero("Macro mesh name: " + self._macro_mesh_name)
 
         self._macro_domain_bounds = self._data["simulation_params"][
             "macro_domain_bounds"
         ]
+        self._logger.log_info_rank_zero(
+            "Macro domain bounds: " + str(self._macro_domain_bounds)
+        )
 
         try:
             self._ranks_per_axis = self._data["simulation_params"]["decomposition"]
+            if not isinstance(self._ranks_per_axis, list):
+                raise Exception("Ranks per axis entry is not a list")
+            self._logger.log_info_rank_zero(
+                "Axis-wise domain decomposition: " + str(self._ranks_per_axis)
+            )
         except BaseException:
             self._logger.log_info_rank_zero(
                 "Domain decomposition is not specified, so the Micro Manager will expect to be run in serial."
@@ -162,6 +194,9 @@ class Config:
         try:
             if self._data["simulation_params"]["adaptivity"] == "True":
                 self._adaptivity = True
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will adaptively run micro simulations."
+                )
                 if not self._data["simulation_params"]["adaptivity_settings"]:
                     raise Exception(
                         "Adaptivity is turned on but no adaptivity settings are provided."
@@ -191,6 +226,8 @@ class Config:
             else:
                 raise Exception("Adaptivity type can be either local or global.")
 
+            self._logger.log_info_rank_zero("Adaptivity type: " + self._adaptivity_type)
+
             if (
                 self._data["simulation_params"]["adaptivity_settings"].get(
                     "lazy_initialization"
@@ -199,21 +236,34 @@ class Config:
             ):
                 self._lazy_initialization = True
 
+            self._logger.log_info_rank_zero(
+                "Micro simulations will be created only when they are required to be active for the very first time."
+            )
+
             self._data_for_adaptivity = self._data["simulation_params"][
                 "adaptivity_settings"
             ]["data"]
+
+            self._logger.log_info_rank_zero(
+                "Data used for adaptivity: " + str(self._data_for_adaptivity)
+            )
 
             if self._data_for_adaptivity == self._write_data_names:
                 self._logger.log_info_rank_zero(
                     "Only micro simulation data is used for similarity computation in adaptivity. This would lead to the"
                     " same set of active and inactive simulations for the entire simulation time. If this is not intended,"
-                    " please include macro simulation data as well."
+                    " please include macro data as well."
                 )
 
             try:
                 self._adaptivity_output_n = self._data["simulation_params"][
                     "adaptivity_settings"
                 ]["output_n"]
+                self._logger.log_info_rank_zero(
+                    "Adaptivity metrics will be output every "
+                    + str(self._adaptivity_output_n)
+                    + " time windows."
+                )
             except BaseException:
                 self._logger.log_info_rank_zero(
                     "No output interval for adaptivity provided. Adaptivity metrics will be output every time window."
@@ -222,12 +272,25 @@ class Config:
             self._adaptivity_history_param = self._data["simulation_params"][
                 "adaptivity_settings"
             ]["history_param"]
+            self._logger.log_info_rank_zero(
+                "Adaptivity history parameter: " + str(self._adaptivity_history_param)
+            )
+
             self._adaptivity_coarsening_constant = self._data["simulation_params"][
                 "adaptivity_settings"
             ]["coarsening_constant"]
+            self._logger.log_info_rank_zero(
+                "Adaptivity coarsening constant: "
+                + str(self._adaptivity_coarsening_constant)
+            )
+
             self._adaptivity_refining_constant = self._data["simulation_params"][
                 "adaptivity_settings"
             ]["refining_constant"]
+            self._logger.log_info_rank_zero(
+                "Adaptivity refining constant: "
+                + str(self._adaptivity_refining_constant)
+            )
 
             if (
                 "similarity_measure"
@@ -236,9 +299,13 @@ class Config:
                 self._adaptivity_similarity_measure = self._data["simulation_params"][
                     "adaptivity_settings"
                 ]["similarity_measure"]
+                self._logger.log_info_rank_zero(
+                    "Adaptivity similarity measure: "
+                    + str(self._adaptivity_similarity_measure)
+                )
             else:
                 self._logger.log_info_rank_zero(
-                    "No similarity measure provided, using L1 norm as default"
+                    "No similarity measure provided, using L1 norm as default."
                 )
                 self._adaptivity_similarity_measure = "L1"
 
@@ -248,12 +315,14 @@ class Config:
 
             if adaptivity_every_implicit_iteration == "True":
                 self._adaptivity_every_implicit_iteration = True
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will compute adaptivity in every implicit iteration, if implicit coupling is done."
+                )
+
             elif adaptivity_every_implicit_iteration == "False":
                 self._adaptivity_every_implicit_iteration = False
-
-            if not self._adaptivity_every_implicit_iteration:
                 self._logger.log_info_rank_zero(
-                    "Micro Manager will compute adaptivity once at the start of every time window"
+                    "Micro Manager will compute adaptivity once at the start of every time window."
                 )
 
             self._write_data_names.append("active_state")
@@ -262,15 +331,23 @@ class Config:
         try:
             if self._data["simulation_params"]["load_balancing"] == "True":
                 self._adaptivity_is_load_balancing = True
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will dynamically balance micro simulations based on the adaptivity computation."
+                )
         except BaseException:
             self._logger.log_info_rank_zero(
-                "Micro Manager will not dynamically balance work load for the adaptivity computation."
+                "Micro Manager will not dynamically balance micro simulations based on the adaptivity computation."
             )
 
         if self._adaptivity_is_load_balancing:
             self._load_balancing_n = self._data["simulation_params"][
                 "load_balancing_settings"
             ]["load_balancing_n"]
+            self._logger.log_info_rank_zero(
+                "Load balancing will be done every "
+                + str(self._load_balancing_n)
+                + " time windows."
+            )
 
             try:
                 if (
@@ -280,6 +357,9 @@ class Config:
                     == "True"
                 ):
                     self._two_step_load_balancing = True
+                    self._logger.log_info_rank_zero(
+                        "Micro Manager will use two-step load balancing."
+                    )
             except BaseException:
                 self._logger.log_info_rank_zero(
                     "Two-step load balancing is not specified. Micro Manager will only try to balance the load in one sweep."  # TODO: Need a better log message here.
@@ -289,6 +369,9 @@ class Config:
                 self._load_balancing_threshold = self._data["simulation_params"][
                     "load_balancing_settings"
                 ]["balancing_threshold"]
+                self._logger.log_info_rank_zero(
+                    "Load balancing threshold: " + str(self._load_balancing_threshold)
+                )
             except BaseException:
                 self._logger.log_info_rank_zero(
                     "No load balancing threshold provided. The threshold will be set to 0."
@@ -301,8 +384,10 @@ class Config:
                     ]
                     == "True"
                 ):
-                    print("Balance inactive sims TRUE")
                     self._balance_inactive_sims = True
+                    self._logger.log_info_rank_zero(
+                        "Micro Manager will redistribute inactive simulations in the load balancing."
+                    )
             except BaseException:
                 self._logger.log_info_rank_zero(
                     "Micro Manager will not redistribute inactive simulations in the load balancing. Only active simulations will be redistributed. Note that this may significantly increase the communication cost of the adaptivity."
@@ -311,12 +396,14 @@ class Config:
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"] == "True":
                 self._interpolate_crash = True
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will interpolate output of crashed micro simulations from its neighbors."
+                )
 
         try:
             diagnostics_data_names = self._data["diagnostics"]["data_from_micro_sims"]
-            assert isinstance(
-                diagnostics_data_names, list
-            ), "Diagnostics data is not a list"
+            if not isinstance(diagnostics_data_names, list):
+                raise Exception("Diagnostics data entry is not a list")
         except BaseException:
             self._logger.log_info_rank_zero(
                 "No diagnostics data is defined. Micro Manager will not output any diagnostics data."
@@ -336,8 +423,17 @@ class Config:
         """
         self._read_json(self._config_file_name)  # Read base information
 
+        self._logger.log_info_rank_zero(
+            "Reading JSON configuration file: " + self._config_file_name
+        )
+
+        self._logger.log_info_rank_zero("Micro Manager is running in snapshot mode.")
+
         self._parameter_file_name = os.path.join(
             self._folder, self._data["coupling_params"]["parameter_file_name"]
+        )
+        self._logger.log_info_rank_zero(
+            "Parameter file name: " + self._parameter_file_name
         )
 
         try:
@@ -347,6 +443,9 @@ class Config:
                 .replace("\\", ".")
                 .replace(".py", "")
             )
+            self._logger.log_info_rank_zero(
+                "Post-processing file name: " + self._postprocessing_file_name
+            )
         except BaseException:
             self._logger.log_info_rank_zero(
                 "No post-processing file name provided. Snapshot computation will not perform any post-processing."
@@ -355,9 +454,11 @@ class Config:
 
         try:
             diagnostics_data_names = self._data["diagnostics"]["data_from_micro_sims"]
-            assert isinstance(
-                diagnostics_data_names, list
-            ), "Diagnostics data is not a list"
+            if not isinstance(diagnostics_data_names, list):
+                raise Exception("Diagnostics data entry is not a list")
+            self._logger.log_info_rank_zero(
+                "Diagnostics data: " + str(diagnostics_data_names)
+            )
         except BaseException:
             self._logger.log_info_rank_zero(
                 "No diagnostics data is defined. Snapshot computation will not output any diagnostics data."
@@ -366,9 +467,12 @@ class Config:
         try:
             if self._data["snapshot_params"]["initialize_once"] == "True":
                 self._initialize_once = True
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will initialize only one micro simulations object for snapshot computation."
+                )
         except BaseException:
             self._logger.log_info_rank_zero(
-                "For each snapshot a new micro simulation object will be created"
+                "For each snapshot a new micro simulation object will be created."
             )
 
     def get_precice_config_file_name(self):

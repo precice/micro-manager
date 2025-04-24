@@ -52,4 +52,4 @@ for global adaptivity:
 
 The CSV file heading is `n,n active,n inactive,assoc ranks`.
 
-To set the output interval of adaptivity metrics, set `output_n` in the [adaptivity configuration](tooling-micro-manager-configuration.html/#adaptivity).
+To set the output interval of adaptivity metrics, set `output_n` in the [adaptivity configuration](tooling-micro-manager-configuration.html#adaptivity).
