@@ -552,7 +552,7 @@ class MicroManagerCoupling(MicroManager):
                                     i
                                 ] = initial_micro_output[name]
                 else:
-                    self._logger.log_warning(
+                    self._logger.log_warning_rank_zero(
                         "The initialize() method of the Micro simulation returns initial data, but adaptivity is turned off. The returned data will be ignored. The initialize method will nevertheless still be called."
                     )
                     if is_initial_data_required:
