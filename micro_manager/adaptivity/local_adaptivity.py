@@ -12,7 +12,7 @@ from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator, rank, comm, num_sims) -> None:
+    def __init__(self, configurator, participant, rank, comm, num_sims) -> None:
         """
         Class constructor.
 
@@ -20,6 +20,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
+        participant : object of class Participant
+            Object of the class Participant using which the preCICE API is called.
         rank : int
             Rank of the current MPI process.
         comm : MPI.COMM_WORLD
@@ -41,10 +43,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         # Active sims do not have an associated sim
         self._sim_is_associated_to = np.full((num_sims), -2, dtype=np.intc)
 
-        # Copies of variables for checkpointing
-        self._similarity_dists_cp = None
-        self._is_sim_active_cp = None
-        self._sim_is_associated_to_cp = None
+        self._precice_participant = participant
 
         self._updating_inactive_sims = self._get_update_inactive_sims_variant()
 
@@ -68,8 +67,11 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         data_for_adaptivity : dict
             A dictionary containing the names of the data to be used in adaptivity as keys and information on whether
             the data are scalar or vector as values.
-
         """
+        self._precice_participant.start_profiling_section(
+            "local_adaptivity.compute_adaptivity"
+        )
+
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
                 raise ValueError(
@@ -97,9 +99,11 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._is_sim_active = is_sim_active
         self._sim_is_associated_to = sim_is_associated_to
 
-    def get_active_sim_ids(self) -> np.ndarray:
+        self._precice_participant.stop_last_profiling_section()
+
+    def get_active_sim_local_ids(self) -> np.ndarray:
         """
-        Get the ids of active simulations.
+        Get the local ids of active simulations on this rank.
 
         Returns
         -------
@@ -108,9 +112,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         return np.where(self._is_sim_active)[0]
 
-    def get_inactive_sim_ids(self) -> np.ndarray:
+    def get_inactive_sim_local_ids(self) -> np.ndarray:
         """
-        Get the ids of inactive simulations.
+        Get the local ids of inactive simulations on this rank.
 
         Returns
         -------
@@ -133,14 +137,20 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         micro_output : list
             List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
         """
+        self._precice_participant.start_profiling_section(
+            "local_adaptivity.get_full_field_micro_output"
+        )
+
         micro_sims_output = deepcopy(micro_output)
 
-        inactive_sim_ids = self.get_inactive_sim_ids()
+        inactive_sim_ids = self.get_inactive_sim_local_ids()
 
         for inactive_id in inactive_sim_ids:
             micro_sims_output[inactive_id] = deepcopy(
                 micro_sims_output[self._sim_is_associated_to[inactive_id]]
             )
+
+        self._precice_participant.stop_last_profiling_section()
 
         return micro_sims_output
 
@@ -162,7 +172,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         Parameters
         ----------
         n : int
-            Current time step
+            Time step count at which the metrics are logged
         """
         active_sims_on_this_rank = 0
         inactive_sims_on_this_rank = 0
