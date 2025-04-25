@@ -303,21 +303,27 @@ class Config:
                 )
                 self._adaptivity_similarity_measure = "L1"
 
-            adaptivity_every_implicit_iteration = self._data["simulation_params"][
-                "adaptivity_settings"
-            ]["every_implicit_iteration"]
+            try:
+                adaptivity_every_implicit_iteration = self._data["simulation_params"][
+                    "adaptivity_settings"
+                ]["every_implicit_iteration"]
 
-            if adaptivity_every_implicit_iteration == "True":
-                self._adaptivity_every_implicit_iteration = True
-                self._logger.log_info_rank_zero(
-                    "Micro Manager will compute adaptivity in every implicit iteration, if implicit coupling is done."
-                )
+                if adaptivity_every_implicit_iteration == "True":
+                    self._adaptivity_every_implicit_iteration = True
+                    self._logger.log_info_rank_zero(
+                        "Micro Manager will compute adaptivity in every implicit iteration, if implicit coupling is done."
+                    )
 
-            elif adaptivity_every_implicit_iteration == "False":
-                self._adaptivity_every_implicit_iteration = False
+                elif adaptivity_every_implicit_iteration == "False":
+                    self._adaptivity_every_implicit_iteration = False
+                    self._logger.log_info_rank_zero(
+                        "Micro Manager will compute adaptivity once at the start of every time window."
+                    )
+            except:
                 self._logger.log_info_rank_zero(
                     "Micro Manager will compute adaptivity once at the start of every time window."
                 )
+                self._adaptivity_every_implicit_iteration = False
 
             self._write_data_names.append("active_state")
             self._write_data_names.append("active_steps")
