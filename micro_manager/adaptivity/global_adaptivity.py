@@ -25,6 +25,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         global_ids: list,
         rank: int,
         comm,
+        base_logger,
     ) -> None:
         """
         Class constructor.
@@ -52,6 +53,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._similarity_dists = np.zeros(
             (global_number_of_sims, global_number_of_sims)
         )
+
+        base_logger.log_info_rank_zero("After creating the similarity distances array")
 
         # is_sim_active: 1D array having state (active or inactive) of each micro simulation
         # Start adaptivity calculation with all sims active

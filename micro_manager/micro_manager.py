@@ -159,6 +159,9 @@ class MicroManagerCoupling(MicroManager):
                     self._micro_sims,
                     self._data_for_adaptivity,
                 )
+                self._logger.log_info_rank_zero(
+                    "Adaptivity has been computed before the coupling begins."
+                )
             if self._lazy_init:
                 active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
                 micro_problem = getattr(
@@ -178,6 +181,9 @@ class MicroManagerCoupling(MicroManager):
         first_iteration = True
 
         while self._participant.is_coupling_ongoing():
+            self._logger.log_info_rank_zero(
+                "Time step {} at iteration {}.".format(t, n)
+            )
 
             dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
