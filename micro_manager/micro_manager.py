@@ -430,6 +430,7 @@ class MicroManagerCoupling(MicroManager):
                         self._global_ids_of_local_sims,
                         self._rank,
                         self._comm,
+                        self._logger,
                     )
                 )
 

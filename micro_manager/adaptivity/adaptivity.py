@@ -9,10 +9,11 @@ import subprocess
 from micro_manager.tools.logging_wrapper import Logger
 
 import numpy as np
+import psutil
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, rank) -> None:
+    def __init__(self, configurator, rank, logger) -> None:
         """
         Class constructor.
 
@@ -67,6 +68,8 @@ class AdaptivityCalculator:
             csv_logger=True,
         )
 
+        self._base_logger = logger
+
     def _get_similarity_dists(
         self, dt: float, similarity_dists: np.ndarray, data: dict
     ) -> np.ndarray:
@@ -87,6 +90,10 @@ class AdaptivityCalculator:
         similarity_dists : numpy array
             Updated 2D array having similarity distances between each micro simulation pair
         """
+        self._base_logger.log_info_rank_zero(
+            "Available memory: {}".format(psutil.virtual_memory()[1] / 1000000000)
+        )
+
         _similarity_dists = np.copy(similarity_dists)
 
         data_diff = np.zeros_like(_similarity_dists)
@@ -98,7 +105,35 @@ class AdaptivityCalculator:
                 # The axis is later reduced with a norm.
                 data_vals = np.expand_dims(data_vals, axis=1)
 
-            data_diff += self._similarity_measure(data_vals)
+            self._base_logger.log_info_rank_zero(
+                "BEFORE calculating data diff for {}".format(name)
+            )
+            self._base_logger.log_info_rank_zero(
+                "RAM memory % used: {}".format(psutil.virtual_memory()[2])
+            )
+            self._base_logger.log_info_rank_zero(
+                "RAM Used (GB): {}".format(psutil.virtual_memory()[3] / 1000000000)
+            )
+            self._base_logger.log_info_rank_zero(
+                "RAM available (GB): {}".format(psutil.virtual_memory()[4] / 1000000000)
+            )
+
+            data_diff += self._l1_manual(data_vals)
+
+            self._base_logger.log_info_rank_zero(
+                "AFTER calculating data diff for {}".format(name)
+            )
+            self._base_logger.log_info_rank_zero(
+                "RAM memory % used: {}".format(psutil.virtual_memory()[2])
+            )
+            self._base_logger.log_info_rank_zero(
+                "RAM Used (GB): {}".format(psutil.virtual_memory()[3] / 1000000000)
+            )
+            self._base_logger.log_info_rank_zero(
+                "RAM available (GB): {}".format(psutil.virtual_memory()[4] / 1000000000)
+            )
+
+            del data_vals
 
         return exp(-self._hist_param * dt) * _similarity_dists + dt * data_diff
 
@@ -286,6 +321,26 @@ class AdaptivityCalculator:
             Updated 2D array having similarity distances between each micro simulation pair
         """
         return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
+
+    def _l1_manual(self, data: np.ndarray) -> np.ndarray:
+        """
+        Calculate L1 norm of data manually (without using numpy norm function)
+
+        Parameters
+        ----------
+        data : numpy array
+            Data to be used in similarity distance calculation
+
+        Returns
+        -------
+        similarity_dists : numpy array
+            Updated 2D array having similarity distances between each micro simulation pair
+        """
+        data_diff = np.zeros((data.shape[0], data.shape[0]))
+        for i in range(data.shape[0]):
+            for j in range(data.shape[0]):
+                data_diff[i, j] = np.sum(np.abs(data[i] - data[j]))
+        return data_diff
 
     def _l2(self, data: np.ndarray) -> np.ndarray:
         """
