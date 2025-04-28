@@ -322,28 +322,6 @@ class AdaptivityCalculator:
         """
         return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
 
-    def _l1_manual(self, data: np.ndarray) -> np.ndarray:
-        """
-        Calculate L1 norm of data manually (without using numpy norm function)
-
-        Parameters
-        ----------
-        data : numpy array
-            Data to be used in similarity distance calculation
-
-        Returns
-        -------
-        similarity_dists : numpy array
-            Updated 2D array having similarity distances between each micro simulation pair
-        """
-        data_diff = np.zeros((data.shape[0], data.shape[0]))
-
-        for i in range(data.shape[0]):
-            for j in range(data.shape[0]):
-                data_diff[i, j] = np.sum(np.abs(data[i] - data[j]))
-
-        return data_diff
-
     def _l2(self, data: np.ndarray) -> np.ndarray:
         """
         Calculate L2 norm of data

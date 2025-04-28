@@ -12,7 +12,7 @@ from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator, rank, comm, num_sims) -> None:
+    def __init__(self, configurator, rank, comm, num_sims, logger) -> None:
         """
         Class constructor.
 
@@ -27,7 +27,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         num_sims : int
             Number of micro simulations.
         """
-        super().__init__(configurator, rank)
+        super().__init__(configurator, rank, logger)
         self._comm = comm
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
