@@ -337,9 +337,11 @@ class AdaptivityCalculator:
             Updated 2D array having similarity distances between each micro simulation pair
         """
         data_diff = np.zeros((data.shape[0], data.shape[0]))
+
         for i in range(data.shape[0]):
             for j in range(data.shape[0]):
                 data_diff[i, j] = np.sum(np.abs(data[i] - data[j]))
+
         return data_diff
 
     def _l2(self, data: np.ndarray) -> np.ndarray:
