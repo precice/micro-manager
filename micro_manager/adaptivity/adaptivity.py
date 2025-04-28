@@ -118,7 +118,7 @@ class AdaptivityCalculator:
                 "RAM available (GB): {}".format(psutil.virtual_memory()[4] / 1000000000)
             )
 
-            data_diff += self._l1_manual(data_vals)
+            data_diff += self._similarity_measure(data_vals)
 
             self._base_logger.log_info_rank_zero(
                 "AFTER calculating data diff for {}".format(name)
