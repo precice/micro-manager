@@ -67,7 +67,7 @@ class AdaptivityCalculator:
             csv_logger=True,
         )
 
-    def _get_similarity_dists(
+    def _update_similarity_dists(
         self, dt: float, similarity_dists: np.ndarray, data: dict
     ) -> np.ndarray:
         """
@@ -78,7 +78,7 @@ class AdaptivityCalculator:
         dt : float
             Current time step
         similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
+            2D array having similarity distances between each micro simulation pair (modified in-place)
         data : dict
             Data to be used in similarity distance calculation
 
@@ -87,11 +87,9 @@ class AdaptivityCalculator:
         similarity_dists : numpy array
             Updated 2D array having similarity distances between each micro simulation pair
         """
-        _similarity_dists = np.copy(similarity_dists)
-
-        data_diff = np.zeros_like(_similarity_dists)
+        data_diff = np.zeros_like(similarity_dists)
         for name in data.keys():
-            data_vals = np.array(data[name])
+            data_vals = data[name]
             if data_vals.ndim == 1:
                 # If the adaptivity data is a scalar for each simulation,
                 # expand the dimension to make it a 2D array to unify the calculation.
@@ -100,7 +98,7 @@ class AdaptivityCalculator:
 
             data_diff += self._similarity_measure(data_vals)
 
-        return exp(-self._hist_param * dt) * _similarity_dists + dt * data_diff
+        return exp(-self._hist_param * dt) * similarity_dists + dt * data_diff
 
     def _update_active_sims(
         self, similarity_dists: np.ndarray, is_sim_active: np.ndarray
