@@ -100,11 +100,11 @@ class AdaptivityCalculator:
 
         for name in data.keys():
             data_vals = np.array(data[name])
-            if data_vals.ndim == 1:
-                # If the adaptivity data is a scalar for each simulation,
-                # expand the dimension to make it a 2D array to unify the calculation.
-                # The axis is later reduced with a norm.
-                data_vals = np.expand_dims(data_vals, axis=1)
+            # if data_vals.ndim == 1:
+            #     # If the adaptivity data is a scalar for each simulation,
+            #     # expand the dimension to make it a 2D array to unify the calculation.
+            #     # The axis is later reduced with a norm.
+            #     data_vals = np.expand_dims(data_vals, axis=1)
 
             similarity_dists += dt * self._similarity_measure(data_vals)
 
@@ -299,7 +299,8 @@ class AdaptivityCalculator:
         similarity_dists : numpy array
             Updated 2D array having similarity distances between each micro simulation pair
         """
-        return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
+        # return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
+        return np.linalg.norm(data[:] - data[:], ord=1, axis=-1)
 
     def _l2(self, data: np.ndarray) -> np.ndarray:
         """
