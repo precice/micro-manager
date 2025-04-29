@@ -9,7 +9,7 @@ import subprocess
 from micro_manager.tools.logging_wrapper import Logger
 
 import numpy as np
-import psutil
+from psutil import Process
 
 
 class AdaptivityCalculator:
@@ -91,7 +91,9 @@ class AdaptivityCalculator:
             Updated 2D array having similarity distances between each micro simulation pair
         """
         self._base_logger.log_info_rank_zero(
-            "Available memory: {}".format(psutil.virtual_memory()[1] / 1000000000)
+            "Available memory before similarity dists calc: {}".format(
+                Process().memory_info().rss / 1000000000
+            )
         )
 
         _similarity_dists = np.copy(similarity_dists)
@@ -105,35 +107,15 @@ class AdaptivityCalculator:
                 # The axis is later reduced with a norm.
                 data_vals = np.expand_dims(data_vals, axis=1)
 
-            self._base_logger.log_info_rank_zero(
-                "BEFORE calculating data diff for {}".format(name)
-            )
-            self._base_logger.log_info_rank_zero(
-                "RAM memory % used: {}".format(psutil.virtual_memory()[2])
-            )
-            self._base_logger.log_info_rank_zero(
-                "RAM Used (GB): {}".format(psutil.virtual_memory()[3] / 1000000000)
-            )
-            self._base_logger.log_info_rank_zero(
-                "RAM available (GB): {}".format(psutil.virtual_memory()[4] / 1000000000)
-            )
-
             data_diff += self._similarity_measure(data_vals)
 
-            self._base_logger.log_info_rank_zero(
-                "AFTER calculating data diff for {}".format(name)
-            )
-            self._base_logger.log_info_rank_zero(
-                "RAM memory % used: {}".format(psutil.virtual_memory()[2])
-            )
-            self._base_logger.log_info_rank_zero(
-                "RAM Used (GB): {}".format(psutil.virtual_memory()[3] / 1000000000)
-            )
-            self._base_logger.log_info_rank_zero(
-                "RAM available (GB): {}".format(psutil.virtual_memory()[4] / 1000000000)
-            )
-
             del data_vals
+
+        self._base_logger.log_info_rank_zero(
+            "Available memory after similarity dists calc: {}".format(
+                Process().memory_info().rss / 1000000000
+            )
+        )
 
         return exp(-self._hist_param * dt) * _similarity_dists + dt * data_diff
 
