@@ -72,7 +72,7 @@ class AdaptivityCalculator:
 
     def _get_similarity_dists(
         self, dt: float, similarity_dists: np.ndarray, data: dict
-    ) -> np.ndarray:
+    ) -> None:
         """
         Calculate metric which determines if two micro simulations are similar enough to have one of them deactivated.
 
@@ -96,9 +96,8 @@ class AdaptivityCalculator:
             )
         )
 
-        _similarity_dists = np.copy(similarity_dists)
+        similarity_dists = exp(-self._hist_param * dt) * similarity_dists
 
-        data_diff = np.zeros_like(_similarity_dists)
         for name in data.keys():
             data_vals = np.array(data[name])
             if data_vals.ndim == 1:
@@ -107,7 +106,7 @@ class AdaptivityCalculator:
                 # The axis is later reduced with a norm.
                 data_vals = np.expand_dims(data_vals, axis=1)
 
-            data_diff += self._similarity_measure(data_vals)
+            similarity_dists += dt * self._similarity_measure(data_vals)
 
             del data_vals
 
@@ -116,8 +115,6 @@ class AdaptivityCalculator:
                 Process().memory_info().rss / 1000000000
             )
         )
-
-        return exp(-self._hist_param * dt) * _similarity_dists + dt * data_diff
 
     def _update_active_sims(
         self, similarity_dists: np.ndarray, is_sim_active: np.ndarray
