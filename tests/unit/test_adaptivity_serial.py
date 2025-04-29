@@ -62,7 +62,7 @@ class TestLocalAdaptivity(TestCase):
 
         self._similarity_dists = self._dt * self._data_diff
 
-    def test_get_similarity_dists(self):
+    def test_update_similarity_dists(self):
         """
         Test functionality of calculating the similarity distance matrix in class AdaptivityCalculator.
         """
@@ -87,8 +87,8 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_data["macro-scalar-data"] = self._macro_scalar_data
         adaptivity_data["macro-vector-data"] = self._macro_vector_data
 
-        similarity_dists = adaptivity_controller._get_similarity_dists(
-            self._dt, self._similarity_dists, adaptivity_data
+        adaptivity_controller._get_similarity_dists(
+            self._dt, similarity_dists, adaptivity_data
         )
 
         expected_similarity_dists = (
@@ -96,7 +96,11 @@ class TestLocalAdaptivity(TestCase):
             + self._dt * self._data_diff
         )
 
-        self.assertTrue(np.array_equal(expected_similarity_dists, similarity_dists))
+        self.assertTrue(
+            np.array_equal(
+                expected_similarity_dists, adaptivity_controller._similarity_dists
+            )
+        )
 
     def test_update_active_sims(self):
         """
