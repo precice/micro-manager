@@ -106,11 +106,14 @@ class AdaptivityCalculator:
         for name in data.keys():
             data_vals = np.array(data[name])
             if data_vals.ndim == 1:
+                self._base_logger.log_info_rank_zero(
+                    "Expanding data vals of {}".format(name)
+                )
                 # If the adaptivity data is a scalar for each simulation,
                 # expand the dimension to make it a 2D array to unify the calculation.
                 # The axis is later reduced with a norm.
                 data_vals = np.expand_dims(data_vals, axis=1)
-            self._base_logger.log_info_rank_zero("After expanding data vals")
+                self._base_logger.log_info_rank_zero("After expanding data vals")
 
             similarity_dists += dt * self._similarity_measure(data_vals)
 
