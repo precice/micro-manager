@@ -101,10 +101,12 @@ class AdaptivityCalculator:
             )
         )
 
-        similarity_dists = exp(-self._hist_param * dt) * similarity_dists
+        # similarity_dists = exp(-self._hist_param * dt) * similarity_dists
 
+        data_diff = np.zeros_like(similarity_dists)
         for name in data.keys():
-            data_vals = np.array(data[name])
+            # data_vals = np.array(data[name])
+            data_vals = data[name]
             if data_vals.ndim == 1:
                 self._base_logger.log_info_rank_zero(
                     "Expanding data vals of {}".format(name)
@@ -115,9 +117,14 @@ class AdaptivityCalculator:
                 data_vals = np.expand_dims(data_vals, axis=1)
                 self._base_logger.log_info_rank_zero("After expanding data vals")
 
-            similarity_dists += dt * self._similarity_measure(data_vals)
+            # similarity_dists += dt * self._similarity_measure(data_vals)
+            data_diff += dt * self._similarity_measure(data_vals)
 
             del data_vals
+
+        similarity_dists = (
+            exp(-self._hist_param * dt) * similarity_dists + dt * data_diff
+        )
 
         self._base_logger.log_info_rank_zero(
             "RSS memory after similarity dists calc: {}".format(
