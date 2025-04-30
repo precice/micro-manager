@@ -12,7 +12,7 @@ from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator, rank, comm, num_sims, logger) -> None:
+    def __init__(self, configurator, rank, comm, num_sims) -> None:
         """
         Class constructor.
 
@@ -27,7 +27,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         num_sims : int
             Number of micro simulations.
         """
-        super().__init__(configurator, rank, logger)
+        super().__init__(configurator, rank)
         self._comm = comm
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
@@ -78,22 +78,24 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                     )
                 )
 
-        similarity_dists = self._get_similarity_dists(
-            dt, self._similarity_dists, data_for_adaptivity
+        self._update_similarity_dists(dt, self._similarity_dists, data_for_adaptivity)
+
+        is_sim_active = self._update_active_sims(
+            self._similarity_dists, self._is_sim_active
         )
 
-        is_sim_active = self._update_active_sims(similarity_dists, self._is_sim_active)
-
         is_sim_active, sim_is_associated_to = self._updating_inactive_sims(
-            similarity_dists, is_sim_active, self._sim_is_associated_to, micro_sims
+            self._similarity_dists,
+            is_sim_active,
+            self._sim_is_associated_to,
+            micro_sims,
         )
 
         sim_is_associated_to = self._associate_inactive_to_active(
-            similarity_dists, is_sim_active, sim_is_associated_to
+            self._similarity_dists, is_sim_active, sim_is_associated_to
         )
 
         # Update member variables
-        self._similarity_dists = similarity_dists
         self._is_sim_active = is_sim_active
         self._sim_is_associated_to = sim_is_associated_to
 
