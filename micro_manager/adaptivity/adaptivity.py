@@ -91,7 +91,7 @@ class AdaptivityCalculator:
             Updated 2D array having similarity distances between each micro simulation pair
         """
         self._base_logger.log_info_rank_zero(
-            "Available memory before similarity dists calc: {}".format(
+            "RSS memory before similarity dists calc: {}".format(
                 Process().memory_info().rss / 1000000000
             )
         )
@@ -100,18 +100,18 @@ class AdaptivityCalculator:
 
         for name in data.keys():
             data_vals = np.array(data[name])
-            # if data_vals.ndim == 1:
-            #     # If the adaptivity data is a scalar for each simulation,
-            #     # expand the dimension to make it a 2D array to unify the calculation.
-            #     # The axis is later reduced with a norm.
-            #     data_vals = np.expand_dims(data_vals, axis=1)
+            if data_vals.ndim == 1:
+                # If the adaptivity data is a scalar for each simulation,
+                # expand the dimension to make it a 2D array to unify the calculation.
+                # The axis is later reduced with a norm.
+                data_vals = np.expand_dims(data_vals, axis=1)
 
             similarity_dists += dt * self._similarity_measure(data_vals)
 
             del data_vals
 
         self._base_logger.log_info_rank_zero(
-            "Available memory after similarity dists calc: {}".format(
+            "RSS memory after similarity dists calc: {}".format(
                 Process().memory_info().rss / 1000000000
             )
         )
