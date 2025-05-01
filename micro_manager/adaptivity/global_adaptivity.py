@@ -60,12 +60,14 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         # sim_is_associated_to: 1D array with values of associated simulations of inactive simulations. Active simulations have None
         # Active sims do not have an associated sim
-        self._sim_is_associated_to = np.full((global_number_of_sims), -2, dtype=np.intc)
+        self._sim_is_associated_to = np.full(
+            (global_number_of_sims), -2, dtype=np.int16
+        )
 
         local_number_of_sims = len(global_ids)
 
         # Create a map of micro simulation global IDs and the ranks on which they are
-        micro_sims_on_this_rank = np.zeros(local_number_of_sims, dtype=np.intc)
+        micro_sims_on_this_rank = np.zeros(local_number_of_sims, dtype=np.int16)
         for i in range(local_number_of_sims):
             micro_sims_on_this_rank[i] = self._rank
 
