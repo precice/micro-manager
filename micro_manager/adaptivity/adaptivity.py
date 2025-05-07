@@ -10,7 +10,6 @@ from micro_manager.tools.logging_wrapper import Logger
 
 import numpy as np
 from psutil import Process
-import psutil
 
 
 class AdaptivityCalculator:
@@ -71,10 +70,6 @@ class AdaptivityCalculator:
 
         self._base_logger = logger
 
-        self._base_logger.log_info(
-            "CPU count: {}".format(psutil.cpu_count(logical=False))
-        )
-
     def _get_similarity_dists(
         self, dt: float, similarity_dists: np.ndarray, data: dict
     ) -> None:
@@ -101,25 +96,24 @@ class AdaptivityCalculator:
             )
         )
 
-        similarity_dists = exp(-self._hist_param * dt) * similarity_dists
+        similarity_dists[:, :] = exp(-self._hist_param * dt) * similarity_dists[:, :]
 
         # data_diff = np.zeros_like(similarity_dists)
         for name in data.keys():
-            # data_vals = np.array(data[name])
-            data_vals = data[name]
+            data_vals = np.array(data[name])
             if data_vals.ndim == 1:
                 # If the adaptivity data is a scalar for each simulation,
                 # expand the dimension to make it a 2D array to unify the calculation.
                 # The axis is later reduced with a norm.
                 data_vals = np.expand_dims(data_vals, axis=1)
 
-            similarity_dists += dt * self._similarity_measure(data_vals)
-            # data_diff += dt * self._similarity_measure(data_vals)
+            similarity_dists[:, :] += dt * self._similarity_measure(data_vals)
+            # data_diff += self._similarity_measure(data_vals)
 
-            del data_vals
+            # del data_vals
 
-        # similarity_dists = (
-        #     exp(-self._hist_param * dt) * similarity_dists + dt * data_diff
+        # similarity_dists[:,:] = (
+        #     exp(-self._hist_param * dt) * similarity_dists[:,:] + dt * data_diff[:,:]
         # )
 
         self._base_logger.log_info_rank_zero(
@@ -311,8 +305,7 @@ class AdaptivityCalculator:
         similarity_dists : numpy array
             Updated 2D array having similarity distances between each micro simulation pair
         """
-        # return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
-        return np.linalg.norm(data[:] - data[:], ord=1, axis=-1)
+        return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
 
     def _l2(self, data: np.ndarray) -> np.ndarray:
         """
@@ -374,11 +367,7 @@ class AdaptivityCalculator:
             Updated 2D array having similarity distances between each micro simulation pair
         """
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
-        self._base_logger.log_info_rank_zero(
-            "RSS memory before relative calc: {}".format(
-                Process().memory_info().rss / 1000000000
-            )
-        )
+
         # divide by data to get relative difference
         # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
         relative = np.nan_to_num(
@@ -389,9 +378,5 @@ class AdaptivityCalculator:
                 )
             )
         )
-        self._base_logger.log_info_rank_zero(
-            "RSS memory after relative calc: {}".format(
-                Process().memory_info().rss / 1000000000
-            )
-        )
+
         return np.linalg.norm(relative, ord=2, axis=-1)

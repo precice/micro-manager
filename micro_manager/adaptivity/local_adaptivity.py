@@ -78,7 +78,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                     )
                 )
 
-        self._update_similarity_dists(dt, self._similarity_dists, data_for_adaptivity)
+        self._get_similarity_dists(dt, self._similarity_dists, data_for_adaptivity)
 
         is_sim_active = self._update_active_sims(
             self._similarity_dists, self._is_sim_active

@@ -60,14 +60,12 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         # sim_is_associated_to: 1D array with values of associated simulations of inactive simulations. Active simulations have None
         # Active sims do not have an associated sim
-        self._sim_is_associated_to = np.full(
-            (global_number_of_sims), -2, dtype=np.int16
-        )
+        self._sim_is_associated_to = np.full((global_number_of_sims), -2, dtype=np.intc)
 
         local_number_of_sims = len(global_ids)
 
         # Create a map of micro simulation global IDs and the ranks on which they are
-        micro_sims_on_this_rank = np.zeros(local_number_of_sims, dtype=np.int16)
+        micro_sims_on_this_rank = np.zeros(local_number_of_sims, dtype=np.intc)
         for i in range(local_number_of_sims):
             micro_sims_on_this_rank[i] = self._rank
 
@@ -129,8 +127,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             self._similarity_dists, self._is_sim_active
         )
 
+        print("Similarity dists: ", self._similarity_dists)
+        print("is_sim_active: ", is_sim_active)
+
         is_sim_active, sim_is_associated_to = self._updating_inactive_sims(
-            self._similarity_dists,
             is_sim_active,
             self._sim_is_associated_to,
             micro_sims,
@@ -141,7 +141,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         )
 
         # Update member variables
-        # self._similarity_dists = similarity_dists
         self._is_sim_active = is_sim_active
         self._sim_is_associated_to = sim_is_associated_to
 
@@ -330,7 +329,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
     def _update_inactive_sims(
         self,
-        similarity_dists: np.ndarray,
         is_sim_active: np.ndarray,
         sim_is_associated_to: np.ndarray,
         micro_sims: list,
@@ -341,8 +339,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         Parameters
         ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
         is_sim_active : numpy array
             1D array having state (active or inactive) of each micro simulation
         sim_is_associated_to : numpy array
@@ -357,7 +353,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         _sim_is_associated_to : numpy array
             1D array with values of associated simulations of inactive simulations. Active simulations have None
         """
-        self._ref_tol = self._refine_const * np.amax(similarity_dists)
+        self._ref_tol = self._refine_const * np.amax(self._similarity_dists)
 
         _is_sim_active = np.copy(
             is_sim_active
@@ -369,7 +365,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         to_be_activated_ids = []  # Global IDs to be activated
         for i in range(_is_sim_active.size):
             if not _is_sim_active[i]:  # if id is inactive
-                if self._check_for_activation(i, similarity_dists, _is_sim_active):
+                if self._check_for_activation(
+                    i, self._similarity_dists, _is_sim_active
+                ):
                     _is_sim_active[i] = True
                     _sim_is_associated_to_updated[
                         i
@@ -427,7 +425,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
     def _update_inactive_sims_lazy_init(
         self,
-        similarity_dists: np.ndarray,
         is_sim_active: np.ndarray,
         sim_is_associated_to: np.ndarray,
         micro_sims: list,
@@ -440,8 +437,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         Parameters
         ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
         is_sim_active : numpy array
             1D array having state (active or inactive) of each micro simulation
         sim_is_associated_to : numpy array
@@ -456,7 +451,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         _sim_is_associated_to : numpy array
             1D array with values of associated simulations of inactive simulations. Active simulations have None
         """
-        self._ref_tol = self._refine_const * np.amax(similarity_dists)
+        self._ref_tol = self._refine_const * np.amax(self._similarity_dists)
 
         _is_sim_active = np.copy(
             is_sim_active
@@ -468,7 +463,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         to_be_activated_ids = []  # Global IDs to be activated
         for i in range(_is_sim_active.size):
             if not _is_sim_active[i]:  # if id is inactive
-                if self._check_for_activation(i, similarity_dists, _is_sim_active):
+                if self._check_for_activation(
+                    i, self._similarity_dists, _is_sim_active
+                ):
                     _is_sim_active[i] = True
                     _sim_is_associated_to_updated[
                         i
