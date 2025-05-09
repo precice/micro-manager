@@ -24,7 +24,8 @@ def main():
     parser.add_argument(
         "log_file",
         type=str,
-        default=None,
+        nargs="?",
+        default="",
         help="Path to the log file. If not provided, logs are printed to stdout.",
     )
 
