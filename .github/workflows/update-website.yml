@@ -2,7 +2,7 @@ name: Update website
 on:
   push:
     branches:
-      - 'develop'
+      - 'main'
     paths:
       - 'docs/**'
 jobs:
