@@ -21,6 +21,12 @@ def main():
     parser.add_argument(
         "--snapshot", action="store_true", help="compute offline snapshot database"
     )
+    parser.add_argument(
+        "log_file",
+        type=str,
+        default=None,
+        help="Path to the log file. If not provided, logs are printed to stdout.",
+    )
 
     args = parser.parse_args()
     config_file_path = args.config_file
@@ -28,10 +34,10 @@ def main():
         config_file_path = os.getcwd() + "/" + config_file_path
 
     if not args.snapshot:
-        manager = MicroManagerCoupling(config_file_path)
+        manager = MicroManagerCoupling(config_file_path, log_file=args.log_file)
     else:
         if is_snapshot_possible:
-            manager = MicroManagerSnapshot(config_file_path)
+            manager = MicroManagerSnapshot(config_file_path, log_file=args.log_file)
         else:
             raise ImportError(
                 "The Micro Manager snapshot computation requires the h5py package."
