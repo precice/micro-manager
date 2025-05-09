@@ -26,7 +26,7 @@ sys.path.append(os.getcwd())
 
 
 class MicroManagerSnapshot(MicroManager):
-    def __init__(self, config_file: str) -> None:
+    def __init__(self, config_file: str, log_file: str = "") -> None:
         """
         Constructor.
 
@@ -37,9 +37,7 @@ class MicroManagerSnapshot(MicroManager):
         """
         super().__init__(config_file)
 
-        self._logger = Logger(
-            "MicroManagerSnapshot", "micro-manager-snapshot.log", self._rank
-        )
+        self._logger = Logger(__name__, log_file, self._rank)
 
         self._config.set_logger(self._logger)
         self._config.read_json_snapshot()

@@ -12,7 +12,12 @@ class Logger:
     """
 
     def __init__(
-        self, name, log_file=None, rank=0, level=logging.INFO, csv_logger=False
+        self,
+        name: str,
+        log_file: str = "",
+        rank: int = 0,
+        level=logging.INFO,
+        csv_logger: bool = False,
     ):
         """
         Set up a logger.
@@ -33,7 +38,7 @@ class Logger:
 
         self._rank = rank
 
-        if log_file is None:
+        if not log_file:
             handler = logging.StreamHandler(sys.stdout)
         else:
             handler = logging.FileHandler(log_file)
