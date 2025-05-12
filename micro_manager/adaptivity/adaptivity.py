@@ -36,6 +36,8 @@ class AdaptivityCalculator:
 
         self._rank = rank
 
+        self._just_deactivated: list[int] = []
+
         self._similarity_measure = self._get_similarity_measure(
             configurator.get_adaptivity_similarity_measure()
         )
@@ -142,6 +144,7 @@ class AdaptivityCalculator:
             if _is_sim_active[i]:  # if sim is active
                 if self._check_for_deactivation(i, similarity_dists, _is_sim_active):
                     _is_sim_active[i] = False
+                    self._just_deactivated.append(i)
 
         return _is_sim_active
 
