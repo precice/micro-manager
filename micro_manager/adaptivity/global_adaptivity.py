@@ -364,8 +364,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     _sim_is_associated_to_updated[
                         i
                     ] = -2  # Active sim cannot have an associated sim
-                    if self._is_sim_on_this_rank[i]:
+                    if self._is_sim_on_this_rank[i] and i not in self._just_deactivated:
                         to_be_activated_ids.append(i)
+
+        self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 
         local_sim_is_associated_to = _sim_is_associated_to[
             self._global_ids[0] : self._global_ids[-1] + 1
@@ -463,8 +465,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     _sim_is_associated_to_updated[
                         i
                     ] = -2  # Active sim cannot have an associated sim
-                    if self._is_sim_on_this_rank[i]:
+                    if self._is_sim_on_this_rank[i] and i not in self._just_deactivated:
                         to_be_activated_ids.append(i)
+
+        self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 
         local_sim_is_associated_to = _sim_is_associated_to[
             self._global_ids[0] : self._global_ids[-1] + 1
