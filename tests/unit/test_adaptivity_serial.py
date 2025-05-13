@@ -87,6 +87,8 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_data["macro-scalar-data"] = self._macro_scalar_data
         adaptivity_data["macro-vector-data"] = self._macro_vector_data
 
+        adaptivity_controller._similarity_dists = self._similarity_dists
+
         adaptivity_controller._update_similarity_dists(self._dt, adaptivity_data)
 
         expected_similarity_dists = (
@@ -227,6 +229,8 @@ class TestLocalAdaptivity(TestCase):
             "macro-scalar-data",
             "macro-vector-data",
         ]
+
+        adaptivity_controller._similarity_dists = self._similarity_dists
 
         adaptivity_controller._is_sim_active = np.array(
             [True, False, False, True, False]

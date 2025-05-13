@@ -93,11 +93,8 @@ class AdaptivityCalculator:
         data : dict
             Data to be used in similarity distance calculation
         """
-        self._similarity_dists[:, :] = (
-            exp(-self._hist_param * dt) * self._similarity_dists[:, :]
-        )
+        self._similarity_dists = exp(-self._hist_param * dt) * self._similarity_dists
 
-        # data_diff = np.zeros_like(similarity_dists)
         for name in data.keys():
             data_vals = np.array(data[name])
             if data_vals.ndim == 1:
@@ -106,7 +103,7 @@ class AdaptivityCalculator:
                 # The axis is later reduced with a norm.
                 data_vals = np.expand_dims(data_vals, axis=1)
 
-            self._similarity_dists[:, :] += dt * self._similarity_measure(data_vals)
+            self._similarity_dists += dt * self._similarity_measure(data_vals)
 
     def _update_active_sims(self) -> None:
         """

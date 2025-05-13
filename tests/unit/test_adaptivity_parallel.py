@@ -91,20 +91,20 @@ class TestGlobalAdaptivity(TestCase):
         if self._rank == 0:
             global_ids = [0, 1, 2]
             data_for_adaptivity = {
-                "data1": [1.0, 1.0, 1.0],
-                "data2": [13.0, 13.0, 13.0],
+                "data1": [43.9, 1.0, 1.0],
+                "data2": [1355.57, 13.0, 13.0],
             }
         elif self._rank == 1:
             global_ids = [3, 4]
-            data_for_adaptivity = {"data1": [1.0, 1.0], "data2": [13.0, 13.0]}
+            data_for_adaptivity = {"data1": [1.0, 43.9], "data2": [13.0, 1355.57]}
 
-        expected_is_sim_active = np.array([False, False, False, False, True])
-        expected_sim_is_associated_to = [4, 4, 4, 4, -2]
+        expected_is_sim_active = np.array([False, False, False, True, True])
+        expected_sim_is_associated_to = [4, 3, 3, -2, -2]
 
         configurator = MagicMock()
         configurator.get_adaptivity_hist_param = MagicMock(return_value=0.1)
-        configurator.get_adaptivity_refining_const = MagicMock(return_value=0.05)
-        configurator.get_adaptivity_coarsening_const = MagicMock(return_value=0.2)
+        configurator.get_adaptivity_refining_const = MagicMock(return_value=0.5)
+        configurator.get_adaptivity_coarsening_const = MagicMock(return_value=0.3)
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L2rel")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
 
