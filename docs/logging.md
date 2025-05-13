@@ -19,6 +19,14 @@ For example
 
 The information (`INFO` level) message `Time window 1 converged.` from the file `micro_manager/micro_manager.py` is logged by rank `0` at `02:54:02 PM` on `04/17/2025`.
 
+## Parsing log output
+
+By default, the Micro Manager parses the log output to the terminal (`sys.out`). A log file, for example `micro-manager.log`, can be passed as a command line input in the following way
+
+```bash
+micro-manager-precice micro-manager-precice.json micro-manager.log
+```
+
 ## Logging adaptivity metrics
 
 If the Micro Manager is run with adaptivity, rank-wise and global metrics are written to CSV files. By default, the files are created in the working directory. To create the files in a specific folder, provide the folder path via the configuration parameter `output_dir`. More information is in the [configuration section](tooling-micro-manager-configuration.html).
