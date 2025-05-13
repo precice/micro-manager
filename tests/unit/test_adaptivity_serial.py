@@ -70,7 +70,9 @@ class TestLocalAdaptivity(TestCase):
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
 
-        adaptivity_controller = AdaptivityCalculator(configurator, 0)
+        adaptivity_controller = AdaptivityCalculator(
+            configurator, 0, self._number_of_sims
+        )
         adaptivity_controller._hist_param = 0.5
         adaptivity_controller._adaptivity_data_names = [
             "micro-scalar-data",
@@ -106,7 +108,9 @@ class TestLocalAdaptivity(TestCase):
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
 
-        adaptivity_controller = AdaptivityCalculator(configurator, 0)
+        adaptivity_controller = AdaptivityCalculator(
+            configurator, 0, self._number_of_sims
+        )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
@@ -129,7 +133,9 @@ class TestLocalAdaptivity(TestCase):
         """
         Test functionality for calculating similarity criteria between pairs of simulations using different norms in class AdaptivityCalculator.
         """
-        calc = AdaptivityCalculator(Config("micro-manager-config.json"), 0)
+        calc = AdaptivityCalculator(
+            Config("micro-manager-config.json"), 0, self._number_of_sims
+        )
 
         fake_data = np.array([[1], [2], [3]])
         self.assertTrue(
@@ -212,7 +218,9 @@ class TestLocalAdaptivity(TestCase):
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
 
-        adaptivity_controller = AdaptivityCalculator(configurator, 0)
+        adaptivity_controller = AdaptivityCalculator(
+            configurator, 0, self._number_of_sims
+        )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
@@ -243,7 +251,7 @@ class TestLocalAdaptivity(TestCase):
         configurator.get_output_dir = MagicMock(return_value="output_dir")
 
         adaptivity_controller = LocalAdaptivityCalculator(
-            configurator, 0, MagicMock(), 5
+            configurator, 0, MagicMock(), self._number_of_sims
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const

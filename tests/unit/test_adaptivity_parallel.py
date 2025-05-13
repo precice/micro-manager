@@ -112,11 +112,7 @@ class TestGlobalAdaptivity(TestCase):
             configurator, 5, global_ids, rank=self._rank, comm=self._comm
         )
 
-        adaptivity_controller._adaptivity_data_names = {
-            "data1": "scalar",
-            "data2": "scalar",
-            "data3": "vector",
-        }
+        adaptivity_controller._adaptivity_data_names = ["data1", "data2"]
 
         class MicroSimulation:
             def __init__(self, global_id) -> None:
