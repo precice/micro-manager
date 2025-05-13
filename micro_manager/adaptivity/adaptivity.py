@@ -12,7 +12,7 @@ import numpy as np
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, rank) -> None:
+    def __init__(self, configurator, rank, nsims) -> None:
         """
         Class constructor.
 
@@ -22,6 +22,8 @@ class AdaptivityCalculator:
             Object which has getter functions to get parameters defined in the configuration file.
         rank : int
             Rank of the MPI communicator.
+        nsims : int
+            Number of micro simulations.
         """
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
@@ -35,6 +37,17 @@ class AdaptivityCalculator:
         self._ref_tol = 0.0
 
         self._rank = rank
+
+        # similarity_dists: 2D array having similarity distances between each micro simulation pair
+        self._similarity_dists = np.zeros((nsims, nsims), dtype=np.float32)
+
+        # is_sim_active: 1D array having state (active or inactive) of each micro simulation
+        # Start adaptivity calculation with all sims active
+        self._is_sim_active = np.array([True] * nsims, dtype=np.bool_)
+
+        # sim_is_associated_to: 1D array with values of associated simulations of inactive simulations. Active simulations have None
+        # Active sims do not have an associated sim
+        self._sim_is_associated_to = np.full((nsims), -2, dtype=np.intc)
 
         self._just_deactivated: list[int] = []
 
@@ -69,9 +82,7 @@ class AdaptivityCalculator:
             csv_logger=True,
         )
 
-    def _update_similarity_dists(
-        self, dt: float, similarity_dists: np.ndarray, data: dict
-    ) -> np.ndarray:
+    def _update_similarity_dists(self, dt: float, data: dict) -> None:
         """
         Calculate metric which determines if two micro simulations are similar enough to have one of them deactivated.
 
@@ -79,49 +90,30 @@ class AdaptivityCalculator:
         ----------
         dt : float
             Current time step
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair (modified in-place)
         data : dict
             Data to be used in similarity distance calculation
-
-        Returns
-        -------
-        similarity_dists : numpy array
-            Updated 2D array having similarity distances between each micro simulation pair
         """
-        data_diff = np.zeros_like(similarity_dists)
+        self._similarity_dists[:, :] = (
+            exp(-self._hist_param * dt) * self._similarity_dists[:, :]
+        )
+
+        # data_diff = np.zeros_like(similarity_dists)
         for name in data.keys():
-            data_vals = data[name]
+            data_vals = np.array(data[name])
             if data_vals.ndim == 1:
                 # If the adaptivity data is a scalar for each simulation,
                 # expand the dimension to make it a 2D array to unify the calculation.
                 # The axis is later reduced with a norm.
                 data_vals = np.expand_dims(data_vals, axis=1)
 
-            data_diff += self._similarity_measure(data_vals)
+            self._similarity_dists[:, :] += dt * self._similarity_measure(data_vals)
 
-        return exp(-self._hist_param * dt) * similarity_dists + dt * data_diff
-
-    def _update_active_sims(
-        self, similarity_dists: np.ndarray, is_sim_active: np.ndarray
-    ) -> np.ndarray:
+    def _update_active_sims(self) -> None:
         """
         Update set of active micro simulations. Active micro simulations are compared to each other
         and if found similar, one of them is deactivated.
-
-        Parameters
-        ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation
-
-        Returns
-        -------
-        _is_sim_active : numpy array
-            Updated 1D array having state (active or inactive) of each micro simulation
         """
-        max_similarity_dist = np.amax(similarity_dists)
+        max_similarity_dist = np.amax(self._similarity_dists)
 
         if max_similarity_dist == 0.0:
             warn(
@@ -133,62 +125,33 @@ class AdaptivityCalculator:
                 self._coarse_const * self._refine_const * max_similarity_dist
             )
 
-        _is_sim_active = np.copy(
-            is_sim_active
-        )  # Input is_sim_active is not longer used after this point
-
         # Update the set of active micro sims
-        for i in range(_is_sim_active.size):
-            if _is_sim_active[i]:  # if sim is active
-                if self._check_for_deactivation(i, similarity_dists, _is_sim_active):
-                    _is_sim_active[i] = False
+        for i in range(self._is_sim_active.size):
+            if self._is_sim_active[i]:  # if sim is active
+                if self._check_for_deactivation(i, self._is_sim_active):
+                    self._is_sim_active[i] = False
                     self._just_deactivated.append(i)
 
-        return _is_sim_active
-
-    def _associate_inactive_to_active(
-        self,
-        similarity_dists: np.ndarray,
-        is_sim_active: np.ndarray,
-        sim_is_associated_to: np.ndarray,
-    ) -> np.ndarray:
+    def _associate_inactive_to_active(self) -> None:
         """
         Associate inactive micro simulations to most similar active micro simulation.
-
-        Parameters
-        ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation
-        sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
-
-        Returns
-        -------
-        _sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
         """
-        active_ids = np.where(is_sim_active)[0]
-        inactive_ids = np.where(is_sim_active == False)[0]
-
-        _sim_is_associated_to = np.copy(sim_is_associated_to)
+        active_ids = np.where(self._is_sim_active)[0]
+        inactive_ids = np.where(self._is_sim_active == False)[0]
 
         # Associate inactive micro sims to active micro sims
         for inactive_id in inactive_ids:
             dist_min = sys.float_info.max
             for active_id in active_ids:
                 # Find most similar active sim for every inactive sim
-                if similarity_dists[inactive_id, active_id] < dist_min:
+                if self._similarity_dists[inactive_id, active_id] < dist_min:
                     associated_active_id = active_id
-                    dist_min = similarity_dists[inactive_id, active_id]
+                    dist_min = self._similarity_dists[inactive_id, active_id]
 
-            _sim_is_associated_to[inactive_id] = associated_active_id
-
-        return _sim_is_associated_to
+            self._sim_is_associated_to[inactive_id] = associated_active_id
 
     def _check_for_activation(
-        self, inactive_id: int, similarity_dists: np.ndarray, is_sim_active: np.ndarray
+        self, inactive_id: int, is_sim_active: np.ndarray
     ) -> bool:
         """
         Check if an inactive simulation needs to be activated.
@@ -197,8 +160,6 @@ class AdaptivityCalculator:
         ----------
         inactive_id : int
             ID of inactive simulation which is checked for activation.
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair.
         is_sim_active : numpy array
             1D array having state (active or inactive) of each micro simulation.
 
@@ -209,13 +170,13 @@ class AdaptivityCalculator:
         """
         active_sim_ids = np.where(is_sim_active)[0]
 
-        dists = similarity_dists[inactive_id, active_sim_ids]
+        dists = self._similarity_dists[inactive_id, active_sim_ids]
 
         # If inactive sim is not similar to any active sim, activate it
         return min(dists) > self._ref_tol
 
     def _check_for_deactivation(
-        self, active_id: int, similarity_dists: np.ndarray, is_sim_active: np.ndarray
+        self, active_id: int, is_sim_active: np.ndarray
     ) -> bool:
         """
         Check if an active simulation needs to be deactivated.
@@ -224,8 +185,6 @@ class AdaptivityCalculator:
         ----------
         active_id : int
             ID of active simulation which is checked for deactivation.
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair.
         is_sim_active : numpy array
             1D array having state (active or inactive) of each micro simulation.
 
@@ -239,7 +198,7 @@ class AdaptivityCalculator:
         for active_id_2 in active_sim_ids:
             if active_id != active_id_2:  # don't compare active sim to itself
                 # If active sim is similar to another active sim, deactivate it
-                if similarity_dists[active_id, active_id_2] < self._coarse_tol:
+                if self._similarity_dists[active_id, active_id_2] < self._coarse_tol:
                     return True
         return False
 
