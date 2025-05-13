@@ -254,14 +254,17 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         for i in range(_is_sim_active.size):
             if not _is_sim_active[i]:  # if id is inactive
                 if self._check_for_activation(i, similarity_dists, _is_sim_active):
-                    associated_active_local_id = _sim_is_associated_to[i]
-                    micro_sims[i].set_state(
-                        micro_sims[associated_active_local_id].get_state()
-                    )
                     _is_sim_active[i] = True
+                    if i not in self._just_deactivated:
+                        associated_active_local_id = _sim_is_associated_to[i]
+                        micro_sims[i].set_state(
+                            micro_sims[associated_active_local_id].get_state()
+                        )
                     _sim_is_associated_to[
                         i
                     ] = -2  # Active sim cannot have an associated sim
+
+        self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 
         return _is_sim_active, _sim_is_associated_to
 
@@ -308,24 +311,27 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         for i in range(_is_sim_active.size):
             if not _is_sim_active[i]:  # if id is inactive
                 if self._check_for_activation(i, similarity_dists, _is_sim_active):
-                    associated_active_local_id = _sim_is_associated_to[i]
-                    if (
-                        micro_sims[i] == 0
-                    ):  # 0 indicates that the micro simulation object has not been created yet
-                        micro_problem = getattr(
-                            importlib.import_module(
-                                self._micro_file_name, "MicroSimulation"
-                            ),
-                            "MicroSimulation",
-                        )
-                        micro_sims[i] = create_simulation_class(micro_problem)(i)
-                    micro_sims[i].set_state(
-                        micro_sims[associated_active_local_id].get_state()
-                    )
                     _is_sim_active[i] = True
+                    if i not in self._just_deactivated:
+                        associated_active_local_id = _sim_is_associated_to[i]
+                        if (
+                            micro_sims[i] == 0
+                        ):  # 0 indicates that the micro simulation object has not been created yet
+                            micro_problem = getattr(
+                                importlib.import_module(
+                                    self._micro_file_name, "MicroSimulation"
+                                ),
+                                "MicroSimulation",
+                            )
+                            micro_sims[i] = create_simulation_class(micro_problem)(i)
+                        micro_sims[i].set_state(
+                            micro_sims[associated_active_local_id].get_state()
+                        )
                     _sim_is_associated_to[
                         i
                     ] = -2  # Active sim cannot have an associated sim
+
+        self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 
         return _is_sim_active, _sim_is_associated_to
 
