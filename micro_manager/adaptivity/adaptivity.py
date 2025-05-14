@@ -39,14 +39,17 @@ class AdaptivityCalculator:
         self._rank = rank
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
+        # This matrix is modified in place via the function update_similarity_dists
         self._similarity_dists = np.zeros((nsims, nsims), dtype=np.float32)
 
         # is_sim_active: 1D array having state (active or inactive) of each micro simulation
         # Start adaptivity calculation with all sims active
+        # This array is modified in place via the function update_active_sims and update_inactive_sims
         self._is_sim_active = np.array([True] * nsims, dtype=np.bool_)
 
         # sim_is_associated_to: 1D array with values of associated simulations of inactive simulations. Active simulations have None
         # Active sims do not have an associated sim
+        # This array is modified in place via the function associate_inactive_to_active
         self._sim_is_associated_to = np.full((nsims), -2, dtype=np.intc)
 
         self._just_deactivated: list[int] = []

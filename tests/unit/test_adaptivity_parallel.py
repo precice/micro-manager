@@ -175,14 +175,8 @@ class TestGlobalAdaptivity(TestCase):
 
         adaptivity_controller._is_sim_active = np.array(
             [False, False, True, True, False]
-        )  # is_sim_active
-        adaptivity_controller._sim_is_associated_to = [
-            3,
-            3,
-            -2,
-            -2,
-            2,
-        ]  # sim_is_associated_to
+        )
+        adaptivity_controller._sim_is_associated_to = [3, 3, -2, -2, 2]
 
         adaptivity_controller._communicate_micro_output(sim_output)
 
