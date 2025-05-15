@@ -141,7 +141,8 @@ class AdaptivityCalculator:
 
         # Associate inactive micro sims to active micro sims
         for inactive_id in inactive_ids:
-            dist_min = sys.float_info.max
+            # Begin with a large distance to trigger the search for the most similar active sim
+            dist_min = 2 * np.amax(self._similarity_dists)
             for active_id in active_ids:
                 # Find most similar active sim for every inactive sim
                 if self._similarity_dists[inactive_id, active_id] < dist_min:
