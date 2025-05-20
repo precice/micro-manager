@@ -23,6 +23,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         configurator,
         global_number_of_sims: int,
         global_ids: list,
+        participant,
         rank: int,
         comm,
     ) -> None:
@@ -37,6 +38,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Total number of simulations in the macro-micro coupled problem.
         global_ids : list
             List of global IDs of simulations living on this rank.
+        participant : object of class Participant
+            Object of the class Participant using which the preCICE API is called.
         rank : int
             MPI rank.
         comm : MPI.COMM_WORLD
@@ -63,6 +66,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         self._updating_inactive_sims = self._get_update_inactive_sims_variant()
 
+        self._precice_participant = participant
+
         self._metrics_logger.log_info("n,n active,n inactive,assoc ranks")
 
     def compute_adaptivity(
@@ -83,6 +88,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         data_for_adaptivity : dict
             Dictionary with keys as names of data to be used in the similarity calculation, and values as the respective data for the micro simulations
         """
+        self._precice_participant.start_profiling_section(
+            "global_adaptivity.compute_adaptivity"
+        )
+
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
                 raise ValueError(
@@ -106,6 +115,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._updating_inactive_sims(micro_sims)
 
         self._associate_inactive_to_active()
+
+        self._precice_participant.stop_last_profiling_section()
 
     def get_active_sim_ids(self) -> np.ndarray:
         """
@@ -147,8 +158,14 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_output : list
             List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
         """
+        self._precice_participant.start_profiling_section(
+            "global_adaptivity.get_full_field_micro_output"
+        )
+
         micro_sims_output = deepcopy(micro_output)
         self._communicate_micro_output(micro_sims_output)
+
+        self._precice_participant.stop_last_profiling_section()
 
         return micro_sims_output
 
