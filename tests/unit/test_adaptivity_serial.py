@@ -255,7 +255,11 @@ class TestLocalAdaptivity(TestCase):
         configurator.get_output_dir = MagicMock(return_value="output_dir")
 
         adaptivity_controller = LocalAdaptivityCalculator(
-            configurator, 0, MagicMock(), self._number_of_sims
+            configurator,
+            self._number_of_sims,
+            MagicMock(),
+            0,
+            MagicMock(),
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const

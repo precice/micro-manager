@@ -139,10 +139,13 @@ class AdaptivityCalculator:
         active_ids = np.where(self._is_sim_active)[0]
         inactive_ids = np.where(self._is_sim_active == False)[0]
 
+        # Start with a large distance to trigger the search for the most similar active sim
+        dist_min_start_value = 2 * np.max(self._similarity_dists)
+
         # Associate inactive micro sims to active micro sims
         for inactive_id in inactive_ids:
             # Begin with a large distance to trigger the search for the most similar active sim
-            dist_min = 2 * np.amax(self._similarity_dists)
+            dist_min = dist_min_start_value
             for active_id in active_ids:
                 # Find most similar active sim for every inactive sim
                 if self._similarity_dists[inactive_id, active_id] < dist_min:

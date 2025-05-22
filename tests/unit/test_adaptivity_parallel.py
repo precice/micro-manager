@@ -31,7 +31,12 @@ class TestGlobalAdaptivity(TestCase):
         configurator.get_output_dir = MagicMock(return_value="output_dir")
 
         adaptivity_controller = GlobalAdaptivityCalculator(
-            configurator, 5, global_ids, rank=self._rank, comm=self._comm
+            configurator,
+            5,
+            global_ids,
+            participant=MagicMock(),
+            rank=self._rank,
+            comm=self._comm,
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -109,7 +114,12 @@ class TestGlobalAdaptivity(TestCase):
         configurator.get_output_dir = MagicMock(return_value="output_dir")
 
         adaptivity_controller = GlobalAdaptivityCalculator(
-            configurator, 5, global_ids, rank=self._rank, comm=self._comm
+            configurator,
+            5,
+            global_ids,
+            participant=MagicMock(),
+            rank=self._rank,
+            comm=self._comm,
         )
 
         adaptivity_controller._adaptivity_data_names = ["data1", "data2"]
@@ -170,7 +180,12 @@ class TestGlobalAdaptivity(TestCase):
         configurator.get_output_dir = MagicMock(return_value="output_dir")
 
         adaptivity_controller = GlobalAdaptivityCalculator(
-            configurator, 5, global_ids, rank=self._rank, comm=self._comm
+            configurator,
+            5,
+            global_ids,
+            participant=MagicMock(),
+            rank=self._rank,
+            comm=self._comm,
         )
 
         adaptivity_controller._is_sim_active = np.array(

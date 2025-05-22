@@ -12,7 +12,7 @@ from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator, rank, comm, num_sims) -> None:
+    def __init__(self, configurator, num_sims, participant, rank, comm) -> None:
         """
         Class constructor.
 
@@ -20,12 +20,14 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
+        num_sims : int
+            Number of micro simulations.
+        participant : object of class Participant
+            Object of the class Participant using which the preCICE API is called.
         rank : int
             Rank of the current MPI process.
         comm : MPI.COMM_WORLD
             Global communicator of MPI.
-        num_sims : int
-            Number of micro simulations.
         """
         super().__init__(configurator, rank, num_sims)
         self._comm = comm
@@ -33,6 +35,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._updating_inactive_sims = self._get_update_inactive_sims_variant()
 
         self._metrics_logger.log_info("n,n active,n inactive")
+
+        self._precice_participant = participant
 
     def compute_adaptivity(
         self,
@@ -54,6 +58,10 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             the data are scalar or vector as values.
 
         """
+        self._precice_participant.start_profiling_section(
+            "local_adaptivity.compute_adaptivity"
+        )
+
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
                 raise ValueError(
@@ -69,6 +77,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._updating_inactive_sims(micro_sims)
 
         self._associate_inactive_to_active()
+
+        self._precice_participant.stop_last_profiling_section()
 
     def get_active_sim_ids(self) -> np.ndarray:
         """

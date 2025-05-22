@@ -413,7 +413,11 @@ class MicroManagerCoupling(MicroManager):
             if self._config.get_adaptivity_type() == "local":
                 self._adaptivity_controller: LocalAdaptivityCalculator = (
                     LocalAdaptivityCalculator(
-                        self._config, self._rank, self._comm, self._local_number_of_sims
+                        self._config,
+                        self._local_number_of_sims,
+                        self._participant,
+                        self._rank,
+                        self._comm,
                     )
                 )
             elif self._config.get_adaptivity_type() == "global":
