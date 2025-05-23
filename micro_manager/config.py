@@ -38,6 +38,7 @@ class Config:
         self._diagnostics_data_names = None
 
         self._output_micro_sim_time = False
+        self._output_memory_usage = False
 
         self._interpolate_crash = False
 
@@ -110,6 +111,18 @@ class Config:
         except BaseException:
             self._logger.log_info_rank_zero(
                 "No output directory provided. Output (including logging) will be saved in the current working directory."
+            )
+
+        try:
+            output_mem_usage = self._data["output_memory_usage"]
+            if output_mem_usage == "True":
+                self._output_memory_usage = True
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will output RSS in every time window."
+                )
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "Micro Manager will not output memory usage."
             )
 
         try:
@@ -698,3 +711,14 @@ class Config:
             Name of the output folder.
         """
         return self._output_dir
+
+    def output_memory_usage(self):
+        """
+        Check if memory usage is to be output.
+
+        Returns
+        -------
+        output_memory_usage : bool
+            True if memory usage is to be output, False otherwise.
+        """
+        return self._output_memory_usage
