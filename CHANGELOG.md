@@ -2,6 +2,7 @@
 
 ## latest
 
+- Performance improvements: restricting data types, in-place modifications https://github.com/precice/micro-manager/pull/162
 - Handle adaptivity case when deactivation and activation happens in the same time window https://github.com/precice/micro-manager/pull/165
 - Add command line input argument to set log file https://github.com/precice/micro-manager/pull/163
 - Fix adaptivity metrics logging and add logging documentation https://github.com/precice/micro-manager/pull/160
