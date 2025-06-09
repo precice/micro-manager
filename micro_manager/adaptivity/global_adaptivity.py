@@ -247,13 +247,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         Read checkpoint.
         """
         self._similarity_dists = np.copy(self._similarity_dists_cp)
-        del self._similarity_dists_cp
-
         self._is_sim_active = np.copy(self._is_sim_active_cp)
-        del self._is_sim_active_cp
-
         self._sim_is_associated_to = np.copy(self._sim_is_associated_to_cp)
-        del self._sim_is_associated_to_cp
 
     def _communicate_micro_output(
         self,
