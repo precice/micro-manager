@@ -79,8 +79,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         self._precice_participant.stop_last_profiling_section()
 
-        self._precice_participant.stop_last_profiling_section()
-
     def get_active_sim_local_ids(self) -> np.ndarray:
         """
         Get the local ids of active simulations on this rank.

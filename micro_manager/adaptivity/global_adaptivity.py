@@ -359,7 +359,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 if self._check_for_activation(i, self._is_sim_active):
                     self._is_sim_active[i] = True
                     _sim_is_associated_to_updated[
-                        global_id
+                        i
                     ] = -2  # Active sim cannot have an associated sim
                     if self._is_sim_on_this_rank[i] and i not in self._just_deactivated:
                         to_be_activated_ids.append(i)
