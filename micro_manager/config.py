@@ -38,6 +38,7 @@ class Config:
         self._diagnostics_data_names = None
 
         self._output_micro_sim_time = False
+        self._output_memory_usage = False
 
         self._interpolate_crash = False
 
@@ -116,6 +117,18 @@ class Config:
         except BaseException:
             self._logger.log_info_rank_zero(
                 "No output directory provided. Output (including logging) will be saved in the current working directory."
+            )
+
+        try:
+            output_mem_usage = self._data["output_memory_usage"]
+            if output_mem_usage == "True":
+                self._output_memory_usage = True
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will output RSS in every time window."
+                )
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "Micro Manager will not output memory usage."
             )
 
         try:
@@ -309,21 +322,27 @@ class Config:
                 )
                 self._adaptivity_similarity_measure = "L1"
 
-            adaptivity_every_implicit_iteration = self._data["simulation_params"][
-                "adaptivity_settings"
-            ]["every_implicit_iteration"]
+            try:
+                adaptivity_every_implicit_iteration = self._data["simulation_params"][
+                    "adaptivity_settings"
+                ]["every_implicit_iteration"]
 
-            if adaptivity_every_implicit_iteration == "True":
-                self._adaptivity_every_implicit_iteration = True
-                self._logger.log_info_rank_zero(
-                    "Micro Manager will compute adaptivity in every implicit iteration, if implicit coupling is done."
-                )
+                if adaptivity_every_implicit_iteration == "True":
+                    self._adaptivity_every_implicit_iteration = True
+                    self._logger.log_info_rank_zero(
+                        "Micro Manager will compute adaptivity in every implicit iteration, if implicit coupling is done."
+                    )
 
-            elif adaptivity_every_implicit_iteration == "False":
-                self._adaptivity_every_implicit_iteration = False
+                elif adaptivity_every_implicit_iteration == "False":
+                    self._adaptivity_every_implicit_iteration = False
+                    self._logger.log_info_rank_zero(
+                        "Micro Manager will compute adaptivity once at the start of every time window."
+                    )
+            except:
                 self._logger.log_info_rank_zero(
                     "Micro Manager will compute adaptivity once at the start of every time window."
                 )
+                self._adaptivity_every_implicit_iteration = False
 
             self._write_data_names.append("active_state")
             self._write_data_names.append("active_steps")
@@ -818,3 +837,14 @@ class Config:
             Name of the output folder.
         """
         return self._output_dir
+
+    def output_memory_usage(self):
+        """
+        Check if memory usage is to be output.
+
+        Returns
+        -------
+        output_memory_usage : bool
+            True if memory usage is to be output, False otherwise.
+        """
+        return self._output_memory_usage

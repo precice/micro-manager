@@ -17,9 +17,11 @@ import os
 import sys
 import time
 import inspect
-from typing import Dict
 from typing import Callable
 import numpy as np
+import time
+from psutil import Process
+import csv
 
 import precice
 
@@ -45,7 +47,7 @@ sys.path.append(os.getcwd())
 
 
 class MicroManagerCoupling(MicroManager):
-    def __init__(self, config_file: str) -> None:
+    def __init__(self, config_file: str, log_file: str = "") -> None:
         """
         Constructor.
 
@@ -56,10 +58,18 @@ class MicroManagerCoupling(MicroManager):
         """
         super().__init__(config_file)
 
-        self._logger = Logger(__name__, None, self._rank)
+        self._logger = Logger(__name__, log_file, self._rank)
 
         self._config.set_logger(self._logger)
         self._config.read_json_micro_manager()
+
+        self._output_memory_usage = self._config.output_memory_usage()
+        self._output_dir = self._config.get_output_dir()
+
+        if self._output_dir is not None:
+            self._output_dir = os.path.abspath(self._output_dir) + "/"
+        else:
+            self._output_dir = os.path.abspath(os.getcwd()) + "/"
 
         # Data names of data to output to the snapshot database
         self._write_data_names = self._config.get_write_data_names()
@@ -146,6 +156,11 @@ class MicroManagerCoupling(MicroManager):
         - If adaptivity is on, compute micro simulations adaptively.
         """
         t, n = 0, 0
+        t_checkpoint, n_checkpoint = 0, 0
+        sim_states_cp = [None] * self._local_number_of_sims
+        mem_usage: list = []
+
+        process = Process()
 
         micro_sim_solve = self._get_solve_variant()
 
@@ -284,6 +299,9 @@ class MicroManagerCoupling(MicroManager):
 
             self._write_data_to_precice(micro_sims_output)
 
+            t += dt
+            n += 1
+
             self._participant.advance(dt)
 
             first_time_window = False
@@ -310,10 +328,19 @@ class MicroManagerCoupling(MicroManager):
                 if self._is_adaptivity_on and n % self._adaptivity_output_n == 0:
                     self._adaptivity_controller.log_metrics(n)
 
-                t += dt
-                n += 1
+                if self._output_memory_usage:
+                    mem_usage.append(process.memory_info().rss / 1024**2)
 
                 self._logger.log_info_rank_zero("Time window {} converged.".format(n))
+
+        mem_usage_output_file = (
+            self._output_dir + "mem_usage_" + str(self._rank) + ".csv"
+        )
+        with open(mem_usage_output_file, mode="w", newline="") as file:
+            writer = csv.writer(file)
+            writer.writerow(["Time window", "RSS (MB)"])
+            for i, rss_mb in enumerate(mem_usage):
+                writer.writerow([i, rss_mb])
 
         self._participant.finalize()
 
@@ -461,10 +488,10 @@ class MicroManagerCoupling(MicroManager):
                 self._adaptivity_controller: LocalAdaptivityCalculator = (
                     LocalAdaptivityCalculator(
                         self._config,
+                        self._local_number_of_sims,
                         self._participant,
                         self._rank,
                         self._comm,
-                        self._local_number_of_sims,
                     )
                 )
             elif self._config.get_adaptivity_type() == "global":
