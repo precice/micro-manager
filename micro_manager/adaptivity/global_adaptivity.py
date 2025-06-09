@@ -104,6 +104,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         global_data_for_adaptivity = dict()
         for name in data_for_adaptivity.keys():
             data_as_list = self._comm.allgather(data_for_adaptivity[name])
+            # NOTE: Data type restricted to float32 to save memory. Remove this restriction if higher precision is needed.
             global_data_for_adaptivity[name] = np.concatenate(
                 (data_as_list[:]), axis=0, dtype=np.float32
             )
