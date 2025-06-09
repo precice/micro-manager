@@ -231,6 +231,7 @@ class TestLocalAdaptivity(TestCase):
         ]
 
         adaptivity_controller._similarity_dists = self._similarity_dists
+        adaptivity_controller._max_similarity_dist = np.amax(self._similarity_dists)
 
         adaptivity_controller._is_sim_active = np.array(
             [True, False, False, True, False]
