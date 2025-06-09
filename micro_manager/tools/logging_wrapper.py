@@ -74,7 +74,7 @@ class Logger:
 
     def log_info_rank_zero(self, message):
         """
-        Rank 0 logs a message.
+        Rank 0 logs the message.
 
         Parameters
         ----------

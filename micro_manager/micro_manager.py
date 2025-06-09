@@ -17,9 +17,7 @@ import os
 import sys
 import time
 import inspect
-from typing import Dict
 from typing import Callable
-
 import numpy as np
 import time
 from psutil import Process
@@ -31,11 +29,13 @@ from .micro_manager_base import MicroManager
 
 from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
+from .adaptivity.global_adaptivity_lb import GlobalAdaptivityLBCalculator
 
 from .domain_decomposition import DomainDecomposer
 
 from .micro_simulation import create_simulation_class
 from .tools.logging_wrapper import Logger
+from .tools.misc import divide_in_parts
 
 
 try:
@@ -97,19 +97,22 @@ class MicroManagerCoupling(MicroManager):
                 )
                 self._interpolate_crashed_sims = False
             else:
-                # The following parameters can potentially become configurable by the user in the future
+                # TODO: Make these parameters configurable
                 self._crash_threshold = 0.2
                 self._number_of_nearest_neighbors = 4
 
-        self._mesh_vertex_ids = None  # IDs of macro vertices as set by preCICE
         self._micro_n_out = self._config.get_micro_output_n()
 
         self._lazy_init = self._config.initialize_sims_lazily()
 
         self._is_adaptivity_on = self._config.turn_on_adaptivity()
 
+        self._is_adaptivity_with_load_balancing = (
+            self._config.is_adaptivity_with_load_balancing()
+        )
+
         if self._is_adaptivity_on:
-            self._data_for_adaptivity: Dict[str, list] = dict()
+            self._data_for_adaptivity: dict[str, list] = dict()
 
             self._adaptivity_data_names = self._config.get_data_for_adaptivity()
 
@@ -127,6 +130,9 @@ class MicroManagerCoupling(MicroManager):
             self._adaptivity_in_every_implicit_step = (
                 self._config.is_adaptivity_required_in_every_implicit_iteration()
             )
+
+            if self._is_adaptivity_with_load_balancing:
+                self._load_balancing_n = self._config.get_load_balancing_n()
 
         self._adaptivity_output_n = self._config.get_adaptivity_output_n()
 
@@ -173,7 +179,7 @@ class MicroManagerCoupling(MicroManager):
                     self._data_for_adaptivity,
                 )
             if self._lazy_init:
-                active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+                active_sim_ids = self._adaptivity_controller.get_active_sim_local_ids()
                 micro_problem = getattr(
                     importlib.import_module(
                         self._config.get_micro_file_name(), "MicroSimulation"
@@ -189,19 +195,19 @@ class MicroManagerCoupling(MicroManager):
                 )
 
         first_iteration = True
+        first_time_window = True
+
+        sim_states_cp = [None] * self._local_number_of_sims
 
         while self._participant.is_coupling_ongoing():
 
             dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
-            # Write a checkpoint
             if self._participant.requires_writing_checkpoint():
                 for i in range(self._local_number_of_sims):
                     sim_states_cp[i] = (
                         self._micro_sims[i].get_state() if self._micro_sims[i] else None
                     )
-                t_checkpoint = t
-                n_checkpoint = n
                 first_iteration = True
 
             if self._is_adaptivity_on:
@@ -212,11 +218,42 @@ class MicroManagerCoupling(MicroManager):
                         self._data_for_adaptivity,
                     )
 
-                    # Only checkpoint the adaptivity configuration if adaptivity is computed
-                    # once in every time window
+                if self._is_adaptivity_with_load_balancing:
+                    if (
+                        n % self._load_balancing_n == 0
+                        and (not first_time_window)
+                        and first_iteration
+                    ):
+                        self._adaptivity_controller.redistribute_sims(self._micro_sims)
+
+                        self._local_number_of_sims = len(self._global_ids_of_local_sims)
+
+                        for (
+                            name
+                        ) in (
+                            self._adaptivity_data_names
+                        ):  # TODO: Adaptivity data gets reset after load balancing. Fix this.
+                            self._data_for_adaptivity[name] = [
+                                0
+                            ] * self._local_number_of_sims
+
+                        self._has_sim_crashed = [False] * self._local_number_of_sims
+
+                # number_of_sims = self._comm.allgather(self._local_number_of_sims)
+                # assert self._global_number_of_sims == sum(number_of_sims)
+
+            # Write a checkpoint
+            if self._participant.requires_writing_checkpoint():
+                sim_states_cp.clear()
+                for i in range(self._local_number_of_sims):
+                    sim_states_cp.append(self._micro_sims[i].get_state())
+
+                if self._is_adaptivity_on:
                     self._adaptivity_controller.write_checkpoint()
 
-                    active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+                    active_sim_ids = (
+                        self._adaptivity_controller.get_active_sim_local_ids()
+                    )
 
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
@@ -232,6 +269,10 @@ class MicroManagerCoupling(MicroManager):
             micro_sims_input = self._read_data_from_precice(dt)
 
             micro_sims_output = micro_sim_solve(micro_sims_input, dt)
+
+            if self._is_adaptivity_with_load_balancing:
+                for i in range(self._local_number_of_sims):
+                    micro_sims_output[i]["rank_of_sim"] = self._rank
 
             # Check if more than a certain percentage of the micro simulations have crashed and terminate if threshold is exceeded
             if self._interpolate_crashed_sims:
@@ -263,13 +304,13 @@ class MicroManagerCoupling(MicroManager):
 
             self._participant.advance(dt)
 
+            first_time_window = False
+
             # Revert micro simulations to their last checkpoints if required
             if self._participant.requires_reading_checkpoint():
                 for i in range(self._local_number_of_sims):
                     if self._micro_sims[i]:
                         self._micro_sims[i].set_state(sim_states_cp[i])
-                n = n_checkpoint
-                t = t_checkpoint
                 first_iteration = False
 
                 # If adaptivity is computed only once per time window, the states of sims need to be reset too
@@ -277,9 +318,7 @@ class MicroManagerCoupling(MicroManager):
                     if not self._adaptivity_in_every_implicit_step:
                         self._adaptivity_controller.read_checkpoint()
 
-            if (
-                self._participant.is_time_window_complete()
-            ):  # Time window has converged, now micro output can be generated
+            if self._participant.is_time_window_complete():
                 if self._micro_sims_have_output:
                     if n % self._micro_n_out == 0:
                         for sim in self._micro_sims:
@@ -339,9 +378,14 @@ class MicroManagerCoupling(MicroManager):
         else:
             coupling_mesh_bounds = self._macro_bounds
 
-        self._participant.set_mesh_access_region(
-            self._macro_mesh_name, coupling_mesh_bounds
-        )
+        if not self._is_adaptivity_with_load_balancing:
+            self._participant.set_mesh_access_region(
+                self._macro_mesh_name, coupling_mesh_bounds
+            )
+        else:  # When load balancing is on, each rank accesses the complete macro mesh
+            self._participant.set_mesh_access_region(
+                self._macro_mesh_name, self._macro_bounds
+            )
 
         # initialize preCICE
         self._participant.initialize()
@@ -354,7 +398,12 @@ class MicroManagerCoupling(MicroManager):
         if self._mesh_vertex_coords.size == 0:
             raise Exception("Macro mesh has no vertices.")
 
-        self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
+        if not self._is_adaptivity_with_load_balancing:
+            self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
+        else:  # When load balancing, each rank needs to manually determine how many micro simulations it starts with
+            total_number_of_sims, _ = self._mesh_vertex_coords.shape
+            cpu_wise_number_of_sims = divide_in_parts(total_number_of_sims, self._size)
+            self._local_number_of_sims = cpu_wise_number_of_sims[self._rank]
 
         if self._local_number_of_sims == 0:
             if self._is_parallel:
@@ -446,19 +495,32 @@ class MicroManagerCoupling(MicroManager):
                     )
                 )
             elif self._config.get_adaptivity_type() == "global":
-                self._adaptivity_controller: GlobalAdaptivityCalculator = (
-                    GlobalAdaptivityCalculator(
-                        self._config,
-                        self._global_number_of_sims,
-                        self._global_ids_of_local_sims,
-                        self._participant,
-                        self._rank,
-                        self._comm,
+                if self._is_adaptivity_with_load_balancing:
+                    self._adaptivity_controller: GlobalAdaptivityLBCalculator = (
+                        GlobalAdaptivityLBCalculator(
+                            self._config,
+                            self._global_number_of_sims,
+                            self._global_ids_of_local_sims,
+                            self._participant,
+                            self._logger,
+                            self._rank,
+                            self._comm,
+                        )
                     )
-                )
+                else:
+                    self._adaptivity_controller: GlobalAdaptivityCalculator = (
+                        GlobalAdaptivityCalculator(
+                            self._config,
+                            self._global_number_of_sims,
+                            self._global_ids_of_local_sims,
+                            self._participant,
+                            self._rank,
+                            self._comm,
+                        )
+                    )
 
             self._micro_sims_active_steps = np.zeros(
-                self._local_number_of_sims
+                self._global_number_of_sims
             )  # DECLARATION
 
         self._micro_sims_init = False  # DECLARATION
@@ -539,7 +601,7 @@ class MicroManagerCoupling(MicroManager):
             if (
                 initial_micro_output is None
             ):  # Check if the detected initialize() method returns any data
-                self._logger.log_warning(
+                self._logger.log_warning_rank_zero(
                     "The initialize() call of the Micro simulation has not returned any initial data."
                     " This means that the initialize() call has no effect on the adaptivity. The initialize method will nevertheless still be called."
                 )
@@ -616,7 +678,12 @@ class MicroManagerCoupling(MicroManager):
         local_read_data : list
             List of dicts in which keys are names of data being read and the values are the data from preCICE.
         """
-        read_data: Dict[str, list] = dict()
+        read_data: dict[str, list] = dict()
+
+        if self._is_adaptivity_with_load_balancing:
+            read_vertex_ids = self._global_ids_of_local_sims
+        else:
+            read_vertex_ids = self._mesh_vertex_ids
 
         for name in self._read_data_names:
             read_data[name] = []
@@ -625,7 +692,7 @@ class MicroManagerCoupling(MicroManager):
             read_data.update(
                 {
                     name: self._participant.read_data(
-                        self._macro_mesh_name, name, self._mesh_vertex_ids, dt
+                        self._macro_mesh_name, name, read_vertex_ids, dt
                     )
                 }
             )
@@ -645,7 +712,12 @@ class MicroManagerCoupling(MicroManager):
         data : list
             List of dicts in which keys are names of data and the values are the data to be written to preCICE.
         """
-        data_dict: Dict[str, list] = dict()
+        if self._is_adaptivity_with_load_balancing:
+            write_vertex_ids = self._global_ids_of_local_sims
+        else:
+            write_vertex_ids = self._mesh_vertex_ids
+
+        data_dict: dict[str, list] = dict()
         if not self._is_rank_empty:
             for name in data[0]:
                 data_dict[name] = []
@@ -658,7 +730,7 @@ class MicroManagerCoupling(MicroManager):
                 self._participant.write_data(
                     self._macro_mesh_name,
                     dname,
-                    self._mesh_vertex_ids,
+                    write_vertex_ids,
                     data_dict[dname],
                 )
         else:
@@ -761,15 +833,14 @@ class MicroManagerCoupling(MicroManager):
         micro_sims_output : list
             List of dicts in which keys are names of data and the values are the data which are required outputs of
         """
-        active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+        active_sim_local_ids = self._adaptivity_controller.get_active_sim_local_ids()
 
         micro_sims_output = [0] * self._local_number_of_sims
 
         # Solve all active micro simulations
-        for active_id in active_sim_ids:
+        for active_id in active_sim_local_ids:
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[active_id]:
-                # Attempt to solve the micro simulation
                 try:
                     start_time = time.process_time()
                     micro_sims_output[active_id] = self._micro_sims[active_id].solve(
@@ -784,9 +855,10 @@ class MicroManagerCoupling(MicroManager):
 
                     # Mark the micro sim as active for export
                     micro_sims_output[active_id]["active_state"] = 1
+                    global_id = self._global_ids_of_local_sims[active_id]
                     micro_sims_output[active_id][
                         "active_steps"
-                    ] = self._micro_sims_active_steps[active_id]
+                    ] = self._micro_sims_active_steps[global_id]
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
@@ -813,7 +885,7 @@ class MicroManagerCoupling(MicroManager):
 
         # Interpolate result for crashed simulation
         unset_sims = []
-        for active_id in active_sim_ids:
+        for active_id in active_sim_local_ids:
             if micro_sims_output[active_id] == 0:
                 unset_sims.append(active_id)
 
@@ -827,21 +899,24 @@ class MicroManagerCoupling(MicroManager):
                 )
 
                 micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
-                    micro_sims_input, micro_sims_output, unset_sim, active_sim_ids
+                    micro_sims_input, micro_sims_output, unset_sim, active_sim_local_ids
                 )
 
         micro_sims_output = self._adaptivity_controller.get_full_field_micro_output(
             micro_sims_output
         )
 
-        inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
+        inactive_sim_local_ids = (
+            self._adaptivity_controller.get_inactive_sim_local_ids()
+        )
 
         # Resolve micro sim output data for inactive simulations
-        for inactive_id in inactive_sim_ids:
+        for inactive_id in inactive_sim_local_ids:
             micro_sims_output[inactive_id]["active_state"] = 0
+            global_id = self._global_ids_of_local_sims[inactive_id]
             micro_sims_output[inactive_id][
                 "active_steps"
-            ] = self._micro_sims_active_steps[inactive_id]
+            ] = self._micro_sims_active_steps[global_id]
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[inactive_id]["solve_cpu_time"] = 0
