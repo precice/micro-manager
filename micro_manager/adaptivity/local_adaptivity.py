@@ -12,7 +12,7 @@ from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator, rank, comm, num_sims) -> None:
+    def __init__(self, configurator, num_sims, participant, rank, comm) -> None:
         """
         Class constructor.
 
@@ -20,35 +20,23 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
+        num_sims : int
+            Number of micro simulations.
+        participant : object of class Participant
+            Object of the class Participant using which the preCICE API is called.
         rank : int
             Rank of the current MPI process.
         comm : MPI.COMM_WORLD
             Global communicator of MPI.
-        num_sims : int
-            Number of micro simulations.
         """
-        super().__init__(configurator, rank)
+        super().__init__(configurator, rank, num_sims)
         self._comm = comm
-
-        # similarity_dists: 2D array having similarity distances between each micro simulation pair
-        self._similarity_dists = np.zeros((num_sims, num_sims))
-
-        # is_sim_active: 1D array having state (active or inactive) of each micro simulation
-        # Start adaptivity calculation with all sims active
-        self._is_sim_active = np.array([True] * num_sims)
-
-        # sim_is_associated_to: 1D array with values of associated simulations of inactive simulations. Active simulations have None
-        # Active sims do not have an associated sim
-        self._sim_is_associated_to = np.full((num_sims), -2, dtype=np.intc)
-
-        # Copies of variables for checkpointing
-        self._similarity_dists_cp = None
-        self._is_sim_active_cp = None
-        self._sim_is_associated_to_cp = None
 
         self._updating_inactive_sims = self._get_update_inactive_sims_variant()
 
         self._metrics_logger.log_info("n,n active,n inactive")
+
+        self._precice_participant = participant
 
     def compute_adaptivity(
         self,
@@ -70,6 +58,10 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             the data are scalar or vector as values.
 
         """
+        self._precice_participant.start_profiling_section(
+            "local_adaptivity.compute_adaptivity"
+        )
+
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
                 raise ValueError(
@@ -78,24 +70,15 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                     )
                 )
 
-        similarity_dists = self._get_similarity_dists(
-            dt, self._similarity_dists, data_for_adaptivity
-        )
+        self._update_similarity_dists(dt, data_for_adaptivity)
 
-        is_sim_active = self._update_active_sims(similarity_dists, self._is_sim_active)
+        self._update_active_sims()
 
-        is_sim_active, sim_is_associated_to = self._updating_inactive_sims(
-            similarity_dists, is_sim_active, self._sim_is_associated_to, micro_sims
-        )
+        self._updating_inactive_sims(micro_sims)
 
-        sim_is_associated_to = self._associate_inactive_to_active(
-            similarity_dists, is_sim_active, sim_is_associated_to
-        )
+        self._associate_inactive_to_active()
 
-        # Update member variables
-        self._similarity_dists = similarity_dists
-        self._is_sim_active = is_sim_active
-        self._sim_is_associated_to = sim_is_associated_to
+        self._precice_participant.stop_last_profiling_section()
 
     def get_active_sim_ids(self) -> np.ndarray:
         """
@@ -212,67 +195,35 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._is_sim_active = np.copy(self._is_sim_active_cp)
         self._sim_is_associated_to = np.copy(self._sim_is_associated_to_cp)
 
-    def _update_inactive_sims(
-        self,
-        similarity_dists: np.ndarray,
-        is_sim_active: np.ndarray,
-        sim_is_associated_to: np.ndarray,
-        micro_sims: list,
-    ) -> tuple:
+    def _update_inactive_sims(self, micro_sims: list) -> None:
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
         and if it is not similar to any of them, it is activated.
 
         Parameters
         ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair.
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation.
-        sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None.
         micro_sims : list
             List containing micro simulation objects.
-
-        Returns
-        -------
-        _is_sim_active : numpy array
-            Updated 1D array having state (active or inactive) of each micro simulation
-        _sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
         """
-        self._ref_tol = self._refine_const * np.amax(similarity_dists)
-
-        _is_sim_active = np.copy(
-            is_sim_active
-        )  # Input is_sim_active is not longer used after this point
-        _sim_is_associated_to = np.copy(sim_is_associated_to)
+        self._ref_tol = self._refine_const * self._max_similarity_dist
 
         # Update the set of inactive micro sims
-        for i in range(_is_sim_active.size):
-            if not _is_sim_active[i]:  # if id is inactive
-                if self._check_for_activation(i, similarity_dists, _is_sim_active):
-                    _is_sim_active[i] = True
+        for i in range(self._is_sim_active.size):
+            if not self._is_sim_active[i]:  # if id is inactive
+                if self._check_for_activation(i, self._is_sim_active):
+                    self._is_sim_active[i] = True
                     if i not in self._just_deactivated:
-                        associated_active_local_id = _sim_is_associated_to[i]
+                        associated_active_local_id = self._sim_is_associated_to[i]
                         micro_sims[i].set_state(
                             micro_sims[associated_active_local_id].get_state()
                         )
-                    _sim_is_associated_to[
+                    self._sim_is_associated_to[
                         i
                     ] = -2  # Active sim cannot have an associated sim
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 
-        return _is_sim_active, _sim_is_associated_to
-
-    def _update_inactive_sims_lazy_init(
-        self,
-        similarity_dists: np.ndarray,
-        is_sim_active: np.ndarray,
-        sim_is_associated_to: np.ndarray,
-        micro_sims: list,
-    ) -> tuple:
+    def _update_inactive_sims_lazy_init(self, micro_sims: list) -> None:
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
         and if it is not similar to any of them, it is activated.
@@ -282,36 +233,18 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         Parameters
         ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair.
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation.
-        sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None.
         micro_sims : list
             List containing micro simulation objects.
-
-        Returns
-        -------
-        _is_sim_active : numpy array
-            Updated 1D array having state (active or inactive) of each micro simulation
-        _sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
         """
-        self._ref_tol = self._refine_const * np.amax(similarity_dists)
-
-        _is_sim_active = np.copy(
-            is_sim_active
-        )  # Input is_sim_active is not longer used after this point
-        _sim_is_associated_to = np.copy(sim_is_associated_to)
+        self._ref_tol = self._refine_const * self._max_similarity_dist
 
         # Update the set of inactive micro sims
-        for i in range(_is_sim_active.size):
-            if not _is_sim_active[i]:  # if id is inactive
-                if self._check_for_activation(i, similarity_dists, _is_sim_active):
-                    _is_sim_active[i] = True
+        for i in range(self._is_sim_active.size):
+            if not self._is_sim_active[i]:  # if id is inactive
+                if self._check_for_activation(i, self._is_sim_active):
+                    self._is_sim_active[i] = True
                     if i not in self._just_deactivated:
-                        associated_active_local_id = _sim_is_associated_to[i]
+                        associated_active_local_id = self._sim_is_associated_to[i]
                         if (
                             micro_sims[i] == 0
                         ):  # 0 indicates that the micro simulation object has not been created yet
@@ -325,13 +258,11 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                         micro_sims[i].set_state(
                             micro_sims[associated_active_local_id].get_state()
                         )
-                    _sim_is_associated_to[
+                    self._sim_is_associated_to[
                         i
                     ] = -2  # Active sim cannot have an associated sim
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
-
-        return _is_sim_active, _sim_is_associated_to
 
     def _get_update_inactive_sims_variant(self):
         """
