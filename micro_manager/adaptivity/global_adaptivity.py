@@ -312,7 +312,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        self._ref_tol = self._refine_const * np.amax(self._similarity_dists)
+        self._ref_tol = self._refine_const * self._max_similarity_dist
 
         _sim_is_associated_to_updated = np.copy(self._sim_is_associated_to)
 
@@ -391,7 +391,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        self._ref_tol = self._refine_const * np.amax(self._similarity_dists)
+        self._ref_tol = self._refine_const * self._max_similarity_dist
 
         _sim_is_associated_to_updated = np.copy(self._sim_is_associated_to)
 

@@ -40,7 +40,10 @@ class AdaptivityCalculator:
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
+        # NOTE: Data type restricted to float32 to save memory. Remove this restriction if higher precision is needed.
         self._similarity_dists = np.zeros((nsims, nsims), dtype=np.float32)
+
+        self._max_similarity_dist = 0.0
 
         # is_sim_active: 1D array having state (active or inactive) of each micro simulation
         # Start adaptivity calculation with all sims active
@@ -108,21 +111,21 @@ class AdaptivityCalculator:
 
             self._similarity_dists += dt * self._similarity_measure(data_vals)
 
+        self._max_similarity_dist = np.amax(self._similarity_dists)
+
     def _update_active_sims(self) -> None:
         """
         Update set of active micro simulations. Active micro simulations are compared to each other
         and if found similar, one of them is deactivated.
         """
-        max_similarity_dist = np.amax(self._similarity_dists)
-
-        if max_similarity_dist == 0.0:
+        if self._max_similarity_dist == 0.0:
             warn(
                 "All similarity distances are zero, probably because all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
             )
             self._coarse_tol = sys.float_info.min
         else:
             self._coarse_tol = (
-                self._coarse_const * self._refine_const * max_similarity_dist
+                self._coarse_const * self._refine_const * self._max_similarity_dist
             )
 
         # Update the set of active micro sims
@@ -140,7 +143,7 @@ class AdaptivityCalculator:
         inactive_ids = np.where(self._is_sim_active == False)[0]
 
         # Start with a large distance to trigger the search for the most similar active sim
-        dist_min_start_value = 2 * np.max(self._similarity_dists)
+        dist_min_start_value = 2 * self._max_similarity_dist
 
         # Associate inactive micro sims to active micro sims
         for inactive_id in inactive_ids:

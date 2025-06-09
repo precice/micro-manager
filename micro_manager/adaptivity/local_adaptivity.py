@@ -205,7 +205,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         micro_sims : list
             List containing micro simulation objects.
         """
-        self._ref_tol = self._refine_const * np.amax(self._similarity_dists)
+        self._ref_tol = self._refine_const * self._max_similarity_dist
 
         # Update the set of inactive micro sims
         for i in range(self._is_sim_active.size):
@@ -236,7 +236,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         micro_sims : list
             List containing micro simulation objects.
         """
-        self._ref_tol = self._refine_const * np.amax(self._similarity_dists)
+        self._ref_tol = self._refine_const * self._max_similarity_dist
 
         # Update the set of inactive micro sims
         for i in range(self._is_sim_active.size):
