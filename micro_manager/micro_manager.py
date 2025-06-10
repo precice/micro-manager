@@ -212,10 +212,6 @@ class MicroManagerCoupling(MicroManager):
                         self._data_for_adaptivity,
                     )
 
-                    # Only checkpoint the adaptivity configuration if adaptivity is computed
-                    # once in every time window
-                    # self._adaptivity_controller.write_checkpoint()
-
                     active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
 
                     for active_id in active_sim_ids:
@@ -271,11 +267,6 @@ class MicroManagerCoupling(MicroManager):
                 n = n_checkpoint
                 t = t_checkpoint
                 first_iteration = False
-
-                # If adaptivity is computed only once per time window, the states of sims need to be reset too
-                # if self._is_adaptivity_on:
-                #     if not self._adaptivity_in_every_implicit_step:
-                #         self._adaptivity_controller.read_checkpoint()
 
             if (
                 self._participant.is_time_window_complete()
