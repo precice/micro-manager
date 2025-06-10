@@ -212,10 +212,6 @@ class MicroManagerCoupling(MicroManager):
                         self._data_for_adaptivity,
                     )
 
-                    # Only checkpoint the adaptivity configuration if adaptivity is computed
-                    # once in every time window
-                    self._adaptivity_controller.write_checkpoint()
-
                     active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
 
                     for active_id in active_sim_ids:
@@ -272,11 +268,6 @@ class MicroManagerCoupling(MicroManager):
                 t = t_checkpoint
                 first_iteration = False
 
-                # If adaptivity is computed only once per time window, the states of sims need to be reset too
-                if self._is_adaptivity_on:
-                    if not self._adaptivity_in_every_implicit_step:
-                        self._adaptivity_controller.read_checkpoint()
-
             if (
                 self._participant.is_time_window_complete()
             ):  # Time window has converged, now micro output can be generated
@@ -294,14 +285,15 @@ class MicroManagerCoupling(MicroManager):
 
                 self._logger.log_info_rank_zero("Time window {} converged.".format(n))
 
-        mem_usage_output_file = (
-            self._output_dir + "mem_usage_" + str(self._rank) + ".csv"
-        )
-        with open(mem_usage_output_file, mode="w", newline="") as file:
-            writer = csv.writer(file)
-            writer.writerow(["Time window", "RSS (MB)"])
-            for i, rss_mb in enumerate(mem_usage):
-                writer.writerow([i, rss_mb])
+        if self._output_memory_usage:
+            mem_usage_output_file = (
+                self._output_dir + "mem_usage_" + str(self._rank) + ".csv"
+            )
+            with open(mem_usage_output_file, mode="w", newline="") as file:
+                writer = csv.writer(file)
+                writer.writerow(["Time window", "RSS (MB)"])
+                for i, rss_mb in enumerate(mem_usage):
+                    writer.writerow([i, rss_mb])
 
         self._participant.finalize()
 

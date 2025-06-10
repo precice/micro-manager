@@ -179,22 +179,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                 )
             )
 
-    def write_checkpoint(self) -> None:
-        """
-        Write checkpoint.
-        """
-        self._similarity_dists_cp = np.copy(self._similarity_dists)
-        self._is_sim_active_cp = np.copy(self._is_sim_active)
-        self._sim_is_associated_to_cp = np.copy(self._sim_is_associated_to)
-
-    def read_checkpoint(self) -> None:
-        """
-        Read checkpoint.
-        """
-        self._similarity_dists = np.copy(self._similarity_dists_cp)
-        self._is_sim_active = np.copy(self._is_sim_active_cp)
-        self._sim_is_associated_to = np.copy(self._sim_is_associated_to_cp)
-
     def _update_inactive_sims(self, micro_sims: list) -> None:
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
