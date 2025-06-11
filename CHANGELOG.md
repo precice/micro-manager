@@ -2,6 +2,7 @@
 
 ## latest
 
+- Delete the simulation object when the simulation is deactivated https://github.com/precice/micro-manager/pull/167
 - Remove checkpointing of adaptivity and fix output of memory usage https://github.com/precice/micro-manager/pull/166
 - Performance improvements: restricting data types, in-place modifications https://github.com/precice/micro-manager/pull/162
 - Handle adaptivity case when deactivation and activation happens in the same time window https://github.com/precice/micro-manager/pull/165
