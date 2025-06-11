@@ -280,13 +280,18 @@ class MicroManagerCoupling(MicroManager):
                             if sim:
                                 sim.output()
 
-                if self._is_adaptivity_on and n % self._adaptivity_output_n == 0:
+                if self._is_adaptivity_on and (
+                    n % self._adaptivity_output_n == 0 or n == 1
+                ):
                     self._adaptivity_controller.log_metrics(n)
 
                 if self._output_memory_usage:
                     mem_usage.append(process.memory_info().rss / 1024**2)
 
                 self._logger.log_info_rank_zero("Time window {} converged.".format(n))
+
+        if self._is_adaptivity_on and n % self._adaptivity_output_n != 0:
+            self._adaptivity_controller.log_metrics(n)
 
         if self._output_memory_usage:
             mem_usage_output_file = (
