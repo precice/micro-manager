@@ -86,6 +86,9 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_serial"
+        )
 
         adaptivity_controller = AdaptivityCalculator(
             configurator, 0, self._number_of_sims
@@ -126,6 +129,9 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_serial"
+        )
 
         adaptivity_controller = AdaptivityCalculator(
             configurator, 0, self._number_of_sims
@@ -236,6 +242,9 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_serial"
+        )
 
         adaptivity_controller = AdaptivityCalculator(
             configurator, 0, self._number_of_sims
@@ -319,7 +328,7 @@ class TestLocalAdaptivity(TestCase):
 
         dummy_micro_sims = []
         for i in range(self._number_of_sims):
-            dummy_micro_sims.append(MicroSimulation())
+            dummy_micro_sims.append(MicroSimulation(i))
 
         adaptivity_controller._update_inactive_sims(dummy_micro_sims)
 
