@@ -66,11 +66,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         self._precice_participant = participant
 
-        self._micro_problem = getattr(
-            importlib.import_module(self._micro_file_name, "MicroSimulation"),
-            "MicroSimulation",
-        )
-
         self._metrics_logger.log_info("n,n active,n inactive,assoc ranks")
 
     def compute_adaptivity(

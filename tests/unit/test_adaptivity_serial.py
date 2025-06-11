@@ -9,6 +9,20 @@ from micro_manager.adaptivity.local_adaptivity import LocalAdaptivityCalculator
 from micro_manager.config import Config
 
 
+class MicroSimulation:
+    def get_global_id(self):
+        return 1
+
+    def set_global_id(self, global_id):
+        pass
+
+    def set_state(self, state):
+        pass
+
+    def get_state(self):
+        pass
+
+
 class TestLocalAdaptivity(TestCase):
     def setUp(self):
         self._number_of_sims = 5
@@ -254,6 +268,9 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_serial_adaptivity"
+        )
 
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
@@ -296,19 +313,6 @@ class TestLocalAdaptivity(TestCase):
             [True, False, False, False, False]
         )
         adaptivity_controller._sim_is_associated_to = np.array([-2, 0, 0, 0, 3])
-
-        class MicroSimulation:
-            def get_global_id(self):
-                return 1
-
-            def set_global_id(self, global_id):
-                pass
-
-            def set_state(self, state):
-                pass
-
-            def get_state(self):
-                pass
 
         dummy_micro_sims = []
         for i in range(self._number_of_sims):

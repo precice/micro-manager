@@ -6,6 +6,7 @@ from math import exp
 from typing import Callable
 from warnings import warn
 import subprocess
+import importlib
 from micro_manager.tools.logging_wrapper import Logger
 
 import numpy as np
@@ -30,7 +31,13 @@ class AdaptivityCalculator:
         self._hist_param = configurator.get_adaptivity_hist_param()
         self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
-        self._micro_file_name = configurator.get_micro_file_name()
+
+        self._micro_problem = getattr(
+            importlib.import_module(
+                configurator.get_micro_file_name(), "MicroSimulation"
+            ),
+            "MicroSimulation",
+        )
 
         self._coarse_tol = 0.0
         self._ref_tol = 0.0

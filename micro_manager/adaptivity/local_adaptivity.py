@@ -36,11 +36,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         self._precice_participant = participant
 
-        self._micro_problem = getattr(
-            importlib.import_module(self._micro_file_name, "MicroSimulation"),
-            "MicroSimulation",
-        )
-
     def compute_adaptivity(
         self,
         dt,
