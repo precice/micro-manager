@@ -31,7 +31,6 @@ class AdaptivityCalculator:
         self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
         self._micro_file_name = configurator.get_micro_file_name()
-        self._lazy_init = configurator.initialize_sims_lazily()
 
         self._coarse_tol = 0.0
         self._ref_tol = 0.0

@@ -32,11 +32,14 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         super().__init__(configurator, rank, num_sims)
         self._comm = comm
 
-        self._updating_inactive_sims = self._get_update_inactive_sims_variant()
-
         self._metrics_logger.log_info("n,n active,n inactive")
 
         self._precice_participant = participant
+
+        self._micro_problem = getattr(
+            importlib.import_module(self._micro_file_name, "MicroSimulation"),
+            "MicroSimulation",
+        )
 
     def compute_adaptivity(
         self,
@@ -74,7 +77,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         self._update_active_sims()
 
-        self._updating_inactive_sims(micro_sims)
+        self._update_inactive_sims(micro_sims)
 
         self._associate_inactive_to_active()
 
@@ -184,34 +187,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
         and if it is not similar to any of them, it is activated.
 
-        Parameters
-        ----------
-        micro_sims : list
-            List containing micro simulation objects.
-        """
-        self._ref_tol = self._refine_const * self._max_similarity_dist
-
-        # Update the set of inactive micro sims
-        for i in range(self._is_sim_active.size):
-            if not self._is_sim_active[i]:  # if id is inactive
-                if self._check_for_activation(i, self._is_sim_active):
-                    self._is_sim_active[i] = True
-                    if i not in self._just_deactivated:
-                        associated_active_local_id = self._sim_is_associated_to[i]
-                        micro_sims[i].set_state(
-                            micro_sims[associated_active_local_id].get_state()
-                        )
-                    self._sim_is_associated_to[
-                        i
-                    ] = -2  # Active sim cannot have an associated sim
-
-        self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
-
-    def _update_inactive_sims_lazy_init(self, micro_sims: list) -> None:
-        """
-        Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
-        and if it is not similar to any of them, it is activated.
-
         If a micro simulation which has been inactive since the start of the simulation is activated for the
         first time, the simulation object is created and initialized.
 
@@ -222,42 +197,27 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         self._ref_tol = self._refine_const * self._max_similarity_dist
 
+        to_be_activated_ids = []
         # Update the set of inactive micro sims
         for i in range(self._is_sim_active.size):
             if not self._is_sim_active[i]:  # if id is inactive
                 if self._check_for_activation(i, self._is_sim_active):
                     self._is_sim_active[i] = True
                     if i not in self._just_deactivated:
-                        associated_active_local_id = self._sim_is_associated_to[i]
-                        if (
-                            micro_sims[i] == 0
-                        ):  # 0 indicates that the micro simulation object has not been created yet
-                            micro_problem = getattr(
-                                importlib.import_module(
-                                    self._micro_file_name, "MicroSimulation"
-                                ),
-                                "MicroSimulation",
-                            )
-                            micro_sims[i] = create_simulation_class(micro_problem)(i)
-                        micro_sims[i].set_state(
-                            micro_sims[associated_active_local_id].get_state()
-                        )
-                    self._sim_is_associated_to[
-                        i
-                    ] = -2  # Active sim cannot have an associated sim
+                        to_be_activated_ids.append(i)
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 
-    def _get_update_inactive_sims_variant(self):
-        """
-        Get the variant of the function _update_inactive_sims.
+        # Delete the inactive micro simulations which have not been activated
+        for i in range(self._is_sim_active.size):
+            if not self._is_sim_active[i]:
+                micro_sims[i] = 0
 
-        Returns
-        -------
-        function
-            Function which updates the set of inactive micro simulations.
-        """
-        if self._lazy_init:
-            return self._update_inactive_sims_lazy_init
-        else:
-            return self._update_inactive_sims
+        # Update the set of inactive micro sims
+        for i in to_be_activated_ids:
+            associated_active_id = self._sim_is_associated_to[i]
+            micro_sims[i] = create_simulation_class(self._micro_problem)(i)
+            micro_sims[i].set_state(micro_sims[associated_active_id].get_state())
+            self._sim_is_associated_to[
+                i
+            ] = -2  # Active sim cannot have an associated sim
