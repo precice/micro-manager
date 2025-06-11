@@ -10,8 +10,11 @@ from micro_manager.config import Config
 
 
 class MicroSimulation:
+    def __init__(self, global_id):
+        self._global_id = global_id
+
     def get_global_id(self):
-        return 1
+        return self._global_id
 
     def set_global_id(self, global_id):
         pass
