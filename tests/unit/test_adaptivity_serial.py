@@ -269,7 +269,7 @@ class TestLocalAdaptivity(TestCase):
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
         configurator.get_micro_file_name = MagicMock(
-            return_value="test_serial_adaptivity"
+            return_value="test_adaptivity_serial"
         )
 
         adaptivity_controller = LocalAdaptivityCalculator(
