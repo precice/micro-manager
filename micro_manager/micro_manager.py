@@ -128,6 +128,7 @@ class MicroManagerCoupling(MicroManager):
                 self._config.is_adaptivity_required_in_every_implicit_iteration()
             )
 
+        self._adaptivity_n = self._config.get_adaptivity_n()
         self._adaptivity_output_n = self._config.get_adaptivity_output_n()
 
         # Define the preCICE Participant
@@ -205,7 +206,9 @@ class MicroManagerCoupling(MicroManager):
                 first_iteration = True
 
             if self._is_adaptivity_on:
-                if self._adaptivity_in_every_implicit_step or first_iteration:
+                if (self._adaptivity_in_every_implicit_step or first_iteration) and (
+                    n % self._adaptivity_n == 0
+                ):
                     self._adaptivity_controller.compute_adaptivity(
                         dt,
                         self._micro_sims,

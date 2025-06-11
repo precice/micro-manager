@@ -45,6 +45,7 @@ class Config:
         self._adaptivity = False
         self._adaptivity_type = "local"
         self._data_for_adaptivity = dict()
+        self._adaptivity_n = 1
         self._adaptivity_history_param = 0.5
         self._adaptivity_coarsening_constant = 0.5
         self._adaptivity_refining_constant = 0.5
@@ -260,6 +261,20 @@ class Config:
                     "Only micro simulation data is used for similarity computation in adaptivity. This would lead to the"
                     " same set of active and inactive simulations for the entire simulation time. If this is not intended,"
                     " please include macro data as well."
+                )
+
+            try:
+                self._adaptivity_n = self._data["simulation_params"][
+                    "adaptivity_settings"
+                ]["adaptivity_every_n_time_windows"]
+                self._logger.log_info_rank_zero(
+                    "Adaptivity will be computed every "
+                    + str(self._adaptivity_output_n)
+                    + " time windows."
+                )
+            except BaseException:
+                self._logger.log_info_rank_zero(
+                    "No interval for adaptivity computation provided. Adaptivity will be computed in every time window."
                 )
 
             try:
@@ -562,6 +577,17 @@ class Config:
             the data are scalar or vector as values.
         """
         return self._data_for_adaptivity
+
+    def get_adaptivity_n(self):
+        """
+        Get the frequency of adaptivity computation.
+
+        Returns
+        -------
+        adaptivity_n : int
+            Frequency of adaptivity computation, as a multiple of time windows.
+        """
+        return self._adaptivity_n
 
     def get_adaptivity_output_n(self):
         """
