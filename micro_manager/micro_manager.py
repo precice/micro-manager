@@ -479,6 +479,18 @@ class MicroManagerCoupling(MicroManager):
                 )
 
                 active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+
+                micro_problem = getattr(
+                    importlib.import_module(
+                        self._config.get_micro_file_name(), "MicroSimulation"
+                    ),
+                    "MicroSimulation",
+                )
+                for i in active_sim_ids:
+                    self._micro_sims[i] = create_simulation_class(micro_problem)(
+                        self._global_ids_of_local_sims[i]
+                    )
+
                 first_id = active_sim_ids[0]  # First active simulation ID
                 micro_sims_to_init = (
                     active_sim_ids  # Only active simulations will be initialized
@@ -511,6 +523,7 @@ class MicroManagerCoupling(MicroManager):
                 )
                 # Try to get the signature of the initialize() method, if it is not written in Python
                 try:  # Try to call the initialize() method without initial data
+                    print("first_id: {}".format(first_id))
                     self._micro_sims[first_id].initialize()
                     sim_requires_init_data = False
                 except TypeError:
