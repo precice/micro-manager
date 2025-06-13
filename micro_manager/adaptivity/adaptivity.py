@@ -144,7 +144,7 @@ class AdaptivityCalculator:
 
         # Start with a large distance to trigger the search for the most similar active sim
         # Add the +1 for the case when the similarity distance matrix is zeros
-        dist_min_start_value = 2 * (self._max_similarity_dist + 1)
+        dist_min_start_value = self._max_similarity_dist + 1
 
         # Associate inactive micro sims to active micro sims
         for inactive_id in inactive_ids:
