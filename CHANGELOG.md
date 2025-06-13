@@ -2,6 +2,7 @@
 
 ## latest
 
+- Trigger adaptivity when all the adaptivity data is the same https://github.com/precice/micro-manager/pull/170
 - Add configuration option to control frequency of adaptivity computation https://github.com/precice/micro-manager/pull/168
 - Remove checkpointing of adaptivity and fix output of memory usage https://github.com/precice/micro-manager/pull/166
 - Performance improvements: restricting data types, in-place modifications https://github.com/precice/micro-manager/pull/162
