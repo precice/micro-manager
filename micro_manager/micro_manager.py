@@ -460,6 +460,12 @@ class MicroManagerCoupling(MicroManager):
 
                 active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
 
+                if active_sim_ids.size == 0:
+                    self._logger.log_info(
+                        "There are no active simulations on this rank."
+                    )
+                    return
+
                 for i in active_sim_ids:
                     self._micro_sims[i] = create_simulation_class(micro_problem)(
                         self._global_ids_of_local_sims[i]
