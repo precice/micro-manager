@@ -40,8 +40,7 @@ class AdaptivityCalculator:
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
-        # NOTE: Data type restricted to float32 to save memory. Remove this restriction if higher precision is needed.
-        self._similarity_dists = np.zeros((nsims, nsims), dtype=np.float32)
+        self._similarity_dists = np.zeros((nsims, nsims))
 
         self._max_similarity_dist = 0.0
 
