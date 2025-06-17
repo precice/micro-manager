@@ -455,7 +455,7 @@ class MicroManagerCoupling(MicroManager):
                         self._data_for_adaptivity[name][i] = initial_data[i][name]
 
                 self._adaptivity_controller.compute_adaptivity(
-                    0, self._micro_sims, self._data_for_adaptivity
+                    self._micro_dt, self._micro_sims, self._data_for_adaptivity
                 )
 
                 active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
