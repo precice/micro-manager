@@ -3,6 +3,8 @@
 ## latest
 
 - Delete the simulation object when the simulation is deactivated https://github.com/precice/micro-manager/pull/167
+- Remove float32 data type restriction for adaptivity data https://github.com/precice/micro-manager/commit/bfa44ff4d3432c6ac0f3b1311274308d2ec9c2a4
+- Trigger adaptivity when all the adaptivity data is the same https://github.com/precice/micro-manager/pull/170
 - Add configuration option to control frequency of adaptivity computation https://github.com/precice/micro-manager/pull/168
 - Remove checkpointing of adaptivity and fix output of memory usage https://github.com/precice/micro-manager/pull/166
 - Performance improvements: restricting data types, in-place modifications https://github.com/precice/micro-manager/pull/162

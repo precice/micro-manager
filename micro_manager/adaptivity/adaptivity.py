@@ -46,8 +46,7 @@ class AdaptivityCalculator:
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
-        # NOTE: Data type restricted to float32 to save memory. Remove this restriction if higher precision is needed.
-        self._similarity_dists = np.zeros((nsims, nsims), dtype=np.float32)
+        self._similarity_dists = np.zeros((nsims, nsims))
 
         self._max_similarity_dist = 0.0
 
@@ -149,7 +148,8 @@ class AdaptivityCalculator:
         inactive_ids = np.where(self._is_sim_active == False)[0]
 
         # Start with a large distance to trigger the search for the most similar active sim
-        dist_min_start_value = 2 * self._max_similarity_dist
+        # Add the +1 for the case when the similarity distance matrix is zeros
+        dist_min_start_value = self._max_similarity_dist + 1
 
         # Associate inactive micro sims to active micro sims
         for inactive_id in inactive_ids:
