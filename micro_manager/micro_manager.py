@@ -190,6 +190,7 @@ class MicroManagerCoupling(MicroManager):
                 )
 
         first_iteration = True
+        checkpoints_saved = False
 
         while self._participant.is_coupling_ongoing():
 
@@ -204,6 +205,7 @@ class MicroManagerCoupling(MicroManager):
                 t_checkpoint = t
                 n_checkpoint = n
                 first_iteration = True
+                checkpoints_saved = True
 
             if self._is_adaptivity_on:
                 if (self._adaptivity_in_every_implicit_step or first_iteration) and (
@@ -220,10 +222,7 @@ class MicroManagerCoupling(MicroManager):
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
 
-                        if (
-                            sim_states_cp[active_id] == None
-                            and self._participant.requires_writing_checkpoint()
-                        ):
+                        if sim_states_cp[active_id] == None and checkpoints_saved:
                             sim_states_cp[active_id] = self._micro_sims[
                                 active_id
                             ].get_state()
