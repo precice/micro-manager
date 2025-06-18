@@ -17,7 +17,6 @@ import os
 import sys
 import time
 import inspect
-from typing import Dict
 from typing import Callable
 
 import numpy as np
@@ -109,7 +108,7 @@ class MicroManagerCoupling(MicroManager):
         self._is_adaptivity_on = self._config.turn_on_adaptivity()
 
         if self._is_adaptivity_on:
-            self._data_for_adaptivity: Dict[str, list] = dict()
+            self._data_for_adaptivity: dict[str, list] = dict()
 
             self._adaptivity_data_names = self._config.get_data_for_adaptivity()
 
@@ -160,34 +159,6 @@ class MicroManagerCoupling(MicroManager):
         micro_sim_solve = self._get_solve_variant()
 
         dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
-
-        if self._is_adaptivity_on:
-            # If micro simulations have been initialized, compute adaptivity before starting the coupling
-            if self._micro_sims_init or self._lazy_init:
-                self._logger.log_info_rank_zero(
-                    "Micro simulations have been initialized, so adaptivity will be computed before the coupling begins."
-                )
-
-                self._adaptivity_controller.compute_adaptivity(
-                    dt,
-                    self._micro_sims,
-                    self._data_for_adaptivity,
-                )
-            if self._lazy_init:
-                active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
-                micro_problem = getattr(
-                    importlib.import_module(
-                        self._config.get_micro_file_name(), "MicroSimulation"
-                    ),
-                    "MicroSimulation",
-                )
-                for i in active_sim_ids:
-                    self._micro_sims[i] = create_simulation_class(micro_problem)(
-                        self._global_ids_of_local_sims[i]
-                    )
-                self._logger.log_info_rank_zero(
-                    "Some micro simulations have been initialized lazily before the start of the coupling."
-                )
 
         first_iteration = True
         checkpoints_saved = False
@@ -465,63 +436,86 @@ class MicroManagerCoupling(MicroManager):
         # Read initial data from preCICE, if it is available
         initial_data = self._read_data_from_precice(dt=0)
 
+        first_id = 0  # 0 if lazy initialization is off, otherwise the first active simulation ID
+        micro_sims_to_init = range(
+            1, self._local_number_of_sims
+        )  # All sims if lazy init is off, otherwise all active simulations
+
         if not initial_data:
             is_initial_data_available = False
-            if self._lazy_init:
-                raise Exception(
-                    "No initial macro data available, lazy initialization would result in only one active simulation."
-                )
         else:
             is_initial_data_available = True
+            if (
+                self._lazy_init
+            ):  # For lazy initialization, compute adaptivity with the initial macro data
+                for i in range(self._local_number_of_sims):
+                    for name in self._adaptivity_macro_data_names:
+                        self._data_for_adaptivity[name][i] = initial_data[i][name]
+
+                self._adaptivity_controller.compute_adaptivity(
+                    self._micro_dt, self._micro_sims, self._data_for_adaptivity
+                )
+
+                active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+
+                if active_sim_ids.size == 0:
+                    self._logger.log_info(
+                        "There are no active simulations on this rank."
+                    )
+                    return
+
+                for i in active_sim_ids:
+                    self._micro_sims[i] = create_simulation_class(micro_problem)(
+                        self._global_ids_of_local_sims[i]
+                    )
+
+                first_id = active_sim_ids[0]  # First active simulation ID
+                micro_sims_to_init = (
+                    active_sim_ids  # Only active simulations will be initialized
+                )
 
         # Boolean which states if the initialize() method of the micro simulation requires initial data
-        is_initial_data_required = False
+        sim_requires_init_data = False
 
         # Check if provided micro simulation has an initialize() method
         if hasattr(micro_problem, "initialize") and callable(
             getattr(micro_problem, "initialize")
         ):
-            if self._lazy_init:
-                self._logger.log_warning(
-                    "The initialize function of micro simulations will not be called when using "
-                    "lazy initialization and adaptivity can't use data returned by it."
-                )
-            else:
-                self._micro_sims_init = True  # Starting value before setting
+            self._micro_sims_init = True  # Starting value before setting
 
-                try:  # Try to get the signature of the initialize() method, if it is written in Python
-                    argspec = inspect.getfullargspec(micro_problem.initialize)
-                    if (
-                        len(argspec.args) == 1
-                    ):  # The first argument in the signature is self
-                        is_initial_data_required = False
-                    elif len(argspec.args) == 2:
-                        is_initial_data_required = True
-                    else:
+            try:  # Try to get the signature of the initialize() method, if it is written in Python
+                argspec = inspect.getfullargspec(micro_problem.initialize)
+                if (
+                    len(argspec.args) == 1
+                ):  # The first argument in the signature is self
+                    sim_requires_init_data = False
+                elif len(argspec.args) == 2:
+                    sim_requires_init_data = True
+                else:
+                    raise Exception(
+                        "The initialize() method of the Micro simulation has an incorrect number of arguments."
+                    )
+            except TypeError:
+                self._logger.log_info_rank_zero(
+                    "The signature of initialize() method of the micro simulation cannot be determined. Trying to determine the signature by calling the method."
+                )
+                # Try to get the signature of the initialize() method, if it is not written in Python
+                try:  # Try to call the initialize() method without initial data
+                    self._micro_sims[first_id].initialize()
+                    sim_requires_init_data = False
+                except TypeError:
+                    self._logger.log_info_rank_zero(
+                        "The initialize() method of the micro simulation has arguments. Attempting to call it again with initial data."
+                    )
+                    try:  # Try to call the initialize() method with initial data
+                        self._micro_sims[first_id].initialize(initial_data[first_id])
+                        sim_requires_init_data = True
+                    except TypeError:
                         raise Exception(
                             "The initialize() method of the Micro simulation has an incorrect number of arguments."
                         )
-                except TypeError:
-                    self._logger.log_info_rank_zero(
-                        "The signature of initialize() method of the micro simulation cannot be determined. Trying to determine the signature by calling the method."
-                    )
-                    # Try to get the signature of the initialize() method, if it is not written in Python
-                    try:  # Try to call the initialize() method without initial data
-                        self._micro_sims[0].initialize()
-                        is_initial_data_required = False
-                    except TypeError:
-                        self._logger.log_info_rank_zero(
-                            "The initialize() method of the micro simulation has arguments. Attempting to call it again with initial data."
-                        )
-                        try:  # Try to call the initialize() method with initial data
-                            self._micro_sims[0].initialize(initial_data[0])
-                            is_initial_data_required = True
-                        except TypeError:
-                            raise Exception(
-                                "The initialize() method of the Micro simulation has an incorrect number of arguments."
-                            )
 
-        if is_initial_data_required and not is_initial_data_available:
+        if sim_requires_init_data and not is_initial_data_available:
             raise Exception(
                 "The initialize() method of the Micro simulation requires initial data, but no initial macro data has been provided."
             )
@@ -530,10 +524,12 @@ class MicroManagerCoupling(MicroManager):
         if self._micro_sims_init:
 
             # Call initialize() method of the micro simulation to check if it returns any initial data
-            if is_initial_data_required:
-                initial_micro_output = self._micro_sims[0].initialize(initial_data[0])
+            if sim_requires_init_data:
+                initial_micro_output = self._micro_sims[first_id].initialize(
+                    initial_data[first_id]
+                )
             else:
-                initial_micro_output = self._micro_sims[0].initialize()
+                initial_micro_output = self._micro_sims[first_id].initialize()
 
             if (
                 initial_micro_output is None
@@ -544,28 +540,35 @@ class MicroManagerCoupling(MicroManager):
                 )
                 self._micro_sims_init = False
 
-                if is_initial_data_required:
-                    for i in range(1, self._local_number_of_sims):
+                if sim_requires_init_data:
+                    for i in micro_sims_to_init:
                         self._micro_sims[i].initialize(initial_data[i])
                 else:
-                    for i in range(1, self._local_number_of_sims):
+                    for i in micro_sims_to_init:
                         self._micro_sims[i].initialize()
             else:  # Case where the initialize() method returns data
                 if self._is_adaptivity_on:
+                    initial_micro_data: dict[str, list] = dict()
+
+                    for name in initial_micro_output.keys():
+                        initial_micro_data[name] = [0] * self._local_number_of_sims
+                        # Save initial data from first micro simulation as we anyway have it
+                        initial_micro_data[name][first_id] = initial_micro_output[name]
+
                     # Save initial data from first micro simulation as we anyway have it
                     for name in initial_micro_output.keys():
                         if name in self._data_for_adaptivity:
-                            self._data_for_adaptivity[name][0] = initial_micro_output[
-                                name
-                            ]
+                            self._data_for_adaptivity[name][
+                                first_id
+                            ] = initial_micro_output[name]
                         else:
                             raise Exception(
                                 "The initialize() method needs to return data which is required for the adaptivity calculation."
                             )
 
                     # Gather initial data from the rest of the micro simulations
-                    if is_initial_data_required:
-                        for i in range(1, self._local_number_of_sims):
+                    if sim_requires_init_data:
+                        for i in micro_sims_to_init:
                             initial_micro_output = self._micro_sims[i].initialize(
                                 initial_data[i]
                             )
@@ -573,18 +576,34 @@ class MicroManagerCoupling(MicroManager):
                                 self._data_for_adaptivity[name][
                                     i
                                 ] = initial_micro_output[name]
+                                initial_micro_data[name][i] = initial_micro_output[name]
                     else:
-                        for i in range(1, self._local_number_of_sims):
+                        for i in micro_sims_to_init:
                             initial_micro_output = self._micro_sims[i].initialize()
                             for name in self._adaptivity_micro_data_names:
                                 self._data_for_adaptivity[name][
                                     i
                                 ] = initial_micro_output[name]
+                                initial_micro_data[name][i] = initial_micro_output[name]
+
+                    if (
+                        self._lazy_init
+                    ):  # If lazy initialization is on, initial states of inactive simulations need to be determined
+                        self._adaptivity_controller.get_full_field_micro_output(
+                            initial_micro_data
+                        )
+                        for i in range(self._local_number_of_sims):
+                            for name in self._adaptivity_micro_data_names:
+                                self._data_for_adaptivity[name][i] = initial_micro_data[
+                                    name
+                                ][i]
+                        del initial_micro_data  # Once the initial data is fed into the adaptivity data, it is no longer required
+
                 else:
                     self._logger.log_warning_rank_zero(
                         "The initialize() method of the Micro simulation returns initial data, but adaptivity is turned off. The returned data will be ignored. The initialize method will nevertheless still be called."
                     )
-                    if is_initial_data_required:
+                    if sim_requires_init_data:
                         for i in range(1, self._local_number_of_sims):
                             self._micro_sims[i].initialize(initial_data[i])
                     else:
@@ -615,7 +634,7 @@ class MicroManagerCoupling(MicroManager):
         local_read_data : list
             List of dicts in which keys are names of data being read and the values are the data from preCICE.
         """
-        read_data: Dict[str, list] = dict()
+        read_data: dict[str, list] = dict()
 
         for name in self._read_data_names:
             read_data[name] = []
@@ -644,7 +663,7 @@ class MicroManagerCoupling(MicroManager):
         data : list
             List of dicts in which keys are names of data and the values are the data to be written to preCICE.
         """
-        data_dict: Dict[str, list] = dict()
+        data_dict: dict[str, list] = dict()
         if not self._is_rank_empty:
             for name in data[0]:
                 data_dict[name] = []
