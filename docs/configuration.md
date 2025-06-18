@@ -30,9 +30,11 @@ The Micro Manager is configured with a JSON file. An example configuration file 
 
 This example configuration file is in [`examples/micro-manager-config.json`](https://github.com/precice/micro-manager/tree/develop/examples/micro-manager-config.json).
 
-The path to the file containing the Python importable micro simulation class is specified in the `micro_file_name` parameter. If the file is not in the working directory, give the relative path.
+The path to the file containing the Python importable micro simulation class is specified in the `micro_file_name` parameter. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.
 
 Set the output [log](tooling-micro-manager-logging.html) directory using the parameter `output_dir`.
+
+To output the runtime memory usage, set `output_memory_usage` to `True`. This will output a CSV file with the peak memory usage (RSS) in every time window, in MBs.
 
 There are three main sections in the configuration file, the `coupling_params`, the `simulation_params` and the optional `diagnostics`.
 
@@ -117,6 +119,8 @@ Parameter | Description
 --- | ---
 `type` | Set to either `local` or `global`. The type of adaptivity matters when the Micro Manager is run in parallel. `local` means comparing micro simulations within a local partitioned domain for similarity. `global` means comparing micro simulations from all partitions, so over the entire domain.
 `data` | List of names of data which are to be used to calculate if micro-simulations are similar or not. For example `["temperature", "porosity"]`.
+`adaptivity_every_n_time_windows` | Frequency of adaptivity computation (integer which is number of time windows).
+`output_n` | Frequency of output of adaptivity metrics (integer which is number of time windows).
 `history_param` | History parameter $$ \Lambda $$, set as $$ \Lambda >= 0 $$.
 `coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ 0 =< C_c < 1 $$.
 `refining_constant` | Refining constant $$ C_r $$, set as $$ 0 =< C_r < 1 $$.

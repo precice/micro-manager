@@ -7,6 +7,21 @@ from mpi4py import MPI
 from micro_manager.adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 
 
+class MicroSimulation:
+    def __init__(self, global_id) -> None:
+        self._global_id = global_id
+        self._state = [global_id] * 3
+
+    def get_global_id(self):
+        return self._global_id
+
+    def set_state(self, state):
+        self._state = state
+
+    def get_state(self):
+        return self._state.copy()
+
+
 class TestGlobalAdaptivity(TestCase):
     def setUp(self):
         self._comm = MPI.COMM_WORLD
@@ -32,6 +47,13 @@ class TestGlobalAdaptivity(TestCase):
         expected_is_sim_active = np.array([True, False, True, True, True])
         expected_sim_is_associated_to = [-2, 3, -2, -2, -2]
 
+        configurator = MagicMock()
+        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_parallel"
+        )
+
         adaptivity_controller = GlobalAdaptivityCalculator(
             self._configurator,
             5,
@@ -54,20 +76,6 @@ class TestGlobalAdaptivity(TestCase):
                 return False
 
         adaptivity_controller._check_for_activation = check_for_activation
-
-        class MicroSimulation:
-            def __init__(self, global_id) -> None:
-                self._global_id = global_id
-                self._state = [global_id] * 3
-
-            def get_global_id(self):
-                return self._global_id
-
-            def set_state(self, state):
-                self._state = state
-
-            def get_state(self):
-                return self._state.copy()
 
         dummy_micro_sims = []
         for i in global_ids:
@@ -114,6 +122,9 @@ class TestGlobalAdaptivity(TestCase):
         configurator.get_adaptivity_coarsening_const = MagicMock(return_value=0.3)
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L2rel")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_parallel"
+        )
 
         adaptivity_controller = GlobalAdaptivityCalculator(
             configurator,
@@ -180,6 +191,9 @@ class TestGlobalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_parallel"
+        )
 
         adaptivity_controller = GlobalAdaptivityCalculator(
             configurator,
