@@ -17,7 +17,6 @@ import os
 import sys
 import time
 import inspect
-from typing import Dict
 from typing import Callable
 
 import numpy as np
@@ -635,7 +634,7 @@ class MicroManagerCoupling(MicroManager):
         local_read_data : list
             List of dicts in which keys are names of data being read and the values are the data from preCICE.
         """
-        read_data: Dict[str, list] = dict()
+        read_data: dict[str, list] = dict()
 
         for name in self._read_data_names:
             read_data[name] = []
@@ -664,7 +663,7 @@ class MicroManagerCoupling(MicroManager):
         data : list
             List of dicts in which keys are names of data and the values are the data to be written to preCICE.
         """
-        data_dict: Dict[str, list] = dict()
+        data_dict: dict[str, list] = dict()
         if not self._is_rank_empty:
             for name in data[0]:
                 data_dict[name] = []
