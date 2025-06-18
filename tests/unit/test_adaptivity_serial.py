@@ -9,6 +9,23 @@ from micro_manager.adaptivity.local_adaptivity import LocalAdaptivityCalculator
 from micro_manager.config import Config
 
 
+class MicroSimulation:
+    def __init__(self, global_id):
+        self._global_id = global_id
+
+    def get_global_id(self):
+        return self._global_id
+
+    def set_global_id(self, global_id):
+        pass
+
+    def set_state(self, state):
+        pass
+
+    def get_state(self):
+        pass
+
+
 class TestLocalAdaptivity(TestCase):
     def setUp(self):
         self._number_of_sims = 5
@@ -69,6 +86,9 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_serial"
+        )
 
         adaptivity_controller = AdaptivityCalculator(
             configurator, 0, self._number_of_sims
@@ -109,6 +129,9 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_serial"
+        )
 
         adaptivity_controller = AdaptivityCalculator(
             configurator, 0, self._number_of_sims
@@ -135,40 +158,53 @@ class TestLocalAdaptivity(TestCase):
         """
         Test functionality for calculating similarity criteria between pairs of simulations using different norms in class AdaptivityCalculator.
         """
-        calc = AdaptivityCalculator(
-            Config("micro-manager-config.json"), 0, self._number_of_sims
+        configurator = MagicMock()
+        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_serial"
+        )
+
+        adaptivity_controller = AdaptivityCalculator(
+            configurator, 0, self._number_of_sims
         )
 
         fake_data = np.array([[1], [2], [3]])
         self.assertTrue(
             np.allclose(
-                calc._l1(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])
+                adaptivity_controller._l1(fake_data),
+                np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]]),
             )
         )
         # norm taken over last axis -> same as before
         self.assertTrue(
             np.allclose(
-                calc._l2(fake_data), np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]])
+                adaptivity_controller._l2(fake_data),
+                np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]]),
             )
         )
         self.assertTrue(
             np.allclose(
-                calc._l1rel(fake_data),
+                adaptivity_controller._l1rel(fake_data),
                 np.array([[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]]),
             )
         )
         self.assertTrue(
             np.allclose(
-                calc._l2rel(fake_data),
+                adaptivity_controller._l2rel(fake_data),
                 np.array([[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]]),
             )
         )
 
         fake_2d_data = np.array([[1, 2], [3, 4]])
-        self.assertTrue(np.allclose(calc._l1(fake_2d_data), np.array([[0, 4], [4, 0]])))
         self.assertTrue(
             np.allclose(
-                calc._l2(fake_2d_data),
+                adaptivity_controller._l1(fake_2d_data), np.array([[0, 4], [4, 0]])
+            )
+        )
+        self.assertTrue(
+            np.allclose(
+                adaptivity_controller._l2(fake_2d_data),
                 np.array(
                     [
                         [0, np.sqrt((1 - 3) ** 2 + (2 - 4) ** 2)],
@@ -179,7 +215,7 @@ class TestLocalAdaptivity(TestCase):
         )
         self.assertTrue(
             np.allclose(
-                calc._l1rel(fake_2d_data),
+                adaptivity_controller._l1rel(fake_2d_data),
                 np.array(
                     [
                         [0, abs((1 - 3) / max(1, 3) + (2 - 4) / max(2, 4))],
@@ -190,7 +226,7 @@ class TestLocalAdaptivity(TestCase):
         )
         self.assertTrue(
             np.allclose(
-                calc._l2rel(fake_2d_data),
+                adaptivity_controller._l2rel(fake_2d_data),
                 np.array(
                     [
                         [
@@ -219,6 +255,9 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_serial"
+        )
 
         adaptivity_controller = AdaptivityCalculator(
             configurator, 0, self._number_of_sims
@@ -254,6 +293,9 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_serial"
+        )
 
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
@@ -297,22 +339,9 @@ class TestLocalAdaptivity(TestCase):
         )
         adaptivity_controller._sim_is_associated_to = np.array([-2, 0, 0, 0, 3])
 
-        class MicroSimulation:
-            def get_global_id(self):
-                return 1
-
-            def set_global_id(self, global_id):
-                pass
-
-            def set_state(self, state):
-                pass
-
-            def get_state(self):
-                pass
-
         dummy_micro_sims = []
         for i in range(self._number_of_sims):
-            dummy_micro_sims.append(MicroSimulation())
+            dummy_micro_sims.append(MicroSimulation(i))
 
         adaptivity_controller._update_inactive_sims(dummy_micro_sims)
 
