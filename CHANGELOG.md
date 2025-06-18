@@ -2,6 +2,7 @@
 
 ## latest
 
+- Properly handle micro simulation initialization for lazy initialization https://github.com/precice/micro-manager/pull/169
 - Remove float32 data type restriction for adaptivity data https://github.com/precice/micro-manager/commit/bfa44ff4d3432c6ac0f3b1311274308d2ec9c2a4
 - Trigger adaptivity when all the adaptivity data is the same https://github.com/precice/micro-manager/pull/170
 - Add configuration option to control frequency of adaptivity computation https://github.com/precice/micro-manager/pull/168
