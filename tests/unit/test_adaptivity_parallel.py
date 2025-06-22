@@ -29,8 +29,8 @@ class TestGlobalAdaptivity(TestCase):
         self._size = self._comm.Get_size()
 
         self._configurator = MagicMock()
-        self._configurator.get_adaptivity_similarity_measure = MagicMock(
-            return_value="L1"
+        self._configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_parallel"
         )
         self._configurator.get_output_dir = MagicMock(return_value="output_dir")
 
@@ -47,11 +47,8 @@ class TestGlobalAdaptivity(TestCase):
         expected_is_sim_active = np.array([True, False, True, True, True])
         expected_sim_is_associated_to = [-2, 3, -2, -2, -2]
 
-        configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_parallel"
+        self._configurator.get_adaptivity_similarity_measure = MagicMock(
+            return_value="L1"
         )
 
         adaptivity_controller = GlobalAdaptivityCalculator(
@@ -116,18 +113,15 @@ class TestGlobalAdaptivity(TestCase):
         expected_is_sim_active = np.array([False, False, False, True, True])
         expected_sim_is_associated_to = [4, 3, 3, -2, -2]
 
-        configurator = MagicMock()
-        configurator.get_adaptivity_hist_param = MagicMock(return_value=0.1)
-        configurator.get_adaptivity_refining_const = MagicMock(return_value=0.5)
-        configurator.get_adaptivity_coarsening_const = MagicMock(return_value=0.3)
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L2rel")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_parallel"
+        self._configurator.get_adaptivity_hist_param = MagicMock(return_value=0.1)
+        self._configurator.get_adaptivity_refining_const = MagicMock(return_value=0.5)
+        self._configurator.get_adaptivity_coarsening_const = MagicMock(return_value=0.3)
+        self._configurator.get_adaptivity_similarity_measure = MagicMock(
+            return_value="L2rel"
         )
 
         adaptivity_controller = GlobalAdaptivityCalculator(
-            configurator,
+            self._configurator,
             5,
             global_ids,
             participant=MagicMock(),
@@ -136,20 +130,6 @@ class TestGlobalAdaptivity(TestCase):
         )
 
         adaptivity_controller._adaptivity_data_names = ["data1", "data2"]
-
-        class MicroSimulation:
-            def __init__(self, global_id) -> None:
-                self._global_id = global_id
-                self._state = [global_id] * 3
-
-            def get_global_id(self):
-                return self._global_id
-
-            def set_state(self, state):
-                self._state = state
-
-            def get_state(self):
-                return self._state.copy()
 
         dummy_micro_sims = []
         for i in global_ids:
@@ -188,15 +168,12 @@ class TestGlobalAdaptivity(TestCase):
             sim_output = [output_1, None]
             expected_sim_output = [output_1, output_0]
 
-        configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_parallel"
+        self._configurator.get_adaptivity_similarity_measure = MagicMock(
+            return_value="L1"
         )
 
         adaptivity_controller = GlobalAdaptivityCalculator(
-            configurator,
+            self._configurator,
             5,
             global_ids,
             participant=MagicMock(),
