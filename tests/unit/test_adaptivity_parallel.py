@@ -194,6 +194,10 @@ class TestGlobalAdaptivity(TestCase):
         """
         ...
         """
+        self._configurator.get_adaptivity_similarity_measure = MagicMock(
+            return_value="L1"
+        )
+
         if self._rank == 0:
             global_ids = [0, 1, 2]
             expected_ranks_of_sims = [0, 0, 0, 1, 1]
