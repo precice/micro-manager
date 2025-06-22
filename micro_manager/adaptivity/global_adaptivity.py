@@ -6,7 +6,6 @@ on each rank is done.
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
 import hashlib
-import importlib
 from copy import deepcopy
 from typing import Dict
 
@@ -107,6 +106,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._update_similarity_dists(dt, global_data_for_adaptivity)
 
         self._update_active_sims()
+
+        self._associate_inactive_to_active()
 
         self._update_inactive_sims(micro_sims)
 
