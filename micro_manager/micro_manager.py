@@ -150,7 +150,6 @@ class MicroManagerCoupling(MicroManager):
         - If adaptivity is on, compute micro simulations adaptively.
         """
         t, n = 0, 0
-        t_checkpoint, n_checkpoint = 0, 0
         sim_states_cp = [None] * self._local_number_of_sims
         mem_usage: list = []
 
@@ -161,22 +160,10 @@ class MicroManagerCoupling(MicroManager):
         dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
         first_iteration = True
-        checkpoints_saved = False
 
         while self._participant.is_coupling_ongoing():
 
             dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
-
-            # Write a checkpoint
-            if self._participant.requires_writing_checkpoint():
-                for i in range(self._local_number_of_sims):
-                    sim_states_cp[i] = (
-                        self._micro_sims[i].get_state() if self._micro_sims[i] else None
-                    )
-                t_checkpoint = t
-                n_checkpoint = n
-                first_iteration = True
-                checkpoints_saved = True
 
             if self._is_adaptivity_on:
                 if (self._adaptivity_in_every_implicit_step or first_iteration) and (
@@ -188,15 +175,23 @@ class MicroManagerCoupling(MicroManager):
                         self._data_for_adaptivity,
                     )
 
+                    # Write a checkpoint if a simulation is just activated.
+                    # This checkpoint will be asynchronous to the checkpoints written at the start of the time window.
+                    for i in range(self._local_number_of_sims):
+                        if sim_states_cp[i] is None and self._micro_sims[i]:
+                            sim_states_cp[i] = self._micro_sims[i].get_state()
+
                     active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
 
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
 
-                        if sim_states_cp[active_id] == None and checkpoints_saved:
-                            sim_states_cp[active_id] = self._micro_sims[
-                                active_id
-                            ].get_state()
+            # Write a checkpoint
+            if self._participant.requires_writing_checkpoint():
+                for i in range(self._local_number_of_sims):
+                    sim_states_cp[i] = (
+                        self._micro_sims[i].get_state() if self._micro_sims[i] else None
+                    )
 
             micro_sims_input = self._read_data_from_precice(dt)
 
@@ -227,9 +222,6 @@ class MicroManagerCoupling(MicroManager):
 
             self._write_data_to_precice(micro_sims_output)
 
-            t += dt
-            n += 1
-
             self._participant.advance(dt)
 
             # Revert micro simulations to their last checkpoints if required
@@ -237,13 +229,14 @@ class MicroManagerCoupling(MicroManager):
                 for i in range(self._local_number_of_sims):
                     if self._micro_sims[i]:
                         self._micro_sims[i].set_state(sim_states_cp[i])
-                n = n_checkpoint
-                t = t_checkpoint
                 first_iteration = False
 
             if (
                 self._participant.is_time_window_complete()
             ):  # Time window has converged, now micro output can be generated
+                t += dt  # Update time to the end of the time window
+                n += 1  # Update time step to the end of the time window
+
                 if self._micro_sims_have_output:
                     if n % self._micro_n_out == 0:
                         for sim in self._micro_sims:
@@ -259,6 +252,9 @@ class MicroManagerCoupling(MicroManager):
                     mem_usage.append(process.memory_info().rss / 1024**2)
 
                 self._logger.log_info_rank_zero("Time window {} converged.".format(n))
+
+                # Reset first iteration flag for the next time window
+                first_iteration = True
 
         if self._is_adaptivity_on and n % self._adaptivity_output_n != 0:
             self._adaptivity_controller.log_metrics(n)
