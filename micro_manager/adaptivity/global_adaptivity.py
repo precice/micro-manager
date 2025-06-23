@@ -6,7 +6,6 @@ on each rank is done.
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
 import hashlib
-import importlib
 from copy import deepcopy
 from typing import Dict
 import numpy as np
@@ -342,12 +341,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 
-        # Delete the micro simulation object if it is inactive
-        for i in self._global_ids:
-            if not self._is_sim_active[i]:
-                local_id = self._global_ids.index(i)
-                micro_sims[local_id] = 0
-
         local_sim_is_associated_to = self._sim_is_associated_to[
             self._global_ids[0] : self._global_ids[-1] + 1
         ]
@@ -404,8 +397,13 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 )
                 micro_sims[local_id].set_state(state)
 
-        self._sim_is_associated_to = _sim_is_associated_to_updated
-        del _sim_is_associated_to_updated
+        # Delete the micro simulation object if it is inactive
+        for i in self._global_ids:
+            if not self._is_sim_active[i]:
+                local_id = self._global_ids.index(i)
+                micro_sims[local_id] = 0
+
+        self._sim_is_associated_to = np.copy(_sim_is_associated_to_updated)
 
     def _create_tag(self, sim_id: int, src_rank: int, dest_rank: int) -> int:
         """

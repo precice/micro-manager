@@ -214,6 +214,7 @@ class MicroManagerCoupling(MicroManager):
                     for active_id in active_sim_ids:
                         self._micro_sims_active_steps[active_id] += 1
 
+            # Write a checkpoint
             if self._participant.requires_writing_checkpoint():
                 for i in range(self._local_number_of_sims):
                     sim_states_cp[i] = (
@@ -267,8 +268,8 @@ class MicroManagerCoupling(MicroManager):
             if (
                 self._participant.is_time_window_complete()
             ):  # Time window has converged, now micro output can be generated
-                t += dt
-                n += 1
+                t += dt  # Update time to the end of the time window
+                n += 1  # Update time step to the end of the time window
 
                 if self._micro_sims_have_output:
                     if n % self._micro_n_out == 0:
@@ -288,6 +289,9 @@ class MicroManagerCoupling(MicroManager):
                 first_iteration = (
                     True  # Reset first iteration flag for the next time window
                 )
+
+                # Reset first iteration flag for the next time window
+                first_iteration = True
 
         if self._is_adaptivity_on and n % self._adaptivity_output_n != 0:
             self._adaptivity_controller.log_metrics(n)

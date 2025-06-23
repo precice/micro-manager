@@ -2,6 +2,7 @@
 
 ## latest
 
+- Fix bug in adaptivity computation when an active simulation with associations is deactivated https://github.com/precice/micro-manager/pull/171
 - Properly handle micro simulation initialization for lazy initialization https://github.com/precice/micro-manager/pull/169
 - Delete the simulation object when the simulation is deactivated https://github.com/precice/micro-manager/pull/167
 - Remove float32 data type restriction for adaptivity data [commit](https://github.com/precice/micro-manager/commit/bfa44ff4d3432c6ac0f3b1311274308d2ec9c2a4)
