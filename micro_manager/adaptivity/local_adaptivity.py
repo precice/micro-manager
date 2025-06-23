@@ -203,11 +203,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 
-        # Delete the inactive micro simulations which have not been activated
-        for i in range(self._is_sim_active.size):
-            if not self._is_sim_active[i]:
-                micro_sims[i] = 0
-
         # Update the set of inactive micro sims
         for i in to_be_activated_ids:
             associated_active_id = self._sim_is_associated_to[i]
@@ -216,3 +211,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             self._sim_is_associated_to[
                 i
             ] = -2  # Active sim cannot have an associated sim
+
+        # Delete the inactive micro simulations which have not been activated
+        for i in range(self._is_sim_active.size):
+            if not self._is_sim_active[i]:
+                micro_sims[i] = 0
