@@ -120,6 +120,7 @@ Parameter | Description
 `type` | Set to either `local` or `global`. The type of adaptivity matters when the Micro Manager is run in parallel. `local` means comparing micro simulations within a local partitioned domain for similarity. `global` means comparing micro simulations from all partitions, so over the entire domain.
 `data` | List of names of data which are to be used to calculate if micro-simulations are similar or not. For example `["temperature", "porosity"]`.
 `adaptivity_every_n_time_windows` | Frequency of adaptivity computation (integer which is number of time windows).
+`output_type` | Set to either `local`, `global`, or `all`. `local` outputs rank-wise adaptivity metrics. `global` outputs global averaged metrics. `all` outputs both local and global metrics.
 `output_n` | Frequency of output of adaptivity metrics (integer which is number of time windows).
 `history_param` | History parameter $$ \Lambda $$, set as $$ \Lambda >= 0 $$.
 `coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ 0 =< C_c < 1 $$.

@@ -43,7 +43,7 @@ class Config:
         self._interpolate_crash = False
 
         self._adaptivity = False
-        self._adaptivity_type = "local"
+        self._adaptivity_type = ""
         self._data_for_adaptivity = dict()
         self._adaptivity_n = 1
         self._adaptivity_history_param = 0.5
@@ -51,6 +51,7 @@ class Config:
         self._adaptivity_refining_constant = 0.5
         self._adaptivity_every_implicit_iteration = False
         self._adaptivity_similarity_measure = "L1"
+        self._adaptivity_output_type = ""
         self._adaptivity_output_n = 1
 
         # Snapshot information
@@ -269,13 +270,30 @@ class Config:
                 ]["adaptivity_every_n_time_windows"]
                 self._logger.log_info_rank_zero(
                     "Adaptivity will be computed every "
-                    + str(self._adaptivity_output_n)
+                    + str(self._adaptivity_n)
                     + " time windows."
                 )
             except BaseException:
                 self._logger.log_info_rank_zero(
                     "No interval for adaptivity computation provided. Adaptivity will be computed in every time window."
                 )
+
+            try:
+                self._adaptivity_output_type = self._data["simulation_params"][
+                    "adaptivity_settings"
+                ]["output_type"]
+                if self._adaptivity_output_type not in ["all", "local", "global"]:
+                    raise Exception(
+                        "Adaptivity output type can be either 'all', 'local' or 'global'."
+                    )
+                self._logger.log_info_rank_zero(
+                    "Adaptivity output type: " + self._adaptivity_output_type
+                )
+            except BaseException:
+                self._logger.log_info_rank_zero(
+                    "No adaptivity output type provided. Defaulting to 'local'."
+                )
+                self._adaptivity_output_type = "local"
 
             try:
                 self._adaptivity_output_n = self._data["simulation_params"][
@@ -588,6 +606,17 @@ class Config:
             Frequency of adaptivity computation, as a multiple of time windows.
         """
         return self._adaptivity_n
+
+    def get_adaptivity_output_type(self):
+        """
+        Get the type of adaptivity output.
+
+        Returns
+        -------
+        adaptivity_output_type : str
+            Type of adaptivity output, can be "all", "local" or "global".
+        """
+        return self._adaptivity_output_type
 
     def get_adaptivity_output_n(self):
         """
