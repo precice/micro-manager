@@ -30,13 +30,16 @@ The Micro Manager is configured with a JSON file. An example configuration file 
 
 This example configuration file is in [`examples/micro-manager-config.json`](https://github.com/precice/micro-manager/tree/develop/examples/micro-manager-config.json).
 
-The path to the file containing the Python importable micro simulation class is specified in the `micro_file_name` parameter. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.
+## Micro Manager Configuration
 
-Set the output [log](tooling-micro-manager-logging.html) directory using the parameter `output_dir`.
+Parameter | Description
+--- | ---
+`micro_file_name` | Path to the file containing the Python importable micro simulation class. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.
+`output_directory` | Output [log](tooling-micro-manager-logging.html) directory.
+`memory_usage_output_type` | Set to either `local`, `global`, or `all`. `local` outputs rank-wise peak memory usage. `global` outputs global averaged peak memory usage. `all` outputs both local and global levels. All output is to a CSV file with the peak memory usage (RSS) in every time window, in MBs.
+`memory_usage_output_n` | Frequency of output of memory usage (integer which is number of time windows).
 
-To output the runtime memory usage, set `output_memory_usage` to `True`. This will output a CSV file with the peak memory usage (RSS) in every time window, in MBs.
-
-There are three main sections in the configuration file, the `coupling_params`, the `simulation_params` and the optional `diagnostics`.
+Apart from the base settings, there are three main sections in the configuration file, the `coupling_params`, the `simulation_params` and the optional `diagnostics`.
 
 ## Coupling Parameters
 

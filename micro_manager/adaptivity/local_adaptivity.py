@@ -133,7 +133,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         Log the following metrics:
 
-        Metrics on this rank:
+        Local metrics:
         - Time window at which the metrics are logged
         - Number of active simulations
         - Number of inactive simulations
