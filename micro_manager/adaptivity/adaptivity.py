@@ -31,6 +31,7 @@ class AdaptivityCalculator:
         self._hist_param = configurator.get_adaptivity_hist_param()
         self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
+        self._adaptivity_output_type = configurator.get_adaptivity_output_type()
 
         self._micro_problem = getattr(
             importlib.import_module(
@@ -74,7 +75,10 @@ class AdaptivityCalculator:
         else:
             metrics_output_dir = "adaptivity-metrics"
 
-        if self._rank == 0:
+        if self._rank == 0 and (
+            self._adaptivity_output_type == "global"
+            or self._adaptivity_output_type == "all"
+        ):
             self._global_metrics_logger = Logger(
                 "global-metrics-logger",
                 metrics_output_dir + "-global.csv",
@@ -86,12 +90,16 @@ class AdaptivityCalculator:
                 "n,avg active,avg inactive,max active,max inactive"
             )
 
-        self._metrics_logger = Logger(
-            "metrics-logger",
-            metrics_output_dir + "-" + str(rank) + ".csv",
-            rank,
-            csv_logger=True,
-        )
+        if (
+            self._adaptivity_output_type == "local"
+            or self._adaptivity_output_type == "all"
+        ):
+            self._metrics_logger = Logger(
+                "metrics-logger",
+                metrics_output_dir + "-" + str(rank) + ".csv",
+                rank,
+                csv_logger=True,
+            )
 
     def _update_similarity_dists(self, dt: float, data: dict) -> None:
         """

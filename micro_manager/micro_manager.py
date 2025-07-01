@@ -63,7 +63,9 @@ class MicroManagerCoupling(MicroManager):
         self._config.set_logger(self._logger)
         self._config.read_json_micro_manager()
 
-        self._output_memory_usage = self._config.output_memory_usage()
+        self._memory_usage_output_type = self._config.get_memory_usage_output_type()
+        self._memory_usage_output_n = self._config.get_memory_usage_output_n()
+
         self._output_dir = self._config.get_output_dir()
 
         if self._output_dir is not None:
@@ -159,6 +161,7 @@ class MicroManagerCoupling(MicroManager):
         t, n = 0, 0
         sim_states_cp = [None] * self._local_number_of_sims
         mem_usage: list = []
+        mem_usage_n = []
 
         process = Process()
 
@@ -282,8 +285,11 @@ class MicroManagerCoupling(MicroManager):
                 ):
                     self._adaptivity_controller.log_metrics(n)
 
-                if self._output_memory_usage:
+                if self._memory_usage_output_type and (
+                    n % self._memory_usage_output_n == 0 or n == 1
+                ):
                     mem_usage.append(process.memory_info().rss / 1024**2)
+                    mem_usage_n.append(n)
 
                 self._logger.log_info_rank_zero("Time window {} converged.".format(n))
                 first_iteration = (
@@ -293,18 +299,57 @@ class MicroManagerCoupling(MicroManager):
                 # Reset first iteration flag for the next time window
                 first_iteration = True
 
+        if self._memory_usage_output_type and n % self._memory_usage_output_n != 0:
+            mem_usage.append(process.memory_info().rss / 1024**2)
+            mem_usage_n.append(n)
+
         if self._is_adaptivity_on and n % self._adaptivity_output_n != 0:
             self._adaptivity_controller.log_metrics(n)
 
-        if self._output_memory_usage:
+        if (
+            self._memory_usage_output_type == "all"
+            or self._memory_usage_output_type == "local"
+        ):
             mem_usage_output_file = (
-                self._output_dir + "mem_usage_" + str(self._rank) + ".csv"
+                self._output_dir + "peak_mem_usage_" + str(self._rank) + ".csv"
             )
             with open(mem_usage_output_file, mode="w", newline="") as file:
                 writer = csv.writer(file)
                 writer.writerow(["Time window", "RSS (MB)"])
                 for i, rss_mb in enumerate(mem_usage):
-                    writer.writerow([i, rss_mb])
+                    writer.writerow([mem_usage_n[i], rss_mb])
+
+        if (
+            self._memory_usage_output_type == "all"
+            or self._memory_usage_output_type == "global"
+        ):
+            mem_usage = np.array(
+                mem_usage
+            )  # Convert to numpy array for collective Gather operation
+            global_mem_usage = None
+            if self._rank == 0:
+                global_mem_usage = np.empty(
+                    [self._size, len(mem_usage)], dtype=np.float64
+                )
+
+            self._comm.Gather(mem_usage, global_mem_usage, root=0)
+
+            if self._rank == 0:
+                avg_mem_usage = np.zeros((len(mem_usage)))
+                for t in range(len(mem_usage)):
+                    rank_wise_mem_usage = 0
+                    for r in range(self._size):
+                        rank_wise_mem_usage += global_mem_usage[r][t]
+                    avg_mem_usage[t] = rank_wise_mem_usage / self._size
+
+                mem_usage_output_file = (
+                    self._output_dir + "global_avg_peak_mem_usage.csv"
+                )
+                with open(mem_usage_output_file, mode="w", newline="") as file:
+                    writer = csv.writer(file)
+                    writer.writerow(["Time window", "RSS (MB)"])
+                    for i, rss_mb in enumerate(avg_mem_usage):
+                        writer.writerow([mem_usage_n[i], rss_mb])
 
         self._participant.finalize()
 

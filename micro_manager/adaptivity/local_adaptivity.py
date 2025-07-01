@@ -32,7 +32,11 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         super().__init__(configurator, rank, num_sims)
         self._comm = comm
 
-        self._metrics_logger.log_info("n,n active,n inactive")
+        if (
+            self._adaptivity_output_type == "all"
+            or self._adaptivity_output_type == "local"
+        ):
+            self._metrics_logger.log_info("n,n active,n inactive")
 
         self._precice_participant = participant
 
@@ -134,7 +138,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         Log the following metrics:
 
-        Metrics on this rank:
+        Local metrics:
         - Time window at which the metrics are logged
         - Number of active simulations
         - Number of inactive simulations
@@ -158,29 +162,39 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             else:
                 inactive_sims_on_this_rank += 1
 
-        self._metrics_logger.log_info(
-            "{},{},{}".format(
-                n,
-                active_sims_on_this_rank,
-                inactive_sims_on_this_rank,
-            )
-        )
-
-        active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
-        inactive_sims_rankwise = self._comm.gather(inactive_sims_on_this_rank, root=0)
-
-        if self._rank == 0:
-            size = self._comm.Get_size()
-
-            self._global_metrics_logger.log_info_rank_zero(
-                "{},{},{},{},{}".format(
+        if (
+            self._adaptivity_output_type == "all"
+            or self._adaptivity_output_type == "local"
+        ):
+            self._metrics_logger.log_info(
+                "{},{},{}".format(
                     n,
-                    sum(active_sims_rankwise) / size,
-                    sum(inactive_sims_rankwise) / size,
-                    max(active_sims_rankwise),
-                    max(inactive_sims_rankwise),
+                    active_sims_on_this_rank,
+                    inactive_sims_on_this_rank,
                 )
             )
+
+        if (
+            self._adaptivity_output_type == "global"
+            or self._adaptivity_output_type == "all"
+        ):
+            active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
+            inactive_sims_rankwise = self._comm.gather(
+                inactive_sims_on_this_rank, root=0
+            )
+
+            if self._rank == 0:
+                size = self._comm.Get_size()
+
+                self._global_metrics_logger.log_info_rank_zero(
+                    "{},{},{},{},{}".format(
+                        n,
+                        sum(active_sims_rankwise) / size,
+                        sum(inactive_sims_rankwise) / size,
+                        max(active_sims_rankwise),
+                        max(inactive_sims_rankwise),
+                    )
+                )
 
     def _update_inactive_sims(self, micro_sims: list) -> None:
         """

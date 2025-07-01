@@ -38,12 +38,13 @@ class Config:
         self._diagnostics_data_names = None
 
         self._output_micro_sim_time = False
-        self._output_memory_usage = False
+        self._mem_usage_output_type = ""
+        self._mem_usage_output_n = 1
 
         self._interpolate_crash = False
 
         self._adaptivity = False
-        self._adaptivity_type = "local"
+        self._adaptivity_type = ""
         self._data_for_adaptivity = dict()
         self._adaptivity_n = 1
         self._adaptivity_history_param = 0.5
@@ -51,6 +52,7 @@ class Config:
         self._adaptivity_refining_constant = 0.5
         self._adaptivity_every_implicit_iteration = False
         self._adaptivity_similarity_measure = "L1"
+        self._adaptivity_output_type = ""
         self._adaptivity_output_n = 1
 
         self._adaptivity_is_load_balancing = False
@@ -113,23 +115,39 @@ class Config:
         )
 
         try:
-            self._output_dir = self._data["output_dir"]
-            self._logger.log_info_rank_zero("Log output directory: " + self._output_dir)
+            self._output_dir = self._data["output_directory"]
+            self._logger.log_info_rank_zero(
+                "Logging and metrics output directory: " + self._output_dir
+            )
         except BaseException:
             self._logger.log_info_rank_zero(
                 "No output directory provided. Output (including logging) will be saved in the current working directory."
             )
 
         try:
-            output_mem_usage = self._data["output_memory_usage"]
-            if output_mem_usage == "True":
-                self._output_memory_usage = True
-                self._logger.log_info_rank_zero(
-                    "Micro Manager will output RSS in every time window."
+            self._mem_usage_output_type = self._data["memory_usage_output_type"]
+            if self._mem_usage_output_type not in ["all", "local", "global"]:
+                raise Exception(
+                    "Memory usage output can be either 'all', 'local' or 'global'."
                 )
+            self._logger.log_info_rank_zero(
+                "Memory usage output type: " + self._mem_usage_output_type
+            )
         except BaseException:
             self._logger.log_info_rank_zero(
                 "Micro Manager will not output memory usage."
+            )
+
+        try:
+            self._mem_usage_output_n = self._data["memory_usage_output_n"]
+            self._logger.log_info_rank_zero(
+                "Memory usage will be output every "
+                + str(self._mem_usage_output_n)
+                + " time windows."
+            )
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "No output interval for memory usage output provided. Memory usage will be output every time window."
             )
 
         try:
@@ -275,13 +293,30 @@ class Config:
                 ]["adaptivity_every_n_time_windows"]
                 self._logger.log_info_rank_zero(
                     "Adaptivity will be computed every "
-                    + str(self._adaptivity_output_n)
+                    + str(self._adaptivity_n)
                     + " time windows."
                 )
             except BaseException:
                 self._logger.log_info_rank_zero(
                     "No interval for adaptivity computation provided. Adaptivity will be computed in every time window."
                 )
+
+            try:
+                self._adaptivity_output_type = self._data["simulation_params"][
+                    "adaptivity_settings"
+                ]["output_type"]
+                if self._adaptivity_output_type not in ["all", "local", "global"]:
+                    raise Exception(
+                        "Adaptivity output type can be either 'all', 'local' or 'global'."
+                    )
+                self._logger.log_info_rank_zero(
+                    "Adaptivity output type: " + self._adaptivity_output_type
+                )
+            except BaseException:
+                self._logger.log_info_rank_zero(
+                    "No adaptivity output type provided. Defaulting to 'local'."
+                )
+                self._adaptivity_output_type = "local"
 
             try:
                 self._adaptivity_output_n = self._data["simulation_params"][
@@ -660,6 +695,17 @@ class Config:
         """
         return self._adaptivity_n
 
+    def get_adaptivity_output_type(self):
+        """
+        Get the type of adaptivity output.
+
+        Returns
+        -------
+        adaptivity_output_type : str
+            Type of adaptivity output, can be "all", "local" or "global".
+        """
+        return self._adaptivity_output_type
+
     def get_adaptivity_output_n(self):
         """
         Get the output frequency of adaptivity metrics.
@@ -864,13 +910,24 @@ class Config:
         """
         return self._output_dir
 
-    def output_memory_usage(self):
+    def get_memory_usage_output_type(self):
         """
-        Check if memory usage is to be output.
+        Get the type of memory usage output.
 
         Returns
         -------
-        output_memory_usage : bool
-            True if memory usage is to be output, False otherwise.
+        mem_usage_output_type : str
+            Type of adaptivity output, can be "all", "local" or "global".
         """
-        return self._output_memory_usage
+        return self._mem_usage_output_type
+
+    def get_memory_usage_output_n(self):
+        """
+        Get the output frequency of memory usage.
+
+        Returns
+        -------
+        mem_usage_output_n : int
+            Output frequency of memory usage, so output every N timesteps
+        """
+        return self._mem_usage_output_n
