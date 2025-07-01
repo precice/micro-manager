@@ -133,9 +133,7 @@ class Config:
             )
 
         try:
-            self._mem_usage_output_n = self._data["simulation_params"][
-                "memory_usage_output_n"
-            ]
+            self._mem_usage_output_n = self._data["memory_usage_output_n"]
             self._logger.log_info_rank_zero(
                 "Memory usage will be output every "
                 + str(self._mem_usage_output_n)

@@ -154,6 +154,7 @@ class MicroManagerCoupling(MicroManager):
         t, n = 0, 0
         sim_states_cp = [None] * self._local_number_of_sims
         mem_usage: list = []
+        mem_usage_n = []
 
         process = Process()
 
@@ -250,16 +251,20 @@ class MicroManagerCoupling(MicroManager):
                 ):
                     self._adaptivity_controller.log_metrics(n)
 
-                if (
-                    self._memory_usage_output_type
-                    and n % self._memory_usage_output_n == 0
+                if self._memory_usage_output_type and (
+                    n % self._memory_usage_output_n == 0 or n == 1
                 ):
                     mem_usage.append(process.memory_info().rss / 1024**2)
+                    mem_usage_n.append(n)
 
                 self._logger.log_info_rank_zero("Time window {} converged.".format(n))
 
                 # Reset first iteration flag for the next time window
                 first_iteration = True
+
+        if self._memory_usage_output_type and n % self._memory_usage_output_n != 0:
+            mem_usage.append(process.memory_info().rss / 1024**2)
+            mem_usage_n.append(n)
 
         if self._is_adaptivity_on and n % self._adaptivity_output_n != 0:
             self._adaptivity_controller.log_metrics(n)
@@ -275,7 +280,7 @@ class MicroManagerCoupling(MicroManager):
                 writer = csv.writer(file)
                 writer.writerow(["Time window", "RSS (MB)"])
                 for i, rss_mb in enumerate(mem_usage):
-                    writer.writerow([i, rss_mb])
+                    writer.writerow([mem_usage_n[i], rss_mb])
 
         if (
             self._memory_usage_output_type == "all"
@@ -293,7 +298,6 @@ class MicroManagerCoupling(MicroManager):
             self._comm.Gather(mem_usage, global_mem_usage, root=0)
 
             if self._rank == 0:
-                print("global_mem_usage: {}".format(global_mem_usage))
                 avg_mem_usage = np.zeros((len(mem_usage)))
                 for t in range(len(mem_usage)):
                     rank_wise_mem_usage = 0
@@ -308,7 +312,7 @@ class MicroManagerCoupling(MicroManager):
                     writer = csv.writer(file)
                     writer.writerow(["Time window", "RSS (MB)"])
                     for i, rss_mb in enumerate(avg_mem_usage):
-                        writer.writerow([i, rss_mb])
+                        writer.writerow([mem_usage_n[i], rss_mb])
 
         self._participant.finalize()
 
