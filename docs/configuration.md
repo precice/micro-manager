@@ -35,7 +35,7 @@ This example configuration file is in [`examples/micro-manager-config.json`](htt
 Parameter | Description
 --- | ---
 `micro_file_name` | Path to the file containing the Python importable micro simulation class. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.
-`output_directory` | Output [log](tooling-micro-manager-logging.html) directory.
+`output_directory` | Path to output directory for logging and performance metrics. Directory is created if not existing already.
 `memory_usage_output_type` | Set to either `local`, `global`, or `all`. `local` outputs rank-wise peak memory usage. `global` outputs global averaged peak memory usage. `all` outputs both local and global levels. All output is to a CSV file with the peak memory usage (RSS) in every time window, in MBs.
 `memory_usage_output_n` | Frequency of output of memory usage (integer which is number of time windows).
 
