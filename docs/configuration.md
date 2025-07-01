@@ -39,7 +39,7 @@ Parameter | Description
 `memory_usage_output_type` | Set to either `local`, `global`, or `all`. `local` outputs rank-wise peak memory usage. `global` outputs global averaged peak memory usage. `all` outputs both local and global levels. All output is to a CSV file with the peak memory usage (RSS) in every time window, in MBs.
 `memory_usage_output_n` | Frequency of output of memory usage (integer which is number of time windows).
 
-Apart from the base settings, there are three main sections in the configuration file, the `coupling_params`, the `simulation_params` and the optional `diagnostics`.
+Apart from the base settings, there are three main sections in the configuration file, [coupling parameters](#coupling-parameters), [simulation parameters](#simulation-parameters), and [diagnostics](#diagnostics).
 
 ## Coupling Parameters
 
