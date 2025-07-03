@@ -310,7 +310,6 @@ class MicroManagerCoupling(MicroManager):
                 mem_usage_output_file = (
                     self._output_dir + "global_avg_peak_mem_usage.csv"
                 )
-                print("MEM USAGE OUTPUT FILE: ", mem_usage_output_file)
                 with open(mem_usage_output_file, mode="w", newline="") as file:
                     writer = csv.writer(file)
                     writer.writerow(["Time window", "RSS (MB)"])
