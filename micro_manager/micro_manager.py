@@ -23,6 +23,7 @@ import numpy as np
 import time
 from psutil import Process
 import csv
+import subprocess
 
 import precice
 
@@ -69,6 +70,7 @@ class MicroManagerCoupling(MicroManager):
 
         if self._output_dir is not None:
             self._output_dir = os.path.abspath(self._output_dir) + "/"
+            subprocess.run(["mkdir", "-p", self._output_dir])  # Create output directory
         else:
             self._output_dir = os.path.abspath(os.getcwd()) + "/"
 
@@ -308,6 +310,7 @@ class MicroManagerCoupling(MicroManager):
                 mem_usage_output_file = (
                     self._output_dir + "global_avg_peak_mem_usage.csv"
                 )
+                print("MEM USAGE OUTPUT FILE: ", mem_usage_output_file)
                 with open(mem_usage_output_file, mode="w", newline="") as file:
                     writer = csv.writer(file)
                     writer.writerow(["Time window", "RSS (MB)"])
