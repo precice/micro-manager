@@ -4,7 +4,6 @@ in a local way. If the Micro Manager is run in parallel, simulations on one rank
 each other. A global comparison is not done.
 """
 import numpy as np
-import importlib
 from copy import deepcopy
 
 from .adaptivity import AdaptivityCalculator

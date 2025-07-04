@@ -23,6 +23,7 @@ import numpy as np
 import time
 from psutil import Process
 import csv
+import subprocess
 
 import precice
 
@@ -69,6 +70,7 @@ class MicroManagerCoupling(MicroManager):
 
         if self._output_dir is not None:
             self._output_dir = os.path.abspath(self._output_dir) + "/"
+            subprocess.run(["mkdir", "-p", self._output_dir])  # Create output directory
         else:
             self._output_dir = os.path.abspath(os.getcwd()) + "/"
 
