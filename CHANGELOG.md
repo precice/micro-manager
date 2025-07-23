@@ -2,6 +2,7 @@
 
 ## latest
 
+- Use booleans instead of strings `"True"` and `"False"` in the configuration https://github.com/precice/micro-manager/pull/175
 - Renaming and using a newer workflow for publishing according to the trusted publishing in PyPI https://github.com/precice/micro-manager/pull/173
 - Add config options for adaptivity metrics and memory usage output to allow for different levels https://github.com/precice/micro-manager/pull/172
 - Fix bug in adaptivity computation when an active simulation with associations is deactivated https://github.com/precice/micro-manager/pull/171
