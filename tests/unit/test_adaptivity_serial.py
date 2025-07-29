@@ -7,7 +7,6 @@ from mpi4py import MPI
 
 from micro_manager.adaptivity.adaptivity import AdaptivityCalculator
 from micro_manager.adaptivity.local_adaptivity import LocalAdaptivityCalculator
-from micro_manager.config import Config
 
 
 class MicroSimulation:

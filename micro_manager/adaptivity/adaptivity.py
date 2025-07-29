@@ -52,7 +52,7 @@ class AdaptivityCalculator:
         self._MPI_local_rank = node_comm.Get_rank()
 
         # Size of data type
-        itemsize = MPI.DOUBLE.Get_size()
+        itemsize = MPI.FLOAT.Get_size()
 
         if (
             self._MPI_local_rank == 0
@@ -63,14 +63,18 @@ class AdaptivityCalculator:
 
         win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=node_comm)
 
-        similarity_dist_buffer, itemsize = win.Shared_query(0)
+        # Get the buffer on the local rank 0
+        buffer, itemsize = win.Shared_query(0)
 
-        similarity_dist_buffer = np.array(similarity_dist_buffer, dtype="B", copy=False)
+        assert itemsize == MPI.FLOAT.Get_size(), "Item size mismatch in shared memory."
+
+        # Create a numpy array from the buffer
+        array_buffer = np.array(buffer, dtype="B", copy=False)
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
-        self._similarity_dists = np.ndarray(
-            buffer=similarity_dist_buffer, dtype="d", shape=(nsims, nsims)
+        self._similarity_dists: np.ndarray = np.ndarray(
+            buffer=array_buffer, dtype="f", shape=(nsims, nsims)
         )
 
         if (
