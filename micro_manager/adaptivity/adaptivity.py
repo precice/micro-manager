@@ -6,13 +6,14 @@ from math import exp
 from typing import Callable
 from warnings import warn
 import importlib
+from mpi4py import MPI
 from micro_manager.tools.logging_wrapper import Logger
 
 import numpy as np
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, rank, nsims) -> None:
+    def __init__(self, configurator, comm_world, rank, nsims) -> None:
         """
         Class constructor.
 
@@ -20,6 +21,8 @@ class AdaptivityCalculator:
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
+        comm_world : MPI communicator
+            MPI communicator COMM_WORLD.
         rank : int
             Rank of the MPI communicator.
         nsims : int
@@ -44,9 +47,36 @@ class AdaptivityCalculator:
 
         self._rank = rank
 
+        node_comm = comm_world.Split_type(MPI.COMM_TYPE_SHARED)
+
+        self._MPI_local_rank = node_comm.Get_rank()
+
+        # Size of data type
+        itemsize = MPI.DOUBLE.Get_size()
+
+        if (
+            self._MPI_local_rank == 0
+        ):  # Only the first rank in the node allocates the shared memory
+            nbytes = nsims * nsims * itemsize
+        else:
+            nbytes = 0
+
+        win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=node_comm)
+
+        similarity_dist_buffer, itemsize = win.Shared_query(0)
+
+        similarity_dist_buffer = np.array(similarity_dist_buffer, dtype="B", copy=False)
+
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
-        self._similarity_dists = np.zeros((nsims, nsims))
+        self._similarity_dists = np.ndarray(
+            buffer=similarity_dist_buffer, dtype="d", shape=(nsims, nsims)
+        )
+
+        if (
+            self._MPI_local_rank == 0
+        ):  # Only the first rank in the node initializes the shared memory
+            self._similarity_dists.fill(0.0)
 
         self._max_similarity_dist = 0.0
 
