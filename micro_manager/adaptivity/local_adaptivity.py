@@ -78,6 +78,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         self._comm_world.Barrier()  # Wait for the similarity distances to be updated
 
+        self._max_similarity_dist = np.amax(self._similarity_dists)
+
         self._update_active_sims()
 
         self._update_inactive_sims(micro_sims)

@@ -158,6 +158,7 @@ class TestGlobalAdaptivity(TestCase):
         self.assertTrue(
             np.array_equal(expected_is_sim_active, adaptivity_controller._is_sim_active)
         )
+
         self.assertTrue(
             np.array_equal(
                 expected_sim_is_associated_to,

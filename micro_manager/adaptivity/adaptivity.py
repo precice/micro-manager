@@ -47,9 +47,9 @@ class AdaptivityCalculator:
 
         self._rank = rank
 
-        node_comm = comm_world.Split_type(MPI.COMM_TYPE_SHARED)
+        comm_node = comm_world.Split_type(MPI.COMM_TYPE_SHARED)
 
-        self._MPI_local_rank = node_comm.Get_rank()
+        self._MPI_local_rank = comm_node.Get_rank()
 
         # Size of data type
         itemsize = MPI.FLOAT.Get_size()
@@ -61,7 +61,7 @@ class AdaptivityCalculator:
         else:
             nbytes = 0
 
-        win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=node_comm)
+        win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=comm_node)
 
         # Get the buffer on the local rank 0
         buffer, itemsize = win.Shared_query(0)
@@ -77,10 +77,8 @@ class AdaptivityCalculator:
             buffer=array_buffer, dtype="f", shape=(nsims, nsims)
         )
 
-        if (
-            self._MPI_local_rank == 0
-        ):  # Only the first rank in the node initializes the shared memory
-            self._similarity_dists.fill(0.0)
+        # Initialize the similarity distances to zero
+        self._similarity_dists.fill(0.0)
 
         self._max_similarity_dist = 0.0
 
@@ -144,7 +142,7 @@ class AdaptivityCalculator:
         data : dict
             Data to be used in similarity distance calculation
         """
-        self._similarity_dists = exp(-self._hist_param * dt) * self._similarity_dists
+        self._similarity_dists *= exp(-self._hist_param * dt)
 
         for name in data.keys():
             data_vals = np.array(data[name])
@@ -155,8 +153,6 @@ class AdaptivityCalculator:
                 data_vals = np.expand_dims(data_vals, axis=1)
 
             self._similarity_dists += dt * self._similarity_measure(data_vals)
-
-        self._max_similarity_dist = np.amax(self._similarity_dists)
 
     def _update_active_sims(self) -> None:
         """
