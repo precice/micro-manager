@@ -109,12 +109,17 @@ class TestLocalAdaptivity(TestCase):
 
         adaptivity_controller._similarity_dists = self._similarity_dists
 
+        old_similarity_dists = adaptivity_controller._similarity_dists.copy()
+
         adaptivity_controller._update_similarity_dists(self._dt, adaptivity_data)
 
         expected_similarity_dists = (
-            exp(-adaptivity_controller._hist_param * self._dt) * self._similarity_dists
+            exp(-adaptivity_controller._hist_param * self._dt) * old_similarity_dists
             + self._dt * self._data_diff
         )
+
+        print("Expected similarity distances:\n", expected_similarity_dists)
+        print("Actual similarity distances:\n", adaptivity_controller._similarity_dists)
 
         self.assertTrue(
             np.array_equal(

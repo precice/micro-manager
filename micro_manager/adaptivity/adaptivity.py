@@ -142,6 +142,7 @@ class AdaptivityCalculator:
         data : dict
             Data to be used in similarity distance calculation
         """
+        # Update similarity distances without copying
         self._similarity_dists *= exp(-self._hist_param * dt)
 
         for name in data.keys():
