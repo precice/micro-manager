@@ -66,7 +66,8 @@ class AdaptivityCalculator:
         # Get the buffer on the local rank 0
         buffer, itemsize = win.Shared_query(0)
 
-        assert itemsize == MPI.FLOAT.Get_size(), "Item size mismatch in shared memory."
+        if itemsize != MPI.FLOAT.Get_size():
+            raise RuntimeError("Item size mismatch in shared memory.")
 
         # Create a numpy array from the buffer
         array_buffer = np.array(buffer, dtype="B", copy=False)
@@ -77,8 +78,9 @@ class AdaptivityCalculator:
             buffer=array_buffer, dtype="f", shape=(nsims, nsims)
         )
 
-        # Initialize the similarity distances to zero
-        self._similarity_dists.fill(0.0)
+        if self._MPI_local_rank == 0:
+            # Initialize the similarity distances to zero
+            self._similarity_dists.fill(0.0)
 
         self._max_similarity_dist = 0.0
 
