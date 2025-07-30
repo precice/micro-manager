@@ -44,7 +44,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         comm_world : MPI.COMM_WORLD
             Base global communicator of MPI.
         """
-        super().__init__(configurator, comm_world, rank, global_number_of_sims)
+        super().__init__(configurator, rank, global_number_of_sims)
         self._global_number_of_sims = global_number_of_sims
         self._global_ids = global_ids
         self._comm_world = comm_world
@@ -70,6 +70,45 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             or self._adaptivity_output_type == "local"
         ):
             self._metrics_logger.log_info("n,n active,n inactive,assoc ranks")
+
+        comm_node = comm_world.Split_type(MPI.COMM_TYPE_SHARED)
+
+        self._MPI_local_rank = comm_node.Get_rank()
+
+        # Size of data type
+        itemsize = MPI.FLOAT.Get_size()
+
+        if (
+            self._MPI_local_rank == 0
+        ):  # Only the first rank in the node allocates the shared memory
+            nbytes = (
+                self._global_number_of_sims * self._global_number_of_sims * itemsize
+            )
+        else:
+            nbytes = 0
+
+        win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=comm_node)
+
+        # Get the buffer on the local rank 0
+        buffer, itemsize = win.Shared_query(0)
+
+        if itemsize != MPI.FLOAT.Get_size():
+            raise RuntimeError("Item size mismatch in shared memory.")
+
+        # Create a numpy array from the buffer
+        array_buffer = np.array(buffer, dtype="B", copy=False)
+
+        # similarity_dists: 2D array having similarity distances between each micro simulation pair
+        # This matrix is modified in place via the function update_similarity_dists
+        self._similarity_dists: np.ndarray = np.ndarray(
+            buffer=array_buffer,
+            dtype="f",
+            shape=(self._global_number_of_sims, self._global_number_of_sims),
+        )
+
+        if self._MPI_local_rank == 0:
+            # Initialize the similarity distances to zero
+            self._similarity_dists.fill(0.0)
 
     def compute_adaptivity(
         self,

@@ -28,7 +28,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         comm_world : MPI.COMM_WORLD
             Global communicator of MPI.
         """
-        super().__init__(configurator, comm_world, rank, num_sims)
+        super().__init__(configurator, rank, num_sims)
         self._comm_world = comm_world
 
         if (
@@ -38,6 +38,10 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             self._metrics_logger.log_info("n,n active,n inactive")
 
         self._precice_participant = participant
+
+        # similarity_dists: 2D array having similarity distances between each micro simulation pair
+        # This matrix is modified in place via the function update_similarity_dists
+        self._similarity_dists = np.zeros((num_sims, num_sims))
 
     def compute_adaptivity(
         self,
@@ -71,12 +75,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                     )
                 )
 
-        if (
-            self._MPI_local_rank == 0
-        ):  # Only the first rank in the node updates the similarity distances
-            self._update_similarity_dists(dt, data_for_adaptivity)
-
-        self._comm_world.Barrier()  # Wait for the similarity distances to be updated
+        self._update_similarity_dists(dt, data_for_adaptivity)
 
         self._max_similarity_dist = np.amax(self._similarity_dists)
 
