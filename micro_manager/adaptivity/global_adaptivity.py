@@ -71,9 +71,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         ):
             self._metrics_logger.log_info("n,n active,n inactive,assoc ranks")
 
-        comm_node = comm_world.Split_type(MPI.COMM_TYPE_SHARED)
+        self._comm_node = comm_world.Split_type(MPI.COMM_TYPE_SHARED)
 
-        self._MPI_local_rank = comm_node.Get_rank()
+        self._MPI_local_rank = self._comm_node.Get_rank()
 
         # Size of data type
         itemsize = MPI.FLOAT.Get_size()
@@ -87,7 +87,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         else:
             nbytes = 0
 
-        win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=comm_node)
+        win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=self._comm_node)
 
         # Get the buffer on the local rank 0
         buffer, itemsize = win.Shared_query(0)
@@ -151,7 +151,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         ):  # Only the first rank in the node updates the similarity distances
             self._update_similarity_dists(dt, global_data_for_adaptivity)
 
-        self._comm_world.Barrier()  # Wait for the similarity distances to be updated
+        self._comm_node.Barrier()  # Wait for the similarity distances to be updated on all ranks of the node
 
         self._max_similarity_dist = np.amax(self._similarity_dists)
 
