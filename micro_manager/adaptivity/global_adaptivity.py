@@ -107,7 +107,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             data_as_list = self._comm.allgather(data_for_adaptivity[name])
             global_data_for_adaptivity[name] = np.concatenate((data_as_list[:]), axis=0)
 
-        self._update_similarity_dists(dt, global_data_for_adaptivity)
+        self._dt = dt
+        self._data_for_adaptivity = global_data_for_adaptivity
+
+        self._max_similarity_dist = self._get_max_similarity_dist()
 
         self._update_active_sims()
 

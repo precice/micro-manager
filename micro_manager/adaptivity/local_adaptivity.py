@@ -71,7 +71,10 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                     )
                 )
 
-        self._update_similarity_dists(dt, data_for_adaptivity)
+        self._dt = dt
+        self._data_for_adaptivity = data_for_adaptivity
+
+        self._max_similarity_dist = self._get_max_similarity_dist()
 
         self._update_active_sims()
 
