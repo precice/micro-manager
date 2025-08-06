@@ -13,17 +13,18 @@ import numpy as np
 from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
+from ..micro_simulation import create_simulation_class
 
 
 class GlobalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(
         self,
         configurator,
-        logger,
-        global_number_of_sims: float,
+        global_number_of_sims: int,
         global_ids: list,
+        participant,
         rank: int,
-        comm,
+        comm_world,
     ) -> None:
         """
         Class constructor.
@@ -32,21 +33,21 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
-        logger : object of logging
-            Logger defined from the standard package logging
-        global_number_of_sims : float
-            List of booleans. True if simulation is on this rank, False otherwise.
+        global_number_of_sims : int
+            Total number of simulations in the macro-micro coupled problem.
         global_ids : list
             List of global IDs of simulations living on this rank.
+        participant : object of class Participant
+            Object of the class Participant using which the preCICE API is called.
         rank : int
             MPI rank.
-        comm : MPI.COMM_WORLD
-            Global communicator of MPI.
+        comm_world : MPI.COMM_WORLD
+            Base global communicator of MPI.
         """
-        super().__init__(configurator, logger)
+        super().__init__(configurator, rank, global_number_of_sims)
+        self._global_number_of_sims = global_number_of_sims
         self._global_ids = global_ids
-        self._comm = comm
-        self._rank = rank
+        self._comm_world = comm_world
 
         local_number_of_sims = len(global_ids)
 
@@ -55,26 +56,66 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         for i in range(local_number_of_sims):
             micro_sims_on_this_rank[i] = self._rank
 
-        self._rank_of_sim = np.zeros(
-            global_number_of_sims, dtype=np.intc
-        )  # DECLARATION
-
-        self._comm.Allgatherv(micro_sims_on_this_rank, self._rank_of_sim)
+        rank_of_sim = self._get_ranks_of_sims()
 
         self._is_sim_on_this_rank = [False] * global_number_of_sims  # DECLARATION
         for i in range(global_number_of_sims):
-            if self._rank_of_sim[i] == self._rank:
+            if rank_of_sim[i] == self._rank:
                 self._is_sim_on_this_rank[i] = True
+
+        self._precice_participant = participant
+
+        if (
+            self._adaptivity_output_type == "all"
+            or self._adaptivity_output_type == "local"
+        ):
+            self._metrics_logger.log_info("n,n active,n inactive,assoc ranks")
+
+        self._comm_node = comm_world.Split_type(MPI.COMM_TYPE_SHARED)
+
+        self._MPI_local_rank = self._comm_node.Get_rank()
+
+        # Size of data type
+        itemsize = MPI.FLOAT.Get_size()
+
+        if (
+            self._MPI_local_rank == 0
+        ):  # Only the first rank in the node allocates the shared memory
+            nbytes = (
+                self._global_number_of_sims * self._global_number_of_sims * itemsize
+            )
+        else:
+            nbytes = 0
+
+        win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=self._comm_node)
+
+        # Get the buffer on the local rank 0
+        buffer, itemsize = win.Shared_query(0)
+
+        if itemsize != MPI.FLOAT.Get_size():
+            raise RuntimeError("Item size mismatch in shared memory.")
+
+        # Create a numpy array from the buffer
+        array_buffer = np.array(buffer, dtype="B", copy=False)
+
+        # similarity_dists: 2D array having similarity distances between each micro simulation pair
+        # This matrix is modified in place via the function update_similarity_dists
+        self._similarity_dists: np.ndarray = np.ndarray(
+            buffer=array_buffer,
+            dtype="f",
+            shape=(self._global_number_of_sims, self._global_number_of_sims),
+        )
+
+        if self._MPI_local_rank == 0:
+            # Initialize the similarity distances to zero
+            self._similarity_dists.fill(0.0)
 
     def compute_adaptivity(
         self,
         dt: float,
         micro_sims: list,
-        similarity_dists_nm1: np.ndarray,
-        is_sim_active_nm1: np.ndarray,
-        sim_is_associated_to_nm1: np.ndarray,
         data_for_adaptivity: dict,
-    ) -> tuple:
+    ) -> None:
         """
         Compute adaptivity globally based on similarity distances and micro simulation states
 
@@ -84,22 +125,13 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Current time step of the macro-micro coupled problem
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
-        similarity_dists_nm1 : numpy array
-            2D array having similarity distances between each micro simulation pair
-        is_sim_active_nm1 : numpy array
-            1D array having state (active or inactive) of each micro simulation on this rank
-        sim_is_associated_to_nm1 : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
         data_for_adaptivity : dict
             Dictionary with keys as names of data to be used in the similarity calculation, and values as the respective data for the micro simulations
-
-        Results
-        -------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation
         """
+        self._precice_participant.start_profiling_section(
+            "global_adaptivity.compute_adaptivity"
+        )
+
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
                 raise ValueError(
@@ -111,12 +143,13 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         # Gather adaptivity data from all ranks
         global_data_for_adaptivity = dict()
         for name in data_for_adaptivity.keys():
-            data_as_list = self._comm.allgather(data_for_adaptivity[name])
+            data_as_list = self._comm_world.allgather(data_for_adaptivity[name])
             global_data_for_adaptivity[name] = np.concatenate((data_as_list[:]), axis=0)
 
-        similarity_dists = self._get_similarity_dists(
-            dt, similarity_dists_nm1, global_data_for_adaptivity
-        )
+        if (
+            self._MPI_local_rank == 0
+        ):  # Only the first rank in the node updates the similarity distances
+            self._update_similarity_dists(dt, global_data_for_adaptivity)
 
         is_sim_active_dyn, refine_const_dyn = self._update_active_sims(similarity_dists, is_sim_active_nm1, True)
         is_sim_active_dyn, sim_is_associated_to_dyn = self._update_inactive_sims(
@@ -136,28 +169,149 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             sim_is_associated_to = sim_is_associated_to_dyn
             self._refine_const = refine_const_dyn
 
-        sim_is_associated_to = self._associate_inactive_to_active(
-            similarity_dists, is_sim_active, sim_is_associated_to
+        self._comm_node.Barrier()  # Wait for the similarity distances to be updated on all ranks of the node
+
+        self._max_similarity_dist = np.amax(self._similarity_dists)
+
+        self._update_active_sims()
+
+        self._update_inactive_sims(micro_sims)
+
+        self._associate_inactive_to_active()
+
+        self._precice_participant.stop_last_profiling_section()
+
+    def get_active_sim_ids(self) -> np.ndarray:
+        """
+        Get the ids of active simulations.
+
+        Returns
+        -------
+        numpy array
+            1D array of active simulation ids
+        """
+        return np.where(
+            self._is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1]
+        )[0]
+
+    def get_inactive_sim_ids(self) -> np.ndarray:
+        """
+        Get the ids of inactive simulations.
+
+        Returns
+        -------
+        numpy array
+            1D array of inactive simulation ids
+        """
+        return np.where(
+            self._is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1] == False
+        )[0]
+
+    def get_full_field_micro_output(self, micro_output: list) -> list:
+        """
+        Get the full field micro output from active simulations to inactive simulations.
+
+        Parameters
+        ----------
+        micro_output : list
+            List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
+
+        Returns
+        -------
+        micro_output : list
+            List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
+        """
+        self._precice_participant.start_profiling_section(
+            "global_adaptivity.get_full_field_micro_output"
         )
 
-        self._logger.info(
-            "{} active simulations, {} inactive simulations".format(
-                np.count_nonzero(
-                    is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1]
-                ),
-                np.count_nonzero(
-                    is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1]
-                    == False
-                ),
+        micro_sims_output = deepcopy(micro_output)
+        self._communicate_micro_output(micro_sims_output)
+
+        self._precice_participant.stop_last_profiling_section()
+
+        return micro_sims_output
+
+    def log_metrics(self, n: int) -> None:
+        """
+        Log the following metrics:
+
+        Local metrics:
+        - Time window at which the metrics are logged
+        - Number of active simulations
+        - Number of inactive simulations
+        - Ranks to which inactive simulations on this rank are associated
+
+        Global metrics:
+        - Time window at which the metrics are logged
+        - Average number of active simulations
+        - Average number of inactive simulations
+        - Maximum number of active simulations
+        - Maximum number of inactive simulations
+
+        Parameters
+        ----------
+        n : int
+            Time step count at which the metrics are logged
+        """
+        active_sims_on_this_rank = 0
+        inactive_sims_on_this_rank = 0
+        for global_id in self._global_ids:
+            if self._is_sim_active[global_id]:
+                active_sims_on_this_rank += 1
+            else:
+                inactive_sims_on_this_rank += 1
+
+        if (
+            self._adaptivity_output_type == "all"
+            or self._adaptivity_output_type == "local"
+        ):
+            ranks_of_sims = self._get_ranks_of_sims()
+
+            assoc_ranks = []  # Ranks to which inactive sims on this rank are associated
+            for global_id in self._global_ids:
+                if not self._is_sim_active[global_id]:
+                    assoc_rank = int(
+                        ranks_of_sims[self._sim_is_associated_to[global_id]]
+                    )
+                    if not assoc_rank in assoc_ranks:
+                        assoc_ranks.append(assoc_rank)
+
+            self._metrics_logger.log_info(
+                "{},{},{},{}".format(
+                    n,
+                    active_sims_on_this_rank,
+                    inactive_sims_on_this_rank,
+                    assoc_ranks,
+                )
             )
-        )
 
-        return similarity_dists, is_sim_active, sim_is_associated_to
+        if (
+            self._adaptivity_output_type == "all"
+            or self._adaptivity_output_type == "global"
+        ):
+            active_sims_rankwise = self._comm_world.gather(
+                active_sims_on_this_rank, root=0
+            )
+            inactive_sims_rankwise = self._comm_world.gather(
+                inactive_sims_on_this_rank, root=0
+            )
 
-    def communicate_micro_output(
+            if self._rank == 0:
+                size = self._comm_world.Get_size()
+
+                self._global_metrics_logger.log_info(
+                    "{},{},{},{},{}".format(
+                        n,
+                        sum(active_sims_rankwise) / size,
+                        sum(inactive_sims_rankwise) / size,
+                        max(active_sims_rankwise),
+                        max(inactive_sims_rankwise),
+                    )
+                )
+
+    def _communicate_micro_output(
         self,
-        is_sim_active: np.ndarray,
-        sim_is_associated_to: np.ndarray,
         micro_output: list,
     ) -> None:
         """
@@ -166,20 +320,13 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         Parameters
         ----------
-        micro_sims : list
-            List of objects of class MicroProblem, which are the micro simulations
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation on this rank
-        sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have -2
         micro_output : list
             List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
         """
-        inactive_local_ids = np.where(
-            is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1] == False
-        )[0]
 
-        local_sim_is_associated_to = sim_is_associated_to[
+        inactive_local_ids = self.get_inactive_sim_ids()
+
+        local_sim_is_associated_to = self._sim_is_associated_to[
             self._global_ids[0] : self._global_ids[-1] + 1
         ]
 
@@ -211,57 +358,37 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             for local_id in active_to_inactive_map[assoc_active_ids[count]]:
                 micro_output[local_id] = deepcopy(output)
 
-    def _update_inactive_sims(
-        self,
-        similarity_dists: np.ndarray,
-        is_sim_active: np.ndarray,
-        sim_is_associated_to: np.ndarray,
-        micro_sims: list,
-        refine_const: float,
-    ) -> tuple:
+    def _update_inactive_sims(self, micro_sims: list) -> None:
         """
-        Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
-        and if it is not similar to any of them, it is activated.
+        Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones and if it is not similar to any of them, it is activated.
+
+        If a micro simulation which has been inactive since the start of the simulation is activated for the
+        first time, the simulation object is created and initialized.
 
         Parameters
         ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation
-        sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
-
-        Returns
-        -------
-        _is_sim_active : numpy array
-            Updated 1D array having state (active or inactive) of each micro simulation
-        _sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
         """
-        self._ref_tol = refine_const * np.amax(similarity_dists)
+        self._ref_tol = refine_const * self._max_similarity_dist
 
-        _is_sim_active = np.copy(
-            is_sim_active
-        )  # Input is_sim_active is not longer used after this point
-        _sim_is_associated_to = np.copy(sim_is_associated_to)
-        _sim_is_associated_to_updated = np.copy(sim_is_associated_to)
+        _sim_is_associated_to_updated = np.copy(self._sim_is_associated_to)
 
         # Check inactive simulations for activation and collect IDs of those to be activated
         to_be_activated_ids = []  # Global IDs to be activated
-        for i in range(_is_sim_active.size):
-            if not _is_sim_active[i]:  # if id is inactive
-                if self._check_for_activation(i, similarity_dists, _is_sim_active):
-                    _is_sim_active[i] = True
+        for i in range(self._is_sim_active.size):
+            if not self._is_sim_active[i]:  # if id is inactive
+                if self._check_for_activation(i, self._is_sim_active):
+                    self._is_sim_active[i] = True
                     _sim_is_associated_to_updated[
                         i
                     ] = -2  # Active sim cannot have an associated sim
-                    if self._is_sim_on_this_rank[i]:
+                    if self._is_sim_on_this_rank[i] and i not in self._just_deactivated:
                         to_be_activated_ids.append(i)
 
-        local_sim_is_associated_to = _sim_is_associated_to[
+        self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
+
+        local_sim_is_associated_to = self._sim_is_associated_to[
             self._global_ids[0] : self._global_ids[-1] + 1
         ]
 
@@ -273,6 +400,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             # Only handle activation of simulations on this rank -- LOCAL SCOPE HERE ON
             if self._is_sim_on_this_rank[i]:
                 to_be_activated_local_id = self._global_ids.index(i)
+                micro_sims[to_be_activated_local_id] = create_simulation_class(
+                    self._micro_problem
+                )(i)
                 assoc_active_id = local_sim_is_associated_to[to_be_activated_local_id]
 
                 if self._is_sim_on_this_rank[
@@ -293,8 +423,11 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                         ]
 
         sim_states_and_global_ids = []
-        for sim in micro_sims:
-            sim_states_and_global_ids.append((sim.get_state(), sim.get_global_id()))
+        for local_id, sim in enumerate(micro_sims):
+            if sim == 0:
+                sim_states_and_global_ids.append((None, self._global_ids[local_id]))
+            else:
+                sim_states_and_global_ids.append((sim.get_state(), sim.get_global_id()))
 
         recv_reqs = self._p2p_comm(
             list(to_be_activated_map.keys()), sim_states_and_global_ids
@@ -305,9 +438,19 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             state, global_id = req.wait()
             local_ids = to_be_activated_map[global_id]
             for local_id in local_ids:
+                # Create the micro simulation object and set its state
+                micro_sims[local_id] = create_simulation_class(self._micro_problem)(
+                    self._global_ids[local_id]
+                )
                 micro_sims[local_id].set_state(state)
 
-        return _is_sim_active, _sim_is_associated_to_updated
+        # Delete the micro simulation object if it is inactive
+        for i in self._global_ids:
+            if not self._is_sim_active[i]:
+                local_id = self._global_ids.index(i)
+                micro_sims[local_id] = 0
+
+        self._sim_is_associated_to = np.copy(_sim_is_associated_to_updated)
 
     def _create_tag(self, sim_id: int, src_rank: int, dest_rank: int) -> int:
         """
@@ -351,6 +494,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         recv_reqs : list
             List of MPI requests of receive operations.
         """
+        rank_of_sim = self._get_ranks_of_sims()
+
         send_map_local: Dict[
             int, int
         ] = dict()  # keys are global IDs, values are rank to send to
@@ -365,12 +510,12 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         for i in assoc_active_ids:
             # Add simulation and its rank to receive map
-            recv_map[i] = self._rank_of_sim[i]
+            recv_map[i] = rank_of_sim[i]
             # Add simulation and this rank to local sending map
             send_map_local[i] = self._rank
 
         # Gather information about which sims to send where, from the sending perspective
-        send_map_list = self._comm.allgather(send_map_local)
+        send_map_list = self._comm_world.allgather(send_map_local)
 
         for d in send_map_list:
             for i, rank in d.items():
@@ -386,7 +531,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             local_id = self._global_ids.index(global_id)
             for send_rank in send_ranks:
                 tag = self._create_tag(global_id, self._rank, send_rank)
-                req = self._comm.isend(data[local_id], dest=send_rank, tag=tag)
+                req = self._comm_world.isend(data[local_id], dest=send_rank, tag=tag)
                 send_reqs.append(req)
 
         # Asynchronous receive operations
@@ -396,10 +541,31 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             bufsize = (
                 1 << 30
             )  # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
-            req = self._comm.irecv(bufsize, source=recv_rank, tag=tag)
+            req = self._comm_world.irecv(bufsize, source=recv_rank, tag=tag)
             recv_reqs.append(req)
 
         # Wait for all non-blocking communication to complete
         MPI.Request.Waitall(send_reqs)
 
         return recv_reqs
+
+    def _get_ranks_of_sims(self) -> np.ndarray:
+        """
+        Get the ranks of all simulations.
+        Returns
+        -------
+        ranks_of_sims : np.ndarray
+            Array of ranks on which simulations exist.
+        """
+        local_gids_to_rank = dict()
+        for gid in self._global_ids:
+            local_gids_to_rank[gid] = self._rank
+
+        ranks_maps_as_list = self._comm_world.allgather(local_gids_to_rank)
+
+        ranks_of_sims = np.zeros(self._global_number_of_sims, dtype=np.intc)
+        for ranks_map in ranks_maps_as_list:
+            for gid, rank in ranks_map.items():
+                ranks_of_sims[gid] = rank
+
+        return ranks_of_sims

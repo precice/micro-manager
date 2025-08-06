@@ -1,6 +1,6 @@
 # Solverdummies
 
-The `solverdummies` are minimal working examples for using the preCICE Micro Manager with different languages. At the moment, there are examples for Python, and C++. They can be coupled with any other solver, for example the `macro_dummy.py` in this directory.
+The `solverdummies` are minimal working examples for using the preCICE Micro Manager with different languages. At the moment, there are examples for Python, and C++. They can be coupled with any other solver, for example the `macro_dummy.py` in this directory. The `macro_dummy.py` needs the input `adaptivity` or `no_adaptivity` depending on which type of dummy problem is being solved.
 
 ## Python
 
@@ -9,7 +9,7 @@ To run the Python solverdummies, run the commands given below in the `examples/`
 First terminal:
 
 ```bash
-python macro_dummy.py
+python macro_dummy.py no_adaptivity
 ```
 
 Second terminal:
@@ -25,7 +25,7 @@ To run the Python solverdummies with adaptivity, run the commands given below in
 First terminal:
 
 ```bash
-python macro_dummy.py
+python macro_dummy.py adaptivity
 ```
 
 Second terminal:
@@ -64,7 +64,7 @@ To run the Python solverdummies, run the commands given below in the `examples/`
 First terminal:
 
 ```bash
-python macro_dummy.py
+python macro_dummy.py no_adaptivity
 ```
 
 Second terminal:
@@ -78,7 +78,7 @@ To run the C++ solverdummies with adaptivity, run the following commands in the 
 First terminal:
 
 ```bash
-python macro_dummy.py
+python macro_dummy.py adaptivity
 ```
 
 Second terminal:

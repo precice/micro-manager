@@ -7,23 +7,25 @@ summary: Install the Micro Manager by running `pip install --user micro-manager-
 
 ## Get the latest Micro Manager release
 
-The Micro Manager can be installed using `pip`. Make sure [preCICE](installation-overview.html) is installed before installing the Micro Manager. The Micro Manager is compatible with preCICE version [2.3.0](https://github.com/precice/precice/releases/tag/v2.3.0) and higher.
+### Option 1: Install using pip
 
-### Option 1: Install from PyPI
-
-The Micro Manager package has the name [micro-manager-precice](https://pypi.org/project/micro-manager-precice/) on PyPI. To install `micro-manager-precice`, run
+The Micro Manager package on PyPI is [micro-manager-precice](https://pypi.org/project/micro-manager-precice/). To install, run
 
 ```bash
-pip install --user micro-manager-precice
+pip install micro-manager-precice
 ```
 
-Unless already installed, the dependencies will be installed by `pip` during the installation procedure. To enable [crash handling by interpolation](tooling-micro-manager-running.html/#what-happens-when-a-micro-simulation-crashes), the optional dependency `sklearn` is required. To install `micro-manager-precice` with `sklearn`, run
+To enable [crash handling by interpolation](tooling-micro-manager-running.html/#what-happens-when-a-micro-simulation-crashes), the optional dependency sklearn is required. To install with sklearn, run
 
 ```bash
-pip install --user micro-manager-precice[sklearn]
+pip install micro-manager-precice[sklearn]
 ```
 
-preCICE itself needs to be installed separately. If you encounter problems in the direct installation, see the [dependencies section](#required-dependencies) and [optional dependency section](#optional-dependencies) below.
+To use the Micro Manager for [snapshot computation](tooling-micro-manager-snapshot-configuration.html), the optional dependency h5py is required. To install with h5py, run
+
+```bash
+pip install micro-manager-precice[snapshot]
+```
 
 ### Option 2: Install manually
 
@@ -32,10 +34,10 @@ preCICE itself needs to be installed separately. If you encounter problems in th
 Ensure that the following dependencies are installed:
 
 * Python 3
-* [preCICE](installation-overview.html) [v2.3.0](https://github.com/precice/precice/releases/tag/v2.3.0) or higher
 * [pyprecice: Python language bindings for preCICE](installation-bindings-python.html)
 * [numpy](https://numpy.org/install/)
 * [mpi4py](https://mpi4py.readthedocs.io/en/stable/install.html)
+* [psutil](https://psutil.readthedocs.io/en/latest/)
 
 #### Optional dependencies
 
@@ -53,7 +55,7 @@ git clone https://github.com/precice/micro-manager.git
 To install using `pip`, go to the directory `micro-manager/` and run
 
 ```bash
-pip install --user .
+pip install .
 ```
 
 Adding optional dependencies works as above by adding them after the dot, e.g. `.[sklearn]`.

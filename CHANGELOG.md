@@ -1,5 +1,43 @@
 # Micro Manager changelog
 
+## latest
+
+- Share similarity distance matrix between ranks on a compute node https://github.com/precice/micro-manager/pull/176
+- Use booleans instead of strings `"True"` and `"False"` in the configuration https://github.com/precice/micro-manager/pull/175
+- Renaming and using a newer workflow for publishing according to the trusted publishing in PyPI https://github.com/precice/micro-manager/pull/173
+- Add config options for adaptivity metrics and memory usage output to allow for different levels https://github.com/precice/micro-manager/pull/172
+- Fix bug in adaptivity computation when an active simulation with associations is deactivated https://github.com/precice/micro-manager/pull/171
+- Properly handle micro simulation initialization for lazy initialization https://github.com/precice/micro-manager/pull/169
+- Delete the simulation object when the simulation is deactivated https://github.com/precice/micro-manager/pull/167
+- Remove float32 data type restriction for adaptivity data [commit](https://github.com/precice/micro-manager/commit/bfa44ff4d3432c6ac0f3b1311274308d2ec9c2a4)
+- Trigger adaptivity when all the adaptivity data is the same https://github.com/precice/micro-manager/pull/170
+- Add configuration option to control frequency of adaptivity computation https://github.com/precice/micro-manager/pull/168
+- Remove checkpointing of adaptivity and fix output of memory usage https://github.com/precice/micro-manager/pull/166
+- Performance improvements: restricting data types, in-place modifications https://github.com/precice/micro-manager/pull/162
+- Handle adaptivity case when deactivation and activation happens in the same time window https://github.com/precice/micro-manager/pull/165
+- Add command line input argument to set log file https://github.com/precice/micro-manager/pull/163
+- Fix adaptivity metrics logging and add logging documentation https://github.com/precice/micro-manager/pull/160
+- Checkpoint lazily created simulation only if a checkpoint is necessary https://github.com/precice/micro-manager/pull/161
+
+## v0.6.0
+
+- Add functionality for lazy creation and initialization of micro simulations https://github.com/precice/micro-manager/pull/117
+- Improve logging wrapper function names to be more clear https://github.com/precice/micro-manager/pull/153
+- Remove adaptivity computation CPU time export functionality https://github.com/precice/micro-manager/pull/152
+- Replace `Allgatherv` with `allgather` to avoid running into the error of size buffer https://github.com/precice/micro-manager/pull/151
+- Update Actions workflows due to updates in `precice/precice:nightly` https://github.com/precice/micro-manager/pull/150
+- Move adaptivity CPU time output from preCICE export to metrics logging https://github.com/precice/micro-manager/pull/149
+- Fix bug in the domain decomposition which was returning incorrect bounding box limits for the decomposition of `[2, 2, 1]` and similar https://github.com/precice/micro-manager/pull/146
+- Fix bug in calling of the adaptivity computation for explicit coupling scenarios https://github.com/precice/micro-manager/pull/145
+- Fix bug in handling of vector data returned by the MicroSimulation `solve()` method, for scenarios with adaptivity https://github.com/precice/micro-manager/pull/143
+- Remove the `scalar` and `vector` keyword values from data names in configuration https://github.com/precice/micro-manager/pull/142
+- Set default logger to stdout and add output directory setting option for file loggers https://github.com/precice/micro-manager/pull/139
+- Remove the `adaptivity_data` data structure and handle all adaptivity data internally https://github.com/precice/micro-manager/pull/137
+- Improve logging by wrapping Python logger in a class https://github.com/precice/micro-manager/pull/133
+- Refactor large parts of solve and adaptivity to group datasets and simplify handling https://github.com/precice/micro-manager/pull/135
+- Add information about adaptivity tuning parameters https://github.com/precice/micro-manager/pull/131
+- Put computation of counting active steps inside the adaptivity variant `if` condition https://github.com/precice/micro-manager/pull/130
+
 ## v0.5.0
 
 - Use absolute values to calculate normalizing factor for relative norms in adaptivity https://github.com/precice/micro-manager/pull/125

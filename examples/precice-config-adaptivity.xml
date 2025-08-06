@@ -10,7 +10,7 @@
     <data:vector name="macro-vector-data"/>
     <data:scalar name="micro-scalar-data"/>
     <data:vector name="micro-vector-data"/>
-    <data:scalar name="micro_sim_time"/>
+    <data:scalar name="solve_cpu_time"/>
     <data:scalar name="active_state"/>
     <data:scalar name="active_steps"/>
 
@@ -19,7 +19,7 @@
        <use-data name="macro-vector-data"/>
        <use-data name="micro-scalar-data"/>
        <use-data name="micro-vector-data"/>
-       <use-data name="micro_sim_time"/>
+       <use-data name="solve_cpu_time"/>
        <use-data name="active_state"/>
        <use-data name="active_steps"/>
     </mesh>
@@ -38,7 +38,7 @@
       <read-data name="macro-vector-data" mesh="macro-mesh"/>
       <write-data name="micro-scalar-data" mesh="macro-mesh"/>
       <write-data name="micro-vector-data" mesh="macro-mesh"/>
-      <write-data name="micro_sim_time" mesh="macro-mesh"/>
+      <write-data name="solve_cpu_time" mesh="macro-mesh"/>
       <write-data name="active_state" mesh="macro-mesh"/>
       <write-data name="active_steps" mesh="macro-mesh"/>
     </participant>

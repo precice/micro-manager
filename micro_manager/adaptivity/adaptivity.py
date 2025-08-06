@@ -9,10 +9,12 @@ from typing import Callable
 import re
 import xml.etree.ElementTree as ET
 from warnings import warn
+import importlib
+from micro_manager.tools.logging_wrapper import Logger
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, logger) -> None:
+    def __init__(self, configurator, rank, nsims) -> None:
         """
         Class constructor.
 
@@ -20,7 +22,10 @@ class AdaptivityCalculator:
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
-        logger : Logger defined from the standard package logging
+        rank : int
+            Rank of the MPI communicator.
+        nsims : int
+            Number of micro simulations.
         """
         self._refine_const_input = configurator.get_adaptivity_refining_const()
         self._refine_const = self._refine_const_input
@@ -33,15 +38,70 @@ class AdaptivityCalculator:
         self._convergence_measure = []
         self._convergence_status = []
         self._min_addition = 1.0
+        self._adaptivity_output_type = configurator.get_adaptivity_output_type()
 
-        self._logger = logger
+        self._micro_problem = getattr(
+            importlib.import_module(
+                configurator.get_micro_file_name(), "MicroSimulation"
+            ),
+            "MicroSimulation",
+        )
 
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
 
+        self._rank = rank
+
+        self._max_similarity_dist = 0.0
+
+        # is_sim_active: 1D array having state (active or inactive) of each micro simulation
+        # Start adaptivity calculation with all sims active
+        # This array is modified in place via the function update_active_sims and update_inactive_sims
+        self._is_sim_active = np.array([True] * nsims, dtype=np.bool_)
+
+        # sim_is_associated_to: 1D array with values of associated simulations of inactive simulations. Active simulations have None
+        # Active sims do not have an associated sim
+        # This array is modified in place via the function associate_inactive_to_active
+        self._sim_is_associated_to = np.full((nsims), -2, dtype=np.intc)
+
+        self._just_deactivated: list[int] = []
+
         self._similarity_measure = self._get_similarity_measure(
             configurator.get_adaptivity_similarity_measure()
         )
+        
+        output_dir = configurator.get_output_dir()
+
+        if output_dir is not None:
+            metrics_output_dir = output_dir + "/adaptivity-metrics"
+        else:
+            metrics_output_dir = "adaptivity-metrics"
+
+        if self._rank == 0 and (
+            self._adaptivity_output_type == "global"
+            or self._adaptivity_output_type == "all"
+        ):
+            self._global_metrics_logger = Logger(
+                "global-metrics-logger",
+                metrics_output_dir + "-global.csv",
+                rank,
+                csv_logger=True,
+            )
+
+            self._global_metrics_logger.log_info(
+                "n,avg active,avg inactive,max active,max inactive"
+            )
+
+        if (
+            self._adaptivity_output_type == "local"
+            or self._adaptivity_output_type == "all"
+        ):
+            self._metrics_logger = Logger(
+                "metrics-logger",
+                metrics_output_dir + "-" + str(rank) + ".csv",
+                rank,
+                csv_logger=True,
+            )
 
         with open(self._config_file_name, 'r') as xml_file:
             self.xml_data = xml_file.read()
@@ -75,9 +135,7 @@ class AdaptivityCalculator:
     def get_limit_values(self):
         return self.limit_values
 
-    def _get_similarity_dists(
-        self, dt: float, similarity_dists: np.ndarray, data: dict
-    ) -> np.ndarray:
+    def _update_similarity_dists(self, dt: float, data: dict) -> None:
         """
         Calculate metric which determines if two micro simulations are similar enough to have one of them deactivated.
 
@@ -85,30 +143,21 @@ class AdaptivityCalculator:
         ----------
         dt : float
             Current time step
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
         data : dict
             Data to be used in similarity distance calculation
-
-        Returns
-        -------
-        similarity_dists : numpy array
-            Updated 2D array having similarity distances between each micro simulation pair
         """
-        _similarity_dists = np.copy(similarity_dists)
+        # Update similarity distances without copying
+        self._similarity_dists *= exp(-self._hist_param * dt)
 
-        data_diff = np.zeros_like(_similarity_dists)
         for name in data.keys():
-            data_vals = data[name]
+            data_vals = np.array(data[name])
             if data_vals.ndim == 1:
                 # If the adaptivity data is a scalar for each simulation,
                 # expand the dimension to make it a 2D array to unify the calculation.
                 # The axis is later reduced with a norm.
                 data_vals = np.expand_dims(data_vals, axis=1)
 
-            data_diff += self._similarity_measure(data_vals)
-
-        return exp(-self._hist_param * dt) * _similarity_dists + dt * data_diff
+            self._similarity_dists += dt * self._similarity_measure(data_vals)
 
     def _get_addition(self, similarity_const: float) -> float:
         """
@@ -160,27 +209,8 @@ class AdaptivityCalculator:
                     min_convergence = max(0.0, min_convergence)
                 self._convergence_status.append(min_convergence)
 
-            # use_rate = 1 # 0 for no use, 1 for divide, 2 for multiplication
             alpha = 3.0
-            # convergence_rate = 1.0
 
-            # if use_rate > 0 and len(self._convergence_status) > 2:
-            #     if abs(self._convergence_status[-1]) and abs(self._convergence_status[-2]) > 1e-10:
-            #         convergence_rate = self._convergence_status[-1]/self._convergence_status[-2]
-            #     self._logger.info("min Convergence: {} convergence rate: {} ".format(
-            #         self._convergence_status[-1], convergence_rate))
-            #     if use_rate == 1:
-            #         additional = (1 + 1.0 / (min(0.0, self._convergence_status[-1]) - 1.0))**min((alpha/(convergence_rate), 10.0))
-            #     elif use_rate == 2:
-            #         additional = (1 + 1.0 / (min(0.0, self._convergence_status[-1]) - 1.0))**(alpha*convergence_rate)
-            #     else:
-            #         print("use_rate setting not accepted")
-            # else:
-            #     if len(self._convergence_status) <= 2:
-            #         self._min_addition = 1.0
-            #         self._logger.info("less than two iterations, relax")
-            #     self._logger.info("min Convergence: {} ".format(self._convergence_status[-1]))
-            #     additional = (1 + 1.0 / (min(0.0, self._convergence_status[-1]) - 1.0))**alpha
             if len(self._convergence_status) <= 2:
                 self._min_addition = 1.0
                 self._logger.info("less than two iterations, relax")
@@ -192,24 +222,10 @@ class AdaptivityCalculator:
     def _get_adaptive_refining_const(self) -> float:
         return self._refine_const
 
-    def _update_active_sims(
-        self, similarity_dists: np.ndarray, is_sim_active: np.ndarray, use_dyn_ref_tol: bool = False
-    ) -> tuple:
+    def _update_active_sims(self, use_dyn_ref_tol: bool = False) -> None:
         """
         Update set of active micro simulations. Active micro simulations are compared to each other
         and if found similar, one of them is deactivated.
-
-        Parameters
-        ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation
-
-        Returns
-        -------
-        _is_sim_active : numpy array
-            Updated 1D array having state (active or inactive) of each micro simulation
         """
         if use_dyn_ref_tol and self._adaptive_refine_const:
             additional = self._get_addition(self._refine_const_input)*(1-self._refine_const_input)
@@ -225,7 +241,7 @@ class AdaptivityCalculator:
 
         max_similarity_dist = np.amax(similarity_dists)
 
-        if max_similarity_dist == 0.0:
+        if self._max_similarity_dist == 0.0:
             warn(
                 "All similarity distances are zero, probably because all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
             )
@@ -235,61 +251,38 @@ class AdaptivityCalculator:
                 self._coarse_const * _refine_const * max_similarity_dist
             )
 
-        _is_sim_active = np.copy(
-            is_sim_active
-        )  # Input is_sim_active is not longer used after this point
-
         # Update the set of active micro sims
-        for i in range(_is_sim_active.size):
-            if _is_sim_active[i]:  # if sim is active
-                if self._check_for_deactivation(i, similarity_dists, _is_sim_active):
-                    _is_sim_active[i] = False
+        for i in range(self._is_sim_active.size):
+            if self._is_sim_active[i]:  # if sim is active
+                if self._check_for_deactivation(i, self._is_sim_active):
+                    self._is_sim_active[i] = False
+                    self._just_deactivated.append(i)
 
-        return _is_sim_active, _refine_const
-
-    def _associate_inactive_to_active(
-        self,
-        similarity_dists: np.ndarray,
-        is_sim_active: np.ndarray,
-        sim_is_associated_to: np.ndarray,
-    ) -> np.ndarray:
+    def _associate_inactive_to_active(self) -> None:
         """
         Associate inactive micro simulations to most similar active micro simulation.
-
-        Parameters
-        ----------
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation
-        sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
-
-        Returns
-        -------
-        _sim_is_associated_to : numpy array
-            1D array with values of associated simulations of inactive simulations. Active simulations have None
         """
-        active_ids = np.where(is_sim_active)[0]
-        inactive_ids = np.where(is_sim_active == False)[0]
+        active_ids = np.where(self._is_sim_active)[0]
+        inactive_ids = np.where(self._is_sim_active == False)[0]
 
-        _sim_is_associated_to = np.copy(sim_is_associated_to)
+        # Start with a large distance to trigger the search for the most similar active sim
+        # Add the +1 for the case when the similarity distance matrix is zeros
+        dist_min_start_value = self._max_similarity_dist + 1
 
         # Associate inactive micro sims to active micro sims
         for inactive_id in inactive_ids:
-            dist_min = sys.float_info.max
+            # Begin with a large distance to trigger the search for the most similar active sim
+            dist_min = dist_min_start_value
             for active_id in active_ids:
                 # Find most similar active sim for every inactive sim
-                if similarity_dists[inactive_id, active_id] < dist_min:
+                if self._similarity_dists[inactive_id, active_id] < dist_min:
                     associated_active_id = active_id
-                    dist_min = similarity_dists[inactive_id, active_id]
+                    dist_min = self._similarity_dists[inactive_id, active_id]
 
-            _sim_is_associated_to[inactive_id] = associated_active_id
-
-        return _sim_is_associated_to
+            self._sim_is_associated_to[inactive_id] = associated_active_id
 
     def _check_for_activation(
-        self, inactive_id: int, similarity_dists: np.ndarray, is_sim_active: np.ndarray
+        self, inactive_id: int, is_sim_active: np.ndarray
     ) -> bool:
         """
         Check if an inactive simulation needs to be activated.
@@ -298,8 +291,6 @@ class AdaptivityCalculator:
         ----------
         inactive_id : int
             ID of inactive simulation which is checked for activation.
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair.
         is_sim_active : numpy array
             1D array having state (active or inactive) of each micro simulation.
 
@@ -310,13 +301,13 @@ class AdaptivityCalculator:
         """
         active_sim_ids = np.where(is_sim_active)[0]
 
-        dists = similarity_dists[inactive_id, active_sim_ids]
+        dists = self._similarity_dists[inactive_id, active_sim_ids]
 
         # If inactive sim is not similar to any active sim, activate it
         return min(dists) > self._ref_tol
 
     def _check_for_deactivation(
-        self, active_id: int, similarity_dists: np.ndarray, is_sim_active: np.ndarray
+        self, active_id: int, is_sim_active: np.ndarray
     ) -> bool:
         """
         Check if an active simulation needs to be deactivated.
@@ -325,8 +316,6 @@ class AdaptivityCalculator:
         ----------
         active_id : int
             ID of active simulation which is checked for deactivation.
-        similarity_dists : numpy array
-            2D array having similarity distances between each micro simulation pair.
         is_sim_active : numpy array
             1D array having state (active or inactive) of each micro simulation.
 
@@ -340,7 +329,7 @@ class AdaptivityCalculator:
         for active_id_2 in active_sim_ids:
             if active_id != active_id_2:  # don't compare active sim to itself
                 # If active sim is similar to another active sim, deactivate it
-                if similarity_dists[active_id, active_id_2] < self._coarse_tol:
+                if self._similarity_dists[active_id, active_id_2] < self._coarse_tol:
                     return True
         return False
 

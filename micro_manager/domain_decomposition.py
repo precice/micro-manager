@@ -6,25 +6,19 @@ import numpy as np
 
 
 class DomainDecomposer:
-    def __init__(self, logger, dims, rank, size) -> None:
+    def __init__(self, rank, size) -> None:
         """
         Class constructor.
 
         Parameters
         ----------
-        logger : object of logging
-            Logger defined from the standard package logging.
-        dims : int
-            Dimensions of the problem.
         rank : int
             MPI rank.
         size : int
             Total number of MPI processes.
         """
-        self._logger = logger
         self._rank = rank
         self._size = size
-        self._dims = dims
 
     def decompose_macro_domain(self, macro_bounds: list, ranks_per_axis: list) -> list:
         """
@@ -47,46 +41,39 @@ class DomainDecomposer:
             List containing the upper and lower bounds of the domain pertaining to this rank.
             Format is same as input parameter macro_bounds.
         """
-        assert (
-            np.prod(ranks_per_axis) == self._size
-        ), "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
+        if np.prod(ranks_per_axis) != self._size:
+            raise ValueError(
+                "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
+            )
+
+        dims = len(ranks_per_axis)
+
+        if dims == 3:
+            for z in range(ranks_per_axis[2]):
+                for y in range(ranks_per_axis[1]):
+                    for x in range(ranks_per_axis[0]):
+                        n = (
+                            x
+                            + y * ranks_per_axis[0]
+                            + z * ranks_per_axis[0] * ranks_per_axis[1]
+                        )
+                        if n == self._rank:
+                            rank_in_axis = [x, y, z]
+        elif dims == 2:
+            for y in range(ranks_per_axis[1]):
+                for x in range(ranks_per_axis[0]):
+                    n = x + y * ranks_per_axis[0]
+                    if n == self._rank:
+                        rank_in_axis = [x, y]
 
         dx = []
-        for d in range(self._dims):
+        for d in range(dims):
             dx.append(
                 abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / ranks_per_axis[d]
             )
 
-        rank_in_axis: list[int] = [0] * self._dims
-        if ranks_per_axis[0] == 1:  # if serial in x axis
-            rank_in_axis[0] = 0
-        else:
-            rank_in_axis[0] = self._rank % ranks_per_axis[0]  # x axis
-
-        if self._dims == 2:
-            if ranks_per_axis[1] == 1:  # if serial in y axis
-                rank_in_axis[1] = 0
-            else:
-                rank_in_axis[1] = int(self._rank / ranks_per_axis[0])  # y axis
-        elif self._dims == 3:
-            if ranks_per_axis[2] == 1:  # if serial in z axis
-                rank_in_axis[2] = 0
-            else:
-                rank_in_axis[2] = int(
-                    self._rank / (ranks_per_axis[0] * ranks_per_axis[1])
-                )  # z axis
-
-            if ranks_per_axis[1] == 1:  # if serial in y axis
-                rank_in_axis[1] = 0
-            else:
-                rank_in_axis[1] = (
-                    self._rank - ranks_per_axis[0] * ranks_per_axis[1] * rank_in_axis[2]
-                ) % ranks_per_axis[
-                    2
-                ]  # y axis
-
         mesh_bounds = []
-        for d in range(self._dims):
+        for d in range(dims):
             if rank_in_axis[d] > 0:
                 mesh_bounds.append(macro_bounds[d * 2] + rank_in_axis[d] * dx[d])
                 mesh_bounds.append(macro_bounds[d * 2] + (rank_in_axis[d] + 1) * dx[d])
@@ -97,7 +84,5 @@ class DomainDecomposer:
             # Adjust the maximum bound to be exactly the domain size
             if rank_in_axis[d] + 1 == ranks_per_axis[d]:
                 mesh_bounds[d * 2 + 1] = macro_bounds[d * 2 + 1]
-
-        self._logger.info("Bounding box limits are {}".format(mesh_bounds))
 
         return mesh_bounds

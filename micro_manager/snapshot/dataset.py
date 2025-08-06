@@ -172,17 +172,17 @@ class ReadWriteHDF:
         parameter_data = dict()
         output = []
         # Read data by iterating over the relevant datasets
-        for key in data_names.keys():
-            parameter_data[key] = np.asarray(parameter_file[key][start:end])
-            my_key = (
-                key  # Save one key to be able to iterate over the length of the data
+        for name in data_names:
+            parameter_data[name] = np.asarray(parameter_file[name][start:end])
+            my_name = (
+                name  # Save one name to be able to iterate over the length of the data
             )
         # Iterate over len of data. In each iteration write data from all macro data sets
         # to a dictionary and append it to the output list of dicts.
-        for i in range(len(parameter_data[my_key])):
+        for i in range(len(parameter_data[my_name])):
             current_data = dict()
-            for key in data_names.keys():
-                current_data[key] = parameter_data[key][i]
+            for name in data_names:
+                current_data[name] = parameter_data[name][i]
             output.append(current_data)
         return output
 
@@ -219,7 +219,7 @@ class ReadWriteHDF:
 
     def set_status(self, file_path: str, status: str):
         """
-        Set the status of the file to "finished" to indicate that it is no longer accessed.
+        Set the status of file to the given status.
 
         Parameters
         ----------
