@@ -2,13 +2,15 @@
 Functionality for adaptive initialization and control of micro simulations
 """
 import sys
+import os
+import numpy as np
 from math import exp
 from typing import Callable
+import re
+import xml.etree.ElementTree as ET
 from warnings import warn
 import importlib
 from micro_manager.tools.logging_wrapper import Logger
-
-import numpy as np
 
 
 class AdaptivityCalculator:
@@ -25,11 +27,17 @@ class AdaptivityCalculator:
         nsims : int
             Number of micro simulations.
         """
-        self._refine_const = configurator.get_adaptivity_refining_const()
+        self._refine_const_input = configurator.get_adaptivity_refining_const()
+        self._refine_const = self._refine_const_input
+        self._adaptive_refine_const = configurator.get_adaptivity_for_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
         self._hist_param = configurator.get_adaptivity_hist_param()
         self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
+        self._config_file_name = configurator.get_config_file_name()
+        self._convergence_measure = []
+        self._convergence_status = []
+        self._min_addition = 1.0
         self._adaptivity_output_type = configurator.get_adaptivity_output_type()
 
         self._micro_problem = getattr(
@@ -95,6 +103,43 @@ class AdaptivityCalculator:
                 csv_logger=True,
             )
 
+        with open(self._config_file_name, "r") as xml_file:
+            self.xml_data = xml_file.read()
+
+        unique_names = [
+            "absolute-convergence-measure",
+            "relative-convergence-measure",
+            "residual-relative-convergence-measure",
+        ]
+
+        # Initialize lists to store the found attributes
+        self.data_values = []
+        self.limit_values = []
+
+        for unique_name in unique_names:
+            pattern = f'<{unique_name} limit="([^"]+)" data="([^"]+)" mesh="([^"]+)"'
+            matches = re.finditer(pattern, self.xml_data)
+            for match in matches:
+                self.data_values.append(match.group(2))
+                self.limit_values.append(match.group(1))
+
+        # Check if any matches were found
+        if self.data_values and self.limit_values:
+            for i, (data_value, limit_value) in enumerate(
+                zip(self.data_values, self.limit_values), start=1
+            ):
+                print(f"Match {i}:")
+                print(f"Data: {data_value}")
+                print(f"Limit: {limit_value}")
+        else:
+            print(f"No attributes found for unique name '{unique_name}'")
+
+    def get_data_values(self):
+        return self.data_values
+
+    def get_limit_values(self):
+        return self.limit_values
+
     def _update_similarity_dists(self, dt: float, data: dict) -> None:
         """
         Calculate metric which determines if two micro simulations are similar enough to have one of them deactivated.
@@ -119,20 +164,108 @@ class AdaptivityCalculator:
 
             self._similarity_dists += dt * self._similarity_measure(data_vals)
 
-    def _update_active_sims(self) -> None:
+    def _get_addition(self, similarity_const: float) -> float:
+        """
+        Get adapted refining constant based on limit values in preCICE configuration file and convergence measurements in preCICE
+
+        Returns
+        -------
+        adapted_similarity_const : float
+        """
+
+        # read convergence value from precice-Mysolver-convergence.log file
+        convergence_values = []  # last iteration
+        # convergence_rate = 1.0
+        additional = 0.0
+
+        file_path = None
+        file_name_suffix = "-convergence.log"
+
+        for root, _, files in os.walk(os.getcwd()):
+            for file_name in files:
+                if file_name.endswith(file_name_suffix):
+                    file_path = os.path.join(root, file_name)
+                    break
+        with open(file_path, "r") as file:
+            lines = file.readlines()
+        if len(lines) < 1:
+            print("File is empty.")
+        else:
+            if len(lines) > len(self._convergence_measure):
+                if len(lines) == 2:
+                    self._convergence_measure.append(lines[0].strip().split())
+                self._convergence_measure.append(lines[-1].strip().split())
+                header_line = self._convergence_measure[0]
+                last_line = self._convergence_measure[-1]
+                for data in self.data_values:
+                    for element in header_line:
+                        if data in element:
+                            index = header_line.index(element)
+                            if last_line[index] == "inf":
+                                convergence_values.append(1e20)
+                            else:
+                                index_config = self.data_values.index(data)
+                                convergence_values.append(
+                                    max(
+                                        float(last_line[index]),
+                                        float(self.limit_values[index_config]),
+                                    )
+                                )
+                min_convergence = np.log10(
+                    np.prod(
+                        np.array(self.limit_values, dtype=float)
+                        / np.array(convergence_values, dtype=float)
+                    )
+                )
+                if last_line[1] == "60":
+                    min_convergence = max(0.0, min_convergence)
+                self._convergence_status.append(min_convergence)
+
+            alpha = 3.0
+
+            if len(self._convergence_status) <= 2:
+                self._min_addition = 1.0
+                self._logger.info("less than two iterations, relax")
+            self._logger.info(
+                "min Convergence: {} ".format(self._convergence_status[-1])
+            )
+            additional = (
+                1 + 1.0 / (min(0.0, self._convergence_status[-1]) - 1.0)
+            ) ** alpha
+
+        return additional
+
+    def _get_adaptive_refining_const(self) -> float:
+        return self._refine_const
+
+    def _update_active_sims(self, use_dyn_ref_tol: bool = False) -> None:
         """
         Update set of active micro simulations. Active micro simulations are compared to each other
         and if found similar, one of them is deactivated.
         """
+        if use_dyn_ref_tol and self._adaptive_refine_const:
+            additional = self._get_addition(self._refine_const_input) * (
+                1 - self._refine_const_input
+            )
+            self._min_addition = min(self._min_addition, additional)
+            additional = self._min_addition
+            if additional > 0.0:
+                _refine_const = additional + self._refine_const_input
+            else:
+                _refine_const = self._refine_const_input
+            self._logger.info("Adaptive refine constant: {}".format(self._refine_const))
+        else:
+            _refine_const = self._refine_const_input
+
+        max_similarity_dist = np.amax(similarity_dists)
+
         if self._max_similarity_dist == 0.0:
             warn(
                 "All similarity distances are zero, probably because all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
             )
             self._coarse_tol = sys.float_info.min
         else:
-            self._coarse_tol = (
-                self._coarse_const * self._refine_const * self._max_similarity_dist
-            )
+            self._coarse_tol = self._coarse_const * _refine_const * max_similarity_dist
 
         # Update the set of active micro sims
         for i in range(self._is_sim_active.size):

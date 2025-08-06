@@ -16,6 +16,7 @@
             "history_param": 0.5,
             "coarsening_constant": 0.3,
             "refining_constant": 0.4,
+            "adaptive_coarsening_constant": true,
             "every_implicit_iteration": true,
             "output_cpu_time": true
         }

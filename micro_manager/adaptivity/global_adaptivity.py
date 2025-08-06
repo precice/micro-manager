@@ -151,6 +151,39 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         ):  # Only the first rank in the node updates the similarity distances
             self._update_similarity_dists(dt, global_data_for_adaptivity)
 
+        is_sim_active_dyn, refine_const_dyn = self._update_active_sims(
+            similarity_dists, is_sim_active_nm1, True
+        )
+        is_sim_active_dyn, sim_is_associated_to_dyn = self._update_inactive_sims(
+            similarity_dists,
+            is_sim_active_dyn,
+            sim_is_associated_to_nm1,
+            micro_sims,
+            refine_const_dyn,
+        )
+
+        is_sim_active_sta, refine_const_sta = self._update_active_sims(
+            similarity_dists, is_sim_active_nm1, False
+        )
+        is_sim_active_sta, sim_is_associated_to_sta = self._update_inactive_sims(
+            similarity_dists,
+            is_sim_active_sta,
+            sim_is_associated_to_nm1,
+            micro_sims,
+            refine_const_sta,
+        )
+
+        if np.array_equal(is_sim_active_dyn, is_sim_active_sta) and np.array_equal(
+            sim_is_associated_to_dyn, sim_is_associated_to_sta
+        ):
+            is_sim_active = is_sim_active_sta
+            sim_is_associated_to = sim_is_associated_to_sta
+            self._refine_const = refine_const_sta
+        else:
+            is_sim_active = is_sim_active_dyn
+            sim_is_associated_to = sim_is_associated_to_dyn
+            self._refine_const = refine_const_dyn
+
         self._comm_node.Barrier()  # Wait for the similarity distances to be updated on all ranks of the node
 
         self._max_similarity_dist = np.amax(self._similarity_dists)
@@ -352,7 +385,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        self._ref_tol = self._refine_const * self._max_similarity_dist
+        self._ref_tol = refine_const * self._max_similarity_dist
 
         _sim_is_associated_to_updated = np.copy(self._sim_is_associated_to)
 
