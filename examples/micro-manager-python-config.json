@@ -11,6 +11,6 @@
         "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0]
     },
     "diagnostics": {
-      "output_micro_sim_solve_time": "True"
+      "output_micro_sim_solve_time": true
     }
 }

@@ -1,5 +1,24 @@
 # Micro Manager changelog
 
+## v0.7.0
+
+- Share similarity distance matrix between ranks on a compute node https://github.com/precice/micro-manager/pull/176
+- Use booleans instead of strings `"True"` and `"False"` in the configuration https://github.com/precice/micro-manager/pull/175
+- Renaming and using a newer workflow for publishing according to the trusted publishing in PyPI https://github.com/precice/micro-manager/pull/173
+- Add config options for adaptivity metrics and memory usage output to allow for different levels https://github.com/precice/micro-manager/pull/172
+- Fix bug in adaptivity computation when an active simulation with associations is deactivated https://github.com/precice/micro-manager/pull/171
+- Properly handle micro simulation initialization for lazy initialization https://github.com/precice/micro-manager/pull/169
+- Delete the simulation object when the simulation is deactivated https://github.com/precice/micro-manager/pull/167
+- Remove float32 data type restriction for adaptivity data [commit](https://github.com/precice/micro-manager/commit/bfa44ff4d3432c6ac0f3b1311274308d2ec9c2a4)
+- Trigger adaptivity when all the adaptivity data is the same https://github.com/precice/micro-manager/pull/170
+- Add configuration option to control frequency of adaptivity computation https://github.com/precice/micro-manager/pull/168
+- Remove checkpointing of adaptivity and fix output of memory usage https://github.com/precice/micro-manager/pull/166
+- Performance improvements: restricting data types, in-place modifications https://github.com/precice/micro-manager/pull/162
+- Handle adaptivity case when deactivation and activation happens in the same time window https://github.com/precice/micro-manager/pull/165
+- Add command line input argument to set log file https://github.com/precice/micro-manager/pull/163
+- Fix adaptivity metrics logging and add logging documentation https://github.com/precice/micro-manager/pull/160
+- Checkpoint lazily created simulation only if a checkpoint is necessary https://github.com/precice/micro-manager/pull/161
+
 ## v0.6.0
 
 - Add functionality for lazy creation and initialization of micro simulations https://github.com/precice/micro-manager/pull/117

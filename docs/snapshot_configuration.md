@@ -10,20 +10,20 @@ summary: Set up the Micro Manager snapshot computation.
 To use the Micro Manager for snapshot computation, the dependency `h5py` is necessary. To install `micro-manager-precice` with `h5py`, run
 
 ```bash
-pip install --user micro-manager-precice[snapshot]
+pip install micro-manager-precice[snapshot]
 ```
 
 If you have already installed `micro-manager-precice`, you can install `h5py` separately by running
 
 ```bash
-pip install --user h5py
+pip install h5py
 ```
 
 ## Preparation
 
 Prepare your micro simulation for the Micro Manager snapshot computation by following the instructions in the [preparation guide](tooling-micro-manager-preparation.html).
 
-Note: The `initialize()` method is not supported for the snapshot computation.
+Note: The `initialize()` method is not used for the snapshot computation.
 
 ## Configuration
 
@@ -34,8 +34,8 @@ Configure the snapshot computation functionality with a JSON file. An example co
     "micro_file_name": "python-dummy/micro_dummy",
     "coupling_params": {
         "parameter_file_name": "parameter.hdf5",
-        "read_data_names": {"macro-scalar-data": "scalar", "macro-vector-data": "vector"},
-        "write_data_names": {"micro-scalar-data": "scalar", "micro-vector-data": "vector"},
+        "read_data_names": ["macro-scalar-data", "macro-vector-data"],
+        "write_data_names": ["micro-scalar-data", "micro-vector-data"],
     },
     "simulation_params": {
         "micro_dt": 1.0,
@@ -44,7 +44,7 @@ Configure the snapshot computation functionality with a JSON file. An example co
         "post_processing_file_name": "snapshot_postprocessing"
     },
     "diagnostics": {
-        "output_micro_sim_solve_time": "True"
+        "output_micro_sim_solve_time": true
     }
 }
 ```
@@ -60,8 +60,8 @@ There are four main sections in the configuration file, the `coupling_params`, t
 Parameter | Description
 --- | ---
 `parameter_file_name` | Path to the HDF5 file containing the parameter space from the current working directory. Each macro parameter must be given as a dataset. Macro data for the same micro simulation should have the same index in the first dimension. The name must correspond to the names given in the config file.
-`read_data_names` | A Python dictionary with the names of the data to be read from preCICE as keys and `"scalar"` or `"vector"` as values depending on the nature of the data.
-`write_data_names` | A Python dictionary with the names of the data to be written to the database as keys and `"scalar"` or `"vector"` as values depending on the nature of the data.
+`read_data_names` | A Python list with the names of the data to be read from preCICE.
+`write_data_names` | A Python list with the names of the data to be written to the database.
 
 ## Simulation Parameters
 
@@ -74,13 +74,13 @@ Parameter | Description
 Parameter | Description
 --- | ---
 `post_processing_file_name`| Path to the post-processing Python script from the current working directory. Providing a post-processing script is optional. The script must contain a class `PostProcessing` with a method `postprocessing(sim_output)` that takes the simulation output as an argument. The method can be used to post-process the simulation output before writing it to the database.
-`initialize_once` | If `True`, only one micro simulation is initialized and solved for all macro inputs per rank. If `False` a new micro simulation is initialized and solved for each macro input in the parameter space. Default is `False`. This option can be True if the micro simulation is not history-dependent and the same setup is shared across all micro simulations.
+`initialize_once` | If `true`, only one micro simulation is initialized and solved for all macro inputs per rank. If `false` a new micro simulation is initialized and solved for each macro input in the parameter space. Default is `false`. It is recommended to set the parameter to `true` if the micro simulation is not history-dependent and the same setup is shared across all micro simulations.
 
 ## Diagnostics
 
 Parameter | Description
 --- | ---
-`output_micro_sim_solve_time` | If `True`, the Micro Manager writes the wall clock time of the `solve()` function of each micro simulation to the database.
+`output_micro_sim_solve_time` | If `true`, the Micro Manager writes the wall clock time of the `solve()` function of each micro simulation to the database.
 
 ## Running
 

@@ -41,9 +41,10 @@ class DomainDecomposer:
             List containing the upper and lower bounds of the domain pertaining to this rank.
             Format is same as input parameter macro_bounds.
         """
-        assert (
-            np.prod(ranks_per_axis) == self._size
-        ), "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
+        if np.prod(ranks_per_axis) != self._size:
+            raise ValueError(
+                "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
+            )
 
         dims = len(ranks_per_axis)
 

@@ -7,7 +7,7 @@ summary: Provide a JSON file to configure the Micro Manager.
 
 {% note %} In the preCICE XML configuration the Micro Manager is a participant with the name `Micro-Manager`. {% endnote %}
 
-The Micro Manager is configured with a JSON file. An example configuration file is
+The Micro Manager is configured with a JSON file. An example configuration file looks like
 
 ```json
 {
@@ -23,16 +23,23 @@ The Micro Manager is configured with a JSON file. An example configuration file 
         "micro_dt": 1.0
     },
     "diagnostics": {
-      "output_micro_sim_solve_time": "True"
+      "output_micro_sim_solve_time": true
     }
 }
 ```
 
 This example configuration file is in [`examples/micro-manager-config.json`](https://github.com/precice/micro-manager/tree/develop/examples/micro-manager-config.json).
 
-The path to the file containing the Python importable micro simulation class is specified in the `micro_file_name` parameter. If the file is not in the working directory, give the relative path.
+## Micro Manager Configuration
 
-There are three main sections in the configuration file, the `coupling_params`, the `simulation_params` and the optional `diagnostics`.
+Parameter | Description
+--- | ---
+`micro_file_name` | Path to the file containing the Python importable micro simulation class. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.
+`output_directory` | Path to output directory for logging and performance metrics. Directory is created if not existing already.
+`memory_usage_output_type` | Set to either `local`, `global`, or `all`. `local` outputs rank-wise peak memory usage. `global` outputs global averaged peak memory usage. `all` outputs both local and global levels. All output is to a CSV file with the peak memory usage (RSS) in every time window, in MBs.
+`memory_usage_output_n` | Frequency of output of memory usage (integer which is number of time windows).
+
+Apart from the base settings, there are three main sections in the configuration file, [coupling parameters](#coupling-parameters), [simulation parameters](#simulation-parameters), and [diagnostics](#diagnostics).
 
 ## Coupling Parameters
 
@@ -55,9 +62,9 @@ Adaptivity parameters | See section on [adaptivity](#adaptivity). By default, ad
 ## Diagnostics
 
 Parameter | Description
---- | ---
+--- | ---H
 `data_from_micro_sims` | A Python dictionary with the names of the data from the micro simulation to be written to VTK files as keys and `"scalar"` or `"vector"` as values.
-`output_micro_sim_solve_time` | If `True`, the Micro Manager writes the wall clock time of the `solve()` function of each micro simulation.
+`output_micro_sim_solve_time` | If `true`, the Micro Manager writes the wall clock time of the `solve()` function of each micro simulation.
 `micro_output_n`|  Frequency of calling the optional output functionality of the micro simulation in terms of number of time steps. If not given, `micro_sim.output()` is called every time step.
 
 ### Adding diagnostics in the preCICE XML configuration
@@ -109,18 +116,21 @@ The Micro Manager can adaptively control micro simulations. The adaptivity strat
 
 All the adaptivity parameters are chosen from the second publication.
 
-To turn on adaptivity, set `"adaptivity": True` in `simulation_params`. Then under `adaptivity_settings` set the following variables:
+To turn on adaptivity, set `"adaptivity": true` in `simulation_params`. Then under `adaptivity_settings` set the following variables:
 
 Parameter | Description
 --- | ---
 `type` | Set to either `local` or `global`. The type of adaptivity matters when the Micro Manager is run in parallel. `local` means comparing micro simulations within a local partitioned domain for similarity. `global` means comparing micro simulations from all partitions, so over the entire domain.
 `data` | List of names of data which are to be used to calculate if micro-simulations are similar or not. For example `["temperature", "porosity"]`.
+`adaptivity_every_n_time_windows` | Frequency of adaptivity computation (integer which is number of time windows).
+`output_type` | Set to either `local`, `global`, or `all`. `local` outputs rank-wise adaptivity metrics. `global` outputs global averaged metrics. `all` outputs both local and global metrics.
+`output_n` | Frequency of output of adaptivity metrics (integer which is number of time windows).
 `history_param` | History parameter $$ \Lambda $$, set as $$ \Lambda >= 0 $$.
 `coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ 0 =< C_c < 1 $$.
 `refining_constant` | Refining constant $$ C_r $$, set as $$ 0 =< C_r < 1 $$.
-`every_implicit_iteration` | If True, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.
-`similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.
-`lazy_initialization` | Set to `True` to lazily create and initialize micro simulations. If selected, micro simulation objects are created only when the micro simulation is activated for the first time. Default: `False`.
+`every_implicit_iteration` | If `true`, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration. Default `false`.
+`similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*. Default `L1`.
+`lazy_initialization` | Set to `true` to lazily create and initialize micro simulations. If selected, micro simulation objects are created only when the micro simulation is activated for the first time. Default: `false`.
 
 The primary tuning parameters for adaptivity are the history parameter $$ \Lambda $$, the coarsening constant $$ C_c $$, and the refining constant $$ C_r $$. Their effects can be interpreted as:
 
@@ -133,15 +143,15 @@ Example of adaptivity configuration is
 ```json
 "simulation_params": {
     "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
-    "adaptivity": "True",
+    "adaptivity": true,
     "adaptivity_settings" {
         "type": "local",
         "data": ["temperature", "porosity"],
         "history_param": 0.5,
         "coarsening_constant": 0.3,
         "refining_constant": 0.4,
-        "every_implicit_iteration": "True",
-        "lazy_initialization": "True"
+        "every_implicit_iteration": true,
+        "lazy_initialization": true
     }
 }
 ```
@@ -175,9 +185,9 @@ The Micro Manager uses the output functionality of preCICE, hence these data set
 ## Interpolate a crashed micro simulation
 
 If the optional dependency `sklearn` is installed, the Micro Manager will derive the output of a crashed micro simulation by interpolating outputs from similar simulations. To enable this, set
-`"interpolate_crash": "True"` in the `simulation_params` section of the configuration file.
+`"interpolate_crash": true` in the `simulation_params` section of the configuration file.
 
-For more details on the interpolation see the [crash handling documentation](tooling-micro-manager-running.html/#what-happens-when-a-micro-simulation-crashes).
+For more details on the interpolation see the [crash handling documentation](tooling-micro-manager-running.html#what-happens-when-a-micro-simulation-crashes).
 
 ## Next step
 
