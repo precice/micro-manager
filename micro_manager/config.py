@@ -179,7 +179,7 @@ class Config:
         self._micro_dt = self._data["simulation_params"]["micro_dt"]
 
         try:
-            if self._data["diagnostics"]["output_micro_sim_solve_time"] == "True":
+            if self._data["diagnostics"]["output_micro_sim_solve_time"]:
                 self._output_micro_sim_time = True
                 self._write_data_names.append("solve_cpu_time")
         except BaseException:
@@ -224,7 +224,7 @@ class Config:
             )
 
         try:
-            if self._data["simulation_params"]["adaptivity"] == "True":
+            if self._data["simulation_params"]["adaptivity"]:
                 self._adaptivity = True
                 self._logger.log_info_rank_zero(
                     "Micro Manager will adaptively run micro simulations."
@@ -260,11 +260,8 @@ class Config:
 
             self._logger.log_info_rank_zero("Adaptivity type: " + self._adaptivity_type)
 
-            if (
-                self._data["simulation_params"]["adaptivity_settings"].get(
-                    "lazy_initialization"
-                )
-                == "True"
+            if self._data["simulation_params"]["adaptivity_settings"].get(
+                "lazy_initialization"
             ):
                 self._lazy_initialization = True
 
@@ -377,13 +374,13 @@ class Config:
                     "adaptivity_settings"
                 ]["every_implicit_iteration"]
 
-                if adaptivity_every_implicit_iteration == "True":
+                if adaptivity_every_implicit_iteration:
                     self._adaptivity_every_implicit_iteration = True
                     self._logger.log_info_rank_zero(
                         "Micro Manager will compute adaptivity in every implicit iteration, if implicit coupling is done."
                     )
 
-                elif adaptivity_every_implicit_iteration == "False":
+                elif not adaptivity_every_implicit_iteration:
                     self._adaptivity_every_implicit_iteration = False
                     self._logger.log_info_rank_zero(
                         "Micro Manager will compute adaptivity once at the start of every time window."
@@ -463,7 +460,7 @@ class Config:
                 )
 
         if "interpolate_crash" in self._data["simulation_params"]:
-            if self._data["simulation_params"]["interpolate_crash"] == "True":
+            if self._data["simulation_params"]["interpolate_crash"]:
                 self._interpolate_crash = True
                 self._logger.log_info_rank_zero(
                     "Micro Manager will interpolate output of crashed micro simulations from its neighbors."
@@ -534,7 +531,7 @@ class Config:
             )
 
         try:
-            if self._data["snapshot_params"]["initialize_once"] == "True":
+            if self._data["snapshot_params"]["initialize_once"]:
                 self._initialize_once = True
                 self._logger.log_info_rank_zero(
                     "Micro Manager will initialize only one micro simulations object for snapshot computation."

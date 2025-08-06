@@ -97,6 +97,11 @@ The `solve()` function should have the following signature:
     This will create a shared library `micro_dummy.so` which can be directly imported in Python.
     For more information on compiling C++ libraries, see the [pybind11 documentation](https://pybind11.readthedocs.io/en/stable/compiling.html).
 
+There are more examples which demonstrate how a micro simulation written in C++ is converted to a Python-importable class
+
+1. [DuMuX-based micro simulation](https://github.com/precice/tutorials/blob/v202404.0/two-scale-heat-conduction/micro-dumux/appl/micro_sim.cpp) in the two-scale heat conduction tutorial.
+2. [pyFANS](https://github.com/DataAnalyticsEngineering/FANS/tree/develop/pyfans).
+
 ## Initializing micro simulations
 
 Micro simulations can be initialized before the actual coupling starts. To initialize a micro simulation, define an `initialize()` function in the code. The Micro Manager calls the initialize function for every micro simulation. If the macro simulation writes initial data to preCICE, the Micro Manager attempts to pass it to the micro simulation. If the `initialize()` function does not have input parameters, the initial data will not be passed. The `initialize()` function can return data to the Micro Manager. This data is only relevant to compute the adaptivity before the coupling starts. Therefore, if the `initialize()` functions returns data, it must be the data expected by the adaptivity.

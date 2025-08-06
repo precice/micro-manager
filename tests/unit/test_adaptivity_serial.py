@@ -3,10 +3,10 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 
 import numpy as np
+from mpi4py import MPI
 
 from micro_manager.adaptivity.adaptivity import AdaptivityCalculator
 from micro_manager.adaptivity.local_adaptivity import LocalAdaptivityCalculator
-from micro_manager.config import Config
 
 
 class MicroSimulation:
@@ -91,7 +91,7 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, 0, self._number_of_sims
+            configurator, rank=0, nsims=self._number_of_sims
         )
         adaptivity_controller._hist_param = 0.5
         adaptivity_controller._adaptivity_data_names = [
@@ -109,12 +109,17 @@ class TestLocalAdaptivity(TestCase):
 
         adaptivity_controller._similarity_dists = self._similarity_dists
 
+        old_similarity_dists = adaptivity_controller._similarity_dists.copy()
+
         adaptivity_controller._update_similarity_dists(self._dt, adaptivity_data)
 
         expected_similarity_dists = (
-            exp(-adaptivity_controller._hist_param * self._dt) * self._similarity_dists
+            exp(-adaptivity_controller._hist_param * self._dt) * old_similarity_dists
             + self._dt * self._data_diff
         )
+
+        print("Expected similarity distances:\n", expected_similarity_dists)
+        print("Actual similarity distances:\n", adaptivity_controller._similarity_dists)
 
         self.assertTrue(
             np.array_equal(
@@ -134,7 +139,7 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, 0, self._number_of_sims
+            configurator, rank=0, nsims=self._number_of_sims
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -166,7 +171,7 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, 0, self._number_of_sims
+            configurator, rank=0, nsims=self._number_of_sims
         )
 
         fake_data = np.array([[1], [2], [3]])
@@ -260,7 +265,7 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, 0, self._number_of_sims
+            configurator, rank=0, nsims=self._number_of_sims
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -302,7 +307,7 @@ class TestLocalAdaptivity(TestCase):
             self._number_of_sims,
             MagicMock(),
             0,
-            MagicMock(),
+            comm_world=MPI.COMM_WORLD,
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
