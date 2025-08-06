@@ -5,7 +5,7 @@
 </a>
 
 <a style="text-decoration: none" href="https://pypi.org/project/micro-manager-precice/" target="_blank">
-    <img src="https://github.com/precice/micro-manager/actions/workflows/pythonpublish.yml/badge.svg" alt="Upload Python Package">
+    <img src="https://github.com/precice/micro-manager/actions/workflows/release.yml/badge.svg" alt="Upload Python Package">
 </a>
 
 [![DOI](https://joss.theoj.org/papers/10.21105/joss.05842/status.svg)](https://doi.org/10.21105/joss.05842)
