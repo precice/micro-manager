@@ -1,6 +1,6 @@
 # Micro Manager changelog
 
-## latest
+## v0.7.0rc1
 
 - Share similarity distance matrix between ranks on a compute node https://github.com/precice/micro-manager/pull/176
 - Use booleans instead of strings `"True"` and `"False"` in the configuration https://github.com/precice/micro-manager/pull/175
