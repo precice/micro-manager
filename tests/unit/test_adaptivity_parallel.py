@@ -24,9 +24,9 @@ class MicroSimulation:
 
 class TestGlobalAdaptivity(TestCase):
     def setUp(self):
-        self._comm = MPI.COMM_WORLD
-        self._rank = self._comm.Get_rank()
-        self._size = self._comm.Get_size()
+        comm_world = MPI.COMM_WORLD
+        self._rank = comm_world.Get_rank()
+        self._size = comm_world.Get_size()
 
     def test_update_inactive_sims_global_adaptivity(self):
         """
@@ -54,7 +54,7 @@ class TestGlobalAdaptivity(TestCase):
             global_ids,
             participant=MagicMock(),
             rank=self._rank,
-            comm=self._comm,
+            comm_world=MPI.COMM_WORLD,
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -126,7 +126,7 @@ class TestGlobalAdaptivity(TestCase):
             global_ids,
             participant=MagicMock(),
             rank=self._rank,
-            comm=self._comm,
+            comm_world=MPI.COMM_WORLD,
         )
 
         adaptivity_controller._adaptivity_data_names = ["data1", "data2"]
@@ -158,6 +158,7 @@ class TestGlobalAdaptivity(TestCase):
         self.assertTrue(
             np.array_equal(expected_is_sim_active, adaptivity_controller._is_sim_active)
         )
+
         self.assertTrue(
             np.array_equal(
                 expected_sim_is_associated_to,
@@ -195,7 +196,7 @@ class TestGlobalAdaptivity(TestCase):
             global_ids,
             participant=MagicMock(),
             rank=self._rank,
-            comm=self._comm,
+            comm_world=MPI.COMM_WORLD,
         )
 
         adaptivity_controller._is_sim_active = np.array(

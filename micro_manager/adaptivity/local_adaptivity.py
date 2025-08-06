@@ -11,7 +11,7 @@ from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator, num_sims, participant, rank, comm) -> None:
+    def __init__(self, configurator, num_sims, participant, rank, comm_world) -> None:
         """
         Class constructor.
 
@@ -25,11 +25,11 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             Object of the class Participant using which the preCICE API is called.
         rank : int
             Rank of the current MPI process.
-        comm : MPI.COMM_WORLD
+        comm_world : MPI.COMM_WORLD
             Global communicator of MPI.
         """
         super().__init__(configurator, rank, num_sims)
-        self._comm = comm
+        self._comm_world = comm_world
 
         if (
             self._adaptivity_output_type == "all"
@@ -38,6 +38,10 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             self._metrics_logger.log_info("n,n active,n inactive")
 
         self._precice_participant = participant
+
+        # similarity_dists: 2D array having similarity distances between each micro simulation pair
+        # This matrix is modified in place via the function update_similarity_dists
+        self._similarity_dists = np.zeros((num_sims, num_sims))
 
     def compute_adaptivity(
         self,
@@ -72,6 +76,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                 )
 
         self._update_similarity_dists(dt, data_for_adaptivity)
+
+        self._max_similarity_dist = np.amax(self._similarity_dists)
 
         self._update_active_sims()
 
@@ -172,13 +178,15 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             self._adaptivity_output_type == "global"
             or self._adaptivity_output_type == "all"
         ):
-            active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
-            inactive_sims_rankwise = self._comm.gather(
+            active_sims_rankwise = self._comm_world.gather(
+                active_sims_on_this_rank, root=0
+            )
+            inactive_sims_rankwise = self._comm_world.gather(
                 inactive_sims_on_this_rank, root=0
             )
 
             if self._rank == 0:
-                size = self._comm.Get_size()
+                size = self._comm_world.Get_size()
 
                 self._global_metrics_logger.log_info_rank_zero(
                     "{},{},{},{},{}".format(

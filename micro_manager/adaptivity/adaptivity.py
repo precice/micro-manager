@@ -44,10 +44,6 @@ class AdaptivityCalculator:
 
         self._rank = rank
 
-        # similarity_dists: 2D array having similarity distances between each micro simulation pair
-        # This matrix is modified in place via the function update_similarity_dists
-        self._similarity_dists = np.zeros((nsims, nsims))
-
         self._max_similarity_dist = 0.0
 
         # is_sim_active: 1D array having state (active or inactive) of each micro simulation
@@ -110,7 +106,8 @@ class AdaptivityCalculator:
         data : dict
             Data to be used in similarity distance calculation
         """
-        self._similarity_dists = exp(-self._hist_param * dt) * self._similarity_dists
+        # Update similarity distances without copying
+        self._similarity_dists *= exp(-self._hist_param * dt)
 
         for name in data.keys():
             data_vals = np.array(data[name])
@@ -121,8 +118,6 @@ class AdaptivityCalculator:
                 data_vals = np.expand_dims(data_vals, axis=1)
 
             self._similarity_dists += dt * self._similarity_measure(data_vals)
-
-        self._max_similarity_dist = np.amax(self._similarity_dists)
 
     def _update_active_sims(self) -> None:
         """
