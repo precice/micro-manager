@@ -251,8 +251,7 @@ class Config:
             ):
                 self._adaptivity_type = "global"
             else:
-                raise Exception(
-                    "Adaptivity type can be either local or global.")
+                raise Exception("Adaptivity type can be either local or global.")
 
             self._logger.log_info_rank_zero("Adaptivity type: " + self._adaptivity_type)
 
@@ -376,7 +375,9 @@ class Config:
                         "Micro Manager will compute adaptivity in every implicit iteration, if implicit coupling is done."
                     )
 
-                    adaptivity_for_refining_constant = self._data["simulation_params"]["adaptivity_settings"]["adaptive_refining_constant"]
+                    adaptivity_for_refining_constant = self._data["simulation_params"][
+                        "adaptivity_settings"
+                    ]["adaptive_refining_constant"]
                     if adaptivity_for_refining_constant:
                         self._adaptivity_for_refining_constant = True
                     elif adaptivity_for_refining_constant:

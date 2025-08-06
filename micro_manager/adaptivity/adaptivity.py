@@ -69,7 +69,7 @@ class AdaptivityCalculator:
         self._similarity_measure = self._get_similarity_measure(
             configurator.get_adaptivity_similarity_measure()
         )
-        
+
         output_dir = configurator.get_output_dir()
 
         if output_dir is not None:
@@ -103,11 +103,14 @@ class AdaptivityCalculator:
                 csv_logger=True,
             )
 
-        with open(self._config_file_name, 'r') as xml_file:
+        with open(self._config_file_name, "r") as xml_file:
             self.xml_data = xml_file.read()
 
-        unique_names = ["absolute-convergence-measure",
-                        "relative-convergence-measure", "residual-relative-convergence-measure"]
+        unique_names = [
+            "absolute-convergence-measure",
+            "relative-convergence-measure",
+            "residual-relative-convergence-measure",
+        ]
 
         # Initialize lists to store the found attributes
         self.data_values = []
@@ -122,7 +125,9 @@ class AdaptivityCalculator:
 
         # Check if any matches were found
         if self.data_values and self.limit_values:
-            for i, (data_value, limit_value) in enumerate(zip(self.data_values, self.limit_values), start=1):
+            for i, (data_value, limit_value) in enumerate(
+                zip(self.data_values, self.limit_values), start=1
+            ):
                 print(f"Match {i}:")
                 print(f"Data: {data_value}")
                 print(f"Limit: {limit_value}")
@@ -197,14 +202,21 @@ class AdaptivityCalculator:
                         if data in element:
                             index = header_line.index(element)
                             if last_line[index] == "inf":
-                                convergence_values.append(1e+20)
+                                convergence_values.append(1e20)
                             else:
                                 index_config = self.data_values.index(data)
-                                convergence_values.append(max(
-                                    float(last_line[index]),
-                                    float(self.limit_values[index_config])))
-                min_convergence = np.log10(np.prod(np.array(
-                    self.limit_values, dtype=float)/np.array(convergence_values, dtype=float)))
+                                convergence_values.append(
+                                    max(
+                                        float(last_line[index]),
+                                        float(self.limit_values[index_config]),
+                                    )
+                                )
+                min_convergence = np.log10(
+                    np.prod(
+                        np.array(self.limit_values, dtype=float)
+                        / np.array(convergence_values, dtype=float)
+                    )
+                )
                 if last_line[1] == "60":
                     min_convergence = max(0.0, min_convergence)
                 self._convergence_status.append(min_convergence)
@@ -214,8 +226,12 @@ class AdaptivityCalculator:
             if len(self._convergence_status) <= 2:
                 self._min_addition = 1.0
                 self._logger.info("less than two iterations, relax")
-            self._logger.info("min Convergence: {} ".format(self._convergence_status[-1]))
-            additional = (1 + 1.0 / (min(0.0, self._convergence_status[-1]) - 1.0))**alpha
+            self._logger.info(
+                "min Convergence: {} ".format(self._convergence_status[-1])
+            )
+            additional = (
+                1 + 1.0 / (min(0.0, self._convergence_status[-1]) - 1.0)
+            ) ** alpha
 
         return additional
 
@@ -228,11 +244,13 @@ class AdaptivityCalculator:
         and if found similar, one of them is deactivated.
         """
         if use_dyn_ref_tol and self._adaptive_refine_const:
-            additional = self._get_addition(self._refine_const_input)*(1-self._refine_const_input)
+            additional = self._get_addition(self._refine_const_input) * (
+                1 - self._refine_const_input
+            )
             self._min_addition = min(self._min_addition, additional)
             additional = self._min_addition
             if additional > 0.0:
-                _refine_const = additional+ self._refine_const_input
+                _refine_const = additional + self._refine_const_input
             else:
                 _refine_const = self._refine_const_input
             self._logger.info("Adaptive refine constant: {}".format(self._refine_const))
@@ -247,9 +265,7 @@ class AdaptivityCalculator:
             )
             self._coarse_tol = sys.float_info.min
         else:
-            self._coarse_tol = (
-                self._coarse_const * _refine_const * max_similarity_dist
-            )
+            self._coarse_tol = self._coarse_const * _refine_const * max_similarity_dist
 
         # Update the set of active micro sims
         for i in range(self._is_sim_active.size):
@@ -416,8 +432,7 @@ class AdaptivityCalculator:
             (
                 pointwise_diff
                 / np.maximum(
-                    np.absolute(data[np.newaxis, :]), np.absolute(
-                        data[:, np.newaxis])
+                    np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
                 )
             )
         )
@@ -445,8 +460,7 @@ class AdaptivityCalculator:
             (
                 pointwise_diff
                 / np.maximum(
-                    np.absolute(data[np.newaxis, :]), np.absolute(
-                        data[:, np.newaxis])
+                    np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
                 )
             )
         )
