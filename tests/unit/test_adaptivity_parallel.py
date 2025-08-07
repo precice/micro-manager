@@ -29,10 +29,10 @@ class TestGlobalAdaptivity(TestCase):
         self._size = comm_world.Get_size()
 
         self._configurator = MagicMock()
+        self._configurator.get_output_dir = MagicMock(return_value="output_dir")
         self._configurator.get_micro_file_name = MagicMock(
             return_value="test_adaptivity_parallel"
         )
-        self._configurator.get_output_dir = MagicMock(return_value="output_dir")
 
     def test_update_inactive_sims_global_adaptivity(self):
         """
@@ -193,7 +193,11 @@ class TestGlobalAdaptivity(TestCase):
 
     def test_get_ranks_of_sims(self):
         """
-        ...
+        Test functionality to get ranks on which particular simulations are living.
+        Run this test in parallel using MPI with 2 ranks.
+        5 simulations are distributed across the two ranks.
+        The first three simulations are on rank 0, and the last two on rank 1.
+        The expected ranks of simulations are [0, 0, 0, 1, 1].
         """
         self._configurator.get_adaptivity_similarity_measure = MagicMock(
             return_value="L1"
@@ -212,7 +216,7 @@ class TestGlobalAdaptivity(TestCase):
             global_ids,
             participant=MagicMock(),
             rank=self._rank,
-            comm=self._comm,
+            comm_world=MPI.COMM_WORLD,
         )
 
         actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
