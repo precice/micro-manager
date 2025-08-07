@@ -13,7 +13,7 @@ import importlib
 import os
 import sys
 import time
-
+import subprocess
 import numpy as np
 
 from micro_manager.micro_manager import MicroManager
@@ -41,6 +41,16 @@ class MicroManagerSnapshot(MicroManager):
 
         self._config.set_logger(self._logger)
         self._config.read_json_snapshot()
+
+        self._output_dir = self._config.get_output_dir()
+
+        if self._output_dir is not None:
+            self._output_dir = os.path.abspath(self._output_dir) + "/"
+            subprocess.run(["mkdir", "-p", self._output_dir])  # Create output directory
+        else:
+            self._output_dir = os.path.abspath(os.getcwd()) + "/"
+
+        self._output_file_name = self._config.get_output_file_name()
 
         # Data names of data to output to the snapshot database
         self._write_data_names = self._config.get_write_data_names()
@@ -212,14 +222,15 @@ class MicroManagerSnapshot(MicroManager):
 
         # Create database file to store output from a rank in
         if self._is_parallel:
-            self._file_name = "snapshot_data_{}.hdf5".format(self._rank)
+            self._file_name = self._output_file_name + "_{}.hdf5".format(self._rank)
         else:
-            self._file_name = "snapshot_data.hdf5"
+            self._file_name = self._output_file_name + ".hdf5"
         self._output_file_path = os.path.join(
             self._output_subdirectory, self._file_name
         )
         self._data_storage.create_file(self._output_file_path)
         self._logger.log_info("Output file created: {}".format(self._output_file_path))
+
         self._local_number_of_sims = len(self._macro_parameters)
         self._logger.log_info(
             "Number of local micro simulations = {}".format(self._local_number_of_sims)
