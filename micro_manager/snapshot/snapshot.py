@@ -6,7 +6,7 @@ This files the class SnapshotComputation which has the following callable public
 - solve
 - initialize
 
-Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
+Detailed documentation: https://precice.org/tooling-micro-manager-snapshot-configuration.html
 """
 
 import importlib
