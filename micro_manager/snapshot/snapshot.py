@@ -54,13 +54,15 @@ class MicroManagerSnapshot(MicroManager):
 
         # Path to the parameter file containing input parameters for micro simulations
         self._parameter_file = self._config.get_parameter_file_name()
+
         # Get name of pos-processing script
         self._post_processing_file_name = self._config.get_postprocessing_file_name()
 
         # Check if simulation object can be re-used.
         self._initialize_once = self._config.create_single_sim_object()
+
         # Collect crashed indices
-        self._crashed_snapshots = []  # Declaration
+        self._crashed_snapshots: list[int] = []  # Declaration
 
     # **************
     # Public methods
@@ -217,7 +219,7 @@ class MicroManagerSnapshot(MicroManager):
             self._output_subdirectory, self._file_name
         )
         self._data_storage.create_file(self._output_file_path)
-        self._logger.log_error("Output file created: {}".format(self._output_file_path))
+        self._logger.log_info("Output file created: {}".format(self._output_file_path))
         self._local_number_of_sims = len(self._macro_parameters)
         self._logger.log_info(
             "Number of local micro simulations = {}".format(self._local_number_of_sims)
@@ -298,5 +300,5 @@ class MicroManagerSnapshot(MicroManager):
                     micro_sims_input
                 )
             )
-            self._logger.error(e)
+            self._logger.log_error(e)
             return None
