@@ -171,12 +171,14 @@ class ReadWriteHDF:
         parameter_file = h5py.File(file_path, "r")
         parameter_data = dict()
         output = []
+
         # Read data by iterating over the relevant datasets
         for name in data_names:
             parameter_data[name] = np.asarray(parameter_file[name][start:end])
             my_name = (
                 name  # Save one name to be able to iterate over the length of the data
             )
+
         # Iterate over len of data. In each iteration write data from all macro data sets
         # to a dictionary and append it to the output list of dicts.
         for i in range(len(parameter_data[my_name])):
@@ -184,6 +186,7 @@ class ReadWriteHDF:
             for name in data_names:
                 current_data[name] = parameter_data[name][i]
             output.append(current_data)
+
         return output
 
     def get_parameter_space_size(self, file_path: str) -> int:

@@ -6,14 +6,14 @@ This files the class SnapshotComputation which has the following callable public
 - solve
 - initialize
 
-Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
+Detailed documentation: https://precice.org/tooling-micro-manager-snapshot-configuration.html
 """
 
 import importlib
 import os
 import sys
 import time
-
+import subprocess
 import numpy as np
 
 from micro_manager.micro_manager import MicroManager
@@ -42,6 +42,16 @@ class MicroManagerSnapshot(MicroManager):
         self._config.set_logger(self._logger)
         self._config.read_json_snapshot()
 
+        self._output_dir = self._config.get_output_dir()
+
+        if self._output_dir is not None:
+            self._output_dir = os.path.abspath(self._output_dir) + "/"
+            subprocess.run(["mkdir", "-p", self._output_dir])  # Create output directory
+        else:
+            self._output_dir = os.path.abspath(os.getcwd()) + "/"
+
+        self._output_file_name = self._config.get_output_file_name()
+
         # Data names of data to output to the snapshot database
         self._write_data_names = self._config.get_write_data_names()
 
@@ -54,13 +64,15 @@ class MicroManagerSnapshot(MicroManager):
 
         # Path to the parameter file containing input parameters for micro simulations
         self._parameter_file = self._config.get_parameter_file_name()
+
         # Get name of pos-processing script
         self._post_processing_file_name = self._config.get_postprocessing_file_name()
 
         # Check if simulation object can be re-used.
         self._initialize_once = self._config.create_single_sim_object()
+
         # Collect crashed indices
-        self._crashed_snapshots = []  # Declaration
+        self._crashed_snapshots: list[int] = []  # Declaration
 
     # **************
     # Public methods
@@ -89,6 +101,7 @@ class MicroManagerSnapshot(MicroManager):
                     )
 
             micro_sims_input = self._macro_parameters[elems]
+
             # Solve micro simulation
             micro_sims_output = self._solve_micro_simulation(micro_sims_input)
 
@@ -120,6 +133,7 @@ class MicroManagerSnapshot(MicroManager):
                             "No post-processing script with the provided path found. Skipping post-processing."
                         )
                         self._post_processing_file_name = None
+
                 self._data_storage.write_output_to_hdf(
                     self._output_file_path,
                     micro_sims_input,
@@ -127,8 +141,7 @@ class MicroManagerSnapshot(MicroManager):
                     elems,
                     len(self._macro_parameters),
                 )
-            # Log error and write macro data to database if simulation has crashed
-            else:
+            else:  # Log error and write macro data to database if simulation has crashed
                 self._logger.log_info_rank_zero(
                     "Skipping snapshot storage for crashed simulation."
                 )
@@ -150,21 +163,21 @@ class MicroManagerSnapshot(MicroManager):
 
         # Merge output files
         if self._is_parallel:
-            self._logger.log_info(
+            self._logger.log_info_rank_zero(
                 "Snapshots have been computed and stored. Merging output files"
             )
             self._data_storage.set_status(self._output_file_path, "reading/deleting")
             list_of_output_files = self._comm.gather(self._file_name, 0)
             if self._rank == 0:
                 self._data_storage.collect_output_files(
-                    self._output_subdirectory,
+                    self._output_dir,
                     list_of_output_files,
                     self._parameter_space_size,
                 )
         else:
             self._data_storage.set_status(self._output_file_path, "finished")
-        if self._rank == 0:
-            self._logger.log_info_rank_zero("Snapshot computation completed.")
+
+        self._logger.log_info_rank_zero("Snapshot computation completed.")
 
     def initialize(self) -> None:
         """
@@ -174,12 +187,6 @@ class MicroManagerSnapshot(MicroManager):
         - Create output subdirectory and file paths to store output.
         - Import micro simulation.
         """
-
-        # Create subdirectory to store output files in
-        directory = os.path.dirname(self._parameter_file)
-        self._output_subdirectory = os.path.join(directory, "output")
-        os.makedirs(self._output_subdirectory, exist_ok=True)
-
         # Create object responsible for reading parameters and writing simulation output
         self._data_storage = ReadWriteHDF(self._logger)
 
@@ -210,16 +217,19 @@ class MicroManagerSnapshot(MicroManager):
 
         # Create database file to store output from a rank in
         if self._is_parallel:
-            self._file_name = "snapshot_data_{}.hdf5".format(self._rank)
+            self._file_name = self._output_file_name + "_{}.hdf5".format(self._rank)
         else:
-            self._file_name = "snapshot_data.hdf5"
-        self._output_file_path = os.path.join(
-            self._output_subdirectory, self._file_name
-        )
+            self._file_name = self._output_file_name + ".hdf5"
+
+        self._output_file_path = os.path.join(self._output_dir, self._file_name)
+
         self._data_storage.create_file(self._output_file_path)
-        self._logger.log_error("Output file created: {}".format(self._output_file_path))
+        self._logger.log_info_rank_zero(
+            "Output file created: {}".format(self._output_file_path)
+        )
+
         self._local_number_of_sims = len(self._macro_parameters)
-        self._logger.log_info(
+        self._logger.log_info_rank_zero(
             "Number of local micro simulations = {}".format(self._local_number_of_sims)
         )
 
@@ -298,5 +308,5 @@ class MicroManagerSnapshot(MicroManager):
                     micro_sims_input
                 )
             )
-            self._logger.error(e)
+            self._logger.log_error(e)
             return None

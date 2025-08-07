@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## latest
+
+- Software improvements to the snapshot computation functionality https://github.com/precice/micro-manager/pull/178
+
 ## v0.7.0
 
 - Share similarity distance matrix between ranks on a compute node https://github.com/precice/micro-manager/pull/176
