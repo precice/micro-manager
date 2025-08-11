@@ -141,12 +141,12 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             send_sims = n_active_sims_local - c_avg_active_sims
 
         # Number of active sims that each rank wants to send and receive
-        global_send_sims = self._comm.allgather(send_sims)
-        global_recv_sims = self._comm.allgather(recv_sims)
+        global_send_sims = self._comm_world.allgather(send_sims)
+        global_recv_sims = self._comm_world.allgather(recv_sims)
 
         # Number of active sims that each rank potentially wants to send and receive
-        global_psend_sims = self._comm.allgather(psend_sims)
-        global_precv_sims = self._comm.allgather(precv_sims)
+        global_psend_sims = self._comm_world.allgather(psend_sims)
+        global_precv_sims = self._comm_world.allgather(precv_sims)
 
         n_global_send_sims = sum(global_send_sims)
         n_global_recv_sims = sum(global_recv_sims)
@@ -284,7 +284,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             if self._is_sim_active[global_id] == True:
                 global_ids_of_active_sims_local.append(global_id)
 
-        rank_wise_global_ids_of_active_sims = self._comm.allgather(
+        rank_wise_global_ids_of_active_sims = self._comm_world.allgather(
             global_ids_of_active_sims_local
         )
 
