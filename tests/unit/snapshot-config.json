@@ -11,7 +11,7 @@
     },
     "snapshot_params": {
         "post_processing_file_name": "snapshot_post_processing",
-        "initialize_once": "True",
+        "initialize_once": true,
         "output_file_name": "snapshot_data"
     }
 }
