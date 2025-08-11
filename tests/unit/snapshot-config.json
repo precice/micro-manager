@@ -1,5 +1,6 @@
 {
     "micro_file_name": "test_snapshot_computation",
+    "output_directory": "output",
     "coupling_params": {
         "parameter_file_name": "test_parameter.hdf5",
         "read_data_names": ["macro-scalar-data", "macro-vector-data"],
@@ -10,6 +11,7 @@
     },
     "snapshot_params": {
         "post_processing_file_name": "snapshot_post_processing",
-        "initialize_once": "True"
+        "initialize_once": true,
+        "output_file_name": "snapshot_data"
     }
 }

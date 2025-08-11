@@ -32,6 +32,7 @@ Configure the snapshot computation functionality with a JSON file. An example co
 ```json
 {
     "micro_file_name": "python-dummy/micro_dummy",
+    "output_directory": "output",
     "coupling_params": {
         "parameter_file_name": "parameter.hdf5",
         "read_data_names": ["macro-scalar-data", "macro-vector-data"],
@@ -41,7 +42,9 @@ Configure the snapshot computation functionality with a JSON file. An example co
         "micro_dt": 1.0,
     },
     "snapshot_params": {
-        "post_processing_file_name": "snapshot_postprocessing"
+        "post_processing_file_name": "snapshot_postprocessing",
+        "initialize_once": true,
+        "output_file_name": "snapshot_data"
     },
     "diagnostics": {
         "output_micro_sim_solve_time": true
@@ -49,7 +52,14 @@ Configure the snapshot computation functionality with a JSON file. An example co
 }
 ```
 
-This example configuration file is in [`examples/snapshot-config.json`](https://github.com/precice/micro-manager/tree/develop/examples/snapshot-config.json).
+## Micro Manager Configuration
+
+Parameter | Description
+--- | ---
+`micro_file_name` | Path to the file containing the Python importable micro simulation class. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.
+`output_directory` | Path to output directory for logging and performance metrics. Directory is created if not existing already.
+
+Apart from the base settings, there are three main sections in the configuration file, [coupling parameters](#coupling-parameters), [simulation parameters](#simulation-parameters), [snapshot parameters](#snapshot-parameters), and [diagnostics](#diagnostics).
 
 The path to the file containing the Python importable micro simulation class is specified in the `micro_file_name` parameter. If the file is not in the working directory, give the relative path.
 
@@ -75,6 +85,7 @@ Parameter | Description
 --- | ---
 `post_processing_file_name`| Path to the post-processing Python script from the current working directory. Providing a post-processing script is optional. The script must contain a class `PostProcessing` with a method `postprocessing(sim_output)` that takes the simulation output as an argument. The method can be used to post-process the simulation output before writing it to the database.
 `initialize_once` | If `true`, only one micro simulation is initialized and solved for all macro inputs per rank. If `false` a new micro simulation is initialized and solved for each macro input in the parameter space. Default is `false`. It is recommended to set the parameter to `true` if the micro simulation is not history-dependent and the same setup is shared across all micro simulations.
+`output_file_name` | Name of the HDF5 file which stores the simulation inputs and output data snapshots. Default is `"snapshot_data"`.
 
 ## Diagnostics
 
