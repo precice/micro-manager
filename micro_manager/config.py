@@ -55,6 +55,12 @@ class Config:
         self._adaptivity_output_type = ""
         self._adaptivity_output_n = 1
 
+        self._adaptivity_is_load_balancing = False
+        self._load_balancing_n = 1
+        self._two_step_load_balancing = False
+        self._load_balancing_threshold = 0
+        self._balance_inactive_sims = False
+
         # Snapshot information
         self._parameter_file_name = None
         self._postprocessing_file_name = None
@@ -389,6 +395,71 @@ class Config:
             self._write_data_names.append("active_state")
             self._write_data_names.append("active_steps")
 
+        try:
+            if self._data["simulation_params"]["load_balancing"] == "True":
+                self._adaptivity_is_load_balancing = True
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will dynamically balance micro simulations based on the adaptivity computation."
+                )
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "Micro Manager will not dynamically balance micro simulations based on the adaptivity computation."
+            )
+
+        if self._adaptivity_is_load_balancing:
+            self._load_balancing_n = self._data["simulation_params"][
+                "load_balancing_settings"
+            ]["load_balancing_n"]
+            self._logger.log_info_rank_zero(
+                "Load balancing will be done every "
+                + str(self._load_balancing_n)
+                + " time windows."
+            )
+
+            try:
+                if (
+                    self._data["simulation_params"]["load_balancing_settings"][
+                        "two_step_load_balancing"
+                    ]
+                    == "True"
+                ):
+                    self._two_step_load_balancing = True
+                    self._logger.log_info_rank_zero(
+                        "Micro Manager will use two-step load balancing."
+                    )
+            except BaseException:
+                self._logger.log_info_rank_zero(
+                    "Two-step load balancing is not specified. Micro Manager will only try to balance the load in one sweep."  # TODO: Need a better log message here.
+                )
+
+            try:
+                self._load_balancing_threshold = self._data["simulation_params"][
+                    "load_balancing_settings"
+                ]["balancing_threshold"]
+                self._logger.log_info_rank_zero(
+                    "Load balancing threshold: " + str(self._load_balancing_threshold)
+                )
+            except BaseException:
+                self._logger.log_info_rank_zero(
+                    "No load balancing threshold provided. The threshold will be set to 0."
+                )
+
+            try:
+                if (
+                    self._data["simulation_params"]["load_balancing_settings"][
+                        "balance_inactive_sims"
+                    ]
+                    == "True"
+                ):
+                    self._balance_inactive_sims = True
+                    self._logger.log_info_rank_zero(
+                        "Micro Manager will redistribute inactive simulations in the load balancing."
+                    )
+            except BaseException:
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will not redistribute inactive simulations in the load balancing. Only active simulations will be redistributed. Note that this may significantly increase the communication cost of the adaptivity."
+                )
+
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"]:
                 self._interpolate_crash = True
@@ -713,6 +784,61 @@ class Config:
             True if adaptivity needs to be calculated in every time iteration, False otherwise.
         """
         return self._adaptivity_every_implicit_iteration
+
+    def is_adaptivity_with_load_balancing(self):
+        """
+        Check if adaptivity computation needs to be done with load balancing.
+
+        Returns
+        -------
+        adaptivity_is_load_balancing : bool
+            True if adaptivity computation needs to be done with load balancing, False otherwise.
+        """
+        return self._adaptivity_is_load_balancing
+
+    def get_load_balancing_n(self):
+        """
+        Get the load balancing frequency.
+
+        Returns
+        -------
+        load_balancing_n : int
+            Load balancing frequency
+        """
+        return self._load_balancing_n
+
+    def is_load_balancing_two_step(self):
+        """
+        Check if two-step load balancing is required.
+
+        Returns
+        -------
+        two_step_load_balancing : bool
+            True if two-step load balancing is required, False otherwise.
+        """
+        return self._two_step_load_balancing
+
+    def get_load_balancing_threshold(self):
+        """
+        Get the load balancing threshold to control how balanced the micro simulations need to be.
+
+        Returns
+        -------
+        load_balancing_threshold : float
+            Load balancing threshold
+        """
+        return self._load_balancing_threshold
+
+    def balance_inactive_sims(self):
+        """
+        Check if inactive simulations are to be redistributed in the load balancing.
+
+        Returns
+        -------
+        balance_inactive_sims : bool
+            True if inactive simulations are to be redistributed in the load balancing, False otherwise.
+        """
+        return self._balance_inactive_sims
 
     def initialize_sims_lazily(self):
         """

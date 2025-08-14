@@ -89,6 +89,7 @@ class TestSimulationCrashHandling(TestCase):
         manager = micro_manager.MicroManagerCoupling("micro-manager-config_crash.json")
         manager.initialize()
 
+        manager._global_ids_of_local_sims = [0, 1, 2, 3, 4]
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
         manager._local_number_of_sims = 5
         manager._micro_sims_active_steps = np.zeros(5, dtype=np.int32)
