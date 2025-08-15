@@ -912,6 +912,13 @@ class MicroManagerCoupling(MicroManager):
             for name in self._adaptivity_micro_data_names:
                 self._data_for_adaptivity[name][i] = micro_sims_output[i][name]
 
+        # Add similarity constants to the output
+        ref_const = self._adaptivity_controller._get_dynamic_adaptivity_refine_const()
+        for inactive_id in inactive_sim_ids:
+            micro_sims_output[inactive_id]["refine_const"] = ref_const
+        for active_id in active_sim_ids:
+            micro_sims_output[active_id]["refine_const"] = ref_const
+
         return micro_sims_output
 
     def _get_solve_variant(self) -> Callable[[list, float], list]:

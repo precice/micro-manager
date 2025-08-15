@@ -155,13 +155,55 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         self._max_similarity_dist = np.amax(self._similarity_dists)
 
-        self._update_active_sims()
+        _is_sim_active_sta, _just_deactivated_sta = self._compute_active_sims(False)
+        (
+            _is_sim_active_sta,
+            _sim_is_associated_to_sta,
+            _to_be_activated_ids_sta,
+        ) = self._compute_inactive_sims(
+            self._refine_const, _is_sim_active_sta, _just_deactivated_sta
+        )
 
-        self._update_inactive_sims(micro_sims)
+        self._logger.log_info(
+            "active sims (static): {}".format(np.sum(_is_sim_active_sta))
+        )
+
+        _is_sim_active_dyn, _just_deactivated_dyn = self._compute_active_sims(True)
+        (
+            _is_sim_active_dyn,
+            _sim_is_associated_to_dyn,
+            _to_be_activated_ids_dyn,
+        ) = self._compute_inactive_sims(
+            self._dynamic_refine_const, _is_sim_active_dyn, _just_deactivated_dyn
+        )
+
+        self._logger.log_info(
+            "active sims (dynamic): {}".format(np.sum(_is_sim_active_dyn))
+        )
+
+        self._update_active_sims(_is_sim_active_dyn, _just_deactivated_dyn)
+
+        self._update_inactive_sims(
+            micro_sims,
+            _is_sim_active_dyn,
+            _sim_is_associated_to_dyn,
+            _to_be_activated_ids_dyn,
+        )
 
         self._associate_inactive_to_active()
 
         self._precice_participant.stop_last_profiling_section()
+
+        if np.array_equal(_is_sim_active_dyn, _is_sim_active_sta) and np.array_equal(
+            _sim_is_associated_to_dyn, _sim_is_associated_to_sta
+        ):
+            self._dynamic_refine_const = self._refine_const
+
+        self._logger.log_info(
+            "send refine const {} ---------------------------".format(
+                self._dynamic_refine_const
+            )
+        )
 
     def get_active_sim_ids(self) -> np.ndarray:
         """
@@ -340,7 +382,33 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             for local_id in active_to_inactive_map[assoc_active_ids[count]]:
                 micro_output[local_id] = deepcopy(output)
 
-    def _update_inactive_sims(self, micro_sims: list) -> None:
+    def _compute_inactive_sims(
+        self, _refine_const, is_sim_active, just_deactivated
+    ) -> tuple:
+        self._ref_tol = _refine_const * self._max_similarity_dist
+
+        _sim_is_associated_to_updated = np.copy(self._sim_is_associated_to)
+
+        # Check inactive simulations for activation and collect IDs of those to be activated
+        to_be_activated_ids = []  # Global IDs to be activated
+        for i in range(is_sim_active.size):
+            if not is_sim_active[i]:  # if id is inactive
+                if self._check_for_activation(i, is_sim_active):
+                    is_sim_active[i] = True
+                    _sim_is_associated_to_updated[
+                        i
+                    ] = -2  # Active sim cannot have an associated sim
+                    if self._is_sim_on_this_rank[i] and i not in just_deactivated:
+                        to_be_activated_ids.append(i)
+        return is_sim_active, _sim_is_associated_to_updated, to_be_activated_ids
+
+    def _update_inactive_sims(
+        self,
+        micro_sims: list,
+        _is_sim_active,
+        _sim_is_associated_to_updated,
+        to_be_activated_ids,
+    ) -> None:
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones and if it is not similar to any of them, it is activated.
 
@@ -352,21 +420,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        self._ref_tol = self._refine_const * self._max_similarity_dist
-
-        _sim_is_associated_to_updated = np.copy(self._sim_is_associated_to)
-
-        # Check inactive simulations for activation and collect IDs of those to be activated
-        to_be_activated_ids = []  # Global IDs to be activated
-        for i in range(self._is_sim_active.size):
-            if not self._is_sim_active[i]:  # if id is inactive
-                if self._check_for_activation(i, self._is_sim_active):
-                    self._is_sim_active[i] = True
-                    _sim_is_associated_to_updated[
-                        i
-                    ] = -2  # Active sim cannot have an associated sim
-                    if self._is_sim_on_this_rank[i] and i not in self._just_deactivated:
-                        to_be_activated_ids.append(i)
+        self._is_sim_active = np.copy(_is_sim_active)
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 

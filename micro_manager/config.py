@@ -51,6 +51,7 @@ class Config:
         self._adaptivity_coarsening_constant = 0.5
         self._adaptivity_refining_constant = 0.5
         self._adaptivity_every_implicit_iteration = False
+        self._dynamic_adaptivity = False
         self._adaptivity_similarity_measure = "L1"
         self._adaptivity_output_type = ""
         self._adaptivity_output_n = 1
@@ -375,6 +376,21 @@ class Config:
                         "Micro Manager will compute adaptivity in every implicit iteration, if implicit coupling is done."
                     )
 
+                    try:
+                        adaptivity_for_refining_constant = self._data[
+                            "simulation_params"
+                        ]["adaptivity_settings"]["adaptive_refining_constant"]
+                        if adaptivity_for_refining_constant:
+                            self._dynamic_adaptivity = True
+                        self._logger.log_info_rank_zero(
+                            "The adaptivity for refining constant is {}.".format(
+                                self._dynamic_adaptivity
+                            )
+                        )
+                    except:
+                        self._logger.log_info_rank_zero(
+                            "No dynamic adaptivity for refining constant provided, defaulting to False."
+                        )
                 elif not adaptivity_every_implicit_iteration:
                     self._adaptivity_every_implicit_iteration = False
                     self._logger.log_info_rank_zero(
@@ -386,6 +402,7 @@ class Config:
                 )
                 self._adaptivity_every_implicit_iteration = False
 
+            self._write_data_names.append("refine_const")
             self._write_data_names.append("active_state")
             self._write_data_names.append("active_steps")
 
@@ -690,6 +707,18 @@ class Config:
             Adaptivity refining constant
         """
         return self._adaptivity_refining_constant
+
+    def get_dynamic_adaptivity(self):
+        """
+        Get adaptivity for refining constant.
+        More details: https://precice.org/tooling-micro-manager-configuration.html#adaptivity
+
+        Returns
+        -------
+        adaptivity_for_refining_constant : bool
+            Adaptivity for refining constant
+        """
+        return self._dynamic_adaptivity
 
     def get_adaptivity_similarity_measure(self):
         """
