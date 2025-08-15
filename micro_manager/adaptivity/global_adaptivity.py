@@ -382,55 +382,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             for local_id in active_to_inactive_map[assoc_active_ids[count]]:
                 micro_output[local_id] = deepcopy(output)
 
-    def interpolate_inactive_outputs(micro_output, is_sim_active, simulation_positions):
-        """
-        Interpolates the output for inactive simulations based on the closest two active simulations.
-
-        Parameters:
-        -----------
-        micro_output : dict
-            Dictionary containing the outputs of all simulations.
-        is_sim_active : np.ndarray
-            Boolean array indicating which simulations are active.
-        simulation_positions : np.ndarray
-            Array of positions (or coordinates) for each simulation.
-
-        Returns:
-        --------
-        micro_output : dict
-            Updated dictionary with interpolated outputs for inactive simulations.
-        """
-        num_simulations = len(is_sim_active)
-
-        for local_id in range(num_simulations):
-            if not is_sim_active[local_id]:  # If the simulation is inactive
-                # Compute distances to all active simulations
-                distances = np.linalg.norm(simulation_positions[is_sim_active] - simulation_positions[local_id], axis=1)
-
-                # Find indices of the two closest active simulations
-                closest_indices = np.argsort(distances)[:2]
-                closest_active_ids = np.where(is_sim_active)[0][closest_indices]
-
-                # Get the outputs and distances of the two closest active simulations
-                output_1 = micro_output[closest_active_ids[0]]
-                output_2 = micro_output[closest_active_ids[1]]
-                distance_1 = distances[closest_indices[0]]
-                distance_2 = distances[closest_indices[1]]
-
-                # Perform weighted interpolation
-                total_distance = distance_1 + distance_2
-                weight_1 = 1 - (distance_1 / total_distance)
-                weight_2 = 1 - (distance_2 / total_distance)
-
-                # Interpolate the output
-                interpolated_output = {
-                    key: weight_1 * output_1[key] + weight_2 * output_2[key]
-                    for key in output_1.keys()
-                }
-
-                # Assign the interpolated output to the inactive simulation
-                micro_output[local_id] = interpolated_output
-
     def _compute_inactive_sims(
         self, _refine_const, is_sim_active, just_deactivated
     ) -> tuple:
