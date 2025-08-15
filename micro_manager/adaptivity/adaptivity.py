@@ -27,18 +27,21 @@ class AdaptivityCalculator:
         nsims : int
             Number of micro simulations.
         """
-        self._refine_const_input = configurator.get_adaptivity_refining_const()
-        self._refine_const = self._refine_const_input
-        self._adaptive_refine_const = configurator.get_adaptivity_for_refining_const()
+        self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
         self._hist_param = configurator.get_adaptivity_hist_param()
         self._adaptivity_data_names = configurator.get_data_for_adaptivity()
         self._adaptivity_type = configurator.get_adaptivity_type()
-        self._config_file_name = configurator.get_config_file_name()
-        self._convergence_measure = []
-        self._convergence_status = []
-        self._min_addition = 1.0
         self._adaptivity_output_type = configurator.get_adaptivity_output_type()
+
+        self._dynamic_adaptivity = configurator.get_dynamic_adaptivity()
+        self._dynamic_refine_const = self._refine_const
+        self._precice_config_file_name = configurator.get_precice_config_file_name()
+        self._convergence_measure = []
+        self._min_addition = 1.0
+        self._logger = Logger(
+            "adaptivity-logger", "adaptivity-" + str(rank) + ".log", rank
+        )
 
         self._micro_problem = getattr(
             importlib.import_module(
@@ -103,8 +106,29 @@ class AdaptivityCalculator:
                 csv_logger=True,
             )
 
-        with open(self._config_file_name, "r") as xml_file:
-            self.xml_data = xml_file.read()
+        if self._dynamic_adaptivity:
+            # Read convergence measures from preCICE configuration file
+            self._data_values, self._limit_values = self.read_convergence_measures()
+
+    def read_convergence_measures(self):
+        """
+        Reads convergence measures from a preCICE configuration file.
+
+        Parameters:
+        -----------
+        config_file_name : str
+            Path to the preCICE configuration file.
+
+        Returns:
+        --------
+        data_values : list
+            List of data names involved in the convergence measurement
+        limit_values : list
+            List of limit attributes for corresponding data names
+        """
+        # Read the XML configuration file
+        with open(self._precice_config_file_name, "r") as xml_file:
+            xml_data = xml_file.read()
 
         unique_names = [
             "absolute-convergence-measure",
@@ -113,32 +137,28 @@ class AdaptivityCalculator:
         ]
 
         # Initialize lists to store the found attributes
-        self.data_values = []
-        self.limit_values = []
+        data_values = []
+        limit_values = []
 
         for unique_name in unique_names:
             pattern = f'<{unique_name} limit="([^"]+)" data="([^"]+)" mesh="([^"]+)"'
-            matches = re.finditer(pattern, self.xml_data)
+            matches = re.finditer(pattern, xml_data)
             for match in matches:
-                self.data_values.append(match.group(2))
-                self.limit_values.append(match.group(1))
+                data_values.append(match.group(2))
+                limit_values.append(match.group(1))
 
         # Check if any matches were found
-        if self.data_values and self.limit_values:
+        if data_values and limit_values:
             for i, (data_value, limit_value) in enumerate(
-                zip(self.data_values, self.limit_values), start=1
+                zip(data_values, limit_values), start=1
             ):
                 print(f"Match {i}:")
                 print(f"Data: {data_value}")
                 print(f"Limit: {limit_value}")
         else:
-            print(f"No attributes found for unique name '{unique_name}'")
+            print(f"No attributes found for unique names: {unique_names}")
 
-    def get_data_values(self):
-        return self.data_values
-
-    def get_limit_values(self):
-        return self.limit_values
+        return data_values, limit_values
 
     def _update_similarity_dists(self, dt: float, data: dict) -> None:
         """
@@ -164,7 +184,7 @@ class AdaptivityCalculator:
 
             self._similarity_dists += dt * self._similarity_measure(data_vals)
 
-    def _get_addition(self, similarity_const: float) -> float:
+    def _get_addition(self) -> float:
         """
         Get adapted refining constant based on limit values in preCICE configuration file and convergence measurements in preCICE
 
@@ -175,8 +195,7 @@ class AdaptivityCalculator:
 
         # read convergence value from precice-Mysolver-convergence.log file
         convergence_values = []  # last iteration
-        # convergence_rate = 1.0
-        additional = 0.0
+        addition = 0.0
 
         file_path = None
         file_name_suffix = "-convergence.log"
@@ -188,76 +207,97 @@ class AdaptivityCalculator:
                     break
         with open(file_path, "r") as file:
             lines = file.readlines()
-        if len(lines) < 1:
-            print("File is empty.")
-        else:
-            if len(lines) > len(self._convergence_measure):
-                if len(lines) == 2:
-                    self._convergence_measure.append(lines[0].strip().split())
-                self._convergence_measure.append(lines[-1].strip().split())
-                header_line = self._convergence_measure[0]
-                last_line = self._convergence_measure[-1]
-                for data in self.data_values:
-                    for element in header_line:
-                        if data in element:
-                            index = header_line.index(element)
-                            if last_line[index] == "inf":
-                                convergence_values.append(1e20)
-                            else:
-                                index_config = self.data_values.index(data)
-                                convergence_values.append(
-                                    max(
-                                        float(last_line[index]),
-                                        float(self.limit_values[index_config]),
-                                    )
-                                )
-                min_convergence = np.log10(
-                    np.prod(
-                        np.array(self.limit_values, dtype=float)
-                        / np.array(convergence_values, dtype=float)
-                    )
-                )
-                if last_line[1] == "60":
-                    min_convergence = max(0.0, min_convergence)
-                self._convergence_status.append(min_convergence)
 
-            alpha = 3.0
+        if len(lines) > 1 and len(lines) > len(self._convergence_measure):
+            if len(lines) == 2:
+                self._convergence_measure.append(lines[0].strip().split())
+            self._convergence_measure.append(lines[-1].strip().split())
+            header_line = self._convergence_measure[0]
+            last_line = self._convergence_measure[-1]
 
-            if len(self._convergence_status) <= 2:
-                self._min_addition = 1.0
-                self._logger.info("less than two iterations, relax")
-            self._logger.info(
-                "min Convergence: {} ".format(self._convergence_status[-1])
-            )
-            additional = (
-                1 + 1.0 / (min(0.0, self._convergence_status[-1]) - 1.0)
-            ) ** alpha
+            if int(last_line[0]) == 1:
+                self._logger.log_info("first time window")
+                addition = 0.0
+            else:
+                if int(last_line[1]) == 1:
+                    self._min_addition = 1.0
+                else:
+                    if self._min_addition == 0.0:
+                        addition = 0.0
+                    else:
+                        for data in self._data_values:
+                            for element in header_line:
+                                if data in element:
+                                    index = header_line.index(element)
+                                    if last_line[index] == "inf":
+                                        convergence_values.append(1e20)
+                                    else:
+                                        index_config = self._data_values.index(data)
+                                        convergence_values.append(
+                                            max(
+                                                float(last_line[index]),
+                                                float(self._limit_values[index_config]),
+                                            )
+                                        )
+                        min_convergence = np.log10(
+                            np.prod(
+                                np.array(self._limit_values, dtype=float)
+                                / np.array(convergence_values, dtype=float)
+                            )
+                        )
 
-        return additional
+                        self._logger.log_info(
+                            "min Convergence: {} ".format(min_convergence)
+                        )
 
-    def _get_adaptive_refining_const(self) -> float:
-        return self._refine_const
+                        alpha = 3.0
+                        addition = min(
+                            self._min_addition, min(
+                            (1 + 1.0 / (min(0.0, min_convergence) - 1.0)) ** alpha, float(last_line[2])/self._max_similarity_dist/self._coarse_const)
+                        )
+                        self._min_addition = addition
 
-    def _update_active_sims(self, use_dyn_ref_tol: bool = False) -> None:
+        return addition
+
+    def _get_dynamic_adaptivity_refine_const(self) -> float:
         """
-        Update set of active micro simulations. Active micro simulations are compared to each other
+        Get dynamic adaptivity refine constant.
+
+        Returns
+        -------
+        dynamic_adaptivity_refine_const : float
+            Dynamic adaptivity refine constant.
+        """
+        return self._dynamic_refine_const
+
+    def _update_active_sims(self, is_sim_active, just_deactivated) -> None:
+        """
+        Update set of active micro simulations.
+        """
+        self._is_sim_active = is_sim_active
+        self._just_deactivated = just_deactivated
+
+    def _compute_active_sims(self, use_dyn) -> tuple:
+        """
+        Campute the set of active micro simulations. Active micro simulations are compared to each other
         and if found similar, one of them is deactivated.
         """
-        if use_dyn_ref_tol and self._adaptive_refine_const:
-            additional = self._get_addition(self._refine_const_input) * (
-                1 - self._refine_const_input
-            )
-            self._min_addition = min(self._min_addition, additional)
-            additional = self._min_addition
-            if additional > 0.0:
-                _refine_const = additional + self._refine_const_input
-            else:
-                _refine_const = self._refine_const_input
-            self._logger.info("Adaptive refine constant: {}".format(self._refine_const))
-        else:
-            _refine_const = self._refine_const_input
+        is_sim_active = self._is_sim_active.copy()
+        just_deactivated = self._just_deactivated.copy()
 
-        max_similarity_dist = np.amax(similarity_dists)
+        if use_dyn and self._dynamic_adaptivity:
+            addition = self._get_addition() * (1 - self._refine_const)
+            # self._min_addition = min(self._min_addition, addition)
+            # addition = self._min_addition
+            if addition > 0.0:
+                self._dynamic_refine_const = addition + self._refine_const
+            else:
+                self._dynamic_refine_const = self._refine_const
+            self._logger.log_info(
+                "Adaptive refine constant: {}".format(self._dynamic_refine_const)
+            )
+        else:
+            self._dynamic_refine_const = self._refine_const
 
         if self._max_similarity_dist == 0.0:
             warn(
@@ -265,14 +305,20 @@ class AdaptivityCalculator:
             )
             self._coarse_tol = sys.float_info.min
         else:
-            self._coarse_tol = self._coarse_const * _refine_const * max_similarity_dist
+            self._coarse_tol = (
+                self._coarse_const
+                * self._dynamic_refine_const
+                * self._max_similarity_dist
+            )
+            self._logger.log_info("Coarsening tolerance: {}".format(self._coarse_tol))
 
         # Update the set of active micro sims
         for i in range(self._is_sim_active.size):
-            if self._is_sim_active[i]:  # if sim is active
-                if self._check_for_deactivation(i, self._is_sim_active):
-                    self._is_sim_active[i] = False
-                    self._just_deactivated.append(i)
+            if is_sim_active[i]:  # if sim is active
+                if self._check_for_deactivation(i, is_sim_active):
+                    is_sim_active[i] = False
+                    just_deactivated.append(i)
+        return is_sim_active, just_deactivated
 
     def _associate_inactive_to_active(self) -> None:
         """

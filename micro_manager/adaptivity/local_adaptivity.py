@@ -77,53 +77,38 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         self._update_similarity_dists(dt, data_for_adaptivity)
 
-        # Operation done globally if global adaptivity is chosen
-        is_sim_active_dyn, refine_const_dyn = self._update_active_sims(
-            similarity_dists, is_sim_active_nm1, True
-        )
-        is_sim_active_dyn, sim_is_associated_to_dyn = self._update_inactive_sims(
-            similarity_dists,
-            is_sim_active_dyn,
-            sim_is_associated_to_nm1,
-            micro_sims,
-            refine_const_dyn,
-        )
-
-        is_sim_active_sta, refine_const_sta = self._update_active_sims(
-            similarity_dists, is_sim_active_nm1, False
-        )
-        is_sim_active_sta, sim_is_associated_to_sta = self._update_inactive_sims(
-            similarity_dists,
-            is_sim_active_sta,
-            sim_is_associated_to_nm1,
-            micro_sims,
-            refine_const_sta,
-        )
-
-        if np.array_equal(is_sim_active_dyn, is_sim_active_sta) and np.array_equal(
-            sim_is_associated_to_dyn, sim_is_associated_to_sta
-        ):
-            is_sim_active = is_sim_active_sta
-            sim_is_associated_to = sim_is_associated_to_sta
-            self._refine_const = refine_const_sta
-        else:
-            is_sim_active = is_sim_active_dyn
-            sim_is_associated_to = sim_is_associated_to_dyn
-            self._refine_const = refine_const_dyn
-
-        sim_is_associated_to = self._associate_inactive_to_active(
-            similarity_dists, is_sim_active, sim_is_associated_to
-        )
-
         self._max_similarity_dist = np.amax(self._similarity_dists)
 
-        self._update_active_sims()
+        _is_sim_active_sta, _just_deactivated_sta = self._compute_active_sims(False)
+        (
+            _is_sim_active_sta,
+            _sim_is_associated_to_sta,
+            refine_const_sta,
+        ) = self._compute_inactive_sims(self._refine_const)
+        _is_sim_active_dyn, _just_deactivated_dyn = self._compute_active_sims(True)
+        (
+            _is_sim_active_dyn,
+            _sim_is_associated_to_dyn,
+            _to_be_activated_ids_dyn,
+        ) = self._compute_inactive_sims(self._dynamic_refine_const)
 
-        self._update_inactive_sims(micro_sims)
+        self._update_active_sims(_is_sim_active_dyn, _just_deactivated_dyn)
+
+        self._update_inactive_sims(
+            micro_sims,
+            _is_sim_active_dyn,
+            _sim_is_associated_to_dyn,
+            _to_be_activated_ids_dyn,
+        )
 
         self._associate_inactive_to_active()
 
         self._precice_participant.stop_last_profiling_section()
+
+        if np.array_equal(_is_sim_active_dyn, _is_sim_active_sta) and np.array_equal(
+            _sim_is_associated_to_dyn, _sim_is_associated_to_sta
+        ):
+            self._dynamic_refine_const = self._refine_const
 
     def get_active_sim_ids(self) -> np.ndarray:
         """
@@ -236,7 +221,26 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                     )
                 )
 
-    def _update_inactive_sims(self, micro_sims: list) -> None:
+    def _compute_inactive_sims(self, _refine_const) -> tuple:
+        self._ref_tol = _refine_const * self._max_similarity_dist
+
+        _sim_is_associated_to_updated = np.copy(self._sim_is_associated_to)
+        is_sim_active = np.copy(self._is_sim_active)
+
+        # Check inactive simulations for activation and collect IDs of those to be activated
+        to_be_activated_ids = []  # Global IDs to be activated
+        for i in range(is_sim_active.size):
+            if not is_sim_active[i]:  # if id is inactive
+                if self._check_for_activation(i, is_sim_active):
+                    is_sim_active[i] = True
+                    _sim_is_associated_to_updated[
+                        i
+                    ] = -2  # Active sim cannot have an associated sim
+                    if self._is_sim_on_this_rank[i] and i not in self._just_deactivated:
+                        to_be_activated_ids.append(i)
+        return is_sim_active, _sim_is_associated_to_updated, to_be_activated_ids
+
+    def _update_inactive_sims(self, micro_sims: list, _is_sim_active) -> None:
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
         and if it is not similar to any of them, it is activated.
@@ -249,32 +253,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         micro_sims : list
             List containing micro simulation objects.
         """
-        self._ref_tol = refine_const * self._max_similarity_dist
-
-        _is_sim_active = np.copy(
-            is_sim_active
-        )  # Input is_sim_active is not longer used after this point
-        _sim_is_associated_to = np.copy(sim_is_associated_to)
-
-        to_be_activated_ids = []
-        # Update the set of inactive micro sims
-        for i in range(self._is_sim_active.size):
-            if not self._is_sim_active[i]:  # if id is inactive
-                if self._check_for_activation(i, self._is_sim_active):
-                    self._is_sim_active[i] = True
-                    if i not in self._just_deactivated:
-                        to_be_activated_ids.append(i)
+        self._is_sim_active = np.copy(_is_sim_active)
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
-
-        # Update the set of inactive micro sims
-        for i in to_be_activated_ids:
-            associated_active_id = self._sim_is_associated_to[i]
-            micro_sims[i] = create_simulation_class(self._micro_problem)(i)
-            micro_sims[i].set_state(micro_sims[associated_active_id].get_state())
-            self._sim_is_associated_to[
-                i
-            ] = -2  # Active sim cannot have an associated sim
 
         # Delete the inactive micro simulations which have not been activated
         for i in range(self._is_sim_active.size):

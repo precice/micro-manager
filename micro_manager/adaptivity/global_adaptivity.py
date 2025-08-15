@@ -151,50 +151,59 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         ):  # Only the first rank in the node updates the similarity distances
             self._update_similarity_dists(dt, global_data_for_adaptivity)
 
-        is_sim_active_dyn, refine_const_dyn = self._update_active_sims(
-            similarity_dists, is_sim_active_nm1, True
-        )
-        is_sim_active_dyn, sim_is_associated_to_dyn = self._update_inactive_sims(
-            similarity_dists,
-            is_sim_active_dyn,
-            sim_is_associated_to_nm1,
-            micro_sims,
-            refine_const_dyn,
-        )
-
-        is_sim_active_sta, refine_const_sta = self._update_active_sims(
-            similarity_dists, is_sim_active_nm1, False
-        )
-        is_sim_active_sta, sim_is_associated_to_sta = self._update_inactive_sims(
-            similarity_dists,
-            is_sim_active_sta,
-            sim_is_associated_to_nm1,
-            micro_sims,
-            refine_const_sta,
-        )
-
-        if np.array_equal(is_sim_active_dyn, is_sim_active_sta) and np.array_equal(
-            sim_is_associated_to_dyn, sim_is_associated_to_sta
-        ):
-            is_sim_active = is_sim_active_sta
-            sim_is_associated_to = sim_is_associated_to_sta
-            self._refine_const = refine_const_sta
-        else:
-            is_sim_active = is_sim_active_dyn
-            sim_is_associated_to = sim_is_associated_to_dyn
-            self._refine_const = refine_const_dyn
-
         self._comm_node.Barrier()  # Wait for the similarity distances to be updated on all ranks of the node
 
         self._max_similarity_dist = np.amax(self._similarity_dists)
 
-        self._update_active_sims()
+        _is_sim_active_sta, _just_deactivated_sta = self._compute_active_sims(False)
+        (
+            _is_sim_active_sta,
+            _sim_is_associated_to_sta,
+            _to_be_activated_ids_sta,
+        ) = self._compute_inactive_sims(
+            self._refine_const, _is_sim_active_sta, _just_deactivated_sta
+        )
 
-        self._update_inactive_sims(micro_sims)
+        self._logger.log_info(
+            "active sims (static): {}".format(np.sum(_is_sim_active_sta))
+        )
+
+        _is_sim_active_dyn, _just_deactivated_dyn = self._compute_active_sims(True)
+        (
+            _is_sim_active_dyn,
+            _sim_is_associated_to_dyn,
+            _to_be_activated_ids_dyn,
+        ) = self._compute_inactive_sims(
+            self._dynamic_refine_const, _is_sim_active_dyn, _just_deactivated_dyn
+        )
+
+        self._logger.log_info(
+            "active sims (dynamic): {}".format(np.sum(_is_sim_active_dyn))
+        )
+
+        self._update_active_sims(_is_sim_active_dyn, _just_deactivated_dyn)
+
+        self._update_inactive_sims(
+            micro_sims,
+            _is_sim_active_dyn,
+            _sim_is_associated_to_dyn,
+            _to_be_activated_ids_dyn,
+        )
 
         self._associate_inactive_to_active()
 
         self._precice_participant.stop_last_profiling_section()
+
+        if np.array_equal(_is_sim_active_dyn, _is_sim_active_sta) and np.array_equal(
+            _sim_is_associated_to_dyn, _sim_is_associated_to_sta
+        ):
+            self._dynamic_refine_const = self._refine_const
+
+        self._logger.log_info(
+            "send refine const {} ---------------------------".format(
+                self._dynamic_refine_const
+            )
+        )
 
     def get_active_sim_ids(self) -> np.ndarray:
         """
@@ -373,7 +382,82 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             for local_id in active_to_inactive_map[assoc_active_ids[count]]:
                 micro_output[local_id] = deepcopy(output)
 
-    def _update_inactive_sims(self, micro_sims: list) -> None:
+    def interpolate_inactive_outputs(micro_output, is_sim_active, simulation_positions):
+        """
+        Interpolates the output for inactive simulations based on the closest two active simulations.
+
+        Parameters:
+        -----------
+        micro_output : dict
+            Dictionary containing the outputs of all simulations.
+        is_sim_active : np.ndarray
+            Boolean array indicating which simulations are active.
+        simulation_positions : np.ndarray
+            Array of positions (or coordinates) for each simulation.
+
+        Returns:
+        --------
+        micro_output : dict
+            Updated dictionary with interpolated outputs for inactive simulations.
+        """
+        num_simulations = len(is_sim_active)
+
+        for local_id in range(num_simulations):
+            if not is_sim_active[local_id]:  # If the simulation is inactive
+                # Compute distances to all active simulations
+                distances = np.linalg.norm(simulation_positions[is_sim_active] - simulation_positions[local_id], axis=1)
+
+                # Find indices of the two closest active simulations
+                closest_indices = np.argsort(distances)[:2]
+                closest_active_ids = np.where(is_sim_active)[0][closest_indices]
+
+                # Get the outputs and distances of the two closest active simulations
+                output_1 = micro_output[closest_active_ids[0]]
+                output_2 = micro_output[closest_active_ids[1]]
+                distance_1 = distances[closest_indices[0]]
+                distance_2 = distances[closest_indices[1]]
+
+                # Perform weighted interpolation
+                total_distance = distance_1 + distance_2
+                weight_1 = 1 - (distance_1 / total_distance)
+                weight_2 = 1 - (distance_2 / total_distance)
+
+                # Interpolate the output
+                interpolated_output = {
+                    key: weight_1 * output_1[key] + weight_2 * output_2[key]
+                    for key in output_1.keys()
+                }
+
+                # Assign the interpolated output to the inactive simulation
+                micro_output[local_id] = interpolated_output
+
+    def _compute_inactive_sims(
+        self, _refine_const, is_sim_active, just_deactivated
+    ) -> tuple:
+        self._ref_tol = _refine_const * self._max_similarity_dist
+
+        _sim_is_associated_to_updated = np.copy(self._sim_is_associated_to)
+
+        # Check inactive simulations for activation and collect IDs of those to be activated
+        to_be_activated_ids = []  # Global IDs to be activated
+        for i in range(is_sim_active.size):
+            if not is_sim_active[i]:  # if id is inactive
+                if self._check_for_activation(i, is_sim_active):
+                    is_sim_active[i] = True
+                    _sim_is_associated_to_updated[
+                        i
+                    ] = -2  # Active sim cannot have an associated sim
+                    if self._is_sim_on_this_rank[i] and i not in just_deactivated:
+                        to_be_activated_ids.append(i)
+        return is_sim_active, _sim_is_associated_to_updated, to_be_activated_ids
+
+    def _update_inactive_sims(
+        self,
+        micro_sims: list,
+        _is_sim_active,
+        _sim_is_associated_to_updated,
+        to_be_activated_ids,
+    ) -> None:
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones and if it is not similar to any of them, it is activated.
 
@@ -385,21 +469,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        self._ref_tol = refine_const * self._max_similarity_dist
-
-        _sim_is_associated_to_updated = np.copy(self._sim_is_associated_to)
-
-        # Check inactive simulations for activation and collect IDs of those to be activated
-        to_be_activated_ids = []  # Global IDs to be activated
-        for i in range(self._is_sim_active.size):
-            if not self._is_sim_active[i]:  # if id is inactive
-                if self._check_for_activation(i, self._is_sim_active):
-                    self._is_sim_active[i] = True
-                    _sim_is_associated_to_updated[
-                        i
-                    ] = -2  # Active sim cannot have an associated sim
-                    if self._is_sim_on_this_rank[i] and i not in self._just_deactivated:
-                        to_be_activated_ids.append(i)
+        self._is_sim_active = np.copy(_is_sim_active)
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 
