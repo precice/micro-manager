@@ -65,6 +65,7 @@ class Config:
         self._parameter_file_name = None
         self._postprocessing_file_name = None
         self._initialize_once = False
+        self._output_file_name = "snapshot_data"
 
         self._output_dir = None
 
@@ -503,6 +504,17 @@ class Config:
         )
 
         try:
+            self._output_file_name = self._data["snapshot_params"]["output_file_name"]
+            self._logger.log_info_rank_zero(
+                "Output file name: " + self._output_file_name
+            )
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "No snapshot output file name provided. Defaulting to 'snapshot_data'."
+            )
+            self._output_file_name = "snapshot_data"
+
+        try:
             self._postprocessing_file_name = (
                 self._data["snapshot_params"]["post_processing_file_name"]
                 .replace("/", ".")
@@ -862,6 +874,17 @@ class Config:
         """
 
         return self._parameter_file_name
+
+    def get_output_file_name(self):
+        """
+        Get the name of the output file.
+
+        Returns
+        -------
+        output_file_name : string
+            Name of the hdf5 file containing the snapshot data.
+        """
+        return self._output_file_name
 
     def get_postprocessing_file_name(self):
         """
