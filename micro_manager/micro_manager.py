@@ -199,7 +199,13 @@ class MicroManagerCoupling(MicroManager):
                         and (not first_time_window)
                         and first_iteration
                     ):
+                        self._participant.start_profiling_section(
+                            "micro_manager.redistributing_sims"
+                        )
+
                         self._adaptivity_controller.redistribute_sims(self._micro_sims)
+
+                        self._participant.stop_last_profiling_section()
 
                         self._local_number_of_sims = len(self._global_ids_of_local_sims)
 
@@ -207,7 +213,7 @@ class MicroManagerCoupling(MicroManager):
                             name
                         ) in (
                             self._adaptivity_data_names
-                        ):  # TODO: Adaptivity data gets reset after load balancing. Fix this.
+                        ):  # TODO: Instead of resetting adaptivity data, data can be communicated to new ranks of the simulations
                             self._data_for_adaptivity[name] = [
                                 0
                             ] * self._local_number_of_sims

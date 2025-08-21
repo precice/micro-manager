@@ -113,7 +113,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             "load_balancing._redistribute_active_sims"
         )
 
-        avg_active_sims = np.count_nonzero(self._is_sim_active) / self._comm.size
+        avg_active_sims = np.count_nonzero(self._is_sim_active) / self._comm_world.size
 
         n_active_sims_local = np.count_nonzero(
             self._is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1]
@@ -391,7 +391,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         for global_id, send_rank in send_map.items():
             tag = self._create_tag(global_id, self._rank, send_rank)
             local_id = self._global_ids.index(global_id)
-            req = self._comm.isend(
+            req = self._comm_world.isend(
                 (micro_sims[local_id].get_state(), global_id), dest=send_rank, tag=tag
             )
             send_reqs.append(req)
@@ -403,7 +403,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             bufsize = (
                 1 << 30
             )  # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
-            req = self._comm.irecv(bufsize, source=recv_rank, tag=tag)
+            req = self._comm_world.irecv(bufsize, source=recv_rank, tag=tag)
             recv_reqs.append(req)
 
         # Wait for all non-blocking communication to complete
