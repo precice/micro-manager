@@ -2,6 +2,7 @@
 
 ## latest
 
+- Add dynamic load balancing capability to global adaptivity https://github.com/precice/micro-manager/pull/141
 - Software improvements to the snapshot computation functionality https://github.com/precice/micro-manager/pull/178
 
 ## v0.7.0
@@ -25,7 +26,6 @@
 
 ## v0.6.0
 
-- Add dynamic load balancing capability to global adaptivity https://github.com/precice/micro-manager/pull/141
 - Add functionality for lazy creation and initialization of micro simulations https://github.com/precice/micro-manager/pull/117
 - Improve logging wrapper function names to be more clear https://github.com/precice/micro-manager/pull/153
 - Remove adaptivity computation CPU time export functionality https://github.com/precice/micro-manager/pull/152
