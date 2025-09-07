@@ -108,13 +108,7 @@ For a 2D domain, only two values need to be set for `decomposition`. The total n
 
 ## Adaptivity
 
-The Micro Manager can adaptively control micro simulations. The adaptivity strategy is taken from
-
-1. Redeker, Magnus & Eck, Christof. (2013). A fast and accurate adaptive solution strategy for two-scale models with continuous inter-scale dependencies. Journal of Computational Physics. 240. 268-283. [10.1016/j.jcp.2012.12.025](https://doi.org/10.1016/j.jcp.2012.12.025).
-
-2. Bastidas, Manuela & Bringedal, Carina & Pop, Iuliu Sorin. (2021). A two-scale iterative scheme for a phase-field model for precipitation and dissolution in porous media. Applied Mathematics and Computation. 396. 125933. [10.1016/j.amc.2020.125933](https://doi.org/10.1016/j.amc.2020.125933).
-
-All the adaptivity parameters are chosen from the second publication.
+See the [adaptivity](tooling-micro-manager-adaptivity.html) documentation for a detailed explanation about the algorithm and variants.
 
 To turn on adaptivity, set `"adaptivity": true` in `simulation_params`. Then under `adaptivity_settings` set the following variables:
 
@@ -131,12 +125,6 @@ Parameter | Description
 `every_implicit_iteration` | If `true`, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration. Default `false`.
 `similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*. Default `L1`.
 `lazy_initialization` | Set to `true` to lazily create and initialize micro simulations. If selected, micro simulation objects are created only when the micro simulation is activated for the first time. Default: `false`.
-
-The primary tuning parameters for adaptivity are the history parameter $$ \Lambda $$, the coarsening constant $$ C_c $$, and the refining constant $$ C_r $$. Their effects can be interpreted as:
-
-- Higher values of the history parameter $$ \Lambda $$ imply lower significance of the similarity measures in the previous timestep on the similarity measure and thus adaptivity state in the current timestep.
-- Higher values of the coarsening constant $$ C_c $$ imply that more active simulations from the previous timestep will remain active in the current timestep.
-- Higher values of the refining constant $$ C_r $$ imply that less inactive points from the previous timestep will become active in the current timestep.
 
 Example of adaptivity configuration is
 
