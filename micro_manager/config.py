@@ -396,8 +396,10 @@ class Config:
             self._write_data_names.append("active_steps")
 
         try:
-            if self._data["simulation_params"]["load_balancing"] == "True":
-                self._adaptivity_is_load_balancing = True
+            self._adaptivity_is_load_balancing = self._data["simulation_params"][
+                "load_balancing"
+            ]
+            if self._adaptivity_is_load_balancing:
                 self._logger.log_info_rank_zero(
                     "Micro Manager will dynamically balance micro simulations based on the adaptivity computation."
                 )
@@ -409,7 +411,7 @@ class Config:
         if self._adaptivity_is_load_balancing:
             self._load_balancing_n = self._data["simulation_params"][
                 "load_balancing_settings"
-            ]["load_balancing_n"]
+            ]["every_n_time_windows"]
             self._logger.log_info_rank_zero(
                 "Load balancing will be done every "
                 + str(self._load_balancing_n)
@@ -417,13 +419,10 @@ class Config:
             )
 
             try:
-                if (
-                    self._data["simulation_params"]["load_balancing_settings"][
-                        "two_step_load_balancing"
-                    ]
-                    == "True"
-                ):
-                    self._two_step_load_balancing = True
+                self._two_step_load_balancing = self._data["simulation_params"][
+                    "load_balancing_settings"
+                ]["two_step_balancing"]
+                if self._two_step_load_balancing:
                     self._logger.log_info_rank_zero(
                         "Micro Manager will use two-step load balancing."
                     )
@@ -445,13 +444,10 @@ class Config:
                 )
 
             try:
-                if (
-                    self._data["simulation_params"]["load_balancing_settings"][
-                        "balance_inactive_sims"
-                    ]
-                    == "True"
-                ):
-                    self._balance_inactive_sims = True
+                self._balance_inactive_sims = self._data["simulation_params"][
+                    "load_balancing_settings"
+                ]["balance_inactive_sims"]
+                if self._balance_inactive_sims:
                     self._logger.log_info_rank_zero(
                         "Micro Manager will redistribute inactive simulations in the load balancing."
                     )

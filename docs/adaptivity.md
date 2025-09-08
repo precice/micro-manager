@@ -80,3 +80,17 @@ Simulations on one rank are compared against each other. The similarity distance
 Each simulation is compared to all other simulations in the global domain. The similarity distance matrix $$ D $$ has size $$ [N_g,N_g] $$ on every compute node, where $$ N_g $$ is the global number of simulations. Note that one copy of the similarity distance matrix $D$ is stored on every compute node, and **not** on every rank. We use MPI-based shared memory storage and access to store and update only one copy of the $$ D $$ matrix on every node. The local primary rank (lowest rank on every node) updates the $$D $$ matrix. This implementation enables some memory saving for large cases with global adaptivity.
 
 The adaptivity variant is set via the [adaptivity configuration](tooling-micro-manager-configuration.html#adaptivity).
+
+## Load balancing
+
+### Two-step approach
+
+In the first step, balancing is done up to the accuracy of one simulation. In the second step, single simulations are redistributed to achieve the most balanced state possible.
+
+### Balancing threshold
+
+Simulations are balanced up to a threshold value. TODO
+
+### Balance inactive simulations
+
+By default only active simulations are redistributed between ranks.

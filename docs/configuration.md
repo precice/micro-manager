@@ -125,6 +125,7 @@ Parameter | Description
 `every_implicit_iteration` | If `true`, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration. Default `false`.
 `similarity_measure`| Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*. Default `L1`.
 `lazy_initialization` | Set to `true` to lazily create and initialize micro simulations. If selected, micro simulation objects are created only when the micro simulation is activated for the first time. Default: `false`.
+`load_balancing` | Set to `true` to dynamically balance simulations for parallel runs. Default `false`. See [load balancing settings](#load-balancing) below.
 
 Example of adaptivity configuration is
 
@@ -169,6 +170,17 @@ The Micro Manager uses the output functionality of preCICE, hence these data set
     <write-data name="active_steps" mesh="macro-mesh"/>
 </participant>
 ```
+
+## Load balancing
+
+Under `load_balancing_settings`, the following parameters can be set
+
+Parameter | Description
+--- | ---
+`every_n_time_windows` | Frequency of balancing the simulations. Default `1` (every time window).
+`two_step_balancing` | If `true`, simulations are balanced in two steps. See [two-step approach](tooling-micro-manager-adaptivity.html#two-step-approach).
+`balancing_threshold` | Integer threshold value. See [balancing threshold](tooling-micro-manager-adaptivity.html#balancing-threshold). Default `0`.
+`balance_inactive_sims` | If `true`, inactive simulations associated to redistributed active simulations are moved to the new ranks of the active simulations. See [balance inactive simulations](tooling-micro-manager-adaptivity.html#balance-inactive-simulations). Default `false`.
 
 ## Interpolate a crashed micro simulation
 
