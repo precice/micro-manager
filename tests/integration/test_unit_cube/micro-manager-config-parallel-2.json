@@ -12,6 +12,6 @@
 	    "decomposition": [1, 2, 3]
     },
     "diagnostics": {
-        "output_micro_sim_solve_time": "True"
+        "output_micro_sim_solve_time": true
     }
 }
