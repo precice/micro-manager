@@ -131,20 +131,6 @@ class TestGlobalAdaptivity(TestCase):
 
         adaptivity_controller._adaptivity_data_names = ["data1", "data2"]
 
-        class MicroSimulation:
-            def __init__(self, global_id) -> None:
-                self._global_id = global_id
-                self._state = [global_id] * 3
-
-            def get_global_id(self):
-                return self._global_id
-
-            def set_state(self, state):
-                self._state = state
-
-            def get_state(self):
-                return self._state.copy()
-
         dummy_micro_sims = []
         for i in global_ids:
             dummy_micro_sims.append(MicroSimulation(i))
