@@ -42,8 +42,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             MPI rank.
         comm_world : MPI.COMM_WORLD
             Base global communicator of MPI.
-        is_load_balancing : bool
-            Flag to indicate if load balancing is to be done.
         """
         super().__init__(configurator, rank, global_number_of_sims)
         self._global_number_of_sims = global_number_of_sims
