@@ -199,13 +199,7 @@ class MicroManagerCoupling(MicroManager):
                         and (not first_time_window)
                         and first_iteration
                     ):
-                        self._participant.start_profiling_section(
-                            "micro_manager.redistributing_sims"
-                        )
-
                         self._adaptivity_controller.redistribute_sims(self._micro_sims)
-
-                        self._participant.stop_last_profiling_section()
 
                         self._local_number_of_sims = len(self._global_ids_of_local_sims)
 
@@ -924,10 +918,10 @@ class MicroManagerCoupling(MicroManager):
 
                     # Mark the micro sim as active for export
                     micro_sims_output[active_id]["active_state"] = 1
-                    global_id = self._global_ids_of_local_sims[active_id]
+                    gid = self._global_ids_of_local_sims[active_id]
                     micro_sims_output[active_id][
                         "active_steps"
-                    ] = self._micro_sims_active_steps[global_id]
+                    ] = self._micro_sims_active_steps[gid]
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
@@ -982,10 +976,10 @@ class MicroManagerCoupling(MicroManager):
         # Resolve micro sim output data for inactive simulations
         for inactive_id in inactive_sim_local_ids:
             micro_sims_output[inactive_id]["active_state"] = 0
-            global_id = self._global_ids_of_local_sims[inactive_id]
+            gid = self._global_ids_of_local_sims[inactive_id]
             micro_sims_output[inactive_id][
                 "active_steps"
-            ] = self._micro_sims_active_steps[global_id]
+            ] = self._micro_sims_active_steps[gid]
 
             if self._is_micro_solve_time_required:
                 micro_sims_output[inactive_id]["solve_cpu_time"] = 0

@@ -89,10 +89,16 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         """
         self._nothing_to_balance = False
 
+        self._precice_participant.start_profiling_section(
+            "micro_manager.redistributing_sims"
+        )
+
         self._redistribute_active_sims(micro_sims)
 
         if (not self._nothing_to_balance) and self._balance_inactive_sims:
             self._redistribute_inactive_sims(micro_sims)
+
+        self._precice_participant.stop_last_profiling_section()
 
     def _redistribute_active_sims(self, micro_sims: list) -> None:
         """
