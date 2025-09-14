@@ -186,9 +186,11 @@ class MicroManagerCoupling(MicroManager):
                         if sim_states_cp[i] is None and self._micro_sims[i]:
                             sim_states_cp[i] = self._micro_sims[i].get_state()
 
-                    active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+                    active_sim_local_ids = (
+                        self._adaptivity_controller.get_active_sim_local_ids()
+                    )
 
-                    for active_id in active_sim_ids:
+                    for active_id in active_sim_local_ids:
                         self._micro_sims_active_steps[active_id] += 1
 
             # Write a checkpoint
