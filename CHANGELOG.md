@@ -3,6 +3,7 @@
 ## latest
 
 - Add dynamic load balancing capability to global adaptivity https://github.com/precice/micro-manager/pull/141
+- Refactor adaptivity: simplify logic and shorten iterator variable names https://github.com/precice/micro-manager/pull/186
 - Use boolean parameter values in JSON config files of unit cube integration test https://github.com/precice/micro-manager/pull/185
 - Use OpenMPI in mpi4py setup action in parallel tests action https://github.com/precice/micro-manager/pull/184
 - Software improvements to the snapshot computation functionality https://github.com/precice/micro-manager/pull/178

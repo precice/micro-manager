@@ -220,9 +220,11 @@ class MicroManagerCoupling(MicroManager):
 
                         self._has_sim_crashed = [False] * self._local_number_of_sims
 
-                    active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+                    active_sim_local_ids = (
+                        self._adaptivity_controller.get_active_sim_local_ids()
+                    )
 
-                    for active_id in active_sim_ids:
+                    for active_id in active_sim_local_ids:
                         self._micro_sims_active_steps[active_id] += 1
 
             # Write a checkpoint
@@ -565,22 +567,24 @@ class MicroManagerCoupling(MicroManager):
                     self._micro_dt, self._micro_sims, self._data_for_adaptivity
                 )
 
-                active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+                active_sim_local_ids = (
+                    self._adaptivity_controller.get_active_sim_local_ids()
+                )
 
-                if active_sim_ids.size == 0:
+                if active_sim_local_ids.size == 0:
                     self._logger.log_info(
                         "There are no active simulations on this rank."
                     )
                     return
 
-                for i in active_sim_ids:
+                for i in active_sim_local_ids:
                     self._micro_sims[i] = create_simulation_class(micro_problem)(
                         self._global_ids_of_local_sims[i]
                     )
 
-                first_id = active_sim_ids[0]  # First active simulation ID
+                first_id = active_sim_local_ids[0]  # First active simulation ID
                 micro_sims_to_init = (
-                    active_sim_ids  # Only active simulations will be initialized
+                    active_sim_local_ids  # Only active simulations will be initialized
                 )
 
         # Boolean which states if the initialize() method of the micro simulation requires initial data
