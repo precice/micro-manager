@@ -389,7 +389,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         _sim_is_associated_to_updated = np.copy(self._sim_is_associated_to)
 
         # Check inactive simulations for activation and collect IDs of those to be activated
-        to_be_activated_ids = []  # Global IDs to be activated
+        to_be_activated_gids = []  # Global IDs to be activated
         for i in range(self._is_sim_active.size):
             if not self._is_sim_active[i]:  # if id is inactive
                 if self._check_for_activation(i, self._is_sim_active):
@@ -398,39 +398,37 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                         i
                     ] = -2  # Active sim cannot have an associated sim
                     if self._is_sim_on_this_rank[i] and i not in self._just_deactivated:
-                        to_be_activated_ids.append(i)
+                        to_be_activated_gids.append(i)
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
-
-        local_sim_is_associated_to = self._sim_is_associated_to[
-            self._global_ids[0] : self._global_ids[-1] + 1
-        ]
 
         # Keys are global IDs of active sims not on this rank, values are lists of local and
         # global IDs of inactive sims associated to the active sims which are on this rank
         to_be_activated_map: Dict[int, list] = dict()
 
-        for i in to_be_activated_ids:
+        for gid in to_be_activated_gids:
             # Only handle activation of simulations on this rank -- LOCAL SCOPE HERE ON
-            if self._is_sim_on_this_rank[i]:
-                to_be_activated_lid = self._global_ids.index(i)
+            if self._is_sim_on_this_rank[gid]:
+                to_be_activated_lid = self._global_ids.index(gid)
                 micro_sims[to_be_activated_lid] = create_simulation_class(
                     self._micro_problem
-                )(i)
-                assoc_active_id = local_sim_is_associated_to[to_be_activated_lid]
+                )(gid)
+                assoc_active_gid = self._sim_is_associated_to[gid]
 
                 if self._is_sim_on_this_rank[
-                    assoc_active_id
+                    assoc_active_gid
                 ]:  # Associated active simulation is on the same rank
-                    assoc_active_lid = self._global_ids.index(assoc_active_id)
+                    assoc_active_lid = self._global_ids.index(assoc_active_gid)
                     micro_sims[to_be_activated_lid].set_state(
                         micro_sims[assoc_active_lid].get_state()
                     )
                 else:  # Associated active simulation is not on this rank
-                    if assoc_active_id in to_be_activated_map:
-                        to_be_activated_map[assoc_active_id].append(to_be_activated_lid)
+                    if assoc_active_gid in to_be_activated_map:
+                        to_be_activated_map[assoc_active_gid].append(
+                            to_be_activated_lid
+                        )
                     else:
-                        to_be_activated_map[assoc_active_id] = [to_be_activated_lid]
+                        to_be_activated_map[assoc_active_gid] = [to_be_activated_lid]
 
         sim_states_and_global_ids = []
         for lid, sim in enumerate(micro_sims):

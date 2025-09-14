@@ -172,6 +172,7 @@ class MicroManagerCoupling(MicroManager):
         dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
         first_iteration = True
+        first_time_window = True
 
         while self._participant.is_coupling_ongoing():
 
@@ -203,6 +204,9 @@ class MicroManagerCoupling(MicroManager):
 
                         self._local_number_of_sims = len(self._global_ids_of_local_sims)
 
+                        # Reset simulation state checkpoints after load balancing
+                        sim_states_cp = [None] * self._local_number_of_sims
+
                         for (
                             name
                         ) in (
@@ -212,6 +216,7 @@ class MicroManagerCoupling(MicroManager):
                                 0
                             ] * self._local_number_of_sims
 
+                        # Reset simulation crash state information after load balancing
                         self._has_sim_crashed = [False] * self._local_number_of_sims
 
                     active_sim_local_ids = (

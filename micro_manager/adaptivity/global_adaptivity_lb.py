@@ -90,7 +90,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         self._nothing_to_balance = False
 
         self._precice_participant.start_profiling_section(
-            "micro_manager.redistributing_sims"
+            "global_adaptivity_lb.redistributing_sims"
         )
 
         self._redistribute_active_sims(micro_sims)
@@ -109,9 +109,9 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        self._precice_participant.start_profiling_section(
-            "load_balancing._redistribute_active_sims"
-        )
+        # self._precice_participant.start_profiling_section(
+        #     "global_adaptivity_lb._redistribute_active_sims"
+        # )
 
         avg_active_sims = np.count_nonzero(self._is_sim_active) / self._comm_world.size
 
@@ -208,7 +208,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                     "No load balancing was done in the second step because the micro simulations are already almost perfectly balanced."
                 )
 
-        self._precice_participant.stop_last_profiling_section()
+        # self._precice_participant.stop_last_profiling_section()
 
     def _redistribute_inactive_sims(self, micro_sims: list) -> None:
         """
@@ -219,9 +219,9 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        self._precice_participant.start_profiling_section(
-            "load_balancing._redistribute_inactive_sims"
-        )
+        # self._precice_participant.start_profiling_section(
+        #     "global_adaptivity_lb._redistribute_inactive_sims"
+        # )
 
         ranks_of_sims = self._get_ranks_of_sims()
 
@@ -256,7 +256,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         self._communicate_micro_sims(micro_sims, send_map, recv_map)
 
-        self._precice_participant.stop_last_profiling_section()
+        # self._precice_participant.stop_last_profiling_section()
 
     def _get_communication_maps(
         self, global_send_sims: list, global_recv_sims: list
@@ -279,13 +279,10 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             recv_map : dict
                 keys are global IDs of sim states to receive, values are ranks to receive from
         """
-        global_ids_of_active_sims_local = []
-        for global_id in self._global_ids:
-            if self._is_sim_active[global_id] == True:
-                global_ids_of_active_sims_local.append(global_id)
+        active_sims_global_ids = list(super().get_active_sim_global_ids())
 
         rank_wise_global_ids_of_active_sims = self._comm_world.allgather(
-            global_ids_of_active_sims_local
+            active_sims_global_ids
         )
 
         # Keys are ranks sending sims, values are lists of tuples: (list of global IDs to send, the rank to send them to)
@@ -388,18 +385,18 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         """
         # Asynchronous send operations
         send_reqs = []
-        for global_id, send_rank in send_map.items():
-            tag = self._create_tag(global_id, self._rank, send_rank)
-            local_id = self._global_ids.index(global_id)
+        for gid, send_rank in send_map.items():
+            tag = self._create_tag(gid, self._rank, send_rank)
+            local_id = self._global_ids.index(gid)
             req = self._comm_world.isend(
-                (micro_sims[local_id].get_state(), global_id), dest=send_rank, tag=tag
+                (micro_sims[local_id].get_state(), gid), dest=send_rank, tag=tag
             )
             send_reqs.append(req)
 
         # Asynchronous receive operations
         recv_reqs = []
-        for global_id, recv_rank in recv_map.items():
-            tag = self._create_tag(global_id, recv_rank, self._rank)
+        for gid, recv_rank in recv_map.items():
+            tag = self._create_tag(gid, recv_rank, self._rank)
             bufsize = (
                 1 << 30
             )  # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
@@ -410,18 +407,18 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         MPI.Request.Waitall(send_reqs)
 
         # Delete the micro simulations which no longer exist on this rank
-        for global_id in send_map.keys():
-            local_id = self._global_ids.index(global_id)
-            del micro_sims[local_id]
+        for gid in send_map.keys():
+            lid = self._global_ids.index(gid)
+            del micro_sims[lid]
             self._local_number_of_sims -= 1
-            self._global_ids.remove(global_id)
-            self._is_sim_on_this_rank[global_id] = False
+            self._global_ids.remove(gid)
+            self._is_sim_on_this_rank[gid] = False
 
         # Create micro simulations and set them to the received states
         for req in recv_reqs:
-            output, global_id = req.wait()
-            micro_sims.append(create_simulation_class(self._micro_problem)(global_id))
+            output, gid = req.wait()
+            micro_sims.append(create_simulation_class(self._micro_problem)(gid))
             micro_sims[-1].set_state(output)
             self._local_number_of_sims += 1
-            self._global_ids.append(global_id)
-            self._is_sim_on_this_rank[global_id] = True
+            self._global_ids.append(gid)
+            self._is_sim_on_this_rank[gid] = True
