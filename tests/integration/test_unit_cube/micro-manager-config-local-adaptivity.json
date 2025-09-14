@@ -9,14 +9,14 @@
     "simulation_params": {
         "micro_dt": 1.0,
         "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
-        "adaptivity": "True",
+        "adaptivity": true,
         "adaptivity_settings": {
             "type": "local",
             "data": ["micro-data-1", "micro-data-2"],
             "history_param": 0.5,
             "coarsening_constant": 0.3,
             "refining_constant": 0.4,
-            "every_implicit_iteration": "True"
+            "every_implicit_iteration": true
         }
     }
 }
