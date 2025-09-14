@@ -83,11 +83,11 @@ The adaptivity variant is set via the [adaptivity configuration](tooling-micro-m
 
 ## Load balancing
 
-Ranks having simulations outside the balancing range are rebalanced. The balancing range is calculated using the mean number of active simulations per rank, $$ N_A^{-} $$. The balancing range is
+Ranks having simulations outside the balancing range are rebalanced. The balancing bounds are calculated using the mean number of active simulations per rank, $$ N_A^{-} $$. The balancing bounds are
 
-$$ B = \{ \left \lfloor{N_A^{-}}\right \rfloor, ...,  \left \lceil{N_A^{-}}\right \rceil \} $$
+$$ \{ \left \lfloor{N_A^{-}}\right \rfloor, \left \lceil{N_A^{-}}\right \rceil \} $$
 
-If the average is not an integer, the floor value is the lower bound of the balancing range, and the ceiling value is the upper bound. If the average is an integer, the balancing range reduces to one single integer limit.
+If the average is not an integer, the floor value is the lower bound, and the ceiling value is the upper bound. If the mean $$ N_A^{-} $$ is an integer, the balancing bounds reduce to one single integer bound.
 
 For a rank $$ i $$, the following scenarios are possible:
 
@@ -103,9 +103,15 @@ For a rank $$ i $$, the following scenarios are possible:
 
 ### Two-step approach
 
-As mentioned in the [load balancing](#load-balancing) section steps 4 and 5, it is possible that the number of active simulations on a rank are exactly the lower or upper bound of the balancing range. To get the best possible balancing, these ranks send or receive as many number of simulations as the balancing range size. Use this option only if the best possible balancing is desired, because this will lead to added communication effort.
+As mentioned in the [load balancing](#load-balancing) section scenarios 4 and 5, it is possible that the number of active simulations on a rank are exactly as many as the lower or upper bound of the balancing range. To get the best possible balancing, these ranks send or receive as many number of simulations as the balancing range size.
 
+{% disclaimer %}
+Use this option only if the best possible balancing is desired, because this will lead to added communication effort.
+{% enddisclaimer %}
+
+{% note %}
 If the balancing threshold $$ \tau \gt 0 $$, two-step balancing does not produce a different balancing state, so it is disabled.
+{% endnnote %}
 
 ### Balancing threshold
 
@@ -149,4 +155,4 @@ $ N_A $ | 7 | 3 | 1
 
 ### Balance inactive simulations
 
-By default only active simulations are redistributed between ranks.
+By default only active simulations are redistributed between ranks. Inactive simulations associated with an active simulation on the same rank are not moved. If the parameter `update_inactive_sims` is `True`, these inactive simulations are moved to the new rank of the associated active simulation.
