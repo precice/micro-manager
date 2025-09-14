@@ -72,12 +72,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             configurator.is_load_balancing_two_step()
         )
 
-        if self._threshold > 0 and self._is_load_balancing_done_in_two_steps:
-            self._is_load_balancing_done_in_two_steps = False
-            self._base_logger.log_warning_rank_zero(
-                "Threshold is not zero, so two step load balancing is disabled."
-            )
-
         self._balance_inactive_sims = configurator.balance_inactive_sims()
 
         self._nothing_to_balance = False
@@ -154,7 +148,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         if n_global_send_sims == 0 or n_global_recv_sims == 0:
             self._nothing_to_balance = True
             self._base_logger.log_warning_rank_zero(
-                "It appears that the micro simulations are already fairly balanced. No load balancing will be done. Try changing the threshold value to provoke load balancing."
+                "It appears that the micro simulations are already fairly balanced. No load balancing will be done. Try changing the threshold value to induce load balancing."
             )
             return
 

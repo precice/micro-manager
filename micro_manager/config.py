@@ -443,6 +443,12 @@ class Config:
                     "No load balancing threshold provided. The threshold will be set to 0."
                 )
 
+            if self._load_balancing_threshold > 0 and self._two_step_load_balancing:
+                self._two_step_load_balancing = False
+                self._logger.log_warning_rank_zero(
+                    "Threshold is not zero, so two step load balancing is disabled."
+                )
+
             try:
                 self._balance_inactive_sims = self._data["simulation_params"][
                     "load_balancing_settings"

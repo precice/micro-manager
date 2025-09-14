@@ -122,10 +122,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         micro_output : list
             List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
         """
-        self._precice_participant.start_profiling_section(
-            "local_adaptivity.get_full_field_micro_output"
-        )
-
         micro_sims_output = deepcopy(micro_output)
 
         inactive_sim_ids = self.get_inactive_sim_local_ids()
@@ -134,8 +130,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             micro_sims_output[inactive_id] = deepcopy(
                 micro_sims_output[self._sim_is_associated_to[inactive_id]]
             )
-
-        self._precice_participant.stop_last_profiling_section()
 
         return micro_sims_output
 

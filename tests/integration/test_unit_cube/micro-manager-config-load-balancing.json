@@ -11,7 +11,7 @@
         "micro_dt": 1.0,
         "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
         "decomposition": [2, 1, 1],
-        "adaptivity": "True",
+        "adaptivity": true,
         "adaptivity_settings": {
             "type": "global",
             "data": ["micro-data-1", "micro-data-2"],
@@ -19,17 +19,17 @@
             "coarsening_constant": 0.2,
             "refining_constant": 0.05,
             "similarity_measure": "L2rel",
-            "every_implicit_iteration": "False",
-	        "output_cpu_time": "True"
+            "every_implicit_iteration": false,
+            "output_cpu_time": true
         },
-        "load_balancing": "True",
+        "load_balancing": true,
         "load_balancing_settings": {
-            "load_balancing_n": 2,
-            "two_step_load_balancing": "True",
-            "balance_inactive_sims": "True"
+            "every_n_time_windows": 2,
+            "two_step_load_balancing": true,
+            "balance_inactive_sims": true
         }
     },
     "diagnostics": {
-        "output_micro_sim_solve_time": "True"
+        "output_micro_sim_solve_time": true
     }
 }
