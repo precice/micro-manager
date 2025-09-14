@@ -822,12 +822,12 @@ class MicroManagerCoupling(MicroManager):
         micro_sims_output : list
             List of dicts in which keys are names of data and the values are the data which are required outputs of
         """
-        active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+        active_sim_local_ids = self._adaptivity_controller.get_active_sim_local_ids()
 
         micro_sims_output = [0] * self._local_number_of_sims
 
         # Solve all active micro simulations
-        for active_id in active_sim_ids:
+        for active_id in active_sim_local_ids:
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[active_id]:
                 # Attempt to solve the micro simulation
@@ -874,7 +874,7 @@ class MicroManagerCoupling(MicroManager):
 
         # Interpolate result for crashed simulation
         unset_sims = []
-        for active_id in active_sim_ids:
+        for active_id in active_sim_local_ids:
             if micro_sims_output[active_id] == 0:
                 unset_sims.append(active_id)
 
@@ -888,17 +888,19 @@ class MicroManagerCoupling(MicroManager):
                 )
 
                 micro_sims_output[unset_sim] = self._interpolate_output_for_crashed_sim(
-                    micro_sims_input, micro_sims_output, unset_sim, active_sim_ids
+                    micro_sims_input, micro_sims_output, unset_sim, active_sim_local_ids
                 )
 
         micro_sims_output = self._adaptivity_controller.get_full_field_micro_output(
             micro_sims_output
         )
 
-        inactive_sim_ids = self._adaptivity_controller.get_inactive_sim_ids()
+        inactive_sim_local_ids = (
+            self._adaptivity_controller.get_inactive_sim_local_ids()
+        )
 
         # Resolve micro sim output data for inactive simulations
-        for inactive_id in inactive_sim_ids:
+        for inactive_id in inactive_sim_local_ids:
             micro_sims_output[inactive_id]["active_state"] = 0
             micro_sims_output[inactive_id][
                 "active_steps"
