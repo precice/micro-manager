@@ -172,9 +172,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             1D array of active simulation ids
         """
         active_sim_ids = []
-        for global_id in self._global_ids:
-            if self._is_sim_active[global_id]:
-                active_sim_ids.append(self._global_ids.index(global_id))
+        for gid in self._global_ids:
+            if self._is_sim_active[gid]:
+                active_sim_ids.append(self._global_ids.index(gid))
 
         return np.array(active_sim_ids)
 
@@ -356,8 +356,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 else:
                     active_to_inactive_map[assoc_active_gid] = [gid]
             else:  # If associated active simulation is on this rank, copy the output directly
-                local_id = self._global_ids.index(gid)
-                micro_output[local_id] = deepcopy(
+                lid = self._global_ids.index(gid)
+                micro_output[lid] = deepcopy(
                     micro_output[self._global_ids.index(assoc_active_gid)]
                 )
 
@@ -422,9 +422,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 if self._is_sim_on_this_rank[
                     assoc_active_id
                 ]:  # Associated active simulation is on the same rank
-                    assoc_active_local_id = self._global_ids.index(assoc_active_id)
+                    assoc_active_lid = self._global_ids.index(assoc_active_id)
                     micro_sims[to_be_activated_lid].set_state(
-                        micro_sims[assoc_active_local_id].get_state()
+                        micro_sims[assoc_active_lid].get_state()
                     )
                 else:  # Associated active simulation is not on this rank
                     if assoc_active_id in to_be_activated_map:
@@ -433,9 +433,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                         to_be_activated_map[assoc_active_id] = [to_be_activated_lid]
 
         sim_states_and_global_ids = []
-        for local_id, sim in enumerate(micro_sims):
+        for lid, sim in enumerate(micro_sims):
             if sim == 0:
-                sim_states_and_global_ids.append((None, self._global_ids[local_id]))
+                sim_states_and_global_ids.append((None, self._global_ids[lid]))
             else:
                 sim_states_and_global_ids.append((sim.get_state(), sim.get_global_id()))
 
