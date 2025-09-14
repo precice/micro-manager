@@ -115,9 +115,9 @@ If the balancing threshold $$ \tau \gt 0 $$, two-step balancing does not produce
 
 ### Balancing threshold
 
-By default, the number of active simulations on ranks are balanced with respect to the mean number of active simulations per rank $$ N_A^{-} $$. For specific application cases it is possible that the balancing range $$ B = \{ \left \lfloor{N_A^{-}}\right \rfloor, ...,  \left \lceil{N_A^{-}}\right \rceil \} $$ is too tight. The balancing threshold $$ \tau $$ expands the balancing range in the following way
+By default, the number of active simulations on ranks are balanced with respect to the mean number of active simulations per rank $$ N_A^{-} $$. For specific application cases it is possible that the balancing range $$ \{ \left \lfloor{N_A^{-}}\right \rfloor, ...,  \left \lceil{N_A^{-}}\right \rceil \} $$ is too tight. The balancing threshold $$ \tau $$ expands the balancing range in the following way
 
-$$ B = \{ \left \lfloor{N_A^{-}}\right \rfloor - \tau, ...,  \left \lceil{N_A^{-}}\right \rceil + \tau \} $$
+$$ \{ \left \lfloor{N_A^{-}}\right \rfloor - \tau, ...,  \left \lceil{N_A^{-}}\right \rceil + \tau \} $$
 
 By default, $$ \tau = 0 $$.
 
