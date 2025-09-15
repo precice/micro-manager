@@ -26,8 +26,6 @@ jobs:
 
       - name: Use mpi4py
         uses: mpi4py/setup-mpi@v1
-        with:
-          mpi: openmpi
 
       - name: Install dependencies
         working-directory: micro-manager
