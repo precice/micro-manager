@@ -403,6 +403,7 @@ class Config:
                 self._logger.log_info_rank_zero(
                     "Micro Manager will dynamically balance micro simulations based on the adaptivity computation."
                 )
+                self._write_data_names.append("rank_of_sim")
         except BaseException:
             self._logger.log_info_rank_zero(
                 "Micro Manager will not dynamically balance micro simulations based on the adaptivity computation."

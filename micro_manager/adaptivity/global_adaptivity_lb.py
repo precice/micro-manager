@@ -51,6 +51,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             global_number_of_sims,
             global_ids,
             participant,
+            logger,
             rank,
             comm,
         )
@@ -63,8 +64,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         )
 
         self._base_logger = logger
-
-        self._local_number_of_sims = len(global_ids)
 
         self._threshold = configurator.get_load_balancing_threshold()
 
@@ -95,6 +94,20 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         self._redistribute_active_sims(micro_sims)
 
+        active_sims_global_ids = self.get_active_sim_global_ids()
+        self._base_logger.log_info(
+            "Active sims global IDs after active sim balancing: {}".format(
+                active_sims_global_ids
+            )
+        )
+
+        inactive_sims_global_ids = self.get_inactive_sim_global_ids()
+        self._base_logger.log_info(
+            "Inactive sims global IDs after active sim balancing: {}".format(
+                inactive_sims_global_ids
+            )
+        )
+
         if (not self._nothing_to_balance) and self._balance_inactive_sims:
             self._redistribute_inactive_sims(micro_sims)
 
@@ -109,15 +122,11 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        # self._precice_participant.start_profiling_section(
-        #     "global_adaptivity_lb._redistribute_active_sims"
-        # )
-
         avg_active_sims = np.count_nonzero(self._is_sim_active) / self._comm_world.size
 
-        n_active_sims_local = np.count_nonzero(
-            self._is_sim_active[self._global_ids[0] : self._global_ids[-1] + 1]
-        )
+        active_sims_local_ids = self.get_active_sim_local_ids()
+
+        n_active_sims_local = active_sims_local_ids.size
 
         send_sims = 0
         recv_sims = 0
@@ -139,6 +148,9 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         elif n_active_sims_local > c_avg_active_sims:
             # Simulations to send
             send_sims = n_active_sims_local - c_avg_active_sims
+
+        self._base_logger.log_info("send_sims: {}".format(send_sims))
+        self._base_logger.log_info("recv_sims: {}".format(recv_sims))
 
         # Number of active sims that each rank wants to send and receive
         global_send_sims = self._comm_world.allgather(send_sims)
@@ -190,11 +202,14 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                         if excess_send_sims == 0:
                             break
 
+        self._base_logger.log_info("global_send_sims: {}".format(global_send_sims))
+        self._base_logger.log_info("global_recv_sims: {}".format(global_recv_sims))
+
         send_map, recv_map = self._get_communication_maps(
             global_send_sims, global_recv_sims
         )
 
-        self._communicate_micro_sims(micro_sims, send_map, recv_map)
+        self._move_active_sims(micro_sims, send_map, recv_map)
 
         if self._is_load_balancing_done_in_two_steps:
             if sum(global_psend_sims) != 0 and sum(global_precv_sims) != 0:
@@ -202,13 +217,11 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                     global_psend_sims, global_precv_sims
                 )
 
-                self._communicate_micro_sims(micro_sims, send_map, recv_map)
+                self._move_active_sims(micro_sims, send_map, recv_map)
             else:
                 self._base_logger.log_warning_rank_zero(
                     "No load balancing was done in the second step because the micro simulations are already almost perfectly balanced."
                 )
-
-        # self._precice_participant.stop_last_profiling_section()
 
     def _redistribute_inactive_sims(self, micro_sims: list) -> None:
         """
@@ -219,23 +232,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        # self._precice_participant.start_profiling_section(
-        #     "global_adaptivity_lb._redistribute_inactive_sims"
-        # )
-
-        ranks_of_sims = self._get_ranks_of_sims()
-
-        global_ids_of_inactive_sims = np.where(self._is_sim_active == False)[0]
-
-        current_ranks_of_inactive_sims = []
-        new_ranks_of_inactive_sims = []
-        for inactive_gid in global_ids_of_inactive_sims:
-            assoc_active_gid = self._sim_is_associated_to[inactive_gid]
-
-            current_ranks_of_inactive_sims.append(ranks_of_sims[inactive_gid])
-
-            new_ranks_of_inactive_sims.append(ranks_of_sims[assoc_active_gid])
-
         # Dict of
         # keys: global IDs of sim states to send from this rank
         # values: ranks to send the sims to
@@ -246,17 +242,21 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         # values: are ranks to receive from
         recv_map: dict[int, int] = dict()
 
-        for i in range(np.count_nonzero(self._is_sim_active == False)):
-            if current_ranks_of_inactive_sims[i] != new_ranks_of_inactive_sims[i]:
-                inactive_gid = global_ids_of_inactive_sims[i]
-                if current_ranks_of_inactive_sims[i] == self._rank:
-                    send_map[inactive_gid] = new_ranks_of_inactive_sims[i]
-                if new_ranks_of_inactive_sims[i] == self._rank:
-                    recv_map[inactive_gid] = current_ranks_of_inactive_sims[i]
+        ranks_of_sims = self._get_ranks_of_sims()
 
-        self._communicate_micro_sims(micro_sims, send_map, recv_map)
+        global_ids_of_inactive_sims = np.where(self._is_sim_active == False)[0]
 
-        # self._precice_participant.stop_last_profiling_section()
+        for gid in global_ids_of_inactive_sims:
+            assoc_active_gid = self._sim_is_associated_to[gid]
+            rank_of_inactive_sim = ranks_of_sims[gid]
+            rank_of_assoc_active_sim = ranks_of_sims[assoc_active_gid]
+            if rank_of_inactive_sim != rank_of_assoc_active_sim:
+                if rank_of_inactive_sim == self._rank:
+                    send_map[gid] = rank_of_assoc_active_sim
+                if rank_of_assoc_active_sim == self._rank:
+                    recv_map[gid] = rank_of_inactive_sim
+
+        # self._communicate_micro_sims(micro_sims, send_map, recv_map)
 
     def _get_communication_maps(
         self, global_send_sims: list, global_recv_sims: list
@@ -279,7 +279,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             recv_map : dict
                 keys are global IDs of sim states to receive, values are ranks to receive from
         """
-        active_sims_global_ids = list(super().get_active_sim_global_ids())
+        active_sims_global_ids = list(self.get_active_sim_global_ids())
 
         rank_wise_global_ids_of_active_sims = self._comm_world.allgather(
             active_sims_global_ids
@@ -288,7 +288,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         # Keys are ranks sending sims, values are lists of tuples: (list of global IDs to send, the rank to send them to)
         global_send_map: dict[int, list] = dict()
 
-        # Keys are ranks, values are lists of tuples: (list of global IDs to receive, the rank to receive them from)
+        # Keys are ranks receiving sims, values are lists of tuples: (list of global IDs to receive, the rank to receive them from)
         global_recv_map: dict[int, list] = dict()
 
         for rank in [i for i, e in enumerate(global_send_sims) if e != 0]:
@@ -357,18 +357,18 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         if self._rank in global_send_map:
             for send_info in global_send_map[self._rank]:
                 send_rank = send_info[1]
-                for global_id in send_info[0]:
-                    send_map[global_id] = send_rank
+                for gid in send_info[0]:
+                    send_map[gid] = send_rank
 
         if self._rank in global_recv_map:
             for recv_info in global_recv_map[self._rank]:
                 recv_rank = recv_info[1]
-                for global_id in recv_info[0]:
-                    recv_map[global_id] = recv_rank
+                for gid in recv_info[0]:
+                    recv_map[gid] = recv_rank
 
         return send_map, recv_map
 
-    def _communicate_micro_sims(
+    def _move_active_sims(
         self, micro_sims: list, send_map: dict, recv_map: dict
     ) -> None:
         """
@@ -387,9 +387,9 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         send_reqs = []
         for gid, send_rank in send_map.items():
             tag = self._create_tag(gid, self._rank, send_rank)
-            local_id = self._global_ids.index(gid)
+            lid = self._global_ids.index(gid)
             req = self._comm_world.isend(
-                (micro_sims[local_id].get_state(), gid), dest=send_rank, tag=tag
+                (micro_sims[lid].get_state(), gid), dest=send_rank, tag=tag
             )
             send_reqs.append(req)
 
@@ -410,7 +410,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         for gid in send_map.keys():
             lid = self._global_ids.index(gid)
             del micro_sims[lid]
-            self._local_number_of_sims -= 1
             self._global_ids.remove(gid)
             self._is_sim_on_this_rank[gid] = False
 
@@ -419,6 +418,5 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             output, gid = req.wait()
             micro_sims.append(create_simulation_class(self._micro_problem)(gid))
             micro_sims[-1].set_state(output)
-            self._local_number_of_sims += 1
             self._global_ids.append(gid)
             self._is_sim_on_this_rank[gid] = True

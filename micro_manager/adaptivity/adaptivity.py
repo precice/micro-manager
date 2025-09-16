@@ -135,44 +135,44 @@ class AdaptivityCalculator:
             )
 
         # Update the set of active micro sims
-        for i in range(self._is_sim_active.size):
-            if self._is_sim_active[i]:  # if sim is active
-                if self._check_for_deactivation(i, self._is_sim_active):
-                    self._is_sim_active[i] = False
-                    self._just_deactivated.append(i)
+        for gid in range(self._is_sim_active.size):
+            if self._is_sim_active[gid]:  # if sim is active
+                if self._check_for_deactivation(gid, self._is_sim_active):
+                    self._is_sim_active[gid] = False
+                    self._just_deactivated.append(gid)
 
     def _associate_inactive_to_active(self) -> None:
         """
         Associate inactive micro simulations to most similar active micro simulation.
         """
-        active_ids = np.where(self._is_sim_active)[0]
-        inactive_ids = np.where(self._is_sim_active == False)[0]
+        active_gids = np.where(self._is_sim_active)[0]
+        inactive_gids = np.where(self._is_sim_active == False)[0]
 
         # Start with a large distance to trigger the search for the most similar active sim
         # Add the +1 for the case when the similarity distance matrix is zeros
         dist_min_start_value = self._max_similarity_dist + 1
 
         # Associate inactive micro sims to active micro sims
-        for inactive_id in inactive_ids:
+        for inactive_gid in inactive_gids:
             # Begin with a large distance to trigger the search for the most similar active sim
             dist_min = dist_min_start_value
-            for active_id in active_ids:
+            for active_gid in active_gids:
                 # Find most similar active sim for every inactive sim
-                if self._similarity_dists[inactive_id, active_id] < dist_min:
-                    associated_active_id = active_id
-                    dist_min = self._similarity_dists[inactive_id, active_id]
+                if self._similarity_dists[inactive_gid, active_gid] < dist_min:
+                    associated_active_gid = active_gid
+                    dist_min = self._similarity_dists[inactive_gid, active_gid]
 
-            self._sim_is_associated_to[inactive_id] = associated_active_id
+            self._sim_is_associated_to[inactive_gid] = associated_active_gid
 
     def _check_for_activation(
-        self, inactive_id: int, is_sim_active: np.ndarray
+        self, inactive_gid: int, is_sim_active: np.ndarray
     ) -> bool:
         """
         Check if an inactive simulation needs to be activated.
 
         Parameters
         ----------
-        inactive_id : int
+        inactive_gid : int
             ID of inactive simulation which is checked for activation.
         is_sim_active : numpy array
             1D array having state (active or inactive) of each micro simulation.
@@ -182,22 +182,22 @@ class AdaptivityCalculator:
         tag : bool
             True if the inactive simulation needs to be activated, False otherwise.
         """
-        active_sim_ids = np.where(is_sim_active)[0]
+        active_gids = np.where(is_sim_active)[0]
 
-        dists = self._similarity_dists[inactive_id, active_sim_ids]
+        dists = self._similarity_dists[inactive_gid, active_gids]
 
         # If inactive sim is not similar to any active sim, activate it
         return min(dists) > self._ref_tol
 
     def _check_for_deactivation(
-        self, active_id: int, is_sim_active: np.ndarray
+        self, active_gid: int, is_sim_active: np.ndarray
     ) -> bool:
         """
         Check if an active simulation needs to be deactivated.
 
         Parameters
         ----------
-        active_id : int
+        active_gid : int
             ID of active simulation which is checked for deactivation.
         is_sim_active : numpy array
             1D array having state (active or inactive) of each micro simulation.
@@ -207,12 +207,12 @@ class AdaptivityCalculator:
         tag : bool
             True if the active simulation needs to be deactivated, False otherwise.
         """
-        active_sim_ids = np.where(is_sim_active)[0]
+        active_gids = np.where(is_sim_active)[0]
 
-        for active_id_2 in active_sim_ids:
-            if active_id != active_id_2:  # don't compare active sim to itself
+        for active_gid_2 in active_gids:
+            if active_gid != active_gid_2:  # don't compare active sim to itself
                 # If active sim is similar to another active sim, deactivate it
-                if self._similarity_dists[active_id, active_id_2] < self._coarse_tol:
+                if self._similarity_dists[active_gid, active_gid_2] < self._coarse_tol:
                     return True
         return False
 
