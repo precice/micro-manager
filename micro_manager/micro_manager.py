@@ -197,20 +197,6 @@ class MicroManagerCoupling(MicroManager):
                     active_sim_gids = (
                         self._adaptivity_controller.get_active_sim_global_ids()
                     )
-                    self._logger.log_info(
-                        "Active sims global IDs after adaptivity: {}".format(
-                            active_sim_gids
-                        )
-                    )
-
-                    inactive_sim_gids = (
-                        self._adaptivity_controller.get_inactive_sim_global_ids()
-                    )
-                    self._logger.log_info(
-                        "Inactive sims global IDs after adaptivity: {}".format(
-                            inactive_sim_gids
-                        )
-                    )
 
                     for gid in active_sim_gids:
                         self._micro_sims_active_steps[gid] += 1
@@ -542,7 +528,6 @@ class MicroManagerCoupling(MicroManager):
                             self._global_number_of_sims,
                             self._global_ids_of_local_sims,
                             self._participant,
-                            self._logger,
                             self._rank,
                             self._comm,
                         )

@@ -22,7 +22,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         global_number_of_sims: int,
         global_ids: list,
         participant,
-        logger,
         rank: int,
         comm_world,
     ) -> None:
@@ -48,8 +47,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._global_number_of_sims = global_number_of_sims
         self._global_ids = global_ids
         self._comm_world = comm_world
-
-        self._base_logger = logger
 
         rank_of_sim = self._get_ranks_of_sims()
 
