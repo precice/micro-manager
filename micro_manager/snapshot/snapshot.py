@@ -12,7 +12,6 @@ Detailed documentation: https://precice.org/tooling-micro-manager-snapshot-confi
 import importlib
 import os
 import sys
-import time
 import subprocess
 import numpy as np
 
@@ -293,12 +292,7 @@ class MicroManagerSnapshot(MicroManager):
             simulations. The return type is None if the simulation has crashed.
         """
         try:
-            start_time = time.process_time()
             micro_sims_output = self._micro_sims.solve(micro_sims_input, self._micro_dt)
-            end_time = time.process_time()
-
-            if self._is_micro_solve_time_required:
-                micro_sims_output["solve_cpu_time"] = end_time - start_time
 
             return micro_sims_output
         # Handle simulation crash

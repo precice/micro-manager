@@ -21,9 +21,6 @@ The Micro Manager is configured with a JSON file. An example configuration file 
     "simulation_params": {
         "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
         "micro_dt": 1.0
-    },
-    "diagnostics": {
-      "output_micro_sim_solve_time": true
     }
 }
 ```
@@ -76,18 +73,6 @@ If the parameter `data_from_micro_sims` is set, the data to be output needs to b
 <participant name="Micro-Manager">
   ...
   <write-data name="porosity" mesh="macro-mesh"/>
-  <export:vtu directory="Micro-Manager-output" every-n-time-windows="5"/>
-</participant>
-```
-
-If `output_micro_sim_solve_time` is set, add similar entries for the data `solve_cpu_time` in the following way:
-
-```xml
-<data:scalar name="solve_cpu_time"/>
-
-<participant name="Micro-Manager">
-  ...
-  <write-data name="solve_cpu_time" mesh="macro-mesh"/>
   <export:vtu directory="Micro-Manager-output" every-n-time-windows="5"/>
 </participant>
 ```
