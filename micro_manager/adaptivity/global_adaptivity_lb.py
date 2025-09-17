@@ -252,7 +252,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                 if rank_of_assoc_active_sim == self._rank:
                     recv_map[gid] = rank_of_inactive_sim
 
-        # self._communicate_micro_sims(micro_sims, send_map, recv_map)
+        self._move_inactive_sims(micro_sims, send_map, recv_map)
 
     def _get_communication_maps(
         self, global_send_sims: list, global_recv_sims: list
@@ -368,7 +368,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         self, micro_sims: list, send_map: dict, recv_map: dict
     ) -> None:
         """
-        Communicate micro simulation states between ranks to balance the load of solving micro simulations.
+        Move active micro simulations between ranks.
 
         Parameters
         ----------
@@ -402,17 +402,67 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         # Wait for all non-blocking communication to complete
         MPI.Request.Waitall(send_reqs)
 
-        # Delete the micro simulations which no longer exist on this rank
+        # Delete the active simulations which no longer exist on this rank
         for gid in send_map.keys():
             lid = self._global_ids.index(gid)
             del micro_sims[lid]
             self._global_ids.remove(gid)
             self._is_sim_on_this_rank[gid] = False
 
-        # Create micro simulations and set them to the received states
+        # Create simulations and set them to the received states
         for req in recv_reqs:
             output, gid = req.wait()
             micro_sims.append(create_simulation_class(self._micro_problem)(gid))
             micro_sims[-1].set_state(output)
+            self._global_ids.append(gid)
+            self._is_sim_on_this_rank[gid] = True
+
+    def _move_inactive_sims(
+        self, micro_sims: list, send_map: dict, recv_map: dict
+    ) -> None:
+        """
+        Move inactive micro simulation states between ranks.
+
+        Parameters
+        ----------
+        micro_sims : list
+            List of objects of class MicroProblem, which are the micro simulations
+        send_map : dict
+            keys are global IDs of sim states to send, values are ranks to send the sims to
+        recv_map : dict
+            keys are global IDs of sim states to receive, values are ranks to receive from
+        """
+        # Asynchronous send operations
+        send_reqs = []
+        for gid, send_rank in send_map.items():
+            tag = self._create_tag(gid, self._rank, send_rank)
+            lid = self._global_ids.index(gid)
+            req = self._comm_world.isend((gid), dest=send_rank, tag=tag)
+            send_reqs.append(req)
+
+        # Asynchronous receive operations
+        recv_reqs = []
+        for gid, recv_rank in recv_map.items():
+            tag = self._create_tag(gid, recv_rank, self._rank)
+            bufsize = (
+                1 << 30
+            )  # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
+            req = self._comm_world.irecv(bufsize, source=recv_rank, tag=tag)
+            recv_reqs.append(req)
+
+        # Wait for all non-blocking communication to complete
+        MPI.Request.Waitall(send_reqs)
+
+        # Delete the inactive simulations which no longer exist on this rank
+        for gid in send_map.keys():
+            lid = self._global_ids.index(gid)
+            del micro_sims[lid]
+            self._global_ids.remove(gid)
+            self._is_sim_on_this_rank[gid] = False
+
+        # Add inactive simulations in the data structure
+        for req in recv_reqs:
+            gid = req.wait()
+            micro_sims.append(0)
             self._global_ids.append(gid)
             self._is_sim_on_this_rank[gid] = True
