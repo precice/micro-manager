@@ -59,7 +59,7 @@ Adaptivity parameters | See section on [adaptivity](#adaptivity). By default, ad
 ## Diagnostics
 
 Parameter | Description
---- | ---H
+--- | ---
 `data_from_micro_sims` | A Python dictionary with the names of the data from the micro simulation to be written to VTK files as keys and `"scalar"` or `"vector"` as values.
 `micro_output_n`|  Frequency of calling the optional output functionality of the micro simulation in terms of number of time steps. If not given, `micro_sim.output()` is called every time step.
 
