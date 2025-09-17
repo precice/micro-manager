@@ -97,6 +97,20 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         return np.where(self._is_sim_active)[0]
 
+    def get_active_sim_global_ids(self) -> np.ndarray:
+        """
+        Get the global(local) ids of active simulations on this rank.
+
+        For local adaptivity, global ids are same as local ids.
+
+        Returns
+        -------
+        numpy array
+            1D array of active simulation ids
+        """
+        active_sim_ids = self.get_active_sim_local_ids()
+        return active_sim_ids
+
     def get_inactive_sim_local_ids(self) -> np.ndarray:
         """
         Get the local ids of inactive simulations on this rank.
@@ -107,6 +121,20 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             1D array of inactive simulation ids
         """
         return np.where(self._is_sim_active == False)[0]
+
+    def get_inactive_sim_global_ids(self) -> np.ndarray:
+        """
+        Get the global(local) ids of inactive simulations on this rank.
+
+        For local adaptivity, global ids are same as local ids.
+
+        Returns
+        -------
+        numpy array
+            1D array of inactive simulation ids
+        """
+        inactive_sim_ids = self.get_inactive_sim_local_ids()
+        return inactive_sim_ids
 
     def get_full_field_micro_output(self, micro_output: list) -> list:
         """

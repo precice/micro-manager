@@ -80,3 +80,75 @@ Simulations on one rank are compared against each other. The similarity distance
 Each simulation is compared to all other simulations in the global domain. The similarity distance matrix $$ D $$ has size $$ [N_g,N_g] $$ on every compute node, where $$ N_g $$ is the global number of simulations. Note that one copy of the similarity distance matrix $D$ is stored on every compute node, and **not** on every rank. We use MPI-based shared memory storage and access to store and update only one copy of the $$ D $$ matrix on every node. The local primary rank (lowest rank on every node) updates the $$D $$ matrix. This implementation enables some memory saving for large cases with global adaptivity.
 
 The adaptivity variant is set via the [adaptivity configuration](tooling-micro-manager-configuration.html#adaptivity).
+
+## Load balancing
+
+Ranks having simulations outside the balancing range are rebalanced. We calculate the balancing bounds $$ L $$ and $$ U $$ using the mean number of active simulations per rank, $$ N_A^{-} $$
+
+$$ L = \left \lfloor{N_A^{-} - \tau}\right \rfloor, \quad U = \left \lceil{N_A^{-} + \tau}\right \rceil $$
+
+where $$ \tau $$ is a positive **balancing threshold** value. By default $$ \tau = 0 $$.
+
+For a rank $$ i $$ having $$ N_A^{i} $$ active simulations, the following scenarios are possible,
+
+1. If $$ N_A^{i} < L $$ , rank $$ i $$  expects to receive $$ L - N_A^{i} $$  simulations.
+2. If $$ L < N_A^{i} < U $$ , rank $$ i $$  is reasonably well balanced.
+3. If $$ N_A^{i} > U $$ , rank $$ i $$  expects to send $$ N_A^{i} - U$$  simulations.
+4. If $$ N_A^{i} =  L $$ , rank $$ i $$  can expect to receive one active simulation, if available.
+5. If $$ N_A^{i} = U $$ , rank $$ i $$  can expect to send one active simulation, if available.
+
+### Two-step approach
+
+As mentioned in the [load balancing](#load-balancing) section scenarios 4 and 5, it is possible that the number of active simulations on a rank are exactly as many as the bounds. To get the best possible balancing, these ranks send or receive one active simulation.
+
+{% disclaimer %}
+Use this option only if the best possible balancing is desired, because this will lead to added communication effort.
+{% enddisclaimer %}
+
+{% note %}
+If the balancing threshold $$ \tau \gt 0 $$, two-step balancing does not produce a different balancing state, so it is disabled.
+{% endnnote %}
+
+### Effect of the balancing threshold
+
+Example:
+
+Consider a simulation in which the Micro Manager is run with 3 processes, and has the following number of active simulations per rank
+
+Rank | 0 | 1 | 2
+--- | --- | --- | ---
+$$ N_A $$ | 8 | 3 | 0
+
+$$ \tau = 0.5 $$ leads to
+
+Rank | 0 | 1 | 2
+--- | --- | --- | ---
+$$ N_A $$ | 5 | 4 | 2
+
+$$ \tau = 0 $$ leads to
+
+Rank | 0 | 1 | 2
+--- | --- | --- | ---
+$$ N_A $$ | 5 | 3 | 3
+
+$$ \tau = 0 $$ with two-step balancing leads to
+
+Rank | 0 | 1 | 2
+--- | --- | --- | ---
+$$ N_A $$ | 4 | 4 | 3
+
+$$ \tau = 1 $$ leads to
+
+Rank | 0 | 1 | 2
+--- | --- | --- | ---
+$$ N_A $$ | 6 | 3 | 2
+
+$$ \tau = 2 $$ leads to
+
+Rank | 0 | 1 | 2
+--- | --- | --- | ---
+$$ N_A $$ | 7 | 3 | 1
+
+### Balance inactive simulations
+
+By default only active simulations are redistributed between ranks. Inactive simulations associated with an active simulation on the same rank are not moved. If the parameter `update_inactive_sims` is `True`, these inactive simulations are moved to the new rank of the associated active simulation.

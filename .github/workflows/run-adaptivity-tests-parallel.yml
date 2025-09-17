@@ -49,9 +49,57 @@ jobs:
           mpiexec -n 2 --allow-run-as-root micro-manager-precice micro-manager-config-global-adaptivity-parallel.json &
           python3 unit_cube.py 2
 
-      - name: Run parallel unit tests
+  adaptivity_unit_tests_parallel:
+    name: Adaptivity unit tests in parallel
+    runs-on: ubuntu-latest
+    container: precice/precice:nightly
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          path: micro-manager
+
+      - name: Install sudo for MPI
+        working-directory: micro-manager
+        run: |
+          apt-get -qq update
+          apt-get -qq install sudo
+
+      - name: Use mpi4py
+        uses: mpi4py/setup-mpi@v1
+
+      - name: Install Dependencies
+        working-directory: micro-manager
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-dev python3-venv git pkg-config
+
+      - name: Create a virtual environment and install Micro Manager in it
+        working-directory: micro-manager
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install .
+
+      - name: Run unit tests
         working-directory: micro-manager
         run: |
           . .venv/bin/activate
           cd tests/unit
           mpiexec -n 2 --allow-run-as-root python3 -m unittest test_adaptivity_parallel.py
+
+      - name: Run load balancing unit tests with 2 ranks
+        timeout-minutes: 3
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          cd tests/unit
+          mpiexec -n 2 --allow-run-as-root python3 -m unittest test_global_adaptivity_lb.py
+
+      - name: Run load balancing tests with 4 ranks
+        timeout-minutes: 3
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          cd tests/unit
+          mpiexec -n 4 --allow-run-as-root --oversubscribe python3 -m unittest test_global_adaptivity_lb.py
