@@ -64,7 +64,6 @@ Adaptivity parameters | See section on [adaptivity](#adaptivity). By default, ad
 Parameter | Description
 --- | ---H
 `data_from_micro_sims` | A Python dictionary with the names of the data from the micro simulation to be written to VTK files as keys and `"scalar"` or `"vector"` as values.
-`output_micro_sim_solve_time` | If `true`, the Micro Manager writes the wall clock time of the `solve()` function of each micro simulation.
 `micro_output_n`|  Frequency of calling the optional output functionality of the micro simulation in terms of number of time steps. If not given, `micro_sim.output()` is called every time step.
 
 ### Adding diagnostics in the preCICE XML configuration

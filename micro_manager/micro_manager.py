@@ -15,11 +15,9 @@ Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
 import importlib
 import os
 import sys
-import time
 import inspect
 from typing import Callable
 import numpy as np
-import time
 from psutil import Process
 import csv
 import subprocess
@@ -82,8 +80,6 @@ class MicroManagerCoupling(MicroManager):
         self._read_data_names = self._config.get_read_data_names()
 
         self._micro_dt = self._config.get_micro_dt()
-
-        self._is_micro_solve_time_required = self._config.write_micro_solve_time()
 
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
@@ -825,14 +821,7 @@ class MicroManagerCoupling(MicroManager):
             if not self._has_sim_crashed[count]:
                 # Attempt to solve the micro simulation
                 try:
-                    start_time = time.process_time()
                     micro_sims_output[count] = sim.solve(micro_sims_input[count], dt)
-                    end_time = time.process_time()
-                    # Write solve time of the macro simulation if required and the simulation has not crashed
-                    if self._is_micro_solve_time_required:
-                        micro_sims_output[count]["solve_cpu_time"] = (
-                            end_time - start_time
-                        )
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
@@ -904,14 +893,9 @@ class MicroManagerCoupling(MicroManager):
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[lid]:
                 try:
-                    start_time = time.process_time()
                     micro_sims_output[lid] = self._micro_sims[lid].solve(
                         micro_sims_input[lid], dt
                     )
-                    end_time = time.process_time()
-                    # Write solve time of the macro simulation if required and the simulation has not crashed
-                    if self._is_micro_solve_time_required:
-                        micro_sims_output[lid]["solve_cpu_time"] = end_time - start_time
 
                     # Mark the micro sim as active for export
                     micro_sims_output[lid]["active_state"] = 1
@@ -975,9 +959,6 @@ class MicroManagerCoupling(MicroManager):
             micro_sims_output[inactive_lid][
                 "active_steps"
             ] = self._micro_sims_active_steps[gid]
-
-            if self._is_micro_solve_time_required:
-                micro_sims_output[inactive_lid]["solve_cpu_time"] = 0
 
         # Collect micro sim output for adaptivity calculation
         for i in range(self._local_number_of_sims):
@@ -1080,13 +1061,11 @@ class MicroManagerCoupling(MicroManager):
             if self._is_adaptivity_on:
                 interpol_space.append(micro_sims_active_input_lists[neighbor].copy())
                 interpol_values.append(micro_sims_active_values[neighbor].copy())
-                interpol_values[-1].pop("solve_cpu_time", None)
                 interpol_values[-1].pop("active_state", None)
                 interpol_values[-1].pop("active_steps", None)
             else:
                 interpol_space.append(micro_sims_active_input_lists[neighbor].copy())
                 interpol_values.append(micro_sims_active_values[neighbor].copy())
-                interpol_values[-1].pop("solve_cpu_time", None)
 
         # Interpolate for each parameter
         output_interpol = dict()
@@ -1099,8 +1078,6 @@ class MicroManagerCoupling(MicroManager):
                 interpol_space, crashed_position, key_values
             )
         # Reintroduce removed information
-        if self._is_micro_solve_time_required:
-            output_interpol["solve_cpu_time"] = 0
         if self._is_adaptivity_on:
             output_interpol["active_state"] = 1
             output_interpol["active_steps"] = self._micro_sims_active_steps[unset_sim]
