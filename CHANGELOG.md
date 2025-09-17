@@ -2,6 +2,7 @@
 
 ## latest
 
+- Remove option of simulation solve time from diagnostics https://github.com/precice/micro-manager/pull/188
 - Add dynamic load balancing capability to global adaptivity https://github.com/precice/micro-manager/pull/141
 - Revert to using (default) mpich as error is fixed in setup-mpi action https://github.com/precice/micro-manager/pull/187
 - Refactor adaptivity: simplify logic and shorten iterator variable names https://github.com/precice/micro-manager/pull/186

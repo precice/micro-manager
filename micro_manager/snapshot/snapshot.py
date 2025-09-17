@@ -59,8 +59,6 @@ class MicroManagerSnapshot(MicroManager):
 
         self._micro_dt = self._config.get_micro_dt()
 
-        self._is_micro_solve_time_required = self._config.write_micro_solve_time()
-
         # Path to the parameter file containing input parameters for micro simulations
         self._parameter_file = self._config.get_parameter_file_name()
 
