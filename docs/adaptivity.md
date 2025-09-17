@@ -77,7 +77,7 @@ Simulations on one rank are compared against each other. The similarity distance
 
 ### Global adaptivity
 
-Each simulation is compared to all other simulations in the global domain. The similarity distance matrix $$ D $$ has size $$ [N_g,N_g] $$ on every compute node, where $$ N_g $$ is the global number of simulations. Note that one copy of the similarity distance matrix $D$ is stored on every compute node, and **not** on every rank. We use MPI-based shared memory storage and access to store and update only one copy of the $$ D $$ matrix on every node. The local primary rank (lowest rank on every node) updates the $$D $$ matrix. This implementation enables some memory saving for large cases with global adaptivity.
+Each simulation is compared to all other simulations in the global domain. The similarity distance matrix $$ D $$ has size $$ [N_g,N_g] $$ on every compute node, where $$ N_g $$ is the global number of simulations. Note that one copy of the similarity distance matrix $$ D $$ is stored on every compute node, and **not** on every rank. We use MPI-based shared memory storage and access to store and update only one copy of the $$ D $$ matrix on every node. The local primary rank (lowest rank on every node) updates the $$ D $$ matrix. This implementation enables some memory saving for large cases with global adaptivity.
 
 The adaptivity variant is set via the [adaptivity configuration](tooling-micro-manager-configuration.html#adaptivity).
 
@@ -107,7 +107,7 @@ Use this option only if the best possible balancing is desired, because this wil
 
 {% note %}
 If the balancing threshold $$ \tau \gt 0 $$, two-step balancing does not produce a different balancing state, so it is disabled.
-{% endnnote %}
+{% endnote %}
 
 ### Effect of the balancing threshold
 
