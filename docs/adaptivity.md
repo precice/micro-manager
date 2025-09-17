@@ -83,27 +83,23 @@ The adaptivity variant is set via the [adaptivity configuration](tooling-micro-m
 
 ## Load balancing
 
-Ranks having simulations outside the balancing range are rebalanced. The balancing bounds are calculated using the mean number of active simulations per rank, $$ N_A^{-} $$. The balancing bounds are
+Ranks having simulations outside the balancing range are rebalanced. We calculate the balancing bounds $$ L $$ and $$ U $$ using the mean number of active simulations per rank, $$ N_A^{-} $$
 
-$$ \{ \left \lfloor{N_A^{-}}\right \rfloor, \left \lceil{N_A^{-}}\right \rceil \} $$
+$$ L = \left \lfloor{N_A^{-} - \tau}\right \rfloor, \quad U = \left \lceil{N_A^{-} + \tau}\right \rceil $$
 
-If the average is not an integer, the floor value is the lower bound, and the ceiling value is the upper bound. If the mean $$ N_A^{-} $$ is an integer, the balancing bounds reduce to one single integer bound.
+where $$ \tau $$ is a positive **balancing threshold** value. By default $$ \tau = 0 $$.
 
-For a rank $$ i $$, the following scenarios are possible:
+For a rank $$ i $$ having $$ N_A^{i} $$ active simulations, the following scenarios are possible,
 
-1. If $$ N_A^{i} \lt \left \lfloor{N_A^{-}}\right \rfloor $$, rank $$ i $$ expects to receive $$\left \lfloor{N_A^{-}}\right \rfloor - N_A^{i} $$ simulations in the balancing.
-
-2. If $$ \left \lfloor{N_A^{-}}\right \rfloor \lt N_A^{i} \lt  \left \lceil{N_A^{-}}\right \rceil $$, the rank $$ i $$ is reasonably well balanced.
-
-3. If $$ N_A^{i} \gt \left \lceil{N_A^{-}}\right \rceil $$, rank $$ i $$ expects to send $$ N_A^{i} - \left \lceil{N_A^{-}}\right \rceil $$ simulations in the balancing.
-
-4. If $$ N_A^{i} =  \left \lfloor{N_A^{-}}\right \rfloor $$, rank $$ i $$ can expect to receive $$ \left \lceil{N_A^{-}}\right \rceil - N_A^{i} $$ simulations, if two-step balancing is enabled.
-
-5. If $$ N_A^{i} = \left \lceil{N_A^{-}}\right \rceil $$, rank $$ i $$ can expect to send $$ N_A^{i} - \left \lfloor{N_A^{-}}\right \rfloor $$ simulations, if two-step balancing is enabled.
+1. If $$ N_A^{i} < L $$ , rank $$ i $$  expects to receive $$ L - N_A^{i} $$  simulations.
+2. If $$ L < N_A^{i} < U $$ , rank $$ i $$  is reasonably well balanced.
+3. If $$ N_A^{i} > U $$ , rank $$ i $$  expects to send $$ N_A^{i} - U$$  simulations.
+4. If $$ N_A^{i} =  L $$ , rank $$ i $$  can expect to receive one active simulation, if available.
+5. If $$ N_A^{i} = U $$ , rank $$ i $$  can expect to send one active simulation, if available.
 
 ### Two-step approach
 
-As mentioned in the [load balancing](#load-balancing) section scenarios 4 and 5, it is possible that the number of active simulations on a rank are exactly as many as the lower or upper bound of the balancing range. To get the best possible balancing, these ranks send or receive as many number of simulations as the balancing range size.
+As mentioned in the [load balancing](#load-balancing) section scenarios 4 and 5, it is possible that the number of active simulations on a rank are exactly as many as the bounds. To get the best possible balancing, these ranks send or receive one active simulation.
 
 {% disclaimer %}
 Use this option only if the best possible balancing is desired, because this will lead to added communication effort.
@@ -113,13 +109,7 @@ Use this option only if the best possible balancing is desired, because this wil
 If the balancing threshold $$ \tau \gt 0 $$, two-step balancing does not produce a different balancing state, so it is disabled.
 {% endnnote %}
 
-### Balancing threshold
-
-By default, the number of active simulations on ranks are balanced with respect to the mean number of active simulations per rank $$ N_A^{-} $$. For specific application cases it is possible that the balancing range $$ \{ \left \lfloor{N_A^{-}}\right \rfloor, ...,  \left \lceil{N_A^{-}}\right \rceil \} $$ is too tight. The balancing threshold $$ \tau $$ expands the balancing range in the following way
-
-$$ \{ \left \lfloor{N_A^{-}}\right \rfloor - \tau, ...,  \left \lceil{N_A^{-}}\right \rceil + \tau \} $$
-
-By default, $$ \tau = 0 $$.
+### Effect of the balancing threshold
 
 Example:
 
@@ -127,31 +117,37 @@ Consider a simulation in which the Micro Manager is run with 3 processes, and ha
 
 Rank | 0 | 1 | 2
 --- | --- | --- | ---
-$ N_A $ | 8 | 3 | 0
+$$ N_A $$ | 8 | 3 | 0
+
+$$ \tau = 0.5 $$ leads to
+
+Rank | 0 | 1 | 2
+--- | --- | --- | ---
+$$ N_A $$ | 5 | 4 | 2
 
 $$ \tau = 0 $$ leads to
 
 Rank | 0 | 1 | 2
 --- | --- | --- | ---
-$ N_A $ | 5 | 3 | 3
+$$ N_A $$ | 5 | 3 | 3
 
 $$ \tau = 0 $$ with two-step balancing leads to
 
 Rank | 0 | 1 | 2
 --- | --- | --- | ---
-$ N_A $ | 4 | 4 | 3
+$$ N_A $$ | 4 | 4 | 3
 
 $$ \tau = 1 $$ leads to
 
 Rank | 0 | 1 | 2
 --- | --- | --- | ---
-$ N_A $ | 6 | 3 | 2
+$$ N_A $$ | 6 | 3 | 2
 
 $$ \tau = 2 $$ leads to
 
 Rank | 0 | 1 | 2
 --- | --- | --- | ---
-$ N_A $ | 7 | 3 | 1
+$$ N_A $$ | 7 | 3 | 1
 
 ### Balance inactive simulations
 
