@@ -130,11 +130,7 @@ class TestGlobalAdaptivityLB(TestCase):
 
         adaptivity_controller._redistribute_inactive_sims(micro_sims)
 
-        actual_global_ids = []
-        for sim in micro_sims:
-            actual_global_ids.append(sim.get_global_id())
-
-        self.assertEqual(actual_global_ids, expected_global_ids)
+        self.assertEqual(global_ids, expected_global_ids)
 
         actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
 
@@ -362,11 +358,7 @@ class TestGlobalAdaptivityLB(TestCase):
 
         adaptivity_controller._redistribute_inactive_sims(micro_sims)
 
-        actual_global_ids = []
-        for sim in micro_sims:
-            actual_global_ids.append(sim.get_global_id())
-
-        self.assertEqual(actual_global_ids, expected_global_ids)
+        self.assertEqual(global_ids, expected_global_ids)
 
         actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
 
