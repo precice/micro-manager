@@ -37,7 +37,6 @@ class Config:
         self._micro_output_n = 1
         self._diagnostics_data_names = None
 
-        self._output_micro_sim_time = False
         self._mem_usage_output_type = ""
         self._mem_usage_output_n = 1
 
@@ -178,15 +177,6 @@ class Config:
             )
 
         self._micro_dt = self._data["simulation_params"]["micro_dt"]
-
-        try:
-            if self._data["diagnostics"]["output_micro_sim_solve_time"]:
-                self._output_micro_sim_time = True
-                self._write_data_names.append("solve_cpu_time")
-        except BaseException:
-            self._logger.log_info_rank_zero(
-                "Micro manager will not output time required to solve each micro simulation."
-            )
 
     def read_json_micro_manager(self):
         """
@@ -653,17 +643,6 @@ class Config:
             Output frequency of micro simulations, so output every N timesteps
         """
         return self._micro_output_n
-
-    def write_micro_solve_time(self):
-        """
-        Depending on user input, micro manager will calculate execution time of solve() step of every micro simulation
-
-        Returns
-        -------
-        output_micro_sim_time : bool
-            True if micro simulation solve time is required.
-        """
-        return self._output_micro_sim_time
 
     def turn_on_adaptivity(self):
         """

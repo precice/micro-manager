@@ -31,7 +31,6 @@ class TestFunctioncalls(TestCase):
         self.fake_write_data_names = [
             "micro-scalar-data",
             "micro-vector-data",
-            "solve_cpu_time",
             "active_state",
             "active_steps",
         ]
@@ -39,7 +38,6 @@ class TestFunctioncalls(TestCase):
             {
                 "micro-scalar-data": 1,
                 "micro-vector-data": np.array([0, 1, 2]),
-                "solve_cpu_time": 0,
                 "active_state": 0,
                 "active_steps": 0,
             }
