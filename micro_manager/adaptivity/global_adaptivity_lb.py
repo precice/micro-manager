@@ -93,20 +93,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         self._redistribute_active_sims(micro_sims)
 
-        active_sims_global_ids = self.get_active_sim_global_ids()
-        self._base_logger.log_info(
-            "Active sims global IDs after active sim balancing: {}".format(
-                active_sims_global_ids
-            )
-        )
-
-        inactive_sims_global_ids = self.get_inactive_sim_global_ids()
-        self._base_logger.log_info(
-            "Inactive sims global IDs after active sim balancing: {}".format(
-                inactive_sims_global_ids
-            )
-        )
-
         if (not self._nothing_to_balance) and self._balance_inactive_sims:
             self._redistribute_inactive_sims(micro_sims)
 
@@ -197,9 +183,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
                         if excess_send_sims == 0:
                             break
-
-        self._base_logger.log_info("global_send_sims: {}".format(global_send_sims))
-        self._base_logger.log_info("global_recv_sims: {}".format(global_recv_sims))
 
         send_map, recv_map = self._get_communication_maps(
             global_send_sims, global_recv_sims
