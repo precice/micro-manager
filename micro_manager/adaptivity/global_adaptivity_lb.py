@@ -66,10 +66,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         self._threshold = configurator.get_load_balancing_threshold()
 
-        self._is_load_balancing_done_in_two_steps = (
-            configurator.is_load_balancing_two_step()
-        )
-
         self._balance_inactive_sims = configurator.balance_inactive_sims()
 
         self._nothing_to_balance = False
@@ -190,17 +186,12 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         self._move_active_sims(micro_sims, send_map, recv_map)
 
-        if self._is_load_balancing_done_in_two_steps:
-            if sum(global_psend_sims) != 0 and sum(global_precv_sims) != 0:
-                send_map, recv_map = self._get_communication_maps(
-                    global_psend_sims, global_precv_sims
-                )
+        if sum(global_psend_sims) != 0 and sum(global_precv_sims) != 0:
+            send_map, recv_map = self._get_communication_maps(
+                global_psend_sims, global_precv_sims
+            )
 
-                self._move_active_sims(micro_sims, send_map, recv_map)
-            else:
-                self._base_logger.log_warning_rank_zero(
-                    "No load balancing was done in the second step because the micro simulations are already almost perfectly balanced."
-                )
+            self._move_active_sims(micro_sims, send_map, recv_map)
 
     def _redistribute_inactive_sims(self, micro_sims: list) -> None:
         """

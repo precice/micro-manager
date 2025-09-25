@@ -2,13 +2,14 @@
 
 ## latest
 
-- Remove option of simulation solve time from diagnostics https://github.com/precice/micro-manager/pull/188
-- Add dynamic load balancing capability to global adaptivity https://github.com/precice/micro-manager/pull/141
-- Revert to using (default) mpich as error is fixed in setup-mpi action https://github.com/precice/micro-manager/pull/187
-- Refactor adaptivity: simplify logic and shorten iterator variable names https://github.com/precice/micro-manager/pull/186
-- Use boolean parameter values in JSON config files of unit cube integration test https://github.com/precice/micro-manager/pull/185
-- Use OpenMPI in mpi4py setup action in parallel tests action https://github.com/precice/micro-manager/pull/184
-- Software improvements to the snapshot computation functionality https://github.com/precice/micro-manager/pull/178
+- Remove two-step balancing from load balancing [#191](https://github.com/precice/micro-manager/pull/191)
+- Remove option of simulation solve time from diagnostics [#188](https://github.com/precice/micro-manager/pull/188)
+- Add dynamic load balancing capability to global adaptivity [#144](https://github.com/precice/micro-manager/pull/141)
+- Revert to using (default) mpich as error is fixed in setup-mpi action [#187](https://github.com/precice/micro-manager/pull/187)
+- Refactor adaptivity: simplify logic and shorten iterator variable names [#186](https://github.com/precice/micro-manager/pull/186)
+- Use boolean parameter values in JSON config files of unit cube integration test [#185](https://github.com/precice/micro-manager/pull/185)
+- Use OpenMPI in mpi4py setup action in parallel tests action [#184](https://github.com/precice/micro-manager/pull/184)
+- Software improvements to the snapshot computation functionality [#178](https://github.com/precice/micro-manager/pull/178)
 
 ## v0.7.0
 

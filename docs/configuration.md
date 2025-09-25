@@ -162,7 +162,6 @@ Under `load_balancing_settings`, the following parameters can be set
 Parameter | Description
 --- | ---
 `every_n_time_windows` | Frequency of balancing the simulations. Default `1` (every time window).
-`two_step_balancing` | If `true`, simulations are balanced in two steps. See [two-step approach](tooling-micro-manager-adaptivity.html#two-step-approach).
 `balancing_threshold` | Integer threshold value. Default `0`.
 `balance_inactive_sims` | If `true`, inactive simulations associated to redistributed active simulations are moved to the new ranks of the active simulations. See [balance inactive simulations](tooling-micro-manager-adaptivity.html#balance-inactive-simulations). Default `false`.
 

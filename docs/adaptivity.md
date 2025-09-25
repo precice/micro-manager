@@ -97,18 +97,6 @@ For a rank $$ i $$ having $$ N_A^{i} $$ active simulations, the following scenar
 4. If $$ N_A^{i} =  L $$ , rank $$ i $$  can expect to receive one active simulation, if available.
 5. If $$ N_A^{i} = U $$ , rank $$ i $$  can expect to send one active simulation, if available.
 
-### Two-step approach
-
-As mentioned in the [load balancing](#load-balancing) section scenarios 4 and 5, it is possible that the number of active simulations on a rank are exactly as many as the bounds. To get the best possible balancing, these ranks send or receive one active simulation.
-
-{% disclaimer %}
-Use this option only if the best possible balancing is desired, because this will lead to added communication effort.
-{% enddisclaimer %}
-
-{% note %}
-If the balancing threshold $$ \tau \gt 0 $$, two-step balancing does not produce a different balancing state, so it is disabled.
-{% endnote %}
-
 ### Effect of the balancing threshold
 
 Example:

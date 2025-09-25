@@ -38,7 +38,6 @@ class TestGlobalAdaptivityLB(TestCase):
         )
         self._configurator.get_output_dir = MagicMock(return_value="output_dir")
 
-        self._configurator.is_load_balancing_two_step = MagicMock(return_value=False)
         self._configurator.get_load_balancing_threshold = MagicMock(return_value=0)
 
     @unittest.skipUnless(
@@ -139,78 +138,7 @@ class TestGlobalAdaptivityLB(TestCase):
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 4, "This test only works with 4 ranks."
     )
-    def test_redistribute_active_sims_four_ranks_one_step(self):
-        """
-        Test load balancing functionality to redistribute active simulations. The load balancing is done in one step.
-        Run this test in parallel using MPI with 4 ranks.
-        """
-        global_number_of_sims = 15
-
-        if self._rank == 0:
-            global_ids = [0, 1, 2, 3]
-            expected_global_ids = [0, 1, 2, 3]
-        elif self._rank == 1:
-            global_ids = [4, 5, 6, 7]
-            expected_global_ids = [4, 5, 6, 7, 12]
-        elif self._rank == 2:
-            global_ids = [8, 9, 10, 11]
-            expected_global_ids = [8, 9, 10, 11]
-        elif self._rank == 3:
-            global_ids = [12, 13, 14]
-            expected_global_ids = [13, 14]
-
-        expected_ranks_of_sims = [0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 3, 3]
-
-        adaptivity_controller = GlobalAdaptivityLBCalculator(
-            self._configurator,
-            global_number_of_sims,
-            global_ids,
-            participant=MagicMock(),
-            logger=MagicMock(),
-            rank=self._rank,
-            comm=self._comm,
-        )
-
-        adaptivity_controller._is_sim_active = np.array(
-            [
-                True,
-                True,
-                True,
-                False,
-                False,
-                False,
-                False,
-                False,
-                True,
-                False,
-                False,
-                False,
-                True,
-                True,
-                True,
-            ]
-        )
-
-        micro_sims = []
-        for i in global_ids:
-            micro_sims.append(MicroSimulation(i))
-
-        adaptivity_controller._redistribute_active_sims(micro_sims)
-
-        actual_global_ids = []
-        for sim in micro_sims:
-            actual_global_ids.append(sim.get_global_id())
-
-        self.assertEqual(actual_global_ids, expected_global_ids)
-
-        actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
-
-        self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
-
-    @unittest.skipUnless(
-        MPI.COMM_WORLD.Get_size() == 4, "This test only works with 4 ranks."
-    )
-    def test_redistribute_active_sims_four_ranks_two_steps(self):
+    def test_redistribute_active_sims_four_ranks(self):
         """
         Test load balancing functionality to redistribute active simulations. The load balancing is one in two steps.
         Run this test in parallel using MPI with 4 ranks.
@@ -231,8 +159,6 @@ class TestGlobalAdaptivityLB(TestCase):
             expected_global_ids = [13, 14]
 
         expected_ranks_of_sims = [2, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 3, 3]
-
-        self._configurator.is_load_balancing_two_step = MagicMock(return_value=True)
 
         adaptivity_controller = GlobalAdaptivityLBCalculator(
             self._configurator,

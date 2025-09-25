@@ -56,7 +56,6 @@ class Config:
 
         self._adaptivity_is_load_balancing = False
         self._load_balancing_n = 1
-        self._two_step_load_balancing = False
         self._load_balancing_threshold = 0
         self._balance_inactive_sims = False
 
@@ -414,19 +413,6 @@ class Config:
             )
 
             try:
-                self._two_step_load_balancing = self._data["simulation_params"][
-                    "load_balancing_settings"
-                ]["two_step_balancing"]
-                if self._two_step_load_balancing:
-                    self._logger.log_info_rank_zero(
-                        "Micro Manager will use two-step load balancing."
-                    )
-            except BaseException:
-                self._logger.log_info_rank_zero(
-                    "Two-step load balancing is not specified. Micro Manager will only try to balance the load in one sweep."  # TODO: Need a better log message here.
-                )
-
-            try:
                 self._load_balancing_threshold = self._data["simulation_params"][
                     "load_balancing_settings"
                 ]["balancing_threshold"]
@@ -436,12 +422,6 @@ class Config:
             except BaseException:
                 self._logger.log_info_rank_zero(
                     "No load balancing threshold provided. The threshold will be set to 0."
-                )
-
-            if self._load_balancing_threshold > 0 and self._two_step_load_balancing:
-                self._two_step_load_balancing = False
-                self._logger.log_warning_rank_zero(
-                    "Threshold is not zero, so two step load balancing is disabled."
                 )
 
             try:
@@ -792,17 +772,6 @@ class Config:
             Load balancing frequency
         """
         return self._load_balancing_n
-
-    def is_load_balancing_two_step(self):
-        """
-        Check if two-step load balancing is required.
-
-        Returns
-        -------
-        two_step_load_balancing : bool
-            True if two-step load balancing is required, False otherwise.
-        """
-        return self._two_step_load_balancing
 
     def get_load_balancing_threshold(self):
         """
