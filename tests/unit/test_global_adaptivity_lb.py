@@ -150,15 +150,15 @@ class TestGlobalAdaptivityLB(TestCase):
             expected_global_ids = [1, 2, 3]
         elif self._rank == 1:
             global_ids = [4, 5, 6, 7]
-            expected_global_ids = [4, 5, 6, 7, 12]
+            expected_global_ids = [4, 5, 6, 7, 0]
         elif self._rank == 2:
             global_ids = [8, 9, 10, 11]
-            expected_global_ids = [8, 9, 10, 11, 0]
+            expected_global_ids = [8, 9, 10, 11, 12]
         elif self._rank == 3:
             global_ids = [12, 13, 14]
             expected_global_ids = [13, 14]
 
-        expected_ranks_of_sims = [2, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 1, 3, 3]
+        expected_ranks_of_sims = [1, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3]
 
         adaptivity_controller = GlobalAdaptivityLBCalculator(
             self._configurator,
@@ -199,6 +199,9 @@ class TestGlobalAdaptivityLB(TestCase):
         actual_global_ids = []
         for sim in micro_sims:
             actual_global_ids.append(sim.get_global_id())
+
+        print(f"Rank {self._rank}: actual_global_ids = {actual_global_ids}")
+        print(f"Rank {self._rank}: expected_global_ids = {expected_global_ids}")
 
         self.assertEqual(actual_global_ids, expected_global_ids)
 

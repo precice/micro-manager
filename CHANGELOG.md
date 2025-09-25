@@ -2,6 +2,7 @@
 
 ## latest
 
+- Fix bug in load balancing when more than one rank has as many simulations as the balancing bound [#192](https://github.com/precice/micro-manager/pull/192)
 - Remove two-step balancing from load balancing [#191](https://github.com/precice/micro-manager/pull/191)
 - Remove option of simulation solve time from diagnostics [#188](https://github.com/precice/micro-manager/pull/188)
 - Add dynamic load balancing capability to global adaptivity [#144](https://github.com/precice/micro-manager/pull/141)
