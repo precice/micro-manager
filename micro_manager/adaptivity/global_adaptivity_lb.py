@@ -115,12 +115,16 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         f_avg_active_sims = math.floor(avg_active_sims - self._threshold)
         c_avg_active_sims = math.ceil(avg_active_sims + self._threshold)
 
-        if n_active_sims_local <= f_avg_active_sims:
+        if n_active_sims_local < f_avg_active_sims:
             # Simulations to receive
             recv_sims = f_avg_active_sims - n_active_sims_local
-        elif n_active_sims_local >= c_avg_active_sims:
+        elif n_active_sims_local == f_avg_active_sims:
+            recv_sims += 1
+        elif n_active_sims_local > c_avg_active_sims:
             # Simulations to send
             send_sims = n_active_sims_local - c_avg_active_sims
+        elif n_active_sims_local == c_avg_active_sims:
+            send_sims += 1
 
         # Number of active sims that each rank wants to send and receive
         global_send_sims = self._comm_world.allgather(send_sims)
