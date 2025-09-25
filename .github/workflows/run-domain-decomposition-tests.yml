@@ -8,7 +8,7 @@ on:
     branches:
       - "*"
 jobs:
-  domain_decomposition_unit_tests:
+  unit_tests:
     name: Run domain decomposition unit tests
     runs-on: ubuntu-latest
     container: precice/precice:nightly

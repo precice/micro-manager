@@ -1,4 +1,4 @@
-name: Run unit tests for functions in micro_manager.py
+name: Run unit tests for user-side functions
 on:
   push:
     branches:
@@ -8,7 +8,7 @@ on:
     branches:
       - "*"
 jobs:
-  unit-tests:
+  unit_tests:
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:

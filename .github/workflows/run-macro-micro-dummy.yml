@@ -1,4 +1,4 @@
-name: Run macro-micro dummy
+name: Run Python and C++ dummy
 on:
   push:
     branches:

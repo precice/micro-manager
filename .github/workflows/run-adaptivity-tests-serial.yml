@@ -8,8 +8,8 @@ on:
     branches:
       - "*"
 jobs:
-  adaptivity_serial_tests:
-    name: Adaptivity tests in serial
+  unit_and_integration_tests:
+    name: Unit and integration tests
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
