@@ -99,8 +99,6 @@ For a rank $$ i $$ having $$ N_A^{i} $$ active simulations, the following scenar
 
 ### Effect of the balancing threshold
 
-Example:
-
 Consider a simulation in which the Micro Manager is run with 3 processes, and has the following number of active simulations per rank
 
 Rank | 0 | 1 | 2
@@ -114,12 +112,6 @@ Rank | 0 | 1 | 2
 $$ N_A $$ | 5 | 4 | 2
 
 $$ \tau = 0 $$ leads to
-
-Rank | 0 | 1 | 2
---- | --- | --- | ---
-$$ N_A $$ | 5 | 3 | 3
-
-$$ \tau = 0 $$ with two-step balancing leads to
 
 Rank | 0 | 1 | 2
 --- | --- | --- | ---

@@ -141,13 +141,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         n_global_send_sims = sum(global_send_sims)
         n_global_recv_sims = sum(global_recv_sims)
 
-        if n_global_send_sims == 0 or n_global_recv_sims == 0:
-            self._nothing_to_balance = True
-            self._base_logger.log_warning_rank_zero(
-                "It appears that the micro simulations are already fairly balanced. No load balancing will be done. Try changing the threshold value to induce load balancing."
-            )
-            return
-
         if n_global_send_sims < n_global_recv_sims:
             excess_recv_sims = n_global_recv_sims - n_global_send_sims
             while excess_recv_sims > 0:
