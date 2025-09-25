@@ -111,32 +111,20 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
         send_sims = 0
         recv_sims = 0
-        psend_sims = 0
-        precv_sims = 0
 
         f_avg_active_sims = math.floor(avg_active_sims - self._threshold)
         c_avg_active_sims = math.ceil(avg_active_sims + self._threshold)
 
-        if n_active_sims_local == f_avg_active_sims:
-            # Simulations to potentially receive
-            precv_sims = c_avg_active_sims - n_active_sims_local
-        elif n_active_sims_local < f_avg_active_sims:
+        if n_active_sims_local <= f_avg_active_sims:
             # Simulations to receive
             recv_sims = f_avg_active_sims - n_active_sims_local
-        elif n_active_sims_local == c_avg_active_sims:
-            # Simulations to potentially send
-            psend_sims = n_active_sims_local - f_avg_active_sims
-        elif n_active_sims_local > c_avg_active_sims:
+        elif n_active_sims_local >= c_avg_active_sims:
             # Simulations to send
             send_sims = n_active_sims_local - c_avg_active_sims
 
         # Number of active sims that each rank wants to send and receive
         global_send_sims = self._comm_world.allgather(send_sims)
         global_recv_sims = self._comm_world.allgather(recv_sims)
-
-        # Number of active sims that each rank potentially wants to send and receive
-        global_psend_sims = self._comm_world.allgather(psend_sims)
-        global_precv_sims = self._comm_world.allgather(precv_sims)
 
         n_global_send_sims = sum(global_send_sims)
         n_global_recv_sims = sum(global_recv_sims)
@@ -156,14 +144,10 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                         # Remove the excess receive request from the rank
                         global_recv_sims[i] -= 1
 
-                        # Add the excess request to the potential receive requests
-                        global_precv_sims[i] += 1
-
                         excess_recv_sims -= 1
 
                         if excess_recv_sims == 0:
                             break
-
         elif n_global_send_sims > n_global_recv_sims:
             excess_send_sims = n_global_send_sims - n_global_recv_sims
             while excess_send_sims > 0:
@@ -171,9 +155,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                     if e > 0:
                         # Remove the excess send request
                         global_send_sims[i] -= 1
-
-                        # Add the excess request to the potential send requests
-                        global_psend_sims[i] += 1
 
                         excess_send_sims -= 1
 
@@ -185,13 +166,6 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         )
 
         self._move_active_sims(micro_sims, send_map, recv_map)
-
-        if sum(global_psend_sims) != 0 and sum(global_precv_sims) != 0:
-            send_map, recv_map = self._get_communication_maps(
-                global_psend_sims, global_precv_sims
-            )
-
-            self._move_active_sims(micro_sims, send_map, recv_map)
 
     def _redistribute_inactive_sims(self, micro_sims: list) -> None:
         """
