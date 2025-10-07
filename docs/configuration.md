@@ -52,8 +52,9 @@ Parameter | Description
 Parameter | Description
 --- | ---
 `macro_domain_bounds`| Minimum and maximum bounds of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]` in 3D and `[xmin, xmax, ymin, ymax]` in 2D.
-Domain decomposition parameters | See section on [domain decomposition](#domain-decomposition). But default, the Micro Manager assumes that it will be run in serial.
+Domain decomposition parameters | See section on [domain decomposition](#domain-decomposition). But default, the Micro Manager assumes serial execution.
 Adaptivity parameters | See section on [adaptivity](#adaptivity). By default, adaptivity is disabled.
+Load balancing parameters | See section on [load balancing](#load-balancing). By default, load balancing is disabled.
 `micro_dt` | Initial time window size (dt) of the micro simulation.
 
 ## Diagnostics
