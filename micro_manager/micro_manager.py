@@ -816,6 +816,10 @@ class MicroManagerCoupling(MicroManager):
         """
         micro_sims_output: list[dict] = [None] * self._local_number_of_sims
 
+        self._participant.start_profiling_section(
+            "micro_manager.solve_micro_simulations"
+        )
+
         for count, sim in enumerate(self._micro_sims):
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[count]:
@@ -833,6 +837,8 @@ class MicroManagerCoupling(MicroManager):
                     )
                     self._logger.log_error(error_message)
                     self._has_sim_crashed[count] = True
+
+        self._participant.stop_last_profiling_section()
 
         # If interpolate is off, terminate after crash
         if not self._interpolate_crashed_sims:
@@ -888,6 +894,10 @@ class MicroManagerCoupling(MicroManager):
 
         micro_sims_output = [0] * self._local_number_of_sims
 
+        self._participant.start_profiling_section(
+            "micro_manager.solve_micro_simulations_with_adaptivity"
+        )
+
         # Solve all active micro simulations
         for lid in active_sim_lids:
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
@@ -914,6 +924,8 @@ class MicroManagerCoupling(MicroManager):
                     )
                     self._logger.log_error(error_message)
                     self._has_sim_crashed[lid] = True
+
+        self._participant.stop_last_profiling_section()
 
         # If interpolate is off, terminate after crash
         if not self._interpolate_crashed_sims:
