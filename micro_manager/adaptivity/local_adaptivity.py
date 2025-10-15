@@ -35,7 +35,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             self._adaptivity_output_type == "all"
             or self._adaptivity_output_type == "local"
         ):
-            self._metrics_logger.log_info("n,n active,n inactive")
+            self._metrics_logger.log_info("n|n active|n inactive")
 
         self._precice_participant = participant
 
@@ -194,7 +194,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             or self._adaptivity_output_type == "local"
         ):
             self._metrics_logger.log_info(
-                "{},{},{}".format(
+                "{}|{}|{}".format(
                     n,
                     active_sims_on_this_rank,
                     inactive_sims_on_this_rank,
@@ -216,7 +216,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                 size = self._comm_world.Get_size()
 
                 self._global_metrics_logger.log_info_rank_zero(
-                    "{},{},{},{},{}".format(
+                    "{}|{}|{}|{}|{}".format(
                         n,
                         sum(active_sims_rankwise) / size,
                         sum(inactive_sims_rankwise) / size,
