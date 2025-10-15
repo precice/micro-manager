@@ -61,7 +61,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             self._adaptivity_output_type == "all"
             or self._adaptivity_output_type == "local"
         ):
-            self._metrics_logger.log_info("n|n active|n inactive|n assoc ranks")
+            self._metrics_logger.log_info("n|n active|n inactive|assoc ranks")
 
         self._comm_node = comm_world.Split_type(MPI.COMM_TYPE_SHARED)
 
