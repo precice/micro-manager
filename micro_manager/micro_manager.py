@@ -170,6 +170,10 @@ class MicroManagerCoupling(MicroManager):
         first_iteration = True
         first_time_window = True
 
+        if self._is_adaptivity_on:
+            # Log initial adaptivity metrics
+            self._adaptivity_controller.log_metrics(n)
+
         while self._participant.is_coupling_ongoing():
 
             dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
@@ -281,9 +285,7 @@ class MicroManagerCoupling(MicroManager):
                             if sim:
                                 sim.output()
 
-                if self._is_adaptivity_on and (
-                    n % self._adaptivity_output_n == 0 or n == 1
-                ):
+                if self._is_adaptivity_on and (n % self._adaptivity_output_n == 0):
                     self._adaptivity_controller.log_metrics(n)
 
                 if self._memory_usage_output_type and (
@@ -300,10 +302,12 @@ class MicroManagerCoupling(MicroManager):
                 # Reset first iteration flag for the next time window
                 first_iteration = True
 
+        # Final memory usage logging at the end of the simulation if not already logged at the end of the last time window
         if self._memory_usage_output_type and n % self._memory_usage_output_n != 0:
             mem_usage.append(process.memory_info().rss / 1024**2)
             mem_usage_n.append(n)
 
+        # Final adaptivity metrics logging at the end of the simulation if not already logged at the end of the last time window
         if self._is_adaptivity_on and n % self._adaptivity_output_n != 0:
             self._adaptivity_controller.log_metrics(n)
 
