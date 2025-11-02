@@ -5,6 +5,7 @@ each other. A global comparison is not done.
 """
 import numpy as np
 from copy import deepcopy
+from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
 from ..micro_simulation import create_simulation_class
@@ -76,7 +77,12 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         self._update_similarity_dists(dt, data_for_adaptivity)
 
-        self._max_similarity_dist = np.amax(self._similarity_dists)
+        self._local_max_similarity_dist = np.amax(self._similarity_dists)
+
+        # Gather maximum similarity distance from every rank, and use the global maximum distance
+        self._max_similarity_dist = self._comm_world.allreduce(
+            self._local_max_similarity_dist, op=MPI.MAX
+        )
 
         self._update_active_sims()
 
