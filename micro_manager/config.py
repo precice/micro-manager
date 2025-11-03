@@ -69,6 +69,12 @@ class Config:
 
         self._lazy_initialization = False
 
+        # Model Adaptivity information
+        self._m_adap = False
+        self._m_adap_micro_file_names = None
+        self._m_adap_thresholds = None
+        self._m_adap_data = dict()
+
     def set_logger(self, logger):
         """
         Set the logger for the Config class.
@@ -436,6 +442,38 @@ class Config:
                 self._logger.log_info_rank_zero(
                     "Micro Manager will not redistribute inactive simulations in the load balancing. Only active simulations will be redistributed. Note that this may significantly increase the communication cost of the adaptivity."
                 )
+
+        try:
+            if self._data["simulation_params"]["model_adaptivity"]:
+                self._m_adap = True
+                self._logger.log_info_rank_zero("Micro Manager will use Model Adaptivity.")
+                if not self._data["simulation_params"]["model_adaptivity_settings"]:
+                    raise Exception("Model Adaptivity is turned on but no model adaptivity settings are provided.")
+            else:
+                self._m_adap = False
+                if self._data["simulation_params"]["model_adaptivity_settings"]:
+                    raise Exception("Model Adaptivity settings are provided but model adaptivity is turned off.")
+        except BaseException:
+            self._logger.log_info_rank_zero("Micro Manager will not use Model Adaptivity.")
+
+        if self._m_adap:
+            self._m_adap_data = self._data["simulation_params"]["model_adaptivity_settings"]["data"]
+            self._m_adap_thresholds = self._data["simulation_params"]["model_adaptivity_settings"]["thresholds"]
+            self._m_adap_micro_file_names = [
+                name.replace("/", ".")
+                    .replace("\\", ".")
+                    .replace(".py", "")
+                for name in self._data["simulation_params"]["model_adaptivity_settings"]["micro_file_names"]]
+
+            if len(self._m_adap_thresholds) != len(self._m_adap_micro_file_names):
+                self._logger.log_info_rank_zero("Invalid Model Adaptivity settings provided. Number of thresholds does not match number of models.")
+                self._logger.log_info_rank_zero("Disabling Model Adaptivity.")
+                self._m_adap = False
+
+            if len(self._m_adap_micro_file_names) < 2:
+                self._logger.log_info_rank_zero("Not enough Micro Models provided for Model Adaptivity. Need min 2.")
+                self._logger.log_info_rank_zero("Disabling Model Adaptivity.")
+                self._m_adap = False
 
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"]:
@@ -906,3 +944,49 @@ class Config:
             Output frequency of memory usage, so output every N timesteps
         """
         return self._mem_usage_output_n
+
+    def turn_on_model_adaptivity(self):
+        """
+        Boolean stating whether adaptivity is ot or not.
+
+        Returns
+        -------
+        adaptivity : bool
+            True is model adaptivity settings are done, False otherwise.
+
+        """
+        return self._m_adap
+
+    def get_model_adaptivity_file_names(self):
+        """
+        Get the paths to the Python scripts of the model-adaptive-micro-simulations.
+
+        Returns
+        -------
+        micro_file_names : string
+            String carrying the path to the Python script of the micro-simulation.
+        """
+        return self._m_adap_micro_file_names
+
+    def get_model_adaptivity_thresholds(self):
+        """
+        Get the error thresholds for model adaptivity.
+
+        Returns
+        -------
+        thresholds : list(float)
+            List of error thresholds.
+        """
+        return self._m_adap_thresholds
+
+    def get_model_adaptivity_data(self):
+        """
+        Get names of data to be used for model adaptivity error calculation
+
+        Returns
+        -------
+        data_for_adaptivity : dict_like
+            A dictionary containing the names of the data to be used in adaptivity as keys and information on whether
+            the data are scalar or vector as values.
+        """
+        return self._m_adap_data

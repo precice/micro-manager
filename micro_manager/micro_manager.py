@@ -21,6 +21,7 @@ import numpy as np
 from psutil import Process
 import csv
 import subprocess
+from functools import partial
 
 import precice
 
@@ -29,6 +30,8 @@ from .micro_manager_base import MicroManager
 from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
 from .adaptivity.global_adaptivity_lb import GlobalAdaptivityLBCalculator
+
+from .model_adaptivity.model_adaptivity import ModelAdaptivity
 
 from .domain_decomposition import DomainDecomposer
 
@@ -137,6 +140,8 @@ class MicroManagerCoupling(MicroManager):
         self._adaptivity_n = self._config.get_adaptivity_n()
         self._adaptivity_output_n = self._config.get_adaptivity_output_n()
 
+        self._is_model_adaptivity_on = self._config.turn_on_model_adaptivity()
+
         # Define the preCICE Participant
         self._participant = precice.Participant(
             "Micro-Manager",
@@ -164,6 +169,9 @@ class MicroManagerCoupling(MicroManager):
         process = Process()
 
         micro_sim_solve = self._get_solve_variant()
+        # TODO adapt variant to also use special mada case, iterates in itself and will prob
+        # call _solve_micro_simulations or _solve_micro_simulations_with_adaptivity internally
+        # should use ModelAdaptivity methods to coordinate
 
         dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
@@ -482,18 +490,24 @@ class MicroManagerCoupling(MicroManager):
         if self._interpolate_crashed_sims:
             self._interpolant = Interpolation(self._logger)
 
-        micro_problem = getattr(
-            importlib.import_module(
-                self._config.get_micro_file_name(), "MicroSimulation"
-            ),
-            "MicroSimulation",
-        )
+        micro_problem_cls = None
+        if self._is_model_adaptivity_on:
+            self._model_adaptivity_controller: ModelAdaptivity = ModelAdaptivity(self._config)
+            micro_problem_cls = self._model_adaptivity_controller.get_resolution_sim_class(0)
+        else:
+            micro_problem_base = getattr(
+                importlib.import_module(
+                    self._config.get_micro_file_name(), "MicroSimulation"
+                ),
+                "MicroSimulation",
+            )
+            micro_problem_cls = create_simulation_class(micro_problem_base, "MicroSimulationDefault")
 
         # Create micro simulation objects
         self._micro_sims = [0] * self._local_number_of_sims
         if not self._lazy_init:
             for i in range(self._local_number_of_sims):
-                self._micro_sims[i] = create_simulation_class(micro_problem)(
+                self._micro_sims[i] = micro_problem_cls(
                     self._global_ids_of_local_sims[i]
                 )
 
@@ -571,7 +585,7 @@ class MicroManagerCoupling(MicroManager):
                     return
 
                 for i in active_sim_lids:
-                    self._micro_sims[i] = create_simulation_class(micro_problem)(
+                    self._micro_sims[i] = create_simulation_class(micro_problem_cls)(
                         self._global_ids_of_local_sims[i]
                     )
 
@@ -584,13 +598,13 @@ class MicroManagerCoupling(MicroManager):
         sim_requires_init_data = False
 
         # Check if provided micro simulation has an initialize() method
-        if hasattr(micro_problem, "initialize") and callable(
-            getattr(micro_problem, "initialize")
+        if hasattr(micro_problem_cls, "initialize") and callable(
+            getattr(micro_problem_cls, "initialize")
         ):
             self._micro_sims_init = True  # Starting value before setting
 
             try:  # Try to get the signature of the initialize() method, if it is written in Python
-                argspec = inspect.getfullargspec(micro_problem.initialize)
+                argspec = inspect.getfullargspec(micro_problem_cls.initialize)
                 if (
                     len(argspec.args) == 1
                 ):  # The first argument in the signature is self
@@ -717,8 +731,8 @@ class MicroManagerCoupling(MicroManager):
                             self._micro_sims[i].initialize()
 
         self._micro_sims_have_output = False
-        if hasattr(micro_problem, "output") and callable(
-            getattr(micro_problem, "output")
+        if hasattr(micro_problem_cls, "output") and callable(
+            getattr(micro_problem_cls, "output")
         ):
             self._micro_sims_have_output = True
 
@@ -983,6 +997,20 @@ class MicroManagerCoupling(MicroManager):
 
         return micro_sims_output
 
+    def _solve_micro_simulations_with_model_adaptivity(self, micro_sims_input: list, dt: float, solve_variant: Callable) -> list:
+        self._model_adaptivity_controller.initialise_solve()
+
+        active_sim_ids = None
+        if self._is_adaptivity_on: active_sim_ids = self._adaptivity_controller.get_active_sim_local_ids()
+        output = None
+
+        while self._model_adaptivity_controller.should_iterate():
+            self._model_adaptivity_controller.switch_models(self._micro_sims, active_sim_ids)
+            output = solve_variant(micro_sims_input, dt)
+
+        self._model_adaptivity_controller.finalise_solve()
+        return output
+
     def _get_solve_variant(self) -> Callable[[list, float], list]:
         """
         Get the solve variant function based on the adaptivity type.
@@ -997,7 +1025,10 @@ class MicroManagerCoupling(MicroManager):
         else:
             solve_variant = self._solve_micro_simulations
 
-        return solve_variant
+        if self._is_model_adaptivity_on:
+            return partial(self._solve_micro_simulations_with_model_adaptivity, solve_variant=solve_variant)
+        else:
+            return solve_variant
 
     def _interpolate_output_for_crashed_sim(
         self,
