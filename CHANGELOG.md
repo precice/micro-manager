@@ -2,6 +2,7 @@
 
 ## latest
 
+- Use global maximum similarity distance in local adaptivity [#197](https://github.com/precice/micro-manager/pull/197)
 - Log adaptivity metrics at t=0 [#194](https://github.com/precice/micro-manager/pull/194)
 - Use `|` delimiter in CSV files of adaptivity metrics data [#193](https://github.com/precice/micro-manager/pull/193)
 - Add profiling sections for solving the micro simulations [commit](https://github.com/precice/micro-manager/commit/fa81f6a7e8f494a3e441fee7f70de5271ae8d83b)
