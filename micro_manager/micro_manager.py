@@ -150,6 +150,9 @@ class MicroManagerCoupling(MicroManager):
             self._size,
         )
 
+        self._t = 0                 # global time
+        self._n = 0                 # sim-step
+
     # **************
     # Public methods
     # **************
@@ -161,7 +164,7 @@ class MicroManagerCoupling(MicroManager):
         - Read data from preCICE, solve micro simulations, and write data to preCICE
         - If adaptivity is on, compute micro simulations adaptively.
         """
-        t, n = 0, 0
+        self._t = self._n = 0
         sim_states_cp = [None] * self._local_number_of_sims
         mem_usage: list = []
         mem_usage_n = []
@@ -180,7 +183,7 @@ class MicroManagerCoupling(MicroManager):
 
         if self._is_adaptivity_on:
             # Log initial adaptivity metrics
-            self._adaptivity_controller.log_metrics(n)
+            self._adaptivity_controller.log_metrics(self._n)
 
         while self._participant.is_coupling_ongoing():
 
@@ -188,7 +191,7 @@ class MicroManagerCoupling(MicroManager):
 
             if self._is_adaptivity_on:
                 if (self._adaptivity_in_every_implicit_step or first_iteration) and (
-                    n % self._adaptivity_n == 0
+                    self._n % self._adaptivity_n == 0
                 ):
                     self._adaptivity_controller.compute_adaptivity(
                         dt,
@@ -211,7 +214,7 @@ class MicroManagerCoupling(MicroManager):
 
             if self._is_adaptivity_with_load_balancing:
                 if (
-                    n % self._load_balancing_n == 0
+                    self._n % self._load_balancing_n == 0
                     and (not first_time_window)
                     and first_iteration
                 ):
@@ -284,25 +287,25 @@ class MicroManagerCoupling(MicroManager):
             if (
                 self._participant.is_time_window_complete()
             ):  # Time window has converged, now micro output can be generated
-                t += dt  # Update time to the end of the time window
-                n += 1  # Update time step to the end of the time window
+                self._t += dt  # Update time to the end of the time window
+                self._n += 1  # Update time step to the end of the time window
 
                 if self._micro_sims_have_output:
-                    if n % self._micro_n_out == 0:
+                    if self._n % self._micro_n_out == 0:
                         for sim in self._micro_sims:
                             if sim:
                                 sim.output()
 
-                if self._is_adaptivity_on and (n % self._adaptivity_output_n == 0):
-                    self._adaptivity_controller.log_metrics(n)
+                if self._is_adaptivity_on and (self._n % self._adaptivity_output_n == 0):
+                    self._adaptivity_controller.log_metrics(self._n)
 
                 if self._memory_usage_output_type and (
-                    n % self._memory_usage_output_n == 0 or n == 1
+                    self._n % self._memory_usage_output_n == 0 or self._n == 1
                 ):
                     mem_usage.append(process.memory_info().rss / 1024**2)
-                    mem_usage_n.append(n)
+                    mem_usage_n.append(self._n)
 
-                self._logger.log_info_rank_zero("Time window {} converged.".format(n))
+                self._logger.log_info_rank_zero("Time window {} converged.".format(self._n))
                 first_iteration = (
                     True  # Reset first iteration flag for the next time window
                 )
@@ -311,13 +314,13 @@ class MicroManagerCoupling(MicroManager):
                 first_iteration = True
 
         # Final memory usage logging at the end of the simulation if not already logged at the end of the last time window
-        if self._memory_usage_output_type and n % self._memory_usage_output_n != 0:
+        if self._memory_usage_output_type and self._n % self._memory_usage_output_n != 0:
             mem_usage.append(process.memory_info().rss / 1024**2)
-            mem_usage_n.append(n)
+            mem_usage_n.append(self._n)
 
         # Final adaptivity metrics logging at the end of the simulation if not already logged at the end of the last time window
-        if self._is_adaptivity_on and n % self._adaptivity_output_n != 0:
-            self._adaptivity_controller.log_metrics(n)
+        if self._is_adaptivity_on and self._n % self._adaptivity_output_n != 0:
+            self._adaptivity_controller.log_metrics(self._n)
 
         if (
             self._memory_usage_output_type == "all"
@@ -492,7 +495,7 @@ class MicroManagerCoupling(MicroManager):
 
         micro_problem_cls = None
         if self._is_model_adaptivity_on:
-            self._model_adaptivity_controller: ModelAdaptivity = ModelAdaptivity(self._config)
+            self._model_adaptivity_controller: ModelAdaptivity = ModelAdaptivity(self._config, self._rank)
             micro_problem_cls = self._model_adaptivity_controller.get_resolution_sim_class(0)
         else:
             micro_problem_base = getattr(
@@ -1005,8 +1008,9 @@ class MicroManagerCoupling(MicroManager):
         output = None
 
         while self._model_adaptivity_controller.should_iterate():
-            self._model_adaptivity_controller.switch_models(self._micro_sims, active_sim_ids)
+            self._model_adaptivity_controller.switch_models(self._mesh_vertex_coords, self._t, output, self._micro_sims, active_sim_ids)
             output = solve_variant(micro_sims_input, dt)
+            self._model_adaptivity_controller.check_convergence(self._mesh_vertex_coords, self._t, output, self._micro_sims, active_sim_ids)
 
         self._model_adaptivity_controller.finalise_solve()
         return output

@@ -13,7 +13,8 @@
         "model_adaptivity_settings": {
             "micro_file_names": ["python-dummy/micro_dummy", "python-dummy/micro_dummy", "python-dummy/micro_dummy"],
             "data": [],
-            "thresholds": [1.0, 1.0, 1.0]
+            "thresholds": [1.0, 1.0, 1.0],
+            "switching_function": "mada_switcher"
         }
     },
     "diagnostics": {

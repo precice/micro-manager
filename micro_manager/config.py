@@ -74,6 +74,7 @@ class Config:
         self._m_adap_micro_file_names = None
         self._m_adap_thresholds = None
         self._m_adap_data = dict()
+        self._m_adap_switching_function = None
 
     def set_logger(self, logger):
         """
@@ -474,6 +475,8 @@ class Config:
                 self._logger.log_info_rank_zero("Not enough Micro Models provided for Model Adaptivity. Need min 2.")
                 self._logger.log_info_rank_zero("Disabling Model Adaptivity.")
                 self._m_adap = False
+
+            self._m_adap_switching_function = self._data["simulation_params"]["model_adaptivity_settings"]["switching_function"]
 
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"]:
@@ -990,3 +993,14 @@ class Config:
             the data are scalar or vector as values.
         """
         return self._m_adap_data
+
+    def get_model_adaptivity_switching_function(self):
+        """
+        Get path to switching function file
+
+        Returns
+        -------
+        switching_function : str
+            String containing the path to the switching function file
+        """
+        return self._m_adap_switching_function
