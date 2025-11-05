@@ -447,36 +447,55 @@ class Config:
         try:
             if self._data["simulation_params"]["model_adaptivity"]:
                 self._m_adap = True
-                self._logger.log_info_rank_zero("Micro Manager will use Model Adaptivity.")
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will use Model Adaptivity."
+                )
                 if not self._data["simulation_params"]["model_adaptivity_settings"]:
-                    raise Exception("Model Adaptivity is turned on but no model adaptivity settings are provided.")
+                    raise Exception(
+                        "Model Adaptivity is turned on but no model adaptivity settings are provided."
+                    )
             else:
                 self._m_adap = False
                 if self._data["simulation_params"]["model_adaptivity_settings"]:
-                    raise Exception("Model Adaptivity settings are provided but model adaptivity is turned off.")
+                    raise Exception(
+                        "Model Adaptivity settings are provided but model adaptivity is turned off."
+                    )
         except BaseException:
-            self._logger.log_info_rank_zero("Micro Manager will not use Model Adaptivity.")
+            self._logger.log_info_rank_zero(
+                "Micro Manager will not use Model Adaptivity."
+            )
 
         if self._m_adap:
-            self._m_adap_data = self._data["simulation_params"]["model_adaptivity_settings"]["data"]
-            self._m_adap_thresholds = self._data["simulation_params"]["model_adaptivity_settings"]["thresholds"]
+            self._m_adap_data = self._data["simulation_params"][
+                "model_adaptivity_settings"
+            ]["data"]
+            self._m_adap_thresholds = self._data["simulation_params"][
+                "model_adaptivity_settings"
+            ]["thresholds"]
             self._m_adap_micro_file_names = [
-                name.replace("/", ".")
-                    .replace("\\", ".")
-                    .replace(".py", "")
-                for name in self._data["simulation_params"]["model_adaptivity_settings"]["micro_file_names"]]
+                name.replace("/", ".").replace("\\", ".").replace(".py", "")
+                for name in self._data["simulation_params"][
+                    "model_adaptivity_settings"
+                ]["micro_file_names"]
+            ]
 
             if len(self._m_adap_thresholds) != len(self._m_adap_micro_file_names):
-                self._logger.log_info_rank_zero("Invalid Model Adaptivity settings provided. Number of thresholds does not match number of models.")
+                self._logger.log_info_rank_zero(
+                    "Invalid Model Adaptivity settings provided. Number of thresholds does not match number of models."
+                )
                 self._logger.log_info_rank_zero("Disabling Model Adaptivity.")
                 self._m_adap = False
 
             if len(self._m_adap_micro_file_names) < 2:
-                self._logger.log_info_rank_zero("Not enough Micro Models provided for Model Adaptivity. Need min 2.")
+                self._logger.log_info_rank_zero(
+                    "Not enough Micro Models provided for Model Adaptivity. Need min 2."
+                )
                 self._logger.log_info_rank_zero("Disabling Model Adaptivity.")
                 self._m_adap = False
 
-            self._m_adap_switching_function = self._data["simulation_params"]["model_adaptivity_settings"]["switching_function"]
+            self._m_adap_switching_function = self._data["simulation_params"][
+                "model_adaptivity_settings"
+            ]["switching_function"]
 
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"]:

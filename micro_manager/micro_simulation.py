@@ -23,22 +23,24 @@ def create_simulation_class(micro_simulation_class, sim_class_name=None):
         Definition of class Simulation defined in this function.
     """
     if sim_class_name is None:
-        if not hasattr(create_simulation_class, "sim_id"): create_simulation_class.sim_id = 0
-        else: create_simulation_class.sim_id += 1
+        if not hasattr(create_simulation_class, "sim_id"):
+            create_simulation_class.sim_id = 0
+        else:
+            create_simulation_class.sim_id += 1
         sim_class_name = f"MicroSimulation{create_simulation_class.sim_id}"
 
-    sim_class_body = '''
+    sim_class_body = """
 def __init__(self, global_id):
     micro_simulation_class.__init__(self, global_id)
     self._global_id = global_id
 
 def get_global_id(self) -> int:
     return self._global_id
-    '''
+    """
     sim_class_dict = {}
     local_globals = {
         "__builtins__": __builtins__,
-        "micro_simulation_class": micro_simulation_class
+        "micro_simulation_class": micro_simulation_class,
     }
     exec(sim_class_body, local_globals, sim_class_dict)
     print(sim_class_dict)

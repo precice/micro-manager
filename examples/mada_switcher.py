@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def switching_function(resolutions, locations, t, prev_output, active):
     output = np.zeros_like(resolutions)
     mask_loc = locations[:, 0] % 2 == 0
