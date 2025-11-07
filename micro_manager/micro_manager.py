@@ -536,6 +536,7 @@ class MicroManagerCoupling(MicroManager):
                         self._participant,
                         self._rank,
                         self._comm,
+                        micro_problem_cls
                     )
                 )
             elif self._config.get_adaptivity_type() == "global":
@@ -549,6 +550,7 @@ class MicroManagerCoupling(MicroManager):
                             self._logger,
                             self._rank,
                             self._comm,
+                            micro_problem_cls
                         )
                     )
                 else:
@@ -560,6 +562,7 @@ class MicroManagerCoupling(MicroManager):
                             self._participant,
                             self._rank,
                             self._comm,
+                            micro_problem_cls
                         )
                     )
 
@@ -601,7 +604,7 @@ class MicroManagerCoupling(MicroManager):
                     return
 
                 for i in active_sim_lids:
-                    self._micro_sims[i] = create_simulation_class(micro_problem_cls)(
+                    self._micro_sims[i] = micro_problem_cls(
                         self._global_ids_of_local_sims[i]
                     )
 
@@ -1027,6 +1030,7 @@ class MicroManagerCoupling(MicroManager):
             self._model_adaptivity_controller.switch_models(
                 self._mesh_vertex_coords,
                 self._t,
+                micro_sims_input,
                 output,
                 self._micro_sims,
                 active_sim_ids,
@@ -1035,6 +1039,7 @@ class MicroManagerCoupling(MicroManager):
             self._model_adaptivity_controller.check_convergence(
                 self._mesh_vertex_coords,
                 self._t,
+                micro_sims_input,
                 output,
                 self._micro_sims,
                 active_sim_ids,

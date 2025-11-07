@@ -11,7 +11,7 @@ from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator, num_sims, participant, rank, comm_world) -> None:
+    def __init__(self, configurator, num_sims, participant, rank, comm_world, micro_problem_cls) -> None:
         """
         Class constructor.
 
@@ -27,8 +27,10 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             Rank of the current MPI process.
         comm_world : MPI.COMM_WORLD
             Global communicator of MPI.
+        micro_problem_cls : callable
+            Class of micro problem.
         """
-        super().__init__(configurator, rank, num_sims)
+        super().__init__(configurator, rank, num_sims, micro_problem_cls)
         self._comm_world = comm_world
 
         if (
@@ -254,7 +256,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         # Update the set of inactive micro sims
         for i in to_be_activated_ids:
             associated_active_id = self._sim_is_associated_to[i]
-            micro_sims[i] = create_simulation_class(self._micro_problem)(i)
+            micro_sims[i] = self._micro_problem_cls(i)
             micro_sims[i].set_state(micro_sims[associated_active_id].get_state())
             self._sim_is_associated_to[
                 i

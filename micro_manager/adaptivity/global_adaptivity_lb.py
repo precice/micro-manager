@@ -25,6 +25,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         logger,
         rank: int,
         comm,
+        micro_problem_cls: callable
     ) -> None:
         """
         Class constructor.
@@ -45,6 +46,8 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             MPI rank.
         comm : MPI.COMM_WORLD
             Global communicator of MPI.
+        micro_problem_cls : callable
+            Class of micro problem.
         """
         super().__init__(
             configurator,
@@ -53,13 +56,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             participant,
             rank,
             comm,
-        )
-
-        self._micro_problem = getattr(
-            importlib.import_module(
-                configurator.get_micro_file_name(), "MicroSimulation"
-            ),
-            "MicroSimulation",
+            micro_problem_cls
         )
 
         self._base_logger = logger
@@ -362,7 +359,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         # Create simulations and set them to the received states
         for req in recv_reqs:
             output, gid = req.wait()
-            micro_sims.append(create_simulation_class(self._micro_problem)(gid))
+            micro_sims.append(self._micro_problem_cls(gid))
             micro_sims[-1].set_state(output)
             self._global_ids.append(gid)
             self._is_sim_on_this_rank[gid] = True

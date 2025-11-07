@@ -12,7 +12,7 @@ import numpy as np
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, rank, nsims) -> None:
+    def __init__(self, configurator, rank, nsims, micro_problem_cls) -> None:
         """
         Class constructor.
 
@@ -24,6 +24,8 @@ class AdaptivityCalculator:
             Rank of the MPI communicator.
         nsims : int
             Number of micro simulations.
+        micro_problem_cls : callable
+            Class of micro problem.
         """
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
@@ -32,12 +34,7 @@ class AdaptivityCalculator:
         self._adaptivity_type = configurator.get_adaptivity_type()
         self._adaptivity_output_type = configurator.get_adaptivity_output_type()
 
-        self._micro_problem = getattr(
-            importlib.import_module(
-                configurator.get_micro_file_name(), "MicroSimulation"
-            ),
-            "MicroSimulation",
-        )
+        self._micro_problem_cls = micro_problem_cls
 
         self._coarse_tol = 0.0
         self._ref_tol = 0.0

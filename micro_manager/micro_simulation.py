@@ -43,7 +43,7 @@ def get_global_id(self) -> int:
         "micro_simulation_class": micro_simulation_class,
     }
     exec(sim_class_body, local_globals, sim_class_dict)
-    print(sim_class_dict)
+    #print(sim_class_dict)
     sim_class = type(sim_class_name, (micro_simulation_class,), sim_class_dict)
 
     return sim_class

@@ -84,18 +84,16 @@ class MicroManagerSnapshot(MicroManager):
         - Merge output in parallel run.
         """
 
+        micro_problem_cls = create_simulation_class(self._micro_problem)
+
         # Loop over all macro parameters
         for elems in range(self._local_number_of_sims):
             # initialize micro simulation
             if elems == 0:
-                self._micro_sims = create_simulation_class(self._micro_problem)(
-                    self._global_ids_of_local_sims[0]
-                )
+                self._micro_sims = micro_problem_cls(self._global_ids_of_local_sims[0])
             else:
                 if not self._initialize_once:
-                    self._micro_sims = create_simulation_class(self._micro_problem)(
-                        self._global_ids_of_local_sims[elems]
-                    )
+                    self._micro_sims = micro_problem_cls(self._global_ids_of_local_sims[elems])
 
             micro_sims_input = self._macro_parameters[elems]
 
