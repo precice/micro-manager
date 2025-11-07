@@ -24,6 +24,7 @@ class ModelAdaptivity:
             Rank of the MPI communicator.
         """
         self._logger = Logger("ModelAdaptivity", "./ModelAdaptivity.log", rank)
+        self._resolution_logger = Logger("ModelAdaptivity-Res", "./ModelAdaptivity-resolution.log", rank)
 
         self._model_files = configurator.get_model_adaptivity_file_names()
         self._model_thresholds = configurator.get_model_adaptivity_thresholds()
@@ -69,6 +70,7 @@ class ModelAdaptivity:
         resolutions: np.ndarray,
         locations: np.ndarray,
         t: float,
+        inputs: list[dict],
         prev_output: dict,
         active: np.ndarray,
     ) -> np.ndarray:
@@ -83,6 +85,8 @@ class ModelAdaptivity:
             Array with gaussian points for all sims. D is the mesh dimension.
         t : float
             Current time in simulation.
+        inputs : list[dict]
+            List of input objects.
         prev_output : [None, dict-like]
             Contains the outputs of the previous model evaluation.
         active : np.array - shape(N,)
@@ -113,6 +117,7 @@ class ModelAdaptivity:
         self,
         locations: np.ndarray,
         t: float,
+        inputs: list[dict],
         prev_output: dict,
         sims: list,
         active_sim_ids: Optional[list[int]] = None,
@@ -126,6 +131,8 @@ class ModelAdaptivity:
             Array with gaussian points for all sims. D is the mesh dimension.
         t : float
             Current time in simulation.
+        inputs : list[dict]
+            List of input objects.
         prev_output : [None, dict-like]
             Contains the outputs of the previous model evaluation.
         sims : list
@@ -137,8 +144,10 @@ class ModelAdaptivity:
         active_sims = self._create_active_mask(active_sim_ids, size)
         cur_res = self._gather_current_resolutions(sims, active_sims)
         tgt_res = self._gather_target_resolutions(
-            cur_res, locations, t, prev_output, active_sims
+            cur_res, locations, t, inputs, prev_output, active_sims
         )
+
+        self._resolution_logger.log_info_rank_zero(f"t={t} New resolutions: {tgt_res}")
 
         for idx in range(size):
             if cur_res[idx] == tgt_res[idx]:
@@ -153,6 +162,7 @@ class ModelAdaptivity:
         self,
         locations: np.ndarray,
         t: float,
+        inputs: list[dict],
         prev_output: dict,
         sims: list,
         active_sim_ids: Optional[list[int]] = None,
@@ -167,6 +177,8 @@ class ModelAdaptivity:
             Array with gaussian points for all sims. D is the mesh dimension.
         t : float
             Current time in simulation.
+        inputs : list[dict]
+            List of all input objects.
         prev_output : [None, dict-like]
             Contains the outputs of the previous model evaluation.
         sims : list
@@ -178,9 +190,20 @@ class ModelAdaptivity:
         active_sims = self._create_active_mask(active_sim_ids, size)
         resolutions = self._gather_current_resolutions(sims, active_sims)
         next_switch = self._switching_fun(
-            resolutions, locations, t, prev_output, active_sims
+            resolutions, locations, t, inputs, prev_output, active_sims
         )
         self._converged = np.all(next_switch == 0)
+
+    def get_num_resolutions(self) -> int:
+        """
+        Gets the number of loaded resolutions.
+
+        Returns
+        -------
+        num_resolutions : int
+            Number of loaded resolutions.
+        """
+        return len(self._model_classes)
 
     def get_resolution_sim_class(
         self, resolution: Union[int, np.ndarray]
@@ -266,6 +289,7 @@ class ModelAdaptivity:
         cur_res: np.ndarray,
         locations: np.ndarray,
         t: float,
+        inputs: list[dict],
         prev_output: dict,
         active_sims: np.ndarray,
     ) -> np.ndarray:
@@ -280,6 +304,8 @@ class ModelAdaptivity:
             Array with gaussian points for all sims. D is the mesh dimension.
         t : float
             Current time in simulation.
+        inputs : list[dict]
+            List of all input objects.
         prev_output : [None, dict-like]
             Contains the outputs of the previous model evaluation.
         active_sims : np.array
@@ -291,7 +317,7 @@ class ModelAdaptivity:
             Target resolutions.
         """
         switch_tgt = self._switching_fun(
-            cur_res, locations, t, prev_output, active_sims
+            cur_res, locations, t, inputs, prev_output, active_sims
         )
         res_tgt = cur_res.copy()
         res_tgt[active_sims] = self._clamp_in_range(
