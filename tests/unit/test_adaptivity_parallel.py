@@ -58,6 +58,7 @@ class TestGlobalAdaptivity(TestCase):
             participant=MagicMock(),
             rank=self._rank,
             comm_world=MPI.COMM_WORLD,
+            micro_problem_cls=MicroSimulation,
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -127,6 +128,7 @@ class TestGlobalAdaptivity(TestCase):
             participant=MagicMock(),
             rank=self._rank,
             comm_world=MPI.COMM_WORLD,
+            micro_problem_cls=MicroSimulation,
         )
 
         adaptivity_controller._adaptivity_data_names = ["data1", "data2"]
@@ -180,6 +182,7 @@ class TestGlobalAdaptivity(TestCase):
             participant=MagicMock(),
             rank=self._rank,
             comm_world=MPI.COMM_WORLD,
+            micro_problem_cls=MicroSimulation,
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -217,6 +220,7 @@ class TestGlobalAdaptivity(TestCase):
             participant=MagicMock(),
             rank=self._rank,
             comm_world=MPI.COMM_WORLD,
+            micro_problem_cls=MicroSimulation,
         )
 
         actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()

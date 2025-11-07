@@ -67,6 +67,7 @@ class TestGlobalAdaptivityLB(TestCase):
             logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
+            micro_problem_cls=MicroSimulation,
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -116,6 +117,7 @@ class TestGlobalAdaptivityLB(TestCase):
             logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
+            micro_problem_cls=MicroSimulation,
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -168,6 +170,7 @@ class TestGlobalAdaptivityLB(TestCase):
             logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
+            micro_problem_cls=MicroSimulation,
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -242,6 +245,7 @@ class TestGlobalAdaptivityLB(TestCase):
             logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
+            micro_problem_cls=MicroSimulation,
         )
 
         adaptivity_controller._is_sim_active = np.array(
