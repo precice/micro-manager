@@ -91,7 +91,10 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims, micro_problem_cls=MicroSimulation
+            configurator,
+            rank=0,
+            nsims=self._number_of_sims,
+            micro_problem_cls=MicroSimulation,
         )
         adaptivity_controller._hist_param = 0.5
         adaptivity_controller._adaptivity_data_names = [
@@ -139,7 +142,10 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims, micro_problem_cls=MicroSimulation
+            configurator,
+            rank=0,
+            nsims=self._number_of_sims,
+            micro_problem_cls=MicroSimulation,
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -171,7 +177,10 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims, micro_problem_cls=MicroSimulation
+            configurator,
+            rank=0,
+            nsims=self._number_of_sims,
+            micro_problem_cls=MicroSimulation,
         )
 
         fake_data = np.array([[1], [2], [3]])
@@ -265,7 +274,10 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims, micro_problem_cls=MicroSimulation
+            configurator,
+            rank=0,
+            nsims=self._number_of_sims,
+            micro_problem_cls=MicroSimulation,
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
