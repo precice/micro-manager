@@ -536,7 +536,7 @@ class MicroManagerCoupling(MicroManager):
                         self._participant,
                         self._rank,
                         self._comm,
-                        micro_problem_cls
+                        micro_problem_cls,
                     )
                 )
             elif self._config.get_adaptivity_type() == "global":
@@ -550,7 +550,7 @@ class MicroManagerCoupling(MicroManager):
                             self._logger,
                             self._rank,
                             self._comm,
-                            micro_problem_cls
+                            micro_problem_cls,
                         )
                     )
                 else:
@@ -562,7 +562,7 @@ class MicroManagerCoupling(MicroManager):
                             self._participant,
                             self._rank,
                             self._comm,
-                            micro_problem_cls
+                            micro_problem_cls,
                         )
                     )
 

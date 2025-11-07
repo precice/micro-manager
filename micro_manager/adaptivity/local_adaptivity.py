@@ -11,7 +11,9 @@ from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator, num_sims, participant, rank, comm_world, micro_problem_cls) -> None:
+    def __init__(
+        self, configurator, num_sims, participant, rank, comm_world, micro_problem_cls
+    ) -> None:
         """
         Class constructor.
 

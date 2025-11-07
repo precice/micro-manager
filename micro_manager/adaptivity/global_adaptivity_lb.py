@@ -25,7 +25,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         logger,
         rank: int,
         comm,
-        micro_problem_cls: callable
+        micro_problem_cls: callable,
     ) -> None:
         """
         Class constructor.
@@ -56,7 +56,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             participant,
             rank,
             comm,
-            micro_problem_cls
+            micro_problem_cls,
         )
 
         self._base_logger = logger

@@ -24,7 +24,9 @@ class ModelAdaptivity:
             Rank of the MPI communicator.
         """
         self._logger = Logger("ModelAdaptivity", "./ModelAdaptivity.log", rank)
-        self._resolution_logger = Logger("ModelAdaptivity-Res", "./ModelAdaptivity-resolution.log", rank)
+        self._resolution_logger = Logger(
+            "ModelAdaptivity-Res", "./ModelAdaptivity-resolution.log", rank
+        )
 
         self._model_files = configurator.get_model_adaptivity_file_names()
         self._model_thresholds = configurator.get_model_adaptivity_thresholds()

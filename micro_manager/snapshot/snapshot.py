@@ -93,7 +93,9 @@ class MicroManagerSnapshot(MicroManager):
                 self._micro_sims = micro_problem_cls(self._global_ids_of_local_sims[0])
             else:
                 if not self._initialize_once:
-                    self._micro_sims = micro_problem_cls(self._global_ids_of_local_sims[elems])
+                    self._micro_sims = micro_problem_cls(
+                        self._global_ids_of_local_sims[elems]
+                    )
 
             micro_sims_input = self._macro_parameters[elems]
 

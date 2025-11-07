@@ -24,7 +24,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         participant,
         rank: int,
         comm_world,
-        micro_problem_cls
+        micro_problem_cls,
     ) -> None:
         """
         Class constructor.
@@ -455,9 +455,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             local_ids = to_be_activated_map[gid]
             for lid in local_ids:
                 # Create the micro simulation object and set its state
-                micro_sims[lid] = self._micro_problem_cls(
-                    self._global_ids[lid]
-                )
+                micro_sims[lid] = self._micro_problem_cls(self._global_ids[lid])
                 micro_sims[lid].set_state(state)
 
         # Delete the micro simulation object if it is inactive
