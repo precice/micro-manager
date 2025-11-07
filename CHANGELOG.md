@@ -2,6 +2,7 @@
 
 ## latest
 
+- Fix bug in load balancing when a rank has exactly as many active simulation as the global average [#200](https://github.com/precice/micro-manager/pull/200)
 - Use global maximum similarity distance in local adaptivity [#197](https://github.com/precice/micro-manager/pull/197)
 - Log adaptivity metrics at t=0 [#194](https://github.com/precice/micro-manager/pull/194)
 - Use `|` delimiter in CSV files of adaptivity metrics data [#193](https://github.com/precice/micro-manager/pull/193)
