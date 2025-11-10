@@ -142,6 +142,9 @@ class MicroManagerCoupling(MicroManager):
             self._size,
         )
 
+        self._micro_sims_input_last = None  # DECLARATION
+        self._micro_sims_output_last = None  # DECLARATION
+
     # **************
     # Public methods
     # **************
@@ -202,6 +205,9 @@ class MicroManagerCoupling(MicroManager):
 
             micro_sims_output = micro_sim_solve(micro_sims_input, dt)
 
+            self._micro_sims_input_last = micro_sims_input
+            self._micro_sims_output_last = micro_sims_output
+
             # Check if more than a certain percentage of the micro simulations have crashed and terminate if threshold is exceeded
             if self._interpolate_crashed_sims:
                 crashed_sims_on_all_ranks = np.zeros(self._size, dtype=np.int64)
@@ -260,6 +266,10 @@ class MicroManagerCoupling(MicroManager):
                     mem_usage_n.append(n)
 
                 self._logger.log_info_rank_zero("Time window {} converged.".format(n))
+                self._micro_sims_input_last = None
+                self._micro_sims_output_last = None
+                if self._is_adaptivity_on:
+                    self._adaptivity_controller._reset_hist()
 
                 # Reset first iteration flag for the next time window
                 first_iteration = True
@@ -823,11 +833,18 @@ class MicroManagerCoupling(MicroManager):
             List of dicts in which keys are names of data and the values are the data which are required outputs of
         """
         active_sim_ids = self._adaptivity_controller.get_active_sim_ids()
+        active_sim_ids_to_solve = (
+            self._adaptivity_controller.get_active_sim_ids_to_solve()
+        )
 
-        micro_sims_output = [0] * self._local_number_of_sims
+        if self._micro_sims_input_last is None:
+            micro_sims_output = [0] * self._local_number_of_sims
+        else:
+            micro_sims_output = self._micro_sims_output_last
 
         # Solve all active micro simulations
-        for active_id in active_sim_ids:
+        for active_id in active_sim_ids_to_solve:  # to use hist
+            # for active_id in active_sim_ids:
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[active_id]:
                 # Attempt to solve the micro simulation

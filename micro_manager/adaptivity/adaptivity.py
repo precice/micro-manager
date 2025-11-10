@@ -34,6 +34,7 @@ class AdaptivityCalculator:
         self._adaptivity_type = configurator.get_adaptivity_type()
         self._adaptivity_output_type = configurator.get_adaptivity_output_type()
 
+        self._use_interpolation_adaptivity = configurator.get_interpolation()
         self._dynamic_adaptivity = configurator.get_dynamic_adaptivity()
         self._dynamic_refine_const = self._refine_const
         self._precice_config_file_name = configurator.get_precice_config_file_name()
@@ -61,13 +62,21 @@ class AdaptivityCalculator:
         # Start adaptivity calculation with all sims active
         # This array is modified in place via the function update_active_sims and update_inactive_sims
         self._is_sim_active = np.array([True] * nsims, dtype=np.bool_)
+        self._is_sim_active_ref = self._is_sim_active.copy()
+        self._is_sim_to_solve = self._is_sim_active.copy()
+        self._gobal_data_last = None
+        self._hist_dists = np.zeros((nsims), dtype=float)
 
         # sim_is_associated_to: 1D array with values of associated simulations of inactive simulations. Active simulations have None
         # Active sims do not have an associated sim
         # This array is modified in place via the function associate_inactive_to_active
-        self._sim_is_associated_to = np.full((nsims), -2, dtype=np.intc)
+        self._sim_is_associated_to = np.full((nsims, 2), -2, dtype=np.intc)
+        self._sim_association_dists = np.full(
+            (len(self._is_sim_active), 2), 0, dtype=float
+        )
 
         self._just_deactivated: list[int] = []
+        self._just_deactivated_ref: list[int] = []
 
         self._similarity_measure = self._get_similarity_measure(
             configurator.get_adaptivity_similarity_measure()
@@ -184,6 +193,33 @@ class AdaptivityCalculator:
 
             self._similarity_dists += dt * self._similarity_measure(data_vals)
 
+    def _update_history_dists(self, data_last: dict, data: dict) -> None:
+        """
+        Calculate metric which determines if one micro simulations is similar enough to the history.
+
+        Parameters
+        ----------
+        data_last : dict
+            Data from last time step to be used in similarity distance calculation
+        data : dict
+            Data to be used in similarity distance calculation
+        """
+        if data_last is None:
+            self._hist_dists = np.zeros((len(self._is_sim_active)), dtype=float)
+            return
+
+        for name in data.keys():
+            data_vals = np.array(data[name])
+            data_last_vals = np.array(data_last[name])
+            self._hist_dists += np.abs(data_vals - data_last_vals)
+
+    def _reset_hist(self) -> None:
+        """
+        Reset history distances to zero.
+        """
+        self._hist_dists = np.zeros((len(self._is_sim_active)), dtype=float)
+        self._gobal_data_last = None
+
     def _get_addition(self) -> float:
         """
         Get adapted refining constant based on limit values in preCICE configuration file and convergence measurements in preCICE
@@ -252,8 +288,13 @@ class AdaptivityCalculator:
 
                         alpha = 3.0
                         addition = min(
-                            self._min_addition, min(
-                            (1 + 1.0 / (min(0.0, min_convergence) - 1.0)) ** alpha, float(last_line[2])/self._max_similarity_dist/self._coarse_const)
+                            self._min_addition,
+                            min(
+                                (1 + 1.0 / (min(0.0, min_convergence) - 1.0)) ** alpha,
+                                float(last_line[2])
+                                / self._max_similarity_dist
+                                / self._coarse_const,
+                            ),
                         )
                         self._min_addition = addition
 
@@ -276,13 +317,22 @@ class AdaptivityCalculator:
         """
         self._is_sim_active = is_sim_active
         self._just_deactivated = just_deactivated
+        self._is_sim_to_solve = self._is_sim_active.copy()
+        self._is_sim_active_ref = self._is_sim_active.copy()
+
+    def _update_active_sims_ref(self, is_sim_active_ref, just_deactivated_ref) -> None:
+        """
+        Update set of active micro simulations.
+        """
+        self._is_sim_active_ref = is_sim_active_ref
+        self._just_deactivated_ref = just_deactivated_ref
 
     def _compute_active_sims(self, use_dyn) -> tuple:
         """
         Campute the set of active micro simulations. Active micro simulations are compared to each other
         and if found similar, one of them is deactivated.
         """
-        is_sim_active = self._is_sim_active.copy()
+        is_sim_active = self._is_sim_active_ref.copy()
         just_deactivated = self._just_deactivated.copy()
 
         if use_dyn and self._dynamic_adaptivity:
@@ -320,6 +370,19 @@ class AdaptivityCalculator:
                     just_deactivated.append(i)
         return is_sim_active, just_deactivated
 
+    def _compute_sims_to_solve(self) -> None:
+        """
+        Compute which simulations to solve. Simulations to solve are active simulations and inactive simulations which were just deactivated.
+        """
+        Cr = self._dynamic_refine_const
+        tol_u = max(self._hist_dists[self._is_sim_to_solve]) * Cr
+        if sum(self._is_sim_active) > 1:
+            for i in range(self._is_sim_active.size):
+                if self._is_sim_active[i] and self._hist_dists[i] >= tol_u:
+                    self._hist_dists[i] = 0.0
+                else:
+                    self._is_sim_to_solve[i] = False
+
     def _associate_inactive_to_active(self) -> None:
         """
         Associate inactive micro simulations to most similar active micro simulation.
@@ -331,17 +394,30 @@ class AdaptivityCalculator:
         # Add the +1 for the case when the similarity distance matrix is zeros
         dist_min_start_value = self._max_similarity_dist + 1
 
-        # Associate inactive micro sims to active micro sims
+        # Associate inactive micro sims to the two most similar active micro sims
         for inactive_id in inactive_ids:
-            # Begin with a large distance to trigger the search for the most similar active sim
-            dist_min = dist_min_start_value
-            for active_id in active_ids:
-                # Find most similar active sim for every inactive sim
-                if self._similarity_dists[inactive_id, active_id] < dist_min:
-                    associated_active_id = active_id
-                    dist_min = self._similarity_dists[inactive_id, active_id]
+            # Initialize distances and associated IDs
+            closest_active_ids = [len(self._is_sim_active) - 1, self._is_sim_active - 1]
+            closest_dists = [dist_min_start_value, dist_min_start_value]
 
-            self._sim_is_associated_to[inactive_id] = associated_active_id
+            for active_id in active_ids:
+                # Get the similarity distance
+                dist = self._similarity_dists[inactive_id, active_id]
+
+                # Update the closest and second-closest active simulations
+                if dist < closest_dists[0]:  # Found a new closest simulation
+                    closest_dists[1] = closest_dists[0]
+                    closest_active_ids[1] = closest_active_ids[0]
+
+                    closest_dists[0] = dist
+                    closest_active_ids[0] = active_id
+                elif dist < closest_dists[1]:  # Found a new second-closest simulation
+                    closest_dists[1] = dist
+                    closest_active_ids[1] = active_id
+
+            # Store the two closest active simulations and their distances
+            self._sim_is_associated_to[inactive_id] = closest_active_ids
+            self._sim_association_dists[inactive_id] = closest_dists
 
     def _check_for_activation(
         self, inactive_id: int, is_sim_active: np.ndarray
