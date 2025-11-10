@@ -317,7 +317,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             for global_id in self._global_ids:
                 if not self._is_sim_active[global_id]:
                     assoc_rank = int(
-                        ranks_of_sims[self._sim_is_associated_to[global_id][0]]
+                        ranks_of_sims[self._sim_is_associated_to[global_id]]
                     )
                     if not assoc_rank in assoc_ranks:
                         assoc_ranks.append(assoc_rank)
@@ -374,9 +374,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         local_sim_is_associated_to = self._sim_is_associated_to[
             self._global_ids[0] : self._global_ids[-1] + 1
         ]
-        local_sim_association_dists = self._sim_association_dists[
-            self._global_ids[0] : self._global_ids[-1] + 1
-        ]
 
         # Keys are global IDs of active simulations associated to inactive
         # simulations on this rank. Values are global IDs of the inactive
@@ -384,49 +381,17 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         active_to_inactive_map: Dict[int, list] = dict()
 
         for i in inactive_local_ids:
-            assoc_active_ids = local_sim_is_associated_to[i]
-            assoc_dists = local_sim_association_dists[i]
-
-            # # Gather global IDs of associated active simulations not on this rank
-            # if not all(self._is_sim_on_this_rank[assoc_active_ids]):
-            #     for assoc_active_id in assoc_active_ids:
-            #         if not self._is_sim_on_this_rank[assoc_active_id]:
-            #             if assoc_active_id in active_to_inactive_map:
-            #                 active_to_inactive_map[assoc_active_id].append(i)
-            #             else:
-            #                 active_to_inactive_map[assoc_active_id] = [i]
-            # else:  # If associated active simulations are on this rank, interpolate the output
-            if assoc_active_ids[0] == assoc_active_ids[1]:
+            assoc_active_id = local_sim_is_associated_to[i]
+            # Gather global IDs of associated active simulations not on this rank
+            if not self._is_sim_on_this_rank[assoc_active_id]:
+                if assoc_active_id in active_to_inactive_map:
+                    active_to_inactive_map[assoc_active_id].append(i)
+                else:
+                    active_to_inactive_map[assoc_active_id] = [i]
+            else:  # If associated active simulation is on this rank, copy the output directly
                 micro_output[i] = deepcopy(
-                    micro_output[self._global_ids.index(assoc_active_ids[0])]
+                    micro_output[self._global_ids.index(assoc_active_id)]
                 )
-            else:
-                if self._use_interpolation_adaptivity:
-                    output_1 = micro_output[self._global_ids.index(assoc_active_ids[0])]
-                    output_2 = micro_output[self._global_ids.index(assoc_active_ids[1])]
-                    distance_1 = assoc_dists[0]
-                    distance_2 = assoc_dists[1]
-
-                    # Perform weighted interpolation
-                    total_distance = distance_2 + distance_1
-                    weight_1 = distance_2 / total_distance
-                    weight_2 = distance_1 / total_distance
-
-                    # Exclude active state and active steps from interpolation
-                    exclude = list(output_1.keys())[-2:]
-
-                    # Interpolate the output
-                    interpolated_output = {
-                        key: weight_1 * output_1[key] + weight_2 * output_2[key]
-                        for key in output_1.keys()
-                        if key not in exclude
-                    }
-
-                    micro_output[i] = interpolated_output
-                else:  # If interpolation is not used, copy the output directly
-                    micro_output[i] = deepcopy(
-                        micro_output[self._global_ids.index(assoc_active_ids[0])]
-                    )
 
         assoc_active_ids = list(active_to_inactive_map.keys())
 
@@ -436,35 +401,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         for count, req in enumerate(recv_reqs):
             output = req.wait()
             for local_id in active_to_inactive_map[assoc_active_ids[count]]:
-                assoc_active_ids = local_sim_is_associated_to[local_id]
-                assoc_dists = local_sim_association_dists[local_id]
-                if self._use_interpolation_adaptivity:
-                    if assoc_active_ids[0] == assoc_active_ids[1]:
-                        micro_output[i] = deepcopy(
-                            micro_output[self._global_ids.index(assoc_active_ids[0])]
-                        )
-                    else:
-                        distance_1 = assoc_dists[0]
-                        distance_2 = assoc_dists[1]
-
-                        ## Perform weighted interpolation
-                        total_distance = distance_2 - distance_1
-                        weight_1 = distance_2 / total_distance
-                        weight_2 = -distance_1 / total_distance
-
-                        # Exclude active state and active steps from interpolation
-                        exclude = list(output_1.keys())[-2:]
-
-                        # Interpolate the output
-                        interpolated_output = {
-                            key: weight_1 * output_1[key] + weight_2 * output_2[key]
-                            for key in output_1.keys()
-                            if key not in exclude
-                        }
-
-                        micro_output[local_id] = interpolated_output
-                else:  # If interpolation is not used, copy the output directly
-                    micro_output[local_id] = deepcopy(output)
+                micro_output[local_id] = deepcopy(output)
 
     def _compute_inactive_sims(
         self, _refine_const, is_sim_active, just_deactivated
@@ -479,16 +416,13 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             if not is_sim_active[i]:  # if id is inactive
                 if self._check_for_activation(i, is_sim_active):
                     is_sim_active[i] = True
-                    _sim_is_associated_to_updated[i] = [
-                        -2,
-                        -2,
-                    ]  # Active sim cannot have an associated sim
+                    _sim_is_associated_to_updated[i] = -2 # Active sim cannot have an associated sim
                     if self._is_sim_on_this_rank[i] and i not in just_deactivated:
                         to_be_activated_ids.append(i)
         return is_sim_active, _sim_is_associated_to_updated, to_be_activated_ids
 
     def _update_inactive_sims(
-        self,
+        self,   
         micro_sims: list,
         _is_sim_active,
         _sim_is_associated_to_updated,
@@ -532,19 +466,19 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 assoc_active_id = local_sim_is_associated_to[to_be_activated_local_id]
 
                 if self._is_sim_on_this_rank[
-                    assoc_active_id[0]
+                    assoc_active_id
                 ]:  # Associated active simulation is on the same rank
-                    assoc_active_local_id = self._global_ids.index(assoc_active_id[0])
+                    assoc_active_local_id = self._global_ids.index(assoc_active_id)
                     micro_sims[to_be_activated_local_id].set_state(
                         micro_sims[assoc_active_local_id].get_state()
                     )
                 else:  # Associated active simulation is not on this rank
-                    if assoc_active_id[0] in to_be_activated_map:
-                        to_be_activated_map[assoc_active_id[0]].append(
+                    if assoc_active_id in to_be_activated_map:
+                        to_be_activated_map[assoc_active_id].append(
                             to_be_activated_local_id
                         )
                     else:
-                        to_be_activated_map[assoc_active_id[0]] = [
+                        to_be_activated_map[assoc_active_id] = [
                             to_be_activated_local_id
                         ]
 

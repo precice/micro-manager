@@ -54,7 +54,6 @@ class Config:
         self._dynamic_adaptivity = False
         self._adaptivity_similarity_measure = "L1"
         self._adaptivity_output_type = ""
-        self._use_interpolation_adaptivity = False
         self._adaptivity_output_n = 1
 
         # Snapshot information
@@ -369,19 +368,6 @@ class Config:
                 adaptivity_every_implicit_iteration = self._data["simulation_params"][
                     "adaptivity_settings"
                 ]["every_implicit_iteration"]
-
-                use_interpolation = self._data["simulation_params"][
-                    "adaptivity_settings"
-                ]["use_interpolation"]
-                if use_interpolation:
-                    self._use_interpolation_adaptivity = True
-                    self._logger.log_info_rank_zero(
-                        "Micro Manager will use interpolation for adaptivity."
-                    )
-                else:
-                    self._logger.log_info_rank_zero(
-                        "Micro Manager will not use interpolation for adaptivity."
-                    )
 
                 if adaptivity_every_implicit_iteration:
                     self._adaptivity_every_implicit_iteration = True
@@ -709,17 +695,6 @@ class Config:
             Adaptivity refining constant
         """
         return self._adaptivity_refining_constant
-
-    def get_interpolation(self):
-        """
-        Check if user wants to use interpolation for adaptivity.
-
-        Returns
-        -------
-        use_interpolation_adaptivity : bool
-            True if user wants to use interpolation for adaptivity, False otherwise.
-        """
-        return self._use_interpolation_adaptivity
 
     def get_dynamic_adaptivity(self):
         """

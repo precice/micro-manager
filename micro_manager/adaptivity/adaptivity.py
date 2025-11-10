@@ -34,7 +34,6 @@ class AdaptivityCalculator:
         self._adaptivity_type = configurator.get_adaptivity_type()
         self._adaptivity_output_type = configurator.get_adaptivity_output_type()
 
-        self._use_interpolation_adaptivity = configurator.get_interpolation()
         self._dynamic_adaptivity = configurator.get_dynamic_adaptivity()
         self._dynamic_refine_const = self._refine_const
         self._precice_config_file_name = configurator.get_precice_config_file_name()
@@ -65,15 +64,11 @@ class AdaptivityCalculator:
         self._is_sim_active_ref = self._is_sim_active.copy()
         self._is_sim_to_solve = self._is_sim_active.copy()
         self._gobal_data_last = None
-        self._hist_dists = np.zeros((nsims), dtype=float)
 
         # sim_is_associated_to: 1D array with values of associated simulations of inactive simulations. Active simulations have None
         # Active sims do not have an associated sim
         # This array is modified in place via the function associate_inactive_to_active
-        self._sim_is_associated_to = np.full((nsims, 2), -2, dtype=np.intc)
-        self._sim_association_dists = np.full(
-            (len(self._is_sim_active), 2), 0, dtype=float
-        )
+        self._sim_is_associated_to = np.full((nsims), -2, dtype=np.intc)
 
         self._just_deactivated: list[int] = []
         self._just_deactivated_ref: list[int] = []
@@ -394,30 +389,18 @@ class AdaptivityCalculator:
         # Add the +1 for the case when the similarity distance matrix is zeros
         dist_min_start_value = self._max_similarity_dist + 1
 
-        # Associate inactive micro sims to the two most similar active micro sims
+        # Associate inactive micro sims to active micro sims
         for inactive_id in inactive_ids:
-            # Initialize distances and associated IDs
-            closest_active_ids = [len(self._is_sim_active) - 1, self._is_sim_active - 1]
-            closest_dists = [dist_min_start_value, dist_min_start_value]
+            # Begin with a large distance to trigger the search for the most similar active sim
+            dist_min = dist_min_start_value
 
             for active_id in active_ids:
-                # Get the similarity distance
-                dist = self._similarity_dists[inactive_id, active_id]
+                # Find most similar active sim for every inactive sim
+                if self._similarity_dists[inactive_id, active_id] < dist_min:
+                    associated_active_id = active_id
+                    dist_min = self._similarity_dists[inactive_id, active_id]
 
-                # Update the closest and second-closest active simulations
-                if dist < closest_dists[0]:  # Found a new closest simulation
-                    closest_dists[1] = closest_dists[0]
-                    closest_active_ids[1] = closest_active_ids[0]
-
-                    closest_dists[0] = dist
-                    closest_active_ids[0] = active_id
-                elif dist < closest_dists[1]:  # Found a new second-closest simulation
-                    closest_dists[1] = dist
-                    closest_active_ids[1] = active_id
-
-            # Store the two closest active simulations and their distances
-            self._sim_is_associated_to[inactive_id] = closest_active_ids
-            self._sim_association_dists[inactive_id] = closest_dists
+            self._sim_is_associated_to[inactive_id] = associated_active_id
 
     def _check_for_activation(
         self, inactive_id: int, is_sim_active: np.ndarray
