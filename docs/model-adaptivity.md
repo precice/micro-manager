@@ -9,7 +9,7 @@ summary: Micro Manager can switch micro models adaptively.
 
 For scenarios such as FE2 simulations computing all or perhaps only active micro simulations
 may be still computationally infeasible. The alternative here is to reduce model complexity via reduced order models (ROMs) or similar.
-Towards this the model adaptivity feature allows for the definition of multiple 
+Towards this the model adaptivity feature allows for the definition of multiple
 model fidelities and the switching between those at run-time.
 
 ### Iterative Process
@@ -19,6 +19,7 @@ provide each micro simulation with its input, solve it and return the output.
 
 **With** model adaptivity this becomes an iterative process, as a model may not be sufficiently accurate (given the current input).
 Thus, the call to `micro_sim_solve(micro_sims_input, dt)` with model adaptivity results in the following:
+
 ```python
 self._model_adaptivity_controller.initialise_solve()
 
@@ -49,11 +50,11 @@ while self._model_adaptivity_controller.should_iterate():
 self._model_adaptivity_controller.finalise_solve()
 return output
 ```
+
 Here, after initialization and active sim acquisition, models will be switched, evaluated and checked for convergence
-as long as the `switching_function` contains values other than 0. 
+as long as the `switching_function` contains values other than 0.
 Model evaluation - in the call `solve_variant(micro_sims_input, dt)` - is delegated to the regular
 (non-model-adaptive) `micro_sim_solve(micro_sims_input, dt)` method.
-
 
 ### Interfaces
 
@@ -115,8 +116,9 @@ class MicroSimulation: # Name is fixed
         This function is *optional*.
         """
 ```
+
 For this the default MicroSimulation still serves as the model interface, while the `(set)|(get)_state()` methods
-are called to transfer internal model parameters from one to another. 
+are called to transfer internal model parameters from one to another.
 The list of provided models is interpreted in decreasing fidelity order. In other words, the first one
 is likely to be the full order model, while subsequent ones are ROMs.
 
@@ -151,7 +153,7 @@ def switching_function(
     return np.zeros_like(resolutions)
 ```
 
-The switching of models is governed by the `switching_function`. 
+The switching of models is governed by the `switching_function`.
 The output is expected to be a np.ndarray of shape (N,) and is interpreted in the following manner:
 
 Value | Action
@@ -159,5 +161,3 @@ Value | Action
 0 | No resolution change
 -1 | Increase model fidelity by one (go back one in list)
 1 | Decrease model fidelity by one (go one ahead in list)
-
-
