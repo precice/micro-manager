@@ -130,6 +130,31 @@ Example of adaptivity configuration is
 }
 ```
 
+## Model Adaptivity
+
+See the [model adaptivity](tooling-micro-manager-model-adaptivity.html) documentation for a detailed explanation about the interface.
+
+To turn on model adaptivity, set `"model_adaptivity": true` in `simulation_params`. Then under `model_adaptivity_settings` set the following variables:
+
+Parameter | Description
+--- | ---
+`micro_file_names` | List of paths to the files containing the Python importable micro simulation classes. If the files are not in the working directory, give the relative path from the directory where the Micro Manager is executed. At least 2 files.
+`switching_function` | Path to the file containing the Python importable switching function. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.
+
+Example of adaptivity configuration is
+
+```json
+"simulation_params": {
+    "micro_dt": 1.0,
+    "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
+    "model_adaptivity": true,
+    "model_adaptivity_settings": {
+        "micro_file_names": ["python-dummy/micro_dummy", "python-dummy/micro_dummy", "python-dummy/micro_dummy"],
+        "switching_function": "mada_switcher"
+    }
+}
+```
+
 ### Adding adaptivity in the preCICE XML configuration
 
 If adaptivity is used, the Micro Manager will attempt to write two scalar data per micro simulation to preCICE, called `active_state` and `active_steps`.

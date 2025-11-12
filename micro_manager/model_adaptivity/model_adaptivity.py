@@ -29,8 +29,6 @@ class ModelAdaptivity:
         )
 
         self._model_files = configurator.get_model_adaptivity_file_names()
-        self._model_thresholds = configurator.get_model_adaptivity_thresholds()
-        self._model_adaptivity_names = configurator.get_model_adaptivity_data()
         self._switching_fun_name = (
             configurator.get_model_adaptivity_switching_function()
         )

@@ -72,8 +72,6 @@ class Config:
         # Model Adaptivity information
         self._m_adap = False
         self._m_adap_micro_file_names = None
-        self._m_adap_thresholds = None
-        self._m_adap_data = dict()
         self._m_adap_switching_function = None
 
     def set_logger(self, logger):
@@ -466,25 +464,12 @@ class Config:
             )
 
         if self._m_adap:
-            self._m_adap_data = self._data["simulation_params"][
-                "model_adaptivity_settings"
-            ]["data"]
-            self._m_adap_thresholds = self._data["simulation_params"][
-                "model_adaptivity_settings"
-            ]["thresholds"]
             self._m_adap_micro_file_names = [
                 name.replace("/", ".").replace("\\", ".").replace(".py", "")
                 for name in self._data["simulation_params"][
                     "model_adaptivity_settings"
                 ]["micro_file_names"]
             ]
-
-            if len(self._m_adap_thresholds) != len(self._m_adap_micro_file_names):
-                self._logger.log_info_rank_zero(
-                    "Invalid Model Adaptivity settings provided. Number of thresholds does not match number of models."
-                )
-                self._logger.log_info_rank_zero("Disabling Model Adaptivity.")
-                self._m_adap = False
 
             if len(self._m_adap_micro_file_names) < 2:
                 self._logger.log_info_rank_zero(
@@ -989,29 +974,6 @@ class Config:
             String carrying the path to the Python script of the micro-simulation.
         """
         return self._m_adap_micro_file_names
-
-    def get_model_adaptivity_thresholds(self):
-        """
-        Get the error thresholds for model adaptivity.
-
-        Returns
-        -------
-        thresholds : list(float)
-            List of error thresholds.
-        """
-        return self._m_adap_thresholds
-
-    def get_model_adaptivity_data(self):
-        """
-        Get names of data to be used for model adaptivity error calculation
-
-        Returns
-        -------
-        data_for_adaptivity : dict_like
-            A dictionary containing the names of the data to be used in adaptivity as keys and information on whether
-            the data are scalar or vector as values.
-        """
-        return self._m_adap_data
 
     def get_model_adaptivity_switching_function(self):
         """
