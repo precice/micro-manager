@@ -141,7 +141,7 @@ Parameter | Description
 `micro_file_names` | List of paths to the files containing the Python importable micro simulation classes. If the files are not in the working directory, give the relative path from the directory where the Micro Manager is executed. Requires a minimum of 2 files.
 `switching_function` | Path to the file containing the Python importable switching function. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.
 
-Example of adaptivity configuration is
+Example of model adaptivity configuration is
 
 ```json
 "simulation_params": {
