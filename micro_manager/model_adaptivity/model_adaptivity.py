@@ -24,12 +24,9 @@ class ModelAdaptivity:
             Rank of the MPI communicator.
         """
         self._logger = Logger("ModelAdaptivity", "./ModelAdaptivity.log", rank)
-        self._resolution_logger = Logger(
-            "ModelAdaptivity-Res", "./ModelAdaptivity-resolution.log", rank
-        )
 
         self._model_files = configurator.get_model_adaptivity_file_names()
-        self._switching_fun_name = (
+        self._switching_func_name = (
             configurator.get_model_adaptivity_switching_function()
         )
 
@@ -52,11 +49,11 @@ class ModelAdaptivity:
         ):
             raise RuntimeError("Not all models were loaded. Stopping!")
 
-        FUN_NAME = "switching_function"
-        self._switching_fun = ModelAdaptivity.switching_interface
+        FUNC_NAME = "switching_function"
+        self._switching_func = ModelAdaptivity.switching_interface
         try:
-            self._switching_fun = getattr(
-                importlib.import_module(self._switching_fun_name, FUN_NAME), FUN_NAME
+            self._switching_func = getattr(
+                importlib.import_module(self._switching_func_name, FUNC_NAME), FUNC_NAME
             )
         except Exception as e:
             self._logger.log_info_rank_zero(
@@ -147,7 +144,7 @@ class ModelAdaptivity:
             cur_res, locations, t, inputs, prev_output, active_sims
         )
 
-        self._resolution_logger.log_info_rank_zero(f"t={t} New resolutions: {tgt_res}")
+        self._logger.log_info_rank_zero(f"New resolutions for t={t}: {tgt_res}")
 
         for idx in range(size):
             if cur_res[idx] == tgt_res[idx]:
@@ -189,7 +186,7 @@ class ModelAdaptivity:
         size = len(sims)
         active_sims = self._create_active_mask(active_sim_ids, size)
         resolutions = self._gather_current_resolutions(sims, active_sims)
-        next_switch = self._switching_fun(
+        next_switch = self._switching_func(
             resolutions, locations, t, inputs, prev_output, active_sims
         )
         self._converged = np.all(next_switch == 0)
@@ -263,7 +260,7 @@ class ModelAdaptivity:
         self, sims: list[object], active_sims: np.ndarray
     ) -> np.ndarray:
         """
-        Gathers current resolutions. Non-active sims have resolution -1.
+        Gathers current resolutions. Inactive sims have resolution -1.
 
         Parameters
         ----------
@@ -294,7 +291,7 @@ class ModelAdaptivity:
         active_sims: np.ndarray,
     ) -> np.ndarray:
         """
-        Gathers target resolutions. Non-active sims have resolution -1.
+        Gathers target resolutions. Inactive sims have resolution -1.
 
         Parameters
         ----------
@@ -316,7 +313,7 @@ class ModelAdaptivity:
         resolutions : np.array
             Target resolutions.
         """
-        switch_tgt = self._switching_fun(
+        switch_tgt = self._switching_func(
             cur_res, locations, t, inputs, prev_output, active_sims
         )
         res_tgt = cur_res.copy()
