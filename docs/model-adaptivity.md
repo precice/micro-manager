@@ -8,7 +8,7 @@ summary: Micro Manager can adaptively switch models of micro simulations.
 ## Main Concept
 
 For certain multiscale scenarios, having an adaptivity strategy that groups the micro simulations into active and inactive simulations
-may be still computationally infeasible. The alternative here is to reduce model complexity via reduced order models (ROMs) or similar.
+may be insufficient. Alternatively, a hierarchy of micro-scale models, for example, reduced order models (ROMs) can be used.
 Towards this the model adaptivity feature allows for the definition of multiple
 model fidelities and the switching between those at run-time.
 
