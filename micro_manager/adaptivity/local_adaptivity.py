@@ -13,7 +13,7 @@ from ..micro_simulation import create_simulation_class
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(
-        self, configurator, num_sims, participant, base_logger, rank, comm_world
+        self, configurator, num_sims, participant, base_logger, rank, comm
     ) -> None:
         """
         Class constructor.
@@ -30,11 +30,11 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             Logger object to log messages.
         rank : int
             Rank of the current MPI process.
-        comm_world : MPI.COMM_WORLD
-            Global communicator of MPI.
+        comm : MPI.Comm
+            Communicator for MPI.
         """
         super().__init__(configurator, rank, num_sims, base_logger)
-        self._comm_world = comm_world
+        self._comm = comm
 
         self._precice_participant = participant
 
@@ -78,7 +78,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._local_max_similarity_dist = np.amax(self._similarity_dists)
 
         # Gather maximum similarity distance from every rank, and use the global maximum distance
-        self._max_similarity_dist = self._comm_world.allreduce(
+        self._max_similarity_dist = self._comm.allreduce(
             self._local_max_similarity_dist, op=MPI.MAX
         )
 
@@ -209,15 +209,13 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             self._adaptivity_output_type == "global"
             or self._adaptivity_output_type == "all"
         ):
-            active_sims_rankwise = self._comm_world.gather(
-                active_sims_on_this_rank, root=0
-            )
-            inactive_sims_rankwise = self._comm_world.gather(
+            active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
+            inactive_sims_rankwise = self._comm.gather(
                 inactive_sims_on_this_rank, root=0
             )
 
             if self._rank == 0:
-                size = self._comm_world.Get_size()
+                size = self._comm.Get_size()
 
                 self._global_metrics_logger.log_info_rank_zero(
                     "{}|{}|{}|{}|{}".format(

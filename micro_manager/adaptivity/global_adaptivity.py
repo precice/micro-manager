@@ -24,7 +24,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         participant,
         base_logger,
         rank: int,
-        comm_world,
+        comm,
     ) -> None:
         """
         Class constructor.
@@ -43,13 +43,13 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Logger object to log messages.
         rank : int
             MPI rank.
-        comm_world : MPI.COMM_WORLD
-            Base global communicator of MPI.
+        comm : MPI.Comm
+            Communicator for MPI.
         """
         super().__init__(configurator, rank, global_number_of_sims, base_logger)
         self._global_number_of_sims = global_number_of_sims
         self._global_ids = global_ids
-        self._comm_world = comm_world
+        self._comm = comm
 
         rank_of_sim = self._get_ranks_of_sims()
 
@@ -60,7 +60,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         self._precice_participant = participant
 
-        self._comm_node = comm_world.Split_type(MPI.COMM_TYPE_SHARED)
+        self._comm_node = comm.Split_type(MPI.COMM_TYPE_SHARED)
 
         self._MPI_local_rank = self._comm_node.Get_rank()
 
@@ -132,8 +132,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         # Gather adaptivity data from all ranks
         global_data_for_adaptivity = dict()
         for name in data_for_adaptivity.keys():
-            data_as_list = self._comm_world.allgather(data_for_adaptivity[name])
-            global_ids_as_list = self._comm_world.allgather(self._global_ids)
+            data_as_list = self._comm.allgather(data_for_adaptivity[name])
+            global_ids_as_list = self._comm.allgather(self._global_ids)
             global_data_for_adaptivity[name] = [0] * self._global_number_of_sims
             for i, gids_list in enumerate(global_ids_as_list):
                 count = 0
@@ -315,15 +315,13 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             self._adaptivity_output_type == "all"
             or self._adaptivity_output_type == "global"
         ):
-            active_sims_rankwise = self._comm_world.gather(
-                active_sims_on_this_rank, root=0
-            )
-            inactive_sims_rankwise = self._comm_world.gather(
+            active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
+            inactive_sims_rankwise = self._comm.gather(
                 inactive_sims_on_this_rank, root=0
             )
 
             if self._rank == 0:
-                size = self._comm_world.Get_size()
+                size = self._comm.Get_size()
 
                 self._global_metrics_logger.log_info(
                     "{}|{}|{}|{}|{}|{}|{}|{}|{}".format(
@@ -536,7 +534,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             send_map_local[i] = self._rank
 
         # Gather information about which sims to send where, from the sending perspective
-        send_map_list = self._comm_world.allgather(send_map_local)
+        send_map_list = self._comm.allgather(send_map_local)
 
         for d in send_map_list:
             for i, rank in d.items():
@@ -552,7 +550,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             lid = self._global_ids.index(gid)
             for send_rank in send_ranks:
                 tag = self._create_tag(gid, self._rank, send_rank)
-                req = self._comm_world.isend(data[lid], dest=send_rank, tag=tag)
+                req = self._comm.isend(data[lid], dest=send_rank, tag=tag)
                 send_reqs.append(req)
 
         # Asynchronous receive operations
@@ -562,7 +560,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             bufsize = (
                 1 << 30
             )  # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
-            req = self._comm_world.irecv(bufsize, source=recv_rank, tag=tag)
+            req = self._comm.irecv(bufsize, source=recv_rank, tag=tag)
             recv_reqs.append(req)
 
         # Wait for all non-blocking communication to complete
@@ -583,7 +581,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         for gid in self._global_ids:
             gids_to_rank[gid] = self._rank
 
-        ranks_maps_as_list = self._comm_world.allgather(gids_to_rank)
+        ranks_maps_as_list = self._comm.allgather(gids_to_rank)
 
         ranks_of_sims = np.zeros(self._global_number_of_sims, dtype=np.intc)
         for ranks_map in ranks_maps_as_list:

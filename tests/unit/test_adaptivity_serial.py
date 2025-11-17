@@ -91,7 +91,7 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims
+            configurator, rank=0, nsims=self._number_of_sims, base_logger=MagicMock()
         )
         adaptivity_controller._hist_param = 0.5
         adaptivity_controller._adaptivity_data_names = [
@@ -139,7 +139,7 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims
+            configurator, rank=0, nsims=self._number_of_sims, base_logger=MagicMock()
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -171,7 +171,7 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims
+            configurator, rank=0, nsims=self._number_of_sims, base_logger=MagicMock()
         )
 
         fake_data = np.array([[1], [2], [3]])
@@ -265,7 +265,7 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims
+            configurator, rank=0, nsims=self._number_of_sims, base_logger=MagicMock()
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -305,9 +305,9 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
             self._number_of_sims,
-            MagicMock(),
-            0,
-            comm_world=MPI.COMM_WORLD,
+            base_logger=MagicMock(),
+            rank=0,
+            comm=MPI.COMM_WORLD,
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
