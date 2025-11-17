@@ -131,15 +131,13 @@ class AdaptivityCalculator:
         """
         if self._max_similarity_dist == 0.0:
             self._base_logger.log_warning(
-                "All similarity distances are zero, probably because all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
+                "All similarity distances are zero, which means all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
             )
             self._coarse_tol = sys.float_info.min
         else:
             self._coarse_tol = (
                 self._coarse_const * self._refine_const * self._max_similarity_dist
             )
-
-        self._base_logger.log_info("Coarsening tolerance: {}".format(self._coarse_tol))
 
         # Update the set of active micro sims
         for gid in range(self._is_sim_active.size):
