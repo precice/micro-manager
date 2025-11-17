@@ -13,3 +13,11 @@ A tool to create and manage a large number of (micro) simulations and couple the
 The main documentation is rendered on the [preCICE website](https://precice.org/tooling-micro-manager-overview.html).
 
 Please report any [issues](https://github.com/precice/micro-manager/issues) and give us feedback through [one of our community channels](https://precice.org/community-channels.html).
+
+## Citing
+
+If you use this software, please cite our article in the Journal of Open Source Software:
+
+DOI: [10.21105/joss.05842](https://doi.org/10.21105/joss.05842)
+
+[![DOI](https://joss.theoj.org/papers/10.21105/joss.05842/status.svg)](https://doi.org/10.21105/joss.05842)
