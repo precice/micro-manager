@@ -156,9 +156,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._comm_node.Barrier()  # Wait for the similarity distances to be updated on all ranks of the node
 
         self._max_similarity_dist = np.amax(self._similarity_dists)
-        self._base_logger.log_info(
-            "Maximum similarity distance: {}".format(self._max_similarity_dist)
-        )
 
         self._update_active_sims()
 

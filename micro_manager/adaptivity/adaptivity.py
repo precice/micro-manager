@@ -220,19 +220,6 @@ class AdaptivityCalculator:
             if active_gid != active_gid_2:  # don't compare active sim to itself
                 # If active sim is similar to another active sim, deactivate it
                 if self._similarity_dists[active_gid, active_gid_2] < self._coarse_tol:
-                    self._base_logger.log_info(
-                        "Similarity distance between sim {} and sim {} is {} which is less than coarsening tolerance of {}.".format(
-                            active_gid,
-                            active_gid_2,
-                            self._similarity_dists[active_gid, active_gid_2],
-                            self._coarse_tol,
-                        )
-                    )
-                    self._base_logger.log_info(
-                        "Sim {} is similar to sim {} and hence will be deactivated.".format(
-                            active_gid, active_gid_2
-                        )
-                    )
                     return True
         return False
 
