@@ -22,7 +22,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         global_number_of_sims: int,
         global_ids: list,
         participant,
-        logger,
+        base_logger,
         rank: int,
         comm,
     ) -> None:
@@ -39,7 +39,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             List of global IDs of simulations living on this rank.
         participant : object of class Participant
             Object of the class Participant using which the preCICE API is called.
-        logger : object of class Logger
+        base_logger : object of class Logger
             Logger to log to terminal.
         rank : int
             MPI rank.
@@ -51,6 +51,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             global_number_of_sims,
             global_ids,
             participant,
+            base_logger,
             rank,
             comm,
         )

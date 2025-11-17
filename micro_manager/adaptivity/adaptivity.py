@@ -12,7 +12,7 @@ import numpy as np
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, rank, nsims) -> None:
+    def __init__(self, configurator, rank, nsims, base_logger) -> None:
         """
         Class constructor.
 
@@ -24,6 +24,8 @@ class AdaptivityCalculator:
             Rank of the MPI communicator.
         nsims : int
             Number of micro simulations.
+        base_logger : object of class Logger
+            Logger object to log messages.
         """
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
@@ -43,6 +45,7 @@ class AdaptivityCalculator:
         self._ref_tol = 0.0
 
         self._rank = rank
+        self._base_logger = base_logger
 
         self._max_similarity_dist = 0.0
 
@@ -81,7 +84,7 @@ class AdaptivityCalculator:
             )
 
             self._global_metrics_logger.log_info(
-                "n|avg active|avg inactive|max active|max inactive"
+                "n|n active|n inactive|avg active|avg inactive|max active|rank of max active|max inactive|rank of max inactive"
             )
 
         if (
@@ -94,6 +97,8 @@ class AdaptivityCalculator:
                 rank,
                 csv_logger=True,
             )
+
+            self._metrics_logger.log_info("n|n active|n inactive|assoc ranks")
 
     def _update_similarity_dists(self, dt: float, data: dict) -> None:
         """
@@ -125,7 +130,7 @@ class AdaptivityCalculator:
         and if found similar, one of them is deactivated.
         """
         if self._max_similarity_dist == 0.0:
-            warn(
+            self._base_logger.log_warning(
                 "All similarity distances are zero, probably because all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
             )
             self._coarse_tol = sys.float_info.min
@@ -133,6 +138,8 @@ class AdaptivityCalculator:
             self._coarse_tol = (
                 self._coarse_const * self._refine_const * self._max_similarity_dist
             )
+
+        self._base_logger.log_info("Coarsening tolerance: {}".format(self._coarse_tol))
 
         # Update the set of active micro sims
         for gid in range(self._is_sim_active.size):
@@ -213,6 +220,19 @@ class AdaptivityCalculator:
             if active_gid != active_gid_2:  # don't compare active sim to itself
                 # If active sim is similar to another active sim, deactivate it
                 if self._similarity_dists[active_gid, active_gid_2] < self._coarse_tol:
+                    self._base_logger.log_info(
+                        "Similarity distance between sim {} and sim {} is {} which is less than coarsening tolerance of {}.".format(
+                            active_gid,
+                            active_gid_2,
+                            self._similarity_dists[active_gid, active_gid_2],
+                            self._coarse_tol,
+                        )
+                    )
+                    self._base_logger.log_info(
+                        "Sim {} is similar to sim {} and hence will be deactivated.".format(
+                            active_gid, active_gid_2
+                        )
+                    )
                     return True
         return False
 

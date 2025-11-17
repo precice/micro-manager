@@ -12,7 +12,9 @@ from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(self, configurator, num_sims, participant, rank, comm_world) -> None:
+    def __init__(
+        self, configurator, num_sims, participant, base_logger, rank, comm_world
+    ) -> None:
         """
         Class constructor.
 
@@ -24,19 +26,15 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             Number of micro simulations.
         participant : object of class Participant
             Object of the class Participant using which the preCICE API is called.
+        base_logger : object of class Logger
+            Logger object to log messages.
         rank : int
             Rank of the current MPI process.
         comm_world : MPI.COMM_WORLD
             Global communicator of MPI.
         """
-        super().__init__(configurator, rank, num_sims)
+        super().__init__(configurator, rank, num_sims, base_logger)
         self._comm_world = comm_world
-
-        if (
-            self._adaptivity_output_type == "all"
-            or self._adaptivity_output_type == "local"
-        ):
-            self._metrics_logger.log_info("n|n active|n inactive")
 
         self._precice_participant = participant
 

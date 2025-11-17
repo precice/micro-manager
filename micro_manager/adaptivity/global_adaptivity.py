@@ -22,6 +22,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         global_number_of_sims: int,
         global_ids: list,
         participant,
+        base_logger,
         rank: int,
         comm_world,
     ) -> None:
@@ -38,12 +39,14 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             List of global IDs of simulations living on this rank.
         participant : object of class Participant
             Object of the class Participant using which the preCICE API is called.
+        base_logger : object of class Logger
+            Logger object to log messages.
         rank : int
             MPI rank.
         comm_world : MPI.COMM_WORLD
             Base global communicator of MPI.
         """
-        super().__init__(configurator, rank, global_number_of_sims)
+        super().__init__(configurator, rank, global_number_of_sims, base_logger)
         self._global_number_of_sims = global_number_of_sims
         self._global_ids = global_ids
         self._comm_world = comm_world
@@ -56,12 +59,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 self._is_sim_on_this_rank[gid] = True
 
         self._precice_participant = participant
-
-        if (
-            self._adaptivity_output_type == "all"
-            or self._adaptivity_output_type == "local"
-        ):
-            self._metrics_logger.log_info("n|n active|n inactive|assoc ranks")
 
         self._comm_node = comm_world.Split_type(MPI.COMM_TYPE_SHARED)
 
@@ -159,6 +156,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._comm_node.Barrier()  # Wait for the similarity distances to be updated on all ranks of the node
 
         self._max_similarity_dist = np.amax(self._similarity_dists)
+        self._base_logger.log_info(
+            "Maximum similarity distance: {}".format(self._max_similarity_dist)
+        )
 
         self._update_active_sims()
 
@@ -269,6 +269,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         Global metrics:
         - Time window at which the metrics are logged
+        - Global number of active simulations
+        - Global number of inactive simulations
         - Average number of active simulations
         - Average number of inactive simulations
         - Maximum number of active simulations
@@ -324,12 +326,16 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 size = self._comm_world.Get_size()
 
                 self._global_metrics_logger.log_info(
-                    "{}|{}|{}|{}|{}".format(
+                    "{}|{}|{}|{}|{}|{}|{}|{}|{}".format(
                         n,
+                        sum(active_sims_rankwise),
+                        sum(inactive_sims_rankwise),
                         sum(active_sims_rankwise) / size,
                         sum(inactive_sims_rankwise) / size,
                         max(active_sims_rankwise),
+                        active_sims_rankwise.index(max(active_sims_rankwise)),
                         max(inactive_sims_rankwise),
+                        inactive_sims_rankwise.index(max(inactive_sims_rankwise)),
                     )
                 )
 
