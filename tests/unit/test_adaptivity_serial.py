@@ -118,9 +118,6 @@ class TestLocalAdaptivity(TestCase):
             + self._dt * self._data_diff
         )
 
-        print("Expected similarity distances:\n", expected_similarity_dists)
-        print("Actual similarity distances:\n", adaptivity_controller._similarity_dists)
-
         self.assertTrue(
             np.array_equal(
                 expected_similarity_dists, adaptivity_controller._similarity_dists
@@ -305,6 +302,7 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
             self._number_of_sims,
+            participant=MagicMock(),
             base_logger=MagicMock(),
             rank=0,
             comm=MPI.COMM_WORLD,
