@@ -3,6 +3,7 @@ Class LocalAdaptivityCalculator provides methods to adaptively control of micro 
 in a local way. If the Micro Manager is run in parallel, simulations on one rank are compared to
 each other. A global comparison is not done.
 """
+import sys
 import numpy as np
 from copy import deepcopy
 from mpi4py import MPI
@@ -226,6 +227,34 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                         max(inactive_sims_rankwise),
                     )
                 )
+
+    def _update_active_sims(self) -> None:
+        """
+        Update set of active micro simulations. Active micro simulations are compared to each other
+        and if found similar, one of them is deactivated.
+        """
+        if self._max_similarity_dist == 0.0:
+            self._base_logger.log_warning(
+                "All similarity distances are zero, which means all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
+            )
+            self._coarse_tol = sys.float_info.min
+        else:
+            self._coarse_tol = (
+                self._coarse_const * self._refine_const * self._max_similarity_dist
+            )
+
+        active_sims_gids = self.get_active_sim_local_ids().tolist()
+
+        active_sims_gids_to_check = active_sims_gids.copy()
+
+        # Update the set of active micro sims
+        for gid in active_sims_gids:
+            if self._check_for_deactivation(gid, active_sims_gids_to_check):
+                self._is_sim_active[gid] = False
+                self._just_deactivated.append(gid)
+                active_sims_gids_to_check.remove(
+                    gid
+                )  # Remove deactivated gid from further checks
 
     def _update_inactive_sims(self, micro_sims: list) -> None:
         """

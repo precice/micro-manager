@@ -1,10 +1,8 @@
 """
 Functionality for adaptive initialization and control of micro simulations
 """
-import sys
 from math import exp
 from typing import Callable
-from warnings import warn
 import importlib
 from micro_manager.tools.logging_wrapper import Logger
 
@@ -124,28 +122,6 @@ class AdaptivityCalculator:
 
             self._similarity_dists += dt * self._similarity_measure(data_vals)
 
-    def _update_active_sims(self) -> None:
-        """
-        Update set of active micro simulations. Active micro simulations are compared to each other
-        and if found similar, one of them is deactivated.
-        """
-        if self._max_similarity_dist == 0.0:
-            self._base_logger.log_warning(
-                "All similarity distances are zero, which means all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
-            )
-            self._coarse_tol = sys.float_info.min
-        else:
-            self._coarse_tol = (
-                self._coarse_const * self._refine_const * self._max_similarity_dist
-            )
-
-        # Update the set of active micro sims
-        for gid in range(self._is_sim_active.size):
-            if self._is_sim_active[gid]:  # if sim is active
-                if self._check_for_deactivation(gid, self._is_sim_active):
-                    self._is_sim_active[gid] = False
-                    self._just_deactivated.append(gid)
-
     def _associate_inactive_to_active(self) -> None:
         """
         Associate inactive micro simulations to most similar active micro simulation.
@@ -169,9 +145,7 @@ class AdaptivityCalculator:
 
             self._sim_is_associated_to[inactive_gid] = associated_active_gid
 
-    def _check_for_activation(
-        self, inactive_gid: int, is_sim_active: np.ndarray
-    ) -> bool:
+    def _check_for_activation(self, inactive_gid: int, active_gids: np.ndarray) -> bool:
         """
         Check if an inactive simulation needs to be activated.
 
@@ -179,24 +153,19 @@ class AdaptivityCalculator:
         ----------
         inactive_gid : int
             ID of inactive simulation which is checked for activation.
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation.
-
+        active_gids : numpy array
+            1D array having IDs of active micro simulations.
         Return
         ------
         tag : bool
             True if the inactive simulation needs to be activated, False otherwise.
         """
-        active_gids = np.where(is_sim_active)[0]
-
         dists = self._similarity_dists[inactive_gid, active_gids]
 
         # If inactive sim is not similar to any active sim, activate it
         return min(dists) > self._ref_tol
 
-    def _check_for_deactivation(
-        self, active_gid: int, is_sim_active: np.ndarray
-    ) -> bool:
+    def _check_for_deactivation(self, active_gid: int, active_gids: list[int]) -> bool:
         """
         Check if an active simulation needs to be deactivated.
 
@@ -204,16 +173,14 @@ class AdaptivityCalculator:
         ----------
         active_gid : int
             ID of active simulation which is checked for deactivation.
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation.
+        active_gids : list
+            List having IDs of active micro simulations.
 
         Return
         ------
         tag : bool
             True if the active simulation needs to be deactivated, False otherwise.
         """
-        active_gids = np.where(is_sim_active)[0]
-
         for active_gid_2 in active_gids:
             if active_gid != active_gid_2:  # don't compare active sim to itself
                 # If active sim is similar to another active sim, deactivate it
