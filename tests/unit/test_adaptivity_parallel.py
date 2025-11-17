@@ -24,9 +24,9 @@ class MicroSimulation:
 
 class TestGlobalAdaptivity(TestCase):
     def setUp(self):
-        comm_world = MPI.COMM_WORLD
-        self._rank = comm_world.Get_rank()
-        self._size = comm_world.Get_size()
+        self._comm = MPI.COMM_WORLD
+        self._rank = self._comm.Get_rank()
+        self._size = self._comm.Get_size()
 
         self._configurator = MagicMock()
         self._configurator.get_output_dir = MagicMock(return_value="output_dir")
@@ -56,8 +56,9 @@ class TestGlobalAdaptivity(TestCase):
             5,
             global_ids,
             participant=MagicMock(),
+            base_logger=MagicMock(),
             rank=self._rank,
-            comm_world=MPI.COMM_WORLD,
+            comm=self._comm,
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -125,8 +126,9 @@ class TestGlobalAdaptivity(TestCase):
             5,
             global_ids,
             participant=MagicMock(),
+            base_logger=MagicMock(),
             rank=self._rank,
-            comm_world=MPI.COMM_WORLD,
+            comm=self._comm,
         )
 
         adaptivity_controller._adaptivity_data_names = ["data1", "data2"]
@@ -178,8 +180,9 @@ class TestGlobalAdaptivity(TestCase):
             5,
             global_ids,
             participant=MagicMock(),
+            base_logger=MagicMock(),
             rank=self._rank,
-            comm_world=MPI.COMM_WORLD,
+            comm=self._comm,
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -215,8 +218,9 @@ class TestGlobalAdaptivity(TestCase):
             5,
             global_ids,
             participant=MagicMock(),
+            base_logger=MagicMock(),
             rank=self._rank,
-            comm_world=MPI.COMM_WORLD,
+            comm=self._comm,
         )
 
         actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
