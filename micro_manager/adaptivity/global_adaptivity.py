@@ -47,7 +47,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         comm : MPI.Comm
             Communicator for MPI.
         """
-        super().__init__(configurator, rank, global_number_of_sims, base_logger)
+        super().__init__(configurator, global_number_of_sims, base_logger, rank)
         self._global_number_of_sims = global_number_of_sims
         self._global_ids = global_ids
         self._comm = comm
@@ -350,9 +350,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 self._coarse_const * self._refine_const * self._max_similarity_dist
             )
 
-        local_active_gids = self.get_active_sim_global_ids()
+        active_gids_this_rank = self.get_active_sim_global_ids()
         # Gather global ids of active sims from all ranks
-        active_gids_all_ranks = self._comm.allgather(local_active_gids.tolist())
+        active_gids_all_ranks = self._comm.allgather(active_gids_this_rank.tolist())
 
         active_gids_to_iterate = []
         # Iterate over global ids of active sims in a round-robin fashion across ranks
@@ -361,11 +361,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 if gid_list:  # if the list of global ids is not empty
                     # Pick the first global id on every rank and add it to the list which is later iterated over
                     active_gids_to_iterate.append(gid_list[0])
+                    # Remove the picked global id from the rank list
                     gid_list.pop(0)
-
-        self._base_logger.log_info(
-            "Active gids to iterate: {}".format(active_gids_to_iterate)
-        )
 
         # Update the set of active micro sims
         active_gids_to_check = active_gids_to_iterate.copy()

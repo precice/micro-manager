@@ -91,7 +91,10 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims, base_logger=MagicMock()
+            configurator,
+            nsims=self._number_of_sims,
+            base_logger=MagicMock(),
+            rank=0,
         )
         adaptivity_controller._hist_param = 0.5
         adaptivity_controller._adaptivity_data_names = [
@@ -126,7 +129,7 @@ class TestLocalAdaptivity(TestCase):
 
     def test_update_active_sims(self):
         """
-        Test functionality of updating active simulations in class AdaptivityCalculator.
+        Test functionality of updating active simulations in class LocalAdaptivityCalculator.
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
@@ -135,8 +138,13 @@ class TestLocalAdaptivity(TestCase):
             return_value="test_adaptivity_serial"
         )
 
-        adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims, base_logger=MagicMock()
+        adaptivity_controller = LocalAdaptivityCalculator(
+            configurator,
+            nsims=self._number_of_sims,
+            participant=MagicMock(),
+            base_logger=MagicMock(),
+            rank=0,
+            comm=MagicMock(),
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -168,7 +176,10 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims, base_logger=MagicMock()
+            configurator,
+            nsims=self._number_of_sims,
+            base_logger=MagicMock(),
+            rank=0,
         )
 
         fake_data = np.array([[1], [2], [3]])
@@ -262,7 +273,10 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims, base_logger=MagicMock()
+            configurator,
+            nsims=self._number_of_sims,
+            base_logger=MagicMock(),
+            rank=0,
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const

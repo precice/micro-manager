@@ -34,7 +34,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         comm : MPI.Comm
             Communicator for MPI.
         """
-        super().__init__(configurator, rank, num_sims, base_logger)
+        super().__init__(configurator, num_sims, base_logger, rank)
         self._comm = comm
 
         self._precice_participant = participant
@@ -243,18 +243,17 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                 self._coarse_const * self._refine_const * self._max_similarity_dist
             )
 
-        active_sims_gids = self.get_active_sim_local_ids().tolist()
+        active_gids = self.get_active_sim_local_ids().tolist()
 
-        active_sims_gids_to_check = active_sims_gids.copy()
+        active_gids_to_check = active_gids.copy()
 
         # Update the set of active micro sims
-        for gid in active_sims_gids:
-            if self._check_for_deactivation(gid, active_sims_gids_to_check):
+        for gid in active_gids:
+            if self._check_for_deactivation(gid, active_gids_to_check):
                 self._is_sim_active[gid] = False
                 self._just_deactivated.append(gid)
-                active_sims_gids_to_check.remove(
-                    gid
-                )  # Remove deactivated gid from further checks
+                # Remove deactivated gid from further checks
+                active_gids_to_check.remove(gid)
 
     def _update_inactive_sims(self, micro_sims: list) -> None:
         """
@@ -271,14 +270,16 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         self._ref_tol = self._refine_const * self._max_similarity_dist
 
+        active_lids = self.get_active_sim_local_ids()
+        inactive_lids = self.get_inactive_sim_local_ids()
+
         to_be_activated_ids = []
         # Update the set of inactive micro sims
-        for i in range(self._is_sim_active.size):
-            if not self._is_sim_active[i]:  # if id is inactive
-                if self._check_for_activation(i, self._is_sim_active):
-                    self._is_sim_active[i] = True
-                    if i not in self._just_deactivated:
-                        to_be_activated_ids.append(i)
+        for lid in inactive_lids:
+            if self._check_for_activation(lid, active_lids):
+                self._is_sim_active[lid] = True
+                if lid not in self._just_deactivated:
+                    to_be_activated_ids.append(lid)
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 
