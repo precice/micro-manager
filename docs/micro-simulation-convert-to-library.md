@@ -77,23 +77,23 @@ A dummy code of a sample MicroSimulation class can be found in the [examples/pyt
 
 A dummy C++ dummy micro simulation code having a Python-importable class structure is provided in [`examples/cpp-dummy/micro_cpp_dummy.cpp`](https://github.com/precice/micro-manager/blob/develop/examples/cpp-dummy/micro_cpp_dummy.cpp). It uses [pybind11](https://pybind11.readthedocs.io/en/stable/) to enable control and use from Python. Restructuring a C++ micro simulation code has the following steps
 
-**Step 1**: Create a C++ class which implements the functions given in the code snippet above. The `solve()` function should have the following signature:
+1. Create a C++ class which implements the functions given in the code snippet above. The `solve()` function should have the following signature:
 
-```cpp
-py::dict MicroSimulation::solve(py::dict macro_data, double dt)
-```
+    ```cpp
+    py::dict MicroSimulation::solve(py::dict macro_data, double dt)
+    ```
 
-[`py::dict`](https://pybind11.readthedocs.io/en/stable/advanced/pycpp/object.html?%23instantiating-compound-python-types-from-c) is a Python dictionary which can be used to pass data between Python and C++. Cast the data to the correct type before using it in C++ and vice versa.
+    [`py::dict`](https://pybind11.readthedocs.io/en/stable/advanced/pycpp/object.html?%23instantiating-compound-python-types-from-c) is a Python dictionary which can be used to pass data between Python and C++. Cast the data to the correct type before using it in C++ and vice versa.
 
-**Step 2**: Export the C++ class to Python using pybind11. Follow the instructions to exporting classes in the [pybind11 documentation](https://pybind11.readthedocs.io/en/stable/classes.html) or read their [first steps](https://pybind11.readthedocs.io/en/stable/basics.html) to get started.
+2. Export the C++ class to Python using pybind11. Follow the instructions to exporting classes in the [pybind11 documentation](https://pybind11.readthedocs.io/en/stable/classes.html) or read their [first steps](https://pybind11.readthedocs.io/en/stable/basics.html) to get started.
 
-**Step 3**: Compile the C++ library including pybind11. For example, for the solverdummy, the command is
+3. Compile the C++ library including pybind11. For example, for the solverdummy, the command is
 
-```bash
-c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy$(python3-config --extension-suffix)
-```
+    ```bash
+    c++ -O3 -Wall -shared -std=c++11 -fPIC $(python3 -m pybind11 --includes) micro_cpp_dummy.cpp -o micro_dummy$(python3-config --extension-suffix)
+    ```
 
-This will create a shared library `micro_dummy.so` which can be directly imported in Python. For more information on compiling C++ libraries, see the [pybind11 documentation](https://pybind11.readthedocs.io/en/stable/compiling.html).
+    This will create a shared library `micro_dummy.so` which can be directly imported in Python. For more information on compiling C++ libraries, see the [pybind11 documentation](https://pybind11.readthedocs.io/en/stable/compiling.html).
 
 There are more examples which demonstrate how a micro simulation written in C++ is converted to a Python-importable class
 
