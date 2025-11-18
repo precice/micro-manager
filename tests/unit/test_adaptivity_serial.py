@@ -140,7 +140,7 @@ class TestLocalAdaptivity(TestCase):
 
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
-            nsims=self._number_of_sims,
+            self._number_of_sims,
             participant=MagicMock(),
             base_logger=MagicMock(),
             rank=0,
@@ -329,28 +329,10 @@ class TestLocalAdaptivity(TestCase):
         ]
 
         # Third and fifth micro sim are active, rest are deactivate
-        expected_is_sim_active = np.array([True, False, False, True, False])
-        expected_sim_is_associated_to = np.array([-2, 0, 0, -2, 3])
+        expected_is_sim_active = np.array([True, False, False, True, True])
+        expected_sim_is_associated_to = np.array([-2, 0, 0, -2, -2])
 
-        similarity_dists = np.zeros((self._number_of_sims, self._number_of_sims))
-        for i in range(self._number_of_sims):
-            for j in range(self._number_of_sims):
-                similarity_dist = abs(
-                    self._micro_scalar_data[i] - self._micro_scalar_data[j]
-                )
-                similarity_dist += abs(
-                    self._macro_scalar_data[i] - self._macro_scalar_data[j]
-                )
-                for d in range(self._dim):
-                    similarity_dist += abs(
-                        self._micro_vector_data[i, d] - self._micro_vector_data[j, d]
-                    )
-                    similarity_dist += abs(
-                        self._macro_vector_data[i, d] - self._macro_vector_data[j, d]
-                    )
-                similarity_dists[i, j] = self._dt * similarity_dist
-
-        adaptivity_controller._similarity_dists = similarity_dists
+        adaptivity_controller._similarity_dists = self._similarity_dists
         adaptivity_controller._is_sim_active = np.array(
             [True, False, False, False, False]
         )
