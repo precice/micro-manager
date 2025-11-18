@@ -444,8 +444,12 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 self._is_sim_active[gid] = True
                 # Active sim cannot have an associated sim
                 _sim_is_associated_to_updated[gid] = -2
-                if self._is_sim_on_this_rank[gid] and gid not in self._just_deactivated:
-                    to_be_activated_gids.append(gid)
+                if gid not in self._just_deactivated:
+                    # Add the newly activated gid to active_gids_all_ranks for further checks
+                    active_gids_all_ranks = np.append(active_gids_all_ranks, gid)
+                    # Collect the global IDs to be activated on this rank
+                    if self._is_sim_on_this_rank[gid]:
+                        to_be_activated_gids.append(gid)
         # ----------------------------------------------------------------------------------
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step

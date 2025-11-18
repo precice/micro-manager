@@ -280,6 +280,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                 self._is_sim_active[lid] = True
                 if lid not in self._just_deactivated:
                     to_be_activated_ids.append(lid)
+                    # Add the newly activated lid to active_lids for further checks
+                    active_lids = np.append(active_lids, lid)
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 

@@ -329,8 +329,8 @@ class TestLocalAdaptivity(TestCase):
         ]
 
         # Third and fifth micro sim are active, rest are deactivate
-        expected_is_sim_active = np.array([True, False, False, True, True])
-        expected_sim_is_associated_to = np.array([-2, 0, 0, -2, -2])
+        expected_is_sim_active = np.array([True, False, False, True, False])
+        expected_sim_is_associated_to = np.array([-2, 0, 0, -2, 3])
 
         adaptivity_controller._similarity_dists = self._similarity_dists
         adaptivity_controller._is_sim_active = np.array(
