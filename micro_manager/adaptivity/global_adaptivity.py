@@ -337,8 +337,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
     def _update_active_sims(self) -> None:
         """
-        Update set of active micro simulations. Active micro simulations are compared to each other
-        and if found similar, one of them is deactivated.
+        Update set of active micro simulations.
+        Pairs of active simulations (A, B) are compared and if found to be similar, B is deactivated.
         """
         if self._max_similarity_dist == 0.0:
             self._base_logger.log_warning(
@@ -351,15 +351,15 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             )
 
         local_active_gids = self.get_active_sim_global_ids()
-        # Gather active gids from all ranks
-        global_active_gids = self._comm.allgather(local_active_gids.tolist())
+        # Gather global ids of active sims from all ranks
+        active_gids_all_ranks = self._comm.allgather(local_active_gids.tolist())
 
         active_gids_to_iterate = []
-        # Iterate over active gids in a round-robin fashion across ranks
-        while any(len(gid_list) > 0 for gid_list in global_active_gids):
-            for gid_list in global_active_gids:
+        # Iterate over global ids of active sims in a round-robin fashion across ranks
+        while any(len(gid_list) > 0 for gid_list in active_gids_all_ranks):
+            for gid_list in active_gids_all_ranks:
                 if gid_list:  # if the list of global ids is not empty
-                    # Pick the first global id on every rank and add it to the list which we iterate over later
+                    # Pick the first global id on every rank and add it to the list which is later iterated over
                     active_gids_to_iterate.append(gid_list[0])
                     gid_list.pop(0)
 
@@ -373,9 +373,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             if self._check_for_deactivation(gid, active_gids_to_check):
                 self._is_sim_active[gid] = False
                 self._just_deactivated.append(gid)
-                active_gids_to_check.remove(
-                    gid
-                )  # Remove deactivated gid from further checks
+                # Remove deactivated gid from further checks
+                active_gids_to_check.remove(gid)
 
     def _communicate_micro_output(
         self,
@@ -439,20 +438,17 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         # -------------------- Global computation on every rank ----------------------------
         # Check inactive simulations for activation and collect IDs of those to be activated
-        active_sims_gids = np.where(self._is_sim_active)[0]
+        active_gids_all_ranks = np.where(self._is_sim_active)[0]
+        inactive_gids_all_ranks = np.where(self._is_sim_active == False)[0]
         to_be_activated_gids = []  # Global IDs to be activated
-        for gid in range(self._global_number_of_sims):
-            if not self._is_sim_active[gid]:  # if id is inactive
-                if self._check_for_activation(gid, active_sims_gids):
-                    self._is_sim_active[gid] = True
-                    _sim_is_associated_to_updated[
-                        gid
-                    ] = -2  # Active sim cannot have an associated sim
-                    if (
-                        self._is_sim_on_this_rank[gid]
-                        and gid not in self._just_deactivated
-                    ):
-                        to_be_activated_gids.append(gid)
+
+        for gid in inactive_gids_all_ranks:
+            if self._check_for_activation(gid, active_gids_all_ranks):
+                self._is_sim_active[gid] = True
+                # Active sim cannot have an associated sim
+                _sim_is_associated_to_updated[gid] = -2
+                if self._is_sim_on_this_rank[gid] and gid not in self._just_deactivated:
+                    to_be_activated_gids.append(gid)
         # ----------------------------------------------------------------------------------
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
