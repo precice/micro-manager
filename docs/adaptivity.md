@@ -19,35 +19,35 @@ Bastidas, Manuela & Bringedal, Carina & Pop, Iuliu Sorin. (2021). A two-scale it
 
 1. Update the similarity distance matrix
 
-    For a quantity $$ u $$, a similarity distance $$ d_{u} $$ is calculated in the following way
+   For a quantity $$ u $$, a similarity distance $$ d_{u} $$ is calculated in the following way
 
-    $$ d_{u}(x_{1}, x_{2}; t_{n}) := ||u(x_{1}, t_{n}) - u(x_{2}, t_{n})|| $$
+   $$ d_{u}(x_{1}, x_{2}; t_{n}) := ||u(x_{1}, t_{n}) - u(x_{2}, t_{n})|| $$
 
-    If $$ u $$ is a vector, the distance is calculated component-wise by
+   If $$ u $$ is a vector, the distance is calculated component-wise by
 
-    $$ d_{u}(x_{1}, x_{2}; t_{n}) := \sum_{i=1}^{d} ||u_{i}(x_{1}, t_{n}) - u_{i}(x_{2}, t_{n})|| $$
+   $$ d_{u}(x_{1}, x_{2}; t_{n}) := \sum_{i=1}^{d} ||u_{i}(x_{1}, t_{n}) - u_{i}(x_{2}, t_{n})|| $$
 
-    Calculate entries of the similarity distance matrix $$ D $$ between each micro simulation pair
+   Calculate entries of the similarity distance matrix $$ D $$ between each micro simulation pair
 
-    $$ D(x_{1}, x_{2}; t_{n}; \Lambda) \approx e^{-\Lambda \Delta t} D(x_{1}, x_{2}; t_{n-1}; \Lambda) + \Delta t (d_{u}(x_{1}, x_{2}; t_{n})) $$
+   $$ D(x_{1}, x_{2}; t_{n}; \Lambda) \approx e^{-\Lambda \Delta t} D(x_{1}, x_{2}; t_{n-1}; \Lambda) + \Delta t (d_{u}(x_{1}, x_{2}; t_{n})) $$
 
 2. Update the set of active simulations $$ N_{A}(t_{n}) $$.
 
-    For each active simulation $$ x_{A} \in N_{A}(t_{n-1}) $$, we check if there exists another active simulation $$ x_{B} \in N_{A}(t_{n-1}) $$ such that
+   For each active simulation $$ x_{A} \in N_{A}(t_{n-1}) $$, we check if there exists another active simulation $$ x_{B} \in N_{A}(t_{n-1}) $$ such that
 
-    $$ D(x_{A}, x_{B}; t_{n-1}; \Lambda) \le tol_{c} $$
+   $$ D(x_{A}, x_{B}; t_{n-1}; \Lambda) \le tol_{c} $$
 
-    and if it is the case, $$ x_{A} $$ is deactivated.
+   and if it is the case, $$ x_{A} $$ is deactivated.
 
 3. Update the set of inactive simulations $$ N_{I}(t_{n}) $$. For each inactive simulations $$ x_{I} \in N_{I}(t_{n-1}) $$, gather the distance $$ D $$ to all active simulations. If
 
-    $$ \displaystyle\min_{x_{A} \in N_{A}(n)} {D(x_{I}, x_{A}; t_{n-1}; \Lambda)} > tol_{r} $$
+   $$ \displaystyle\min_{x_{A} \in N_{A}(n)} {D(x_{I}, x_{A}; t_{n-1}; \Lambda)} > tol_{r} $$
 
-    the simulation $$ x_{I} $$ is activated.
+   the simulation $$ x_{I} $$ is activated.
 
 4. Associate each inactive simulation to its most similar active simulation. An inactive simulation $$ x_{I} \in N_{I}(t_{n}) $$ is associated with an active simulation $$ x_{A} \in N_{A}(t_{n}) $$ if
 
-    $$ x_{A} = \displaystyle\min_{x \in N_{A}(t_{n})} {D(x_{I}, x; t_{n-1}; \Lambda)} $$
+   $$ x_{A} = \displaystyle\min_{x \in N_{A}(t_{n})} {D(x_{I}, x; t_{n-1}; \Lambda)} $$
 
 These steps are repeated every time the adaptivity computation is triggered.
 
