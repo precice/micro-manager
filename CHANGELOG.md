@@ -2,6 +2,7 @@
 
 ## latest
 
+- A rank-based round-robin scheme for deactivating simulations in global adaptivity [#202](https://github.com/precice/micro-manager/pull/202)
 - Added more metrics to adaptivity logging, and some general refactoring [#201](https://github.com/precice/micro-manager/pull/201)
 - Fix bug in load balancing when a rank has exactly as many active simulation as the global average [#200](https://github.com/precice/micro-manager/pull/200)
 - Use global maximum similarity distance in local adaptivity [#197](https://github.com/precice/micro-manager/pull/197)

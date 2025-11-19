@@ -7,6 +7,7 @@ Note: All ID variables used in the methods of this class are global IDs, unless 
 """
 import hashlib
 from copy import deepcopy
+import sys
 from typing import Dict
 import numpy as np
 from mpi4py import MPI
@@ -46,7 +47,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         comm : MPI.Comm
             Communicator for MPI.
         """
-        super().__init__(configurator, rank, global_number_of_sims, base_logger)
+        super().__init__(configurator, global_number_of_sims, base_logger, rank)
         self._global_number_of_sims = global_number_of_sims
         self._global_ids = global_ids
         self._comm = comm
@@ -334,6 +335,44 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     )
                 )
 
+    def _update_active_sims(self) -> None:
+        """
+        Update set of active micro simulations.
+        Pairs of active simulations (A, B) are compared and if found to be similar, B is deactivated.
+        """
+        if self._max_similarity_dist == 0.0:
+            self._base_logger.log_warning(
+                "All similarity distances are zero, which means all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
+            )
+            self._coarse_tol = sys.float_info.min
+        else:
+            self._coarse_tol = (
+                self._coarse_const * self._refine_const * self._max_similarity_dist
+            )
+
+        active_gids_this_rank = self.get_active_sim_global_ids()
+        # Gather global ids of active sims from all ranks
+        active_gids_all_ranks = self._comm.allgather(active_gids_this_rank.tolist())
+
+        active_gids_to_iterate = []
+        # Iterate over global ids of active sims in a round-robin fashion across ranks
+        while any(len(gid_list) > 0 for gid_list in active_gids_all_ranks):
+            for gid_list in active_gids_all_ranks:
+                if gid_list:  # if the list of global ids is not empty
+                    # Pick the first global id on every rank and add it to the list which is later iterated over
+                    active_gids_to_iterate.append(gid_list[0])
+                    # Remove the picked global id from the rank list
+                    gid_list.pop(0)
+
+        # Update the set of active micro sims
+        active_gids_to_check = active_gids_to_iterate.copy()
+        for gid in active_gids_to_iterate:
+            if self._check_for_deactivation(gid, active_gids_to_check):
+                self._is_sim_active[gid] = False
+                self._just_deactivated.append(gid)
+                # Remove deactivated gid from further checks
+                active_gids_to_check.remove(gid)
+
     def _communicate_micro_output(
         self,
         micro_output: list,
@@ -352,9 +391,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         # simulations.
         active_to_inactive_map: Dict[int, list] = dict()
 
-        inactive_global_ids = self.get_inactive_sim_global_ids()
+        inactive_gids = self.get_inactive_sim_global_ids()
 
-        for gid in inactive_global_ids:
+        for gid in inactive_gids:
             assoc_active_gid = self._sim_is_associated_to[gid]
             # Gather global IDs of associated active simulations not on this rank
             if not self._is_sim_on_this_rank[assoc_active_gid]:
@@ -396,18 +435,20 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         # -------------------- Global computation on every rank ----------------------------
         # Check inactive simulations for activation and collect IDs of those to be activated
+        active_gids_all_ranks = np.where(self._is_sim_active)[0]
+        inactive_gids_all_ranks = np.where(self._is_sim_active == False)[0]
         to_be_activated_gids = []  # Global IDs to be activated
-        for gid in range(self._is_sim_active.size):
-            if not self._is_sim_active[gid]:  # if id is inactive
-                if self._check_for_activation(gid, self._is_sim_active):
-                    self._is_sim_active[gid] = True
-                    _sim_is_associated_to_updated[
-                        gid
-                    ] = -2  # Active sim cannot have an associated sim
-                    if (
-                        self._is_sim_on_this_rank[gid]
-                        and gid not in self._just_deactivated
-                    ):
+
+        for gid in inactive_gids_all_ranks:
+            if self._check_for_activation(gid, active_gids_all_ranks):
+                self._is_sim_active[gid] = True
+                # Active sim cannot have an associated sim
+                _sim_is_associated_to_updated[gid] = -2
+                if gid not in self._just_deactivated:
+                    # Add the newly activated gid to active_gids_all_ranks for further checks
+                    active_gids_all_ranks = np.append(active_gids_all_ranks, gid)
+                    # Collect the global IDs to be activated on this rank
+                    if self._is_sim_on_this_rank[gid]:
                         to_be_activated_gids.append(gid)
         # ----------------------------------------------------------------------------------
 

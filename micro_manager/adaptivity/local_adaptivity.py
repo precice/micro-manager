@@ -3,6 +3,7 @@ Class LocalAdaptivityCalculator provides methods to adaptively control of micro 
 in a local way. If the Micro Manager is run in parallel, simulations on one rank are compared to
 each other. A global comparison is not done.
 """
+import sys
 import numpy as np
 from copy import deepcopy
 from mpi4py import MPI
@@ -33,7 +34,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         comm : MPI.Comm
             Communicator for MPI.
         """
-        super().__init__(configurator, rank, num_sims, base_logger)
+        super().__init__(configurator, num_sims, base_logger, rank)
         self._comm = comm
 
         self._precice_participant = participant
@@ -227,6 +228,33 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                     )
                 )
 
+    def _update_active_sims(self) -> None:
+        """
+        Update set of active micro simulations. Active micro simulations are compared to each other
+        and if found similar, one of them is deactivated.
+        """
+        if self._max_similarity_dist == 0.0:
+            self._base_logger.log_warning(
+                "All similarity distances are zero, which means all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
+            )
+            self._coarse_tol = sys.float_info.min
+        else:
+            self._coarse_tol = (
+                self._coarse_const * self._refine_const * self._max_similarity_dist
+            )
+
+        active_gids = self.get_active_sim_local_ids().tolist()
+
+        active_gids_to_check = active_gids.copy()
+
+        # Update the set of active micro sims
+        for gid in active_gids:
+            if self._check_for_deactivation(gid, active_gids_to_check):
+                self._is_sim_active[gid] = False
+                self._just_deactivated.append(gid)
+                # Remove deactivated gid from further checks
+                active_gids_to_check.remove(gid)
+
     def _update_inactive_sims(self, micro_sims: list) -> None:
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
@@ -242,14 +270,18 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         self._ref_tol = self._refine_const * self._max_similarity_dist
 
+        active_lids = self.get_active_sim_local_ids()
+        inactive_lids = self.get_inactive_sim_local_ids()
+
         to_be_activated_ids = []
         # Update the set of inactive micro sims
-        for i in range(self._is_sim_active.size):
-            if not self._is_sim_active[i]:  # if id is inactive
-                if self._check_for_activation(i, self._is_sim_active):
-                    self._is_sim_active[i] = True
-                    if i not in self._just_deactivated:
-                        to_be_activated_ids.append(i)
+        for lid in inactive_lids:
+            if self._check_for_activation(lid, active_lids):
+                self._is_sim_active[lid] = True
+                if lid not in self._just_deactivated:
+                    to_be_activated_ids.append(lid)
+                    # Add the newly activated lid to active_lids for further checks
+                    active_lids = np.append(active_lids, lid)
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 

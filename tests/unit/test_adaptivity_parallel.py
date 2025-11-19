@@ -109,10 +109,13 @@ class TestGlobalAdaptivity(TestCase):
             }
         elif self._rank == 1:
             global_ids = [3, 4]
-            data_for_adaptivity = {"data1": [1.0, 43.9], "data2": [13.0, 1355.57]}
+            data_for_adaptivity = {
+                "data1": [1.0, 43.9],
+                "data2": [13.0, 1355.57],
+            }
 
-        expected_is_sim_active = np.array([False, False, False, True, True])
-        expected_sim_is_associated_to = [4, 3, 3, -2, -2]
+        expected_is_sim_active = np.array([False, False, True, False, True])
+        expected_sim_is_associated_to = [4, 2, -2, 2, -2]
 
         self._configurator.get_adaptivity_hist_param = MagicMock(return_value=0.1)
         self._configurator.get_adaptivity_refining_const = MagicMock(return_value=0.5)
