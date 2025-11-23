@@ -176,10 +176,13 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         - Number of inactive simulations
 
         Global metrics:
-        - Average number of active simulations per rank
-        - Average number of inactive simulations per rank
-        - Maximum number of active simulations on a rank
-        - Maximum number of inactive simulations on a rank
+        - Time window at which the metrics are logged
+        - Global number of active simulations
+        - Global number of inactive simulations
+        - Average number of active simulations
+        - Average number of inactive simulations
+        - Maximum number of active simulations
+        - Maximum number of inactive simulations
 
         Parameters
         ----------
@@ -218,13 +221,17 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             if self._rank == 0:
                 size = self._comm.Get_size()
 
-                self._global_metrics_logger.log_info_rank_zero(
-                    "{}|{}|{}|{}|{}".format(
+                self._global_metrics_logger.log_info(
+                    "{}|{}|{}|{}|{}|{}|{}|{}|{}".format(
                         n,
+                        sum(active_sims_rankwise),
+                        sum(inactive_sims_rankwise),
                         sum(active_sims_rankwise) / size,
                         sum(inactive_sims_rankwise) / size,
                         max(active_sims_rankwise),
+                        active_sims_rankwise.index(max(active_sims_rankwise)),
                         max(inactive_sims_rankwise),
+                        inactive_sims_rankwise.index(max(inactive_sims_rankwise)),
                     )
                 )
 
