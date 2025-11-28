@@ -1,6 +1,7 @@
 """
 Functionality for adaptive initialization and control of micro simulations
 """
+from copy import deepcopy
 import sys
 import os
 import numpy as np
@@ -63,7 +64,7 @@ class AdaptivityCalculator:
         self._is_sim_active = np.array([True] * nsims, dtype=np.bool_)
         self._is_sim_active_ref = self._is_sim_active.copy()
         self._is_sim_to_solve = self._is_sim_active.copy()
-        self._gobal_data_last = None
+        self._global_data_last = None
 
         # sim_is_associated_to: 1D array with values of associated simulations of inactive simulations. Active simulations have None
         # Active sims do not have an associated sim
@@ -188,32 +189,8 @@ class AdaptivityCalculator:
 
             self._similarity_dists += dt * self._similarity_measure(data_vals)
 
-    def _update_history_dists(self, data_last: dict, data: dict) -> None:
-        """
-        Calculate metric which determines if one micro simulations is similar enough to the history.
-
-        Parameters
-        ----------
-        data_last : dict
-            Data from last time step to be used in similarity distance calculation
-        data : dict
-            Data to be used in similarity distance calculation
-        """
-        if data_last is None:
-            self._hist_dists = np.zeros((len(self._is_sim_active)), dtype=float)
-            return
-
-        for name in data.keys():
-            data_vals = np.array(data[name])
-            data_last_vals = np.array(data_last[name])
-            self._hist_dists += np.abs(data_vals - data_last_vals)
-
     def _reset_hist(self) -> None:
-        """
-        Reset history distances to zero.
-        """
-        self._hist_dists = np.zeros((len(self._is_sim_active)), dtype=float)
-        self._gobal_data_last = None
+        self._global_data_last = None
 
     def _get_addition(self) -> float:
         """
@@ -285,7 +262,7 @@ class AdaptivityCalculator:
                         addition = min(
                             self._min_addition,
                             min(
-                                (1 + 1.0 / (min(0.0, min_convergence) - 1.0)) ** alpha,
+                                (1 + 1.0 / (min_convergence - 1.0)) ** alpha,
                                 float(last_line[2])
                                 / self._max_similarity_dist
                                 / self._coarse_const,
@@ -365,18 +342,44 @@ class AdaptivityCalculator:
                     just_deactivated.append(i)
         return is_sim_active, just_deactivated
 
-    def _compute_sims_to_solve(self) -> None:
+    def _compute_sims_to_solve(self, global_data: dict) -> None:
         """
-        Compute which simulations to solve. Simulations to solve are active simulations and inactive simulations which were just deactivated.
+        Compute which simulations to solve.
         """
-        Cr = self._dynamic_refine_const
-        tol_u = max(self._hist_dists[self._is_sim_to_solve]) * Cr
-        if sum(self._is_sim_active) > 1:
-            for i in range(self._is_sim_active.size):
-                if self._is_sim_active[i] and self._hist_dists[i] >= tol_u:
-                    self._hist_dists[i] = 0.0
-                else:
-                    self._is_sim_to_solve[i] = False
+        self._is_sim_to_solve = self._is_sim_active.copy()
+        hist_dist = 0.0
+
+        if self._global_data_last is None:
+            self._global_data_last = deepcopy(global_data)
+            return
+        else:
+            tol_u = (
+                self._dynamic_refine_const
+                * self._max_similarity_dist
+                / sum(self._is_sim_active)
+            )
+            self._logger.log_info("tol_u: {}".format(tol_u))
+            if sum(self._is_sim_active) > 1:
+                for i in range(self._is_sim_active.size):
+                    if self._is_sim_active[i]:
+                        for name in global_data.keys():
+                            hist_dist = np.abs(
+                                self._global_data_last[name][i] - global_data[name][i]
+                            )
+                            self._logger.log_info(
+                                "_global_data_last: {}, global_data: {}, hist_dist: {} for cell {}".format(
+                                    self._global_data_last[name][i],
+                                    global_data[name][i],
+                                    hist_dist,
+                                    i,
+                                )
+                            )
+                            if hist_dist >= tol_u:
+                                self._global_data_last[name][i] = global_data[name][i]
+                            else:
+                                self._is_sim_to_solve[i] = False
+            if sum(self._is_sim_to_solve) == 0:
+                self._is_sim_to_solve = self._is_sim_active.copy()
 
     def _associate_inactive_to_active(self) -> None:
         """

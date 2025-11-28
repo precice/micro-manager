@@ -150,10 +150,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             self._MPI_local_rank == 0
         ):  # Only the first rank in the node updates the similarity distances
             self._update_similarity_dists(dt, global_data_for_adaptivity)
-            self._update_history_dists(
-                self._gobal_data_last, global_data_for_adaptivity
-            )
-            self._gobal_data_last = deepcopy(global_data_for_adaptivity)
 
         self._comm_node.Barrier()  # Wait for the similarity distances to be updated on all ranks of the node
 
@@ -195,7 +191,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             _sim_is_associated_to_dyn,
             _to_be_activated_ids_sta,
         )
-        self._compute_sims_to_solve()
+        self._compute_sims_to_solve(global_data_for_adaptivity)
         self._logger.log_info("sims to solve: {}".format(np.sum(self._is_sim_to_solve)))
 
         self._associate_inactive_to_active()
@@ -416,13 +412,15 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             if not is_sim_active[i]:  # if id is inactive
                 if self._check_for_activation(i, is_sim_active):
                     is_sim_active[i] = True
-                    _sim_is_associated_to_updated[i] = -2 # Active sim cannot have an associated sim
+                    _sim_is_associated_to_updated[
+                        i
+                    ] = -2  # Active sim cannot have an associated sim
                     if self._is_sim_on_this_rank[i] and i not in just_deactivated:
                         to_be_activated_ids.append(i)
         return is_sim_active, _sim_is_associated_to_updated, to_be_activated_ids
 
     def _update_inactive_sims(
-        self,   
+        self,
         micro_sims: list,
         _is_sim_active,
         _sim_is_associated_to_updated,

@@ -843,8 +843,8 @@ class MicroManagerCoupling(MicroManager):
             micro_sims_output = self._micro_sims_output_last
 
         # Solve all active micro simulations
-        for active_id in active_sim_ids_to_solve:  # to use hist
-            # for active_id in active_sim_ids:
+        # for active_id in active_sim_ids_to_solve:  # to use hist
+        for active_id in active_sim_ids:
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[active_id]:
                 # Attempt to solve the micro simulation
