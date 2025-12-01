@@ -22,7 +22,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         global_number_of_sims: int,
         global_ids: list,
         participant,
-        logger,
+        base_logger,
         rank: int,
         comm,
         micro_problem_cls: callable,
@@ -40,12 +40,12 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             List of global IDs of simulations living on this rank.
         participant : object of class Participant
             Object of the class Participant using which the preCICE API is called.
-        logger : object of class Logger
+        base_logger : object of class Logger
             Logger to log to terminal.
         rank : int
             MPI rank.
-        comm : MPI.COMM_WORLD
-            Global communicator of MPI.
+        comm : MPI.Comm
+            Communicator for MPI.
         micro_problem_cls : callable
             Class of micro problem.
         """
@@ -54,12 +54,13 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             global_number_of_sims,
             global_ids,
             participant,
+            base_logger,
             rank,
             comm,
             micro_problem_cls,
         )
 
-        self._base_logger = logger
+        self._base_logger = base_logger
 
         self._threshold = configurator.get_load_balancing_threshold()
 
@@ -100,7 +101,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         micro_sims : list
             List of objects of class MicroProblem, which are the micro simulations
         """
-        avg_active_sims = np.count_nonzero(self._is_sim_active) / self._comm_world.size
+        avg_active_sims = np.count_nonzero(self._is_sim_active) / self._comm.size
 
         active_sims_local_ids = self.get_active_sim_local_ids()
 
@@ -128,8 +129,8 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                 send_sims += 1
 
         # Number of active sims that each rank wants to send and receive
-        global_send_sims = self._comm_world.allgather(send_sims)
-        global_recv_sims = self._comm_world.allgather(recv_sims)
+        global_send_sims = self._comm.allgather(send_sims)
+        global_recv_sims = self._comm.allgather(recv_sims)
 
         n_global_send_sims = sum(global_send_sims)
         n_global_recv_sims = sum(global_recv_sims)
@@ -230,7 +231,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         """
         active_sims_global_ids = list(self.get_active_sim_global_ids())
 
-        rank_wise_global_ids_of_active_sims = self._comm_world.allgather(
+        rank_wise_global_ids_of_active_sims = self._comm.allgather(
             active_sims_global_ids
         )
 
@@ -337,7 +338,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         for gid, send_rank in send_map.items():
             tag = self._create_tag(gid, self._rank, send_rank)
             lid = self._global_ids.index(gid)
-            req = self._comm_world.isend(
+            req = self._comm.isend(
                 (micro_sims[lid].get_state(), gid), dest=send_rank, tag=tag
             )
             send_reqs.append(req)
@@ -349,7 +350,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             bufsize = (
                 1 << 30
             )  # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
-            req = self._comm_world.irecv(bufsize, source=recv_rank, tag=tag)
+            req = self._comm.irecv(bufsize, source=recv_rank, tag=tag)
             recv_reqs.append(req)
 
         # Wait for all non-blocking communication to complete
@@ -390,7 +391,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         for gid, send_rank in send_map.items():
             tag = self._create_tag(gid, self._rank, send_rank)
             lid = self._global_ids.index(gid)
-            req = self._comm_world.isend((gid), dest=send_rank, tag=tag)
+            req = self._comm.isend((gid), dest=send_rank, tag=tag)
             send_reqs.append(req)
 
         # Asynchronous receive operations
@@ -400,7 +401,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             bufsize = (
                 1 << 30
             )  # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
-            req = self._comm_world.irecv(bufsize, source=recv_rank, tag=tag)
+            req = self._comm.irecv(bufsize, source=recv_rank, tag=tag)
             recv_reqs.append(req)
 
         # Wait for all non-blocking communication to complete

@@ -64,7 +64,7 @@ class TestGlobalAdaptivityLB(TestCase):
             global_number_of_sims,
             global_ids,
             participant=MagicMock(),
-            logger=MagicMock(),
+            base_logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
             micro_problem_cls=MicroSimulation,
@@ -114,7 +114,7 @@ class TestGlobalAdaptivityLB(TestCase):
             global_number_of_sims,
             global_ids,
             participant=MagicMock(),
-            logger=MagicMock(),
+            base_logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
             micro_problem_cls=MicroSimulation,
@@ -167,7 +167,7 @@ class TestGlobalAdaptivityLB(TestCase):
             global_number_of_sims,
             global_ids,
             participant=MagicMock(),
-            logger=MagicMock(),
+            base_logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
             micro_problem_cls=MicroSimulation,
@@ -202,9 +202,6 @@ class TestGlobalAdaptivityLB(TestCase):
         actual_global_ids = []
         for sim in micro_sims:
             actual_global_ids.append(sim.get_global_id())
-
-        print(f"Rank {self._rank}: actual_global_ids = {actual_global_ids}")
-        print(f"Rank {self._rank}: expected_global_ids = {expected_global_ids}")
 
         self.assertEqual(actual_global_ids, expected_global_ids)
 
@@ -242,7 +239,7 @@ class TestGlobalAdaptivityLB(TestCase):
             global_number_of_sims,
             global_ids,
             participant=MagicMock(),
-            logger=MagicMock(),
+            base_logger=MagicMock(),
             rank=self._rank,
             comm=self._comm,
             micro_problem_cls=MicroSimulation,

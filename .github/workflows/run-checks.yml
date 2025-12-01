@@ -8,24 +8,12 @@ on:
     branches:
       - "*"
 jobs:
-  check_md:
-    name: Lint markdown files
-    runs-on: ubuntu-latest
-    steps:
-      - name: Check out repository
-        uses: actions/checkout@v5
-      - name: Lint markdown files (markdownlint)
-        uses: articulate/actions-markdownlint@v1
-        with:
-          config: .markdownlint.json
-          files: '.'
-
   check_links:
     name: Check links in markdown files
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
       - name: Check links in markdown files (markdown-link-check)
         uses: gaurav-nelson/github-action-markdown-link-check@v1
         with:
@@ -37,7 +25,7 @@ jobs:
     name: pre-commit checks
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
       - name: Setup python
         uses: actions/setup-python@v6
         with:
