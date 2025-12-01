@@ -50,7 +50,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_problem_cls : callable
             Class of micro problem.
         """
-        super().__init__(configurator, global_number_of_sims, micro_problem_cls, base_logger, rank)
+        super().__init__(
+            configurator, global_number_of_sims, micro_problem_cls, base_logger, rank
+        )
         self._global_number_of_sims = global_number_of_sims
         self._global_ids = global_ids
         self._comm = comm

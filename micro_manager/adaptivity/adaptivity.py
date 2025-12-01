@@ -10,7 +10,9 @@ import numpy as np
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, nsims, micro_problem_cls, base_logger, rank) -> None:
+    def __init__(
+        self, configurator, nsims, micro_problem_cls, base_logger, rank
+    ) -> None:
         """
         Class constructor.
 

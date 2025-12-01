@@ -64,33 +64,30 @@ class ModelAdaptivity:
 
     @staticmethod
     def switching_interface(
-        resolutions: np.ndarray,
-        locations: np.ndarray,
+        resolution: int,
+        location: np.ndarray,
         t: float,
-        inputs: list[dict],
-        prev_output: dict,
-        active: np.ndarray,
-    ) -> np.ndarray:
+        input: dict,
+        prev_output: Optional[dict],
+    ) -> int:
         """
         Switching interface function, use as reference
 
         Parameters
         ----------
-        resolutions : np.array - shape(N,)
-            Array with resolution information as get_sim_class_resolution would return for a sim obj.
-        locations : np.array - shape(N,D)
-            Array with gaussian points for all sims. D is the mesh dimension.
+        resolution : int
+            resolution information as get_sim_class_resolution would return for a sim obj.
+        location : np.array - shape(D)
+            Array with gaussian point for respective sim. D is the mesh dimension.
         t : float
             Current time in simulation.
         inputs : list[dict]
             List of input objects.
         prev_output : [None, dict-like]
-            Contains the outputs of the previous model evaluation.
-        active : np.array - shape(N,)
-            Bool array indicating whether the model is active or not.
+            Contains the output of the previous model evaluation.
 
         """
-        return np.zeros_like(resolutions)
+        return 0
 
     def initialise_solve(self) -> None:
         """
@@ -130,7 +127,7 @@ class ModelAdaptivity:
             Current time in simulation.
         inputs : list[dict]
             List of input objects.
-        prev_output : [None, dict-like]
+        prev_output : [None, list[dict]]
             Contains the outputs of the previous model evaluation.
         sims : list
             List of all simulation objects.
@@ -160,7 +157,7 @@ class ModelAdaptivity:
         locations: np.ndarray,
         t: float,
         inputs: list[dict],
-        prev_output: dict,
+        prev_output: Optional[dict],
         sims: list,
         active_sim_ids: Optional[list[int]] = None,
     ) -> None:
@@ -176,7 +173,7 @@ class ModelAdaptivity:
             Current time in simulation.
         inputs : list[dict]
             List of all input objects.
-        prev_output : [None, dict-like]
+        prev_output : [None, list[dict]]
             Contains the outputs of the previous model evaluation.
         sims : list
             List of all simulation objects.
@@ -186,9 +183,14 @@ class ModelAdaptivity:
         size = len(sims)
         active_sims = self._create_active_mask(active_sim_ids, size)
         resolutions = self._gather_current_resolutions(sims, active_sims)
-        next_switch = self._switching_func(
-            resolutions, locations, t, inputs, prev_output, active_sims
-        )
+        next_switch = np.zeros_like(resolutions)
+        for idx in range(active_sims.shape[0]):
+            if active_sims[idx] != 1:
+                continue
+            prev_out = prev_output[idx] if prev_output is not None else None
+            next_switch[idx] = self._switching_func(
+                resolutions[idx], locations[idx], t, inputs[idx], prev_out
+            )
         self._converged = np.all(next_switch == 0)
 
     def get_num_resolutions(self) -> int:
@@ -303,7 +305,7 @@ class ModelAdaptivity:
             Current time in simulation.
         inputs : list[dict]
             List of all input objects.
-        prev_output : [None, dict-like]
+        prev_output : [None, list[dict]]
             Contains the outputs of the previous model evaluation.
         active_sims : np.array
             Boolean array indicating whether the model is active or not.
@@ -313,9 +315,14 @@ class ModelAdaptivity:
         resolutions : np.array
             Target resolutions.
         """
-        switch_tgt = self._switching_func(
-            cur_res, locations, t, inputs, prev_output, active_sims
-        )
+        switch_tgt = np.zeros_like(cur_res)
+        for idx in range(active_sims.shape[0]):
+            if active_sims[idx] != 1:
+                continue
+            prev_out = prev_output[idx] if prev_output is not None else None
+            switch_tgt[idx] = self._switching_func(
+                cur_res[idx], locations[idx], t, inputs[idx], prev_out
+            )
         res_tgt = cur_res.copy()
         res_tgt[active_sims] = self._clamp_in_range(
             switch_tgt[active_sims] + cur_res[active_sims]

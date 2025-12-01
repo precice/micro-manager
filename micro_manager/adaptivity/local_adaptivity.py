@@ -14,7 +14,14 @@ from ..micro_simulation import create_simulation_class
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(
-        self, configurator, num_sims, participant, base_logger, rank, comm, micro_problem_cls
+        self,
+        configurator,
+        num_sims,
+        participant,
+        base_logger,
+        rank,
+        comm,
+        micro_problem_cls,
     ) -> None:
         """
         Class constructor.
