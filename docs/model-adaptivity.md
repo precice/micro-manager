@@ -9,16 +9,16 @@ summary: Micro Manager can adaptively switch models of micro simulations.
 
 For certain multiscale scenarios, having an adaptivity strategy that groups the micro simulations into active and inactive simulations
 may be insufficient. Alternatively, a hierarchy of micro-scale models, for example, reduced order models (ROMs) can be used.
-Towards this the model adaptivity feature allows for the definition of multiple
-model fidelities and the switching between those at run-time.
+The model adaptivity functionality allows for the definition of multiple
+model fidelities and the switching between them at run-time.
 
 ### Iterative Process
 
-**Without** model adaptivity the call to `micro_sim_solve(micro_sims_input, dt)` within the micro_manager would just
-provide each micro simulation with its input, solve it and return the output.
+**Without** model adaptivity, the Micro Manager calls the `solve(micro_sims_input, dt)` routine of all active simulations
+and copies their output to their closest similar inactive counterparts.
 
-**With** model adaptivity this becomes an iterative process, as a model may not be sufficiently accurate (given the current input).
-Thus, the call to `micro_sim_solve(micro_sims_input, dt)` with model adaptivity results in the following:
+**With** model adaptivity, there is an iterative process, because a model may not be sufficiently accurate (given the current input).
+The call to `solve(micro_sims_input, dt)` leads to the following logic:
 
 ```python
 self._model_adaptivity_controller.initialise_solve()
