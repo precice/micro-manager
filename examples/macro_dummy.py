@@ -12,14 +12,18 @@ def main():
     """
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "adaptivity",
+        "--adaptivity",
         help="the simulation is run with adaptivity",
         type=str,
         choices=["adaptivity", "no_adaptivity"],
+        default="no_adaptivity",
+        required=False,
     )
     args = parser.parse_args()
 
     nv = 25  # number of vertices
+    nr = 5   # verts per row (5x5 grid)
+    elem_size = 25. / (nr - 1) + 1e-12 # 1e-12 to generate the error
 
     n = n_checkpoint = 0
     t = t_checkpoint = 0
@@ -42,9 +46,9 @@ def main():
 
     # Coupling mesh
     coords = np.zeros((nv, interface.get_mesh_dimensions(write_mesh_name)))
-    for x in range(nv):
-        for d in range(interface.get_mesh_dimensions(write_mesh_name)):
-            coords[x, d] = x
+    for row in range(nr):
+        for col in range(int(nv / nr)):
+            coords[row * nr + col, :] = [row * elem_size, max(row, col) * elem_size, col * elem_size]
 
     # Define Gauss points on entire domain as coupling mesh
     vertex_ids = interface.set_mesh_vertices(read_mesh_name, coords)
