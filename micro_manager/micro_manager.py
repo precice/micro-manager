@@ -182,6 +182,10 @@ class MicroManagerCoupling(MicroManager):
                 if (self._adaptivity_in_every_implicit_step or first_iteration) and (
                     n % self._adaptivity_n == 0
                 ):
+                    self._participant.start_profiling_section(
+                        "micro_manager.solve.adaptivity_computation"
+                    )
+
                     self._adaptivity_controller.compute_adaptivity(
                         dt,
                         self._micro_sims,
@@ -201,12 +205,18 @@ class MicroManagerCoupling(MicroManager):
                     for gid in active_sim_gids:
                         self._micro_sims_active_steps[gid] += 1
 
+                    self._participant.stop_last_profiling_section()
+
             if self._is_adaptivity_with_load_balancing:
                 if (
                     n % self._load_balancing_n == 0
                     and (not first_time_window)
                     and first_iteration
                 ):
+                    self._participant.start_profiling_section(
+                        "micro_manager.solve.load_balancing"
+                    )
+
                     self._adaptivity_controller.redistribute_sims(self._micro_sims)
 
                     self._local_number_of_sims = len(self._global_ids_of_local_sims)
@@ -222,6 +232,8 @@ class MicroManagerCoupling(MicroManager):
                     # Reset simulation crash state information after load balancing
                     self._has_sim_crashed = [False] * self._local_number_of_sims
 
+                    self._participant.stop_last_profiling_section()
+
             # Write a checkpoint
             if self._participant.requires_writing_checkpoint():
                 for i in range(self._local_number_of_sims):
@@ -231,7 +243,13 @@ class MicroManagerCoupling(MicroManager):
 
             micro_sims_input = self._read_data_from_precice(dt)
 
+            self._participant.start_profiling_section(
+                "micro_manager.solve.solve_micro_simulations"
+            )
+
             micro_sims_output = micro_sim_solve(micro_sims_input, dt)
+
+            self._participant.stop_last_profiling_section()
 
             if self._is_adaptivity_with_load_balancing:
                 for i in range(self._local_number_of_sims):
@@ -367,6 +385,10 @@ class MicroManagerCoupling(MicroManager):
         - Create all micro simulation objects and initialize them if an initialize() method is available.
         - If required, write initial data to preCICE.
         """
+        self._participant.start_profiling_section(
+            "micro_manager.initialize.direct_access"
+        )
+
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
         if not len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(
             self._macro_mesh_name
@@ -401,8 +423,14 @@ class MicroManagerCoupling(MicroManager):
                 self._macro_mesh_name, self._macro_bounds
             )
 
+        self._participant.stop_last_profiling_section()
+
         # initialize preCICE
         self._participant.initialize()
+
+        self._participant.start_profiling_section(
+            "micro_manager.initialize.initialize_micro_sims"
+        )
 
         (
             self._mesh_vertex_ids,
@@ -503,7 +531,6 @@ class MicroManagerCoupling(MicroManager):
                     LocalAdaptivityCalculator(
                         self._config,
                         self._local_number_of_sims,
-                        self._participant,
                         self._logger,
                         self._rank,
                         self._comm,
@@ -724,6 +751,8 @@ class MicroManagerCoupling(MicroManager):
         ):
             self._micro_sims_have_output = True
 
+        self._participant.stop_last_profiling_section()
+
     # ***************
     # Private methods
     # ***************
@@ -822,10 +851,6 @@ class MicroManagerCoupling(MicroManager):
         """
         micro_sims_output: list[dict] = [None] * self._local_number_of_sims
 
-        self._participant.start_profiling_section(
-            "micro_manager.solve_micro_simulations"
-        )
-
         for count, sim in enumerate(self._micro_sims):
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[count]:
@@ -843,8 +868,6 @@ class MicroManagerCoupling(MicroManager):
                     )
                     self._logger.log_error(error_message)
                     self._has_sim_crashed[count] = True
-
-        self._participant.stop_last_profiling_section()
 
         # If interpolate is off, terminate after crash
         if not self._interpolate_crashed_sims:
@@ -900,10 +923,6 @@ class MicroManagerCoupling(MicroManager):
 
         micro_sims_output = [0] * self._local_number_of_sims
 
-        self._participant.start_profiling_section(
-            "micro_manager.solve_micro_simulations_with_adaptivity"
-        )
-
         # Solve all active micro simulations
         for lid in active_sim_lids:
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
@@ -930,8 +949,6 @@ class MicroManagerCoupling(MicroManager):
                     )
                     self._logger.log_error(error_message)
                     self._has_sim_crashed[lid] = True
-
-        self._participant.stop_last_profiling_section()
 
         # If interpolate is off, terminate after crash
         if not self._interpolate_crashed_sims:
