@@ -13,9 +13,7 @@ from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
-    def __init__(
-        self, configurator, num_sims, participant, base_logger, rank, comm
-    ) -> None:
+    def __init__(self, configurator, num_sims, base_logger, rank, comm) -> None:
         """
         Class constructor.
 
@@ -25,8 +23,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             Object which has getter functions to get parameters defined in the configuration file.
         num_sims : int
             Number of micro simulations.
-        participant : object of class Participant
-            Object of the class Participant using which the preCICE API is called.
         base_logger : object of class Logger
             Logger object to log messages.
         rank : int
@@ -36,8 +32,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         super().__init__(configurator, num_sims, base_logger, rank)
         self._comm = comm
-
-        self._precice_participant = participant
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
@@ -62,10 +56,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             A dictionary containing the names of the data to be used in adaptivity as keys and information on whether
             the data are scalar or vector as values.
         """
-        self._precice_participant.start_profiling_section(
-            "local_adaptivity.compute_adaptivity"
-        )
-
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
                 raise ValueError(
@@ -88,8 +78,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._update_inactive_sims(micro_sims)
 
         self._associate_inactive_to_active()
-
-        self._precice_participant.stop_last_profiling_section()
 
     def get_active_sim_local_ids(self) -> np.ndarray:
         """

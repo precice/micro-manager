@@ -141,7 +141,6 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
             self._number_of_sims,
-            participant=MagicMock(),
             base_logger=MagicMock(),
             rank=0,
             comm=MagicMock(),
@@ -316,7 +315,6 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
             self._number_of_sims,
-            participant=MagicMock(),
             base_logger=MagicMock(),
             rank=0,
             comm=MPI.COMM_WORLD,
