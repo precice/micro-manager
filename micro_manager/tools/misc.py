@@ -5,6 +5,7 @@ A collection of miscellaneous functions that are used in various parts of the co
 from typing import Union, Optional
 import numpy as np
 
+
 def divide_in_parts(number, parts):
     if parts <= 0:
         raise ValueError("Number of parts must be greater than zero")
@@ -15,25 +16,25 @@ def divide_in_parts(number, parts):
 
 
 def clamp_in_range(
-        value: Union[int, np.array],
-        min_value: Union[int, np.array],
-        max_value: Union[int, np.array]
+    value: Union[int, np.array],
+    min_value: Union[int, np.array],
+    max_value: Union[int, np.array],
 ) -> Union[int, np.array]:
     """
-        Clamps value between min_value and max_value inclusively.
+    Clamps value between min_value and max_value inclusively.
 
-        Parameters
-        ----------
-        value : [int, np.array]
-            clamping target
-        min_value : [int, np.array]
-            minimum values
-        max_value : [int, np.array]
-            maximum values
+    Parameters
+    ----------
+    value : [int, np.array]
+        clamping target
+    min_value : [int, np.array]
+        minimum values
+    max_value : [int, np.array]
+        maximum values
 
-        Returns
-        -------
-        value : [int, np.array]
-            clamped results
-        """
+    Returns
+    -------
+    value : [int, np.array]
+        clamped results
+    """
     return np.maximum(min_value, np.minimum(value, max_value))

@@ -223,7 +223,9 @@ class ModelAdaptivity:
         sim_class : class
             associated class
         """
-        return self._model_classes[clamp_in_range(resolution, 0, len(self._model_classes) - 1)]
+        return self._model_classes[
+            clamp_in_range(resolution, 0, len(self._model_classes) - 1)
+        ]
 
     def get_sim_class_resolution(
         self, sim: Union[object, np.ndarray]
@@ -312,7 +314,9 @@ class ModelAdaptivity:
             )
         res_tgt = cur_res.copy()
         res_tgt[active_sims] = clamp_in_range(
-            switch_tgt[active_sims] + cur_res[active_sims], 0, len(self._model_classes) - 1
+            switch_tgt[active_sims] + cur_res[active_sims],
+            0,
+            len(self._model_classes) - 1,
         )
         return res_tgt
 
