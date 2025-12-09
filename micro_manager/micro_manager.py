@@ -30,8 +30,7 @@ from .micro_manager_base import MicroManager
 from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
 from .adaptivity.global_adaptivity_lb import GlobalAdaptivityLBCalculator
-
-from .model_adaptivity.model_adaptivity import ModelAdaptivity
+from .adaptivity.model_adaptivity import ModelAdaptivity
 
 from .domain_decomposition import DomainDecomposer
 
@@ -60,6 +59,7 @@ class MicroManagerCoupling(MicroManager):
         """
         super().__init__(config_file)
 
+        self._log_file = log_file
         self._logger = Logger(__name__, log_file, self._rank)
 
         self._config.set_logger(self._logger)
@@ -503,7 +503,7 @@ class MicroManagerCoupling(MicroManager):
         micro_problem_cls = None
         if self._is_model_adaptivity_on:
             self._model_adaptivity_controller: ModelAdaptivity = ModelAdaptivity(
-                self._config, self._rank
+                self._config, self._rank, self._log_file
             )
             micro_problem_cls = (
                 self._model_adaptivity_controller.get_resolution_sim_class(0)

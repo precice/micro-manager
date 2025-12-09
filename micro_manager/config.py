@@ -460,7 +460,7 @@ class Config:
                     )
         except BaseException:
             self._logger.log_info_rank_zero(
-                "Micro Manager will not use Model Adaptivity."
+                "Micro Manager will not adaptively switch simulation models."
             )
 
         if self._m_adap:

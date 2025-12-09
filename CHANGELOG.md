@@ -2,11 +2,11 @@
 
 ## latest
 
+- Add basic Model-Adaptivity [#198](https://github.com/precice/micro-manager/pull/198)
 - Added global metrics logging to local adaptivity [commit](https://github.com/precice/micro-manager/commit/1be626ff852a2e3e03a59d5859e5be0e1dd5d67a)
 - A rank-based round-robin scheme for deactivating simulations in global adaptivity [#202](https://github.com/precice/micro-manager/pull/202)
 - Added more metrics to adaptivity logging, and some general refactoring [#201](https://github.com/precice/micro-manager/pull/201)
 - Fix bug in load balancing when a rank has exactly as many active simulation as the global average [#200](https://github.com/precice/micro-manager/pull/200)
-- Add basic Model-Adaptivity [#198](https://github.com/precice/micro-manager/pull/198)
 - Use global maximum similarity distance in local adaptivity [#197](https://github.com/precice/micro-manager/pull/197)
 - Log adaptivity metrics at t=0 [#194](https://github.com/precice/micro-manager/pull/194)
 - Use `|` delimiter in CSV files of adaptivity metrics data [#193](https://github.com/precice/micro-manager/pull/193)

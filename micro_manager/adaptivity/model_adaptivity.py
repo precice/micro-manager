@@ -6,13 +6,14 @@ from typing import Union, Optional
 from ..config import Config
 from ..micro_simulation import create_simulation_class
 from micro_manager.tools.logging_wrapper import Logger
+from micro_manager.tools.misc import clamp_in_range
 
 import numpy as np
 import importlib
 
 
 class ModelAdaptivity:
-    def __init__(self, configurator: Config, rank: int) -> None:
+    def __init__(self, configurator: Config, rank: int, log_file: str) -> None:
         """
         Class constructor.
 
@@ -22,8 +23,10 @@ class ModelAdaptivity:
             Object which has getter functions to get parameters defined in the configuration file.
         rank : int
             Rank of the MPI communicator.
+        log_file : str
+            Path to the log file to write to.
         """
-        self._logger = Logger("ModelAdaptivity", "./ModelAdaptivity.log", rank)
+        self._logger = Logger(__name__, log_file, rank)
 
         self._model_files = configurator.get_model_adaptivity_file_names()
         self._switching_func_name = (
@@ -220,7 +223,7 @@ class ModelAdaptivity:
         sim_class : class
             associated class
         """
-        return self._model_classes[self._clamp_in_range(resolution)]
+        return self._model_classes[clamp_in_range(resolution, 0, len(self._model_classes) - 1)]
 
     def get_sim_class_resolution(
         self, sim: Union[object, np.ndarray]
@@ -241,22 +244,6 @@ class ModelAdaptivity:
         return next(
             (idx for idx, cls in enumerate(self._model_classes) if cls == type(sim))
         )
-
-    def _clamp_in_range(self, value: Union[int, np.array]) -> Union[int, np.array]:
-        """
-        Clamps value to valid resolution indices within the sim class list.
-
-        Parameters
-        ----------
-        value : [int, np.array]
-            target resolution
-
-        Returns
-        -------
-        value : [int, np.array]
-            clamped target resolution
-        """
-        return np.maximum(0, np.minimum(value, len(self._model_classes) - 1))
 
     def _gather_current_resolutions(
         self, sims: list[object], active_sims: np.ndarray
@@ -324,8 +311,8 @@ class ModelAdaptivity:
                 cur_res[idx], locations[idx], t, inputs[idx], prev_out
             )
         res_tgt = cur_res.copy()
-        res_tgt[active_sims] = self._clamp_in_range(
-            switch_tgt[active_sims] + cur_res[active_sims]
+        res_tgt[active_sims] = clamp_in_range(
+            switch_tgt[active_sims] + cur_res[active_sims], 0, len(self._model_classes) - 1
         )
         return res_tgt
 
