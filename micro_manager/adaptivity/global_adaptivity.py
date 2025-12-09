@@ -123,10 +123,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         data_for_adaptivity : dict
             Dictionary with keys as names of data to be used in the similarity calculation, and values as the respective data for the micro simulations
         """
-        self._precice_participant.start_profiling_section(
-            "global_adaptivity.compute_adaptivity"
-        )
-
         for name in data_for_adaptivity.keys():
             if name not in self._adaptivity_data_names:
                 raise ValueError(
@@ -168,8 +164,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._update_inactive_sims(micro_sims)
 
         self._associate_inactive_to_active()
-
-        self._precice_participant.stop_last_profiling_section()
 
     def get_active_sim_local_ids(self) -> np.ndarray:
         """
@@ -250,7 +244,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
         """
         self._precice_participant.start_profiling_section(
-            "global_adaptivity.get_full_field_micro_output"
+            "micro_manager.global_adaptivity.get_full_field_micro_output"
         )
 
         micro_sims_output = deepcopy(micro_output)
@@ -482,6 +476,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 else:
                     to_be_activated_map[assoc_active_gid] = [to_be_activated_lid]
 
+        self._precice_participant.start_profiling_section(
+            "micro_manager.global_adaptivity.update_inactive_sims.communication"
+        )
+
         sim_states_and_global_ids = []
         for lid, sim in enumerate(micro_sims):
             if sim == 0:
@@ -507,6 +505,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             if not self._is_sim_active[gid]:
                 lid = self._global_ids.index(gid)
                 micro_sims[lid] = 0
+
+        self._precice_participant.stop_last_profiling_section()
 
         self._sim_is_associated_to = np.copy(_sim_is_associated_to_updated)
 
