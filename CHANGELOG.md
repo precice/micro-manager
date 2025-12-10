@@ -2,6 +2,7 @@
 
 ## latest
 
+- Add functionality to adaptively switch micro-scale models [#198](https://github.com/precice/micro-manager/pull/198)
 - Changed locations of profiling sections in the code base to reflect operations being profiled correctly [#205](https://github.com/precice/micro-manager/pull/205)
 - Added global metrics logging to local adaptivity [commit](https://github.com/precice/micro-manager/commit/1be626ff852a2e3e03a59d5859e5be0e1dd5d67a)
 - A rank-based round-robin scheme for deactivating simulations in global adaptivity [#202](https://github.com/precice/micro-manager/pull/202)

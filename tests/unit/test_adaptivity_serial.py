@@ -93,6 +93,7 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller = AdaptivityCalculator(
             configurator,
             nsims=self._number_of_sims,
+            micro_problem_cls=MicroSimulation,
             base_logger=MagicMock(),
             rank=0,
         )
@@ -144,6 +145,7 @@ class TestLocalAdaptivity(TestCase):
             base_logger=MagicMock(),
             rank=0,
             comm=MagicMock(),
+            micro_problem_cls=MicroSimulation,
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -179,6 +181,7 @@ class TestLocalAdaptivity(TestCase):
             nsims=self._number_of_sims,
             base_logger=MagicMock(),
             rank=0,
+            micro_problem_cls=MicroSimulation,
         )
 
         fake_data = np.array([[1], [2], [3]])
@@ -276,6 +279,7 @@ class TestLocalAdaptivity(TestCase):
             nsims=self._number_of_sims,
             base_logger=MagicMock(),
             rank=0,
+            micro_problem_cls=MicroSimulation,
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -318,6 +322,7 @@ class TestLocalAdaptivity(TestCase):
             base_logger=MagicMock(),
             rank=0,
             comm=MPI.COMM_WORLD,
+            micro_problem_cls=MicroSimulation,
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const

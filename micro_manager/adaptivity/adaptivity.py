@@ -10,7 +10,9 @@ import numpy as np
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, nsims, base_logger, rank) -> None:
+    def __init__(
+        self, configurator, nsims, micro_problem_cls, base_logger, rank
+    ) -> None:
         """
         Class constructor.
 
@@ -20,6 +22,8 @@ class AdaptivityCalculator:
             Object which has getter functions to get parameters defined in the configuration file.
         nsims : int
             Number of micro simulations.
+        micro_problem_cls : callable
+            Class of micro problem.
         base_logger : object of class Logger
             Logger object to log messages.
         rank : int
@@ -32,12 +36,7 @@ class AdaptivityCalculator:
         self._adaptivity_type = configurator.get_adaptivity_type()
         self._adaptivity_output_type = configurator.get_adaptivity_output_type()
 
-        self._micro_problem = getattr(
-            importlib.import_module(
-                configurator.get_micro_file_name(), "MicroSimulation"
-            ),
-            "MicroSimulation",
-        )
+        self._micro_problem_cls = micro_problem_cls
 
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
