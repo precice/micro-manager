@@ -25,6 +25,8 @@ from functools import partial
 
 import precice
 
+from .model_manager import ModelManager
+
 from .micro_manager_base import MicroManager
 
 from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
@@ -152,6 +154,8 @@ class MicroManagerCoupling(MicroManager):
 
         self._t = 0  # global time
         self._n = 0  # sim-step
+
+        self._model_manager = ModelManager()
 
     # **************
     # Public methods
@@ -531,7 +535,7 @@ class MicroManagerCoupling(MicroManager):
         micro_problem_cls = None
         if self._is_model_adaptivity_on:
             self._model_adaptivity_controller: ModelAdaptivity = ModelAdaptivity(
-                self._config, self._rank, self._log_file
+                self._model_manager, self._config, self._rank, self._log_file
             )
             micro_problem_cls = (
                 self._model_adaptivity_controller.get_resolution_sim_class(0)
@@ -546,13 +550,14 @@ class MicroManagerCoupling(MicroManager):
             micro_problem_cls = create_simulation_class(
                 micro_problem_base, "MicroSimulationDefault"
             )
+            self._model_manager.register(micro_problem_cls, self._config.turn_on_micro_stateless())
 
         # Create micro simulation objects
         self._micro_sims = [0] * self._local_number_of_sims
         if not self._lazy_init:
             for i in range(self._local_number_of_sims):
-                self._micro_sims[i] = micro_problem_cls(
-                    self._global_ids_of_local_sims[i]
+                self._micro_sims[i] = self._model_manager.get_instance(
+                    self._global_ids_of_local_sims[i], micro_problem_cls
                 )
 
         if self._is_adaptivity_on:
@@ -565,6 +570,7 @@ class MicroManagerCoupling(MicroManager):
                         self._rank,
                         self._comm,
                         micro_problem_cls,
+                        self._model_manager,
                     )
                 )
             elif self._config.get_adaptivity_type() == "global":
@@ -579,6 +585,7 @@ class MicroManagerCoupling(MicroManager):
                             self._rank,
                             self._comm,
                             micro_problem_cls,
+                            self._model_manager,
                         )
                     )
                 else:
@@ -592,6 +599,7 @@ class MicroManagerCoupling(MicroManager):
                             self._rank,
                             self._comm,
                             micro_problem_cls,
+                            self._model_manager,
                         )
                     )
 
@@ -633,8 +641,8 @@ class MicroManagerCoupling(MicroManager):
                     return
 
                 for i in active_sim_lids:
-                    self._micro_sims[i] = micro_problem_cls(
-                        self._global_ids_of_local_sims[i]
+                    self._micro_sims[i] =  self._model_manager.get_instance(
+                        self._global_ids_of_local_sims[i], micro_problem_cls
                     )
 
                 first_id = active_sim_lids[0]  # First active simulation ID

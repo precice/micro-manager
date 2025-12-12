@@ -7,13 +7,14 @@ from ..config import Config
 from ..micro_simulation import create_simulation_class
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.misc import clamp_in_range
+from micro_manager.model_manager import ModelManager
 
 import numpy as np
 import importlib
 
 
 class ModelAdaptivity:
-    def __init__(self, configurator: Config, rank: int, log_file: str) -> None:
+    def __init__(self, model_manager: ModelManager, configurator: Config, rank: int, log_file: str) -> None:
         """
         Class constructor.
 
@@ -28,12 +29,15 @@ class ModelAdaptivity:
         """
         self._logger = Logger(__name__, log_file, rank)
 
+        self._model_manager = model_manager
         self._model_files = configurator.get_model_adaptivity_file_names()
         self._switching_func_name = (
             configurator.get_model_adaptivity_switching_function()
         )
 
+        stateless_flags = configurator.get_model_adaptivity_micro_stateless()
         self._model_classes = []
+        pos = 0
         CLASS_NAME = "MicroSimulation"
         for model_file in self._model_files:
             try:
@@ -42,6 +46,8 @@ class ModelAdaptivity:
                     CLASS_NAME,
                 )
                 self._model_classes.append(create_simulation_class(model))
+                self._model_manager.register(self._model_classes[pos], stateless_flags[pos])
+                pos += 1
             except Exception as e:
                 self._logger.log_info_rank_zero(
                     f"Failed to load model class with error: {e}"
@@ -152,7 +158,7 @@ class ModelAdaptivity:
 
             sim_state = sims[idx].get_state()
             sim_id = sims[idx].get_global_id()
-            sims[idx] = self.get_resolution_sim_class(tgt_res[idx])(sim_id)
+            sims[idx] = self._model_manager.get_instance(sim_id, self.get_resolution_sim_class(tgt_res[idx]))
             sims[idx].set_state(sim_state)
 
     def check_convergence(
