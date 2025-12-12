@@ -22,6 +22,10 @@ class ModelWrapper:
     def set_state(self, state):
         self._backend.set_state(state)
 
+    @property
+    def __class__(self):
+        return self._backend.__class__
+
 class ModelManager:
     def __init__(self):
         self._registered_classes = []
