@@ -118,10 +118,14 @@ class Config:
 
         try:
             self._micro_stateless = self._data["micro_stateless"]
-            self._logger.log_info_rank_zero("Only creating one full instance of Micro Model.")
+            self._logger.log_info_rank_zero(
+                "Only creating one full instance of Micro Model."
+            )
         except:
             self._micro_stateless = False
-            self._logger.log_info_rank_zero("Creating full instance of Micro Model per mesh vertex.")
+            self._logger.log_info_rank_zero(
+                "Creating full instance of Micro Model per mesh vertex."
+            )
 
         self._logger.log_info_rank_zero(
             "Micro simulation file name: " + self._data["micro_file_name"]
@@ -491,18 +495,26 @@ class Config:
                 "model_adaptivity_settings"
             ]["switching_function"]
 
-            if self._data["simulation_params"]["model_adaptivity_settings"]["micro_stateless"]:
+            if self._data["simulation_params"]["model_adaptivity_settings"][
+                "micro_stateless"
+            ]:
                 self._m_adap_micro_stateless = self._data["simulation_params"][
                     "model_adaptivity_settings"
                 ]["micro_stateless"]
             else:
-                self._m_adap_micro_stateless = [False] * len(self._m_adap_micro_file_names)
+                self._m_adap_micro_stateless = [False] * len(
+                    self._m_adap_micro_file_names
+                )
 
             for i in range(len(self._m_adap_micro_file_names)):
                 if self._m_adap_micro_stateless[i]:
-                    self._logger.log_info_rank_zero(f"Only creating one full instance of Micro Model {i}.")
+                    self._logger.log_info_rank_zero(
+                        f"Only creating one full instance of Micro Model {i}."
+                    )
                 else:
-                    self._logger.log_info_rank_zero(f"Creating full instance of Micro Model {i} per mesh vertex.")
+                    self._logger.log_info_rank_zero(
+                        f"Creating full instance of Micro Model {i} per mesh vertex."
+                    )
 
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"]:

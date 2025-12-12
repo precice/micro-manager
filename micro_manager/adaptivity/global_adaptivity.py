@@ -54,7 +54,12 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Handles instantiation of the micro simulation.
         """
         super().__init__(
-            configurator, global_number_of_sims, micro_problem_cls, model_manager, base_logger, rank
+            configurator,
+            global_number_of_sims,
+            micro_problem_cls,
+            model_manager,
+            base_logger,
+            rank,
         )
         self._global_number_of_sims = global_number_of_sims
         self._global_ids = global_ids
@@ -463,7 +468,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         # Only handle activation of simulations on this rank
         for gid in to_be_activated_gids:
             to_be_activated_lid = self._global_ids.index(gid)
-            micro_sims[to_be_activated_lid] = self._model_manager.get_instance(gid,  self._micro_problem_cls)
+            micro_sims[to_be_activated_lid] = self._model_manager.get_instance(
+                gid, self._micro_problem_cls
+            )
             assoc_active_gid = self._sim_is_associated_to[gid]
 
             if self._is_sim_on_this_rank[
@@ -500,7 +507,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             local_ids = to_be_activated_map[gid]
             for lid in local_ids:
                 # Create the micro simulation object and set its state
-                micro_sims[lid] = self._model_manager.get_instance(self._global_ids[lid],  self._micro_problem_cls)
+                micro_sims[lid] = self._model_manager.get_instance(
+                    self._global_ids[lid], self._micro_problem_cls
+                )
                 micro_sims[lid].set_state(state)
 
         # Delete the micro simulation object if it is inactive

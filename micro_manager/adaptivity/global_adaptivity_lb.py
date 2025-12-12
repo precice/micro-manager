@@ -370,7 +370,9 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         # Create simulations and set them to the received states
         for req in recv_reqs:
             output, gid = req.wait()
-            micro_sims.append(self._model_manager.get_instance(gid,  self._micro_problem_cls))
+            micro_sims.append(
+                self._model_manager.get_instance(gid, self._micro_problem_cls)
+            )
             micro_sims[-1].set_state(output)
             self._global_ids.append(gid)
             self._is_sim_on_this_rank[gid] = True

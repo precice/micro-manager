@@ -43,7 +43,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         model_manager : object of class ModelManager
             Handles instantiation of micro simulation.
         """
-        super().__init__(configurator, num_sims, micro_problem_cls, model_manager, base_logger, rank)
+        super().__init__(
+            configurator, num_sims, micro_problem_cls, model_manager, base_logger, rank
+        )
         self._comm = comm
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
@@ -296,7 +298,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         # Update the set of inactive micro sims
         for i in to_be_activated_ids:
             associated_active_id = self._sim_is_associated_to[i]
-            micro_sims[i] = self._model_manager.get_instance(i,  self._micro_problem_cls)
+            micro_sims[i] = self._model_manager.get_instance(i, self._micro_problem_cls)
             micro_sims[i].set_state(micro_sims[associated_active_id].get_state())
             self._sim_is_associated_to[
                 i

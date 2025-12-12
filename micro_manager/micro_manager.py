@@ -550,7 +550,9 @@ class MicroManagerCoupling(MicroManager):
             micro_problem_cls = create_simulation_class(
                 micro_problem_base, "MicroSimulationDefault"
             )
-            self._model_manager.register(micro_problem_cls, self._config.turn_on_micro_stateless())
+            self._model_manager.register(
+                micro_problem_cls, self._config.turn_on_micro_stateless()
+            )
 
         # Create micro simulation objects
         self._micro_sims = [0] * self._local_number_of_sims
@@ -641,7 +643,7 @@ class MicroManagerCoupling(MicroManager):
                     return
 
                 for i in active_sim_lids:
-                    self._micro_sims[i] =  self._model_manager.get_instance(
+                    self._micro_sims[i] = self._model_manager.get_instance(
                         self._global_ids_of_local_sims[i], micro_problem_cls
                     )
 

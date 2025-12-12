@@ -1,14 +1,16 @@
-
 class ModelWrapper:
     """
     Stateless Model Wrapper
     """
+
     def __init__(self, global_id, backend, attach_init, attach_output):
         self._global_id = global_id
         self._backend = backend
 
-        if attach_init: self.initialize = backend.initialize
-        if attach_output: self.output = backend.output
+        if attach_init:
+            self.initialize = backend.initialize
+        if attach_output:
+            self.output = backend.output
 
     def get_global_id(self) -> int:
         return self._global_id
@@ -26,6 +28,7 @@ class ModelWrapper:
     def __class__(self):
         return self._backend.__class__
 
+
 class ModelManager:
     def __init__(self):
         self._registered_classes = []
@@ -35,19 +38,25 @@ class ModelManager:
         self._has_output_map = dict()
 
     def register(self, micro_sim_cls, stateless):
-        if micro_sim_cls in self._registered_classes: return
+        if micro_sim_cls in self._registered_classes:
+            return
 
         self._registered_classes.append(micro_sim_cls)
         self._stateless_map[micro_sim_cls] = stateless
 
-        if stateless: self._backend_map[micro_sim_cls] = micro_sim_cls(-1)
+        if stateless:
+            self._backend_map[micro_sim_cls] = micro_sim_cls(-1)
 
         self._has_init_map[micro_sim_cls] = False
-        if hasattr(micro_sim_cls, "initialize") and callable(getattr(micro_sim_cls, "initialize")):
+        if hasattr(micro_sim_cls, "initialize") and callable(
+            getattr(micro_sim_cls, "initialize")
+        ):
             self._has_init_map[micro_sim_cls] = True
 
         self._has_output_map[micro_sim_cls] = False
-        if hasattr(micro_sim_cls, "output") and callable(getattr(micro_sim_cls, "output")):
+        if hasattr(micro_sim_cls, "output") and callable(
+            getattr(micro_sim_cls, "output")
+        ):
             self._has_output_map[micro_sim_cls] = True
 
     def get_instance(self, gid, micro_sim_cls):
@@ -59,7 +68,7 @@ class ModelManager:
                 gid,
                 self._backend_map[micro_sim_cls],
                 self._has_init_map[micro_sim_cls],
-                self._has_output_map[micro_sim_cls]
+                self._has_output_map[micro_sim_cls],
             )
         else:
             return micro_sim_cls(gid)

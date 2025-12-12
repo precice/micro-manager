@@ -14,7 +14,13 @@ import importlib
 
 
 class ModelAdaptivity:
-    def __init__(self, model_manager: ModelManager, configurator: Config, rank: int, log_file: str) -> None:
+    def __init__(
+        self,
+        model_manager: ModelManager,
+        configurator: Config,
+        rank: int,
+        log_file: str,
+    ) -> None:
         """
         Class constructor.
 
@@ -46,7 +52,9 @@ class ModelAdaptivity:
                     CLASS_NAME,
                 )
                 self._model_classes.append(create_simulation_class(model))
-                self._model_manager.register(self._model_classes[pos], stateless_flags[pos])
+                self._model_manager.register(
+                    self._model_classes[pos], stateless_flags[pos]
+                )
                 pos += 1
             except Exception as e:
                 self._logger.log_info_rank_zero(
@@ -158,7 +166,9 @@ class ModelAdaptivity:
 
             sim_state = sims[idx].get_state()
             sim_id = sims[idx].get_global_id()
-            sims[idx] = self._model_manager.get_instance(sim_id, self.get_resolution_sim_class(tgt_res[idx]))
+            sims[idx] = self._model_manager.get_instance(
+                sim_id, self.get_resolution_sim_class(tgt_res[idx])
+            )
             sims[idx].set_state(sim_state)
 
     def check_convergence(
