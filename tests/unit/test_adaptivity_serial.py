@@ -26,6 +26,11 @@ class MicroSimulation:
         pass
 
 
+class ModelManager:
+    def get_instance(self, gid, micro_problem_cls):
+        return micro_problem_cls(gid)
+
+
 class TestLocalAdaptivity(TestCase):
     def setUp(self):
         self._number_of_sims = 5
@@ -94,6 +99,7 @@ class TestLocalAdaptivity(TestCase):
             configurator,
             nsims=self._number_of_sims,
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
             base_logger=MagicMock(),
             rank=0,
         )
@@ -146,6 +152,7 @@ class TestLocalAdaptivity(TestCase):
             rank=0,
             comm=MagicMock(),
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -182,6 +189,7 @@ class TestLocalAdaptivity(TestCase):
             base_logger=MagicMock(),
             rank=0,
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
 
         fake_data = np.array([[1], [2], [3]])
@@ -280,6 +288,7 @@ class TestLocalAdaptivity(TestCase):
             base_logger=MagicMock(),
             rank=0,
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -323,6 +332,7 @@ class TestLocalAdaptivity(TestCase):
             rank=0,
             comm=MPI.COMM_WORLD,
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const

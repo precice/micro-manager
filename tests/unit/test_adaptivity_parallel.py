@@ -22,6 +22,11 @@ class MicroSimulation:
         return self._state.copy()
 
 
+class ModelManager:
+    def get_instance(self, gid, micro_problem_cls):
+        return micro_problem_cls(gid)
+
+
 class TestGlobalAdaptivity(TestCase):
     def setUp(self):
         self._comm = MPI.COMM_WORLD
@@ -60,6 +65,7 @@ class TestGlobalAdaptivity(TestCase):
             rank=self._rank,
             comm=self._comm,
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -134,6 +140,7 @@ class TestGlobalAdaptivity(TestCase):
             rank=self._rank,
             comm=self._comm,
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
 
         adaptivity_controller._adaptivity_data_names = ["data1", "data2"]
@@ -189,6 +196,7 @@ class TestGlobalAdaptivity(TestCase):
             rank=self._rank,
             comm=self._comm,
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -228,6 +236,7 @@ class TestGlobalAdaptivity(TestCase):
             rank=self._rank,
             comm=self._comm,
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
 
         actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
