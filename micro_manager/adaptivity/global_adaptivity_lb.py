@@ -5,14 +5,11 @@ on each rank is done, along with dynamic load balancing.
 
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
-import importlib
 import numpy as np
 from mpi4py import MPI
 import math
 
 from .global_adaptivity import GlobalAdaptivityCalculator
-
-from micro_manager.micro_simulation import create_simulation_class
 
 
 class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):

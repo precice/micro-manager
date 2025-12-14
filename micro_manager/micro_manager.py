@@ -179,7 +179,6 @@ class MicroManagerCoupling(MicroManager):
         dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
         first_iteration = True
-        first_time_window = True
 
         if self._is_adaptivity_on:
             # Log initial adaptivity metrics
@@ -219,11 +218,7 @@ class MicroManagerCoupling(MicroManager):
                     self._participant.stop_last_profiling_section()
 
             if self._is_adaptivity_with_load_balancing:
-                if (
-                    self._n % self._load_balancing_n == 0
-                    and (not first_time_window)
-                    and first_iteration
-                ):
+                if self._n % self._load_balancing_n == 0 and first_iteration:
                     self._participant.start_profiling_section(
                         "micro_manager.solve.load_balancing"
                     )
@@ -293,8 +288,6 @@ class MicroManagerCoupling(MicroManager):
 
             self._participant.advance(dt)
 
-            first_time_window = False
-
             # Revert micro simulations to their last checkpoints if required
             if self._participant.requires_reading_checkpoint():
                 for i in range(self._local_number_of_sims):
@@ -327,9 +320,6 @@ class MicroManagerCoupling(MicroManager):
 
                 self._logger.log_info_rank_zero(
                     "Time window {} converged.".format(self._n)
-                )
-                first_iteration = (
-                    True  # Reset first iteration flag for the next time window
                 )
 
                 # Reset first iteration flag for the next time window
