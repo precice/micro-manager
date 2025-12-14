@@ -9,7 +9,6 @@ from copy import deepcopy
 from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
-from ..micro_simulation import create_simulation_class
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
