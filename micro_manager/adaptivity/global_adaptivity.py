@@ -362,6 +362,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     # Remove the picked global id from the rank list
                     gid_list.pop(0)
 
+        # for gid_list in active_gids_all_ranks:
+        #     for gid in gid_list:
+        #         active_gids_to_iterate.append(gid)
+
         # Update the set of active micro sims
         active_gids_to_check = active_gids_to_iterate.copy()
         for gid in active_gids_to_iterate:
