@@ -48,41 +48,25 @@ class DomainDecomposer:
 
         dims = len(ranks_per_axis)
 
-        rank_in_axis = None
         if dims == 3:
-            for x in range(ranks_per_axis[0]):
+            for z in range(ranks_per_axis[2]):
                 for y in range(ranks_per_axis[1]):
-                    for z in range(ranks_per_axis[2]):
+                    for x in range(ranks_per_axis[0]):
                         n = (
-                            y
-                            + z * ranks_per_axis[1]
-                            + x * ranks_per_axis[1] * ranks_per_axis[2]
+                            x
+                            + y * ranks_per_axis[0]
+                            + z * ranks_per_axis[0] * ranks_per_axis[1]
                         )
                         if n == self._rank:
                             rank_in_axis = [x, y, z]
-                            break
-                    if rank_in_axis is not None:
-                        break
-                if rank_in_axis is not None:
-                    break
         elif dims == 2:
-            for x in range(ranks_per_axis[0]):
-                for y in range(ranks_per_axis[1]):
+            for y in range(ranks_per_axis[1]):
+                for x in range(ranks_per_axis[0]):
                     n = x + y * ranks_per_axis[0]
                     if n == self._rank:
                         rank_in_axis = [x, y]
-                        break
-                if rank_in_axis is not None:
-                    break
         else:
-            raise ValueError(
-                f"Unsupported number of dimensions: {dims}. Only 2D and 3D domains are supported."
-            )
-
-        if rank_in_axis is None:
-            raise RuntimeError(
-                f"Could not determine rank position in domain decomposition for rank {self._rank}"
-            )
+            raise ValueError("Domain decomposition only supports 2D and 3D cases.")
 
         dx = []
         for d in range(dims):
@@ -92,8 +76,12 @@ class DomainDecomposer:
 
         mesh_bounds = []
         for d in range(dims):
-            mesh_bounds.append(macro_bounds[d * 2] + rank_in_axis[d] * dx[d])
-            mesh_bounds.append(macro_bounds[d * 2] + (rank_in_axis[d] + 1) * dx[d])
+            if rank_in_axis[d] > 0:
+                mesh_bounds.append(macro_bounds[d * 2] + rank_in_axis[d] * dx[d])
+                mesh_bounds.append(macro_bounds[d * 2] + (rank_in_axis[d] + 1) * dx[d])
+            elif rank_in_axis[d] == 0:
+                mesh_bounds.append(macro_bounds[d * 2])
+                mesh_bounds.append(macro_bounds[d * 2] + dx[d])
 
             # Adjust the maximum bound to be exactly the domain size
             if rank_in_axis[d] + 1 == ranks_per_axis[d]:
