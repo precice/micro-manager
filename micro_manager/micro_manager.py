@@ -36,7 +36,6 @@ from .domain_decomposition import DomainDecomposer
 
 from .micro_simulation import create_simulation_class
 from .tools.logging_wrapper import Logger
-from .tools.misc import divide_in_parts
 
 
 try:
@@ -210,12 +209,6 @@ class MicroManagerCoupling(MicroManager):
 
                     active_sim_gids = (
                         self._adaptivity_controller.get_active_sim_global_ids()
-                    )
-
-                    self._logger.log_info(
-                        "time-window {} - Active simulations IDs: {}".format(
-                            self._n, active_sim_gids
-                        )
                     )
 
                     for gid in active_sim_gids:
@@ -424,7 +417,7 @@ class MicroManagerCoupling(MicroManager):
             )
 
         if self._is_parallel and not self._is_adaptivity_with_load_balancing:
-            coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(
+            coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds(
                 self._macro_bounds, self._ranks_per_axis
             )
         else:  # When serial or load balancing, the whole macro domain is assigned to one/each rank
@@ -448,25 +441,14 @@ class MicroManagerCoupling(MicroManager):
             self._mesh_vertex_coords,
         ) = self._participant.get_mesh_vertex_ids_and_coordinates(self._macro_mesh_name)
 
-        self._logger.log_info(
-            "preCICE returned the vertex IDs: {}".format(self._mesh_vertex_ids)
-        )
-        self._logger.log_info(
-            "preCICE returned the vertex coordinates: {}".format(
-                self._mesh_vertex_coords
-            )
-        )
-
         if self._mesh_vertex_coords.size == 0:
             raise Exception("Macro mesh has no vertices.")
 
         if self._is_adaptivity_with_load_balancing:
-            # total_number_of_sims, _ = self._mesh_vertex_coords.shape
-            # cpu_wise_number_of_sims = divide_in_parts(total_number_of_sims, self._size)
             (
                 self._local_number_of_sims,
                 local_macro_coords,
-            ) = domain_decomposer.decompose_micro_simulations(
+            ) = domain_decomposer.get_local_sims_and_macro_coords(
                 self._macro_bounds, self._ranks_per_axis, self._mesh_vertex_coords
             )
         else:
@@ -527,17 +509,21 @@ class MicroManagerCoupling(MicroManager):
         self._global_ids_of_local_sims = []  # DECLARATION
 
         if self._is_adaptivity_with_load_balancing:
+            # Create a set of global coordinate indices for faster lookup
+            coord_to_index = {
+                tuple(coord): i for i, coord in enumerate(self._mesh_vertex_coords)
+            }
+
+            # Set global IDs based on the coordinate ordering in preCICE to be consistent with the scenario without load balancing
             for coords in local_macro_coords:
-                # Find the index of coords in the global mesh vertex coords
-                for i, global_coord in enumerate(self._mesh_vertex_coords):
-                    if np.allclose(coords, global_coord):
-                        self._global_ids_of_local_sims.append(i)
-                        break
+                coord_tuple = tuple(coords)
+                self._global_ids_of_local_sims.append(coord_to_index[coord_tuple])
         else:
             sim_id = np.sum(nms_all_ranks[: self._rank])
             for i in range(self._local_number_of_sims):
                 self._global_ids_of_local_sims.append(sim_id)
                 sim_id += 1
+
         # Setup for simulation crashes
         self._has_sim_crashed = [False] * self._local_number_of_sims
         if self._interpolate_crashed_sims:
@@ -826,10 +812,6 @@ class MicroManagerCoupling(MicroManager):
         else:
             read_vertex_ids = self._mesh_vertex_ids
 
-        self._logger.log_info(
-            "Reading data from preCICE for vertex IDs: {}".format(read_vertex_ids)
-        )
-
         for name in self._read_data_names:
             read_data[name] = []
 
@@ -845,8 +827,6 @@ class MicroManagerCoupling(MicroManager):
             if self._is_adaptivity_on:
                 if name in self._adaptivity_macro_data_names:
                     self._data_for_adaptivity[name] = read_data[name]
-
-        self._logger.log_info("Data read from preCICE: {}".format(read_data))
 
         return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
 

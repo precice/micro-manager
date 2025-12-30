@@ -30,7 +30,7 @@ class TestDomainDecomposition(TestCase):
         ranks_per_axis = [2, 2]
         domain_decomposer = DomainDecomposer(rank, size)
         domain_decomposer._dims = 2
-        mesh_bounds = domain_decomposer.decompose_macro_domain(
+        mesh_bounds = domain_decomposer.get_local_mesh_bounds(
             self._macro_bounds_2d, ranks_per_axis
         )
 
@@ -45,7 +45,7 @@ class TestDomainDecomposition(TestCase):
         ranks_per_axis = [2, 2, 1]
         domain_decomposer = DomainDecomposer(rank, size)
         domain_decomposer._dims = 3
-        mesh_bounds = domain_decomposer.decompose_macro_domain(
+        mesh_bounds = domain_decomposer.get_local_mesh_bounds(
             self._macro_bounds_3d, ranks_per_axis
         )
 
@@ -60,7 +60,7 @@ class TestDomainDecomposition(TestCase):
         ranks_per_axis = [1, 2, 5]
         domain_decomposer = DomainDecomposer(rank, size)
         domain_decomposer._dims = 3
-        mesh_bounds = domain_decomposer.decompose_macro_domain(
+        mesh_bounds = domain_decomposer.get_local_mesh_bounds(
             self._macro_bounds_3d, ranks_per_axis
         )
 
@@ -75,7 +75,7 @@ class TestDomainDecomposition(TestCase):
         ranks_per_axis = [4, 1, 8]
         domain_decomposer = DomainDecomposer(rank, size)
         domain_decomposer._dims = 3
-        mesh_bounds = domain_decomposer.decompose_macro_domain(
+        mesh_bounds = domain_decomposer.get_local_mesh_bounds(
             self._macro_bounds_3d, ranks_per_axis
         )
 
@@ -90,7 +90,7 @@ class TestDomainDecomposition(TestCase):
         ranks_per_axis = [8, 2, 1]
         domain_decomposer = DomainDecomposer(rank, size)
         domain_decomposer._dims = 3
-        mesh_bounds = domain_decomposer.decompose_macro_domain(
+        mesh_bounds = domain_decomposer.get_local_mesh_bounds(
             self._macro_bounds_3d, ranks_per_axis
         )
 

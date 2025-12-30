@@ -20,7 +20,7 @@ class DomainDecomposer:
         self._rank = rank
         self._size = size
 
-    def decompose_macro_domain(self, macro_bounds: list, ranks_per_axis: list) -> list:
+    def get_local_mesh_bounds(self, macro_bounds: list, ranks_per_axis: list) -> list:
         """
         Decompose the macro domain equally among all ranks, if the Micro Manager is run in parallel.
 
@@ -101,7 +101,7 @@ class DomainDecomposer:
 
         return mesh_bounds
 
-    def decompose_micro_simulations(
+    def get_local_sims_and_macro_coords(
         self, macro_bounds: list, ranks_per_axis: list, macro_coords: np.ndarray
     ) -> tuple[int, list]:
         """
@@ -127,7 +127,7 @@ class DomainDecomposer:
         macro_coords_on_this_rank : list
             List of macro coordinates assigned to this rank.
         """
-        local_mesh_bounds = self.decompose_macro_domain(macro_bounds, ranks_per_axis)
+        local_mesh_bounds = self.get_local_mesh_bounds(macro_bounds, ranks_per_axis)
 
         macro_coords_on_this_rank = []
 
