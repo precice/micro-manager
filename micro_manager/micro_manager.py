@@ -36,7 +36,6 @@ from .domain_decomposition import DomainDecomposer
 
 from .micro_simulation import create_simulation_class
 from .tools.logging_wrapper import Logger
-from .tools.misc import divide_in_parts
 
 
 try:
@@ -416,20 +415,17 @@ class MicroManagerCoupling(MicroManager):
                 self._rank,
                 self._size,
             )
-            coupling_mesh_bounds = domain_decomposer.decompose_macro_domain(
+
+        if self._is_parallel and not self._is_adaptivity_with_load_balancing:
+            coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds(
                 self._macro_bounds, self._ranks_per_axis
             )
-        else:
+        else:  # When serial or load balancing, the whole macro domain is assigned to one/each rank
             coupling_mesh_bounds = self._macro_bounds
 
-        if not self._is_adaptivity_with_load_balancing:
-            self._participant.set_mesh_access_region(
-                self._macro_mesh_name, coupling_mesh_bounds
-            )
-        else:  # When load balancing is on, each rank accesses the complete macro mesh
-            self._participant.set_mesh_access_region(
-                self._macro_mesh_name, self._macro_bounds
-            )
+        self._participant.set_mesh_access_region(
+            self._macro_mesh_name, coupling_mesh_bounds
+        )
 
         self._participant.stop_last_profiling_section()
 
@@ -448,12 +444,15 @@ class MicroManagerCoupling(MicroManager):
         if self._mesh_vertex_coords.size == 0:
             raise Exception("Macro mesh has no vertices.")
 
-        if not self._is_adaptivity_with_load_balancing:
+        if self._is_adaptivity_with_load_balancing:
+            (
+                self._local_number_of_sims,
+                local_macro_coords,
+            ) = domain_decomposer.get_local_sims_and_macro_coords(
+                self._macro_bounds, self._ranks_per_axis, self._mesh_vertex_coords
+            )
+        else:
             self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
-        else:  # When load balancing, each rank needs to manually determine how many micro simulations it starts with
-            total_number_of_sims, _ = self._mesh_vertex_coords.shape
-            cpu_wise_number_of_sims = divide_in_parts(total_number_of_sims, self._size)
-            self._local_number_of_sims = cpu_wise_number_of_sims[self._rank]
 
         if self._local_number_of_sims == 0:
             if self._is_parallel:
@@ -506,12 +505,24 @@ class MicroManagerCoupling(MicroManager):
             for name in self._adaptivity_data_names:
                 self._data_for_adaptivity[name] = [0] * self._local_number_of_sims
 
-        # Create lists of local and global IDs
-        sim_id = np.sum(nms_all_ranks[: self._rank])
+        # Create lists of global IDs
         self._global_ids_of_local_sims = []  # DECLARATION
-        for i in range(self._local_number_of_sims):
-            self._global_ids_of_local_sims.append(sim_id)
-            sim_id += 1
+
+        if self._is_adaptivity_with_load_balancing:
+            # Create a set of global coordinate indices for faster lookup
+            coord_to_index = {
+                tuple(coord): i for i, coord in enumerate(self._mesh_vertex_coords)
+            }
+
+            # Set global IDs based on the coordinate ordering in preCICE to be consistent with the scenario without load balancing
+            for coords in local_macro_coords:
+                coord_tuple = tuple(coords)
+                self._global_ids_of_local_sims.append(coord_to_index[coord_tuple])
+        else:
+            sim_id = np.sum(nms_all_ranks[: self._rank])
+            for i in range(self._local_number_of_sims):
+                self._global_ids_of_local_sims.append(sim_id)
+                sim_id += 1
 
         # Setup for simulation crashes
         self._has_sim_crashed = [False] * self._local_number_of_sims
