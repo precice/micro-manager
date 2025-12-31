@@ -21,7 +21,7 @@ pip install h5py
 
 ## Preparation
 
-Prepare your micro simulation for the Micro Manager snapshot computation by following the instructions in the [preparation guide](tooling-micro-manager-preparation.html).
+Prepare your micro simulation for the Micro Manager snapshot computation by following the instructions in the [preparation guide](tooling-micro-manager-prepare-micro-simulation.html).
 
 Note: The `initialize()` method is not used for the snapshot computation.
 
