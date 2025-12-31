@@ -65,6 +65,7 @@ class MicroManagerCoupling(MicroManager):
         self._config.read_json_micro_manager()
 
         self._memory_usage_output_type = self._config.get_memory_usage_output_type()
+
         self._memory_usage_output_n = self._config.get_memory_usage_output_n()
 
         self._output_dir = self._config.get_output_dir()
@@ -138,12 +139,7 @@ class MicroManagerCoupling(MicroManager):
 
         self._adaptivity_n = self._config.get_adaptivity_n()
 
-        adaptivity_output_type = self._config.get_adaptivity_output_type()
-
-        if adaptivity_output_type == "":
-            self._adaptivity_output_required = False
-        else:
-            self._adaptivity_output_required = True
+        self._adaptivity_output_type = self._config.get_adaptivity_output_type()
 
         self._adaptivity_output_n = self._config.get_adaptivity_output_n()
 
@@ -316,7 +312,7 @@ class MicroManagerCoupling(MicroManager):
 
                 if (
                     self._is_adaptivity_on
-                    and self._adaptivity_output_required
+                    and self._adaptivity_output_type
                     and (self._n % self._adaptivity_output_n == 0)
                 ):
                     self._adaptivity_controller.log_metrics(self._n)
@@ -345,7 +341,7 @@ class MicroManagerCoupling(MicroManager):
         # Final adaptivity metrics logging at the end of the simulation if not already logged at the end of the last time window
         if (
             self._is_adaptivity_on
-            and self._adaptivity_output_required
+            and self._adaptivity_output_type
             and self._n % self._adaptivity_output_n != 0
         ):
             self._adaptivity_controller.log_metrics(self._n)
