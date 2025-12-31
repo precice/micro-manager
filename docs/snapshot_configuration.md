@@ -21,7 +21,7 @@ pip install h5py
 
 ## Preparation
 
-Prepare your micro simulation for the Micro Manager snapshot computation by following the instructions in the [preparation guide](tooling-micro-manager-preparation.html).
+Prepare your micro simulation for the Micro Manager snapshot computation by following the instructions in the [preparation guide](tooling-micro-manager-prepare-micro-simulation.html).
 
 Note: The `initialize()` method is not used for the snapshot computation.
 
@@ -45,19 +45,16 @@ Configure the snapshot computation functionality with a JSON file. An example co
         "post_processing_file_name": "snapshot_postprocessing",
         "initialize_once": true,
         "output_file_name": "snapshot_data"
-    },
-    "diagnostics": {
-        "output_micro_sim_solve_time": true
     }
 }
 ```
 
 ## Micro Manager Configuration
 
-Parameter | Description
---- | ---
-`micro_file_name` | Path to the file containing the Python importable micro simulation class. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.
-`output_directory` | Path to output directory for logging and performance metrics. Directory is created if not existing already.
+Parameter | Description | Default
+--- | --- | ---
+`micro_file_name` | Path to the file containing the Python importable micro simulation class. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed. | -
+`output_directory` | Path to output directory for logging and performance metrics. Directory is created if not existing already. | `.`
 
 Apart from the base settings, there are three main sections in the configuration file, [coupling parameters](#coupling-parameters), [simulation parameters](#simulation-parameters), [snapshot parameters](#snapshot-parameters), and [diagnostics](#diagnostics).
 
@@ -89,9 +86,9 @@ Parameter | Description
 
 ## Diagnostics
 
-Parameter | Description
---- | ---
-`output_micro_sim_solve_time` | If `true`, the Micro Manager writes the wall clock time of the `solve()` function of each micro simulation to the database.
+Parameter | Description | Default
+--- | --- | ---
+`output_micro_sim_solve_time` | If `true`, the Micro Manager writes the wall clock time of the `solve()` function of each micro simulation to the database. | `false`
 
 ## Running
 
