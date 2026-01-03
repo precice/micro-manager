@@ -36,6 +36,18 @@ def __init__(self, global_id):
 
 def get_global_id(self) -> int:
     return self._global_id
+    
+def get_state(self):
+    if hasattr(micro_simulation_class, "get_state"):
+        return super().get_state()
+    else:
+        return None
+        
+def set_state(self, state):
+    if hasattr(micro_simulation_class, "set_state"):
+        super().set_state(state)
+    else:
+        return
     """
     sim_class_dict = {}
     local_globals = {
