@@ -5,14 +5,11 @@ on each rank is done, along with dynamic load balancing.
 
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
-import importlib
 import numpy as np
 from mpi4py import MPI
 import math
 
 from .global_adaptivity import GlobalAdaptivityCalculator
-
-from micro_manager.micro_simulation import create_simulation_class
 
 
 class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
@@ -121,7 +118,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             if n_active_sims_local < avg_active_sims:
                 recv_sims = int(avg_active_sims) - n_active_sims_local
             elif n_active_sims_local > avg_active_sims:
-                send_sims = int(n_active_sims_local) - avg_active_sims
+                send_sims = n_active_sims_local - int(avg_active_sims)
         else:
             if n_active_sims_local < f_avg_active_sims:
                 recv_sims = f_avg_active_sims - n_active_sims_local
@@ -264,7 +261,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                     # Get the global IDs to move
                     global_ids_of_sims_to_move = rank_wise_global_ids_of_active_sims[
                         send_rank
-                    ][0 : global_recv_sims[recv_rank]]
+                    ][0 : int(global_recv_sims[recv_rank])]
 
                     global_send_map[send_rank].append(
                         (global_ids_of_sims_to_move, recv_rank)
@@ -278,7 +275,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
 
                     # Remove the global IDs which are already mapped for moving
                     del rank_wise_global_ids_of_active_sims[send_rank][
-                        0 : global_recv_sims[recv_rank]
+                        0 : int(global_recv_sims[recv_rank])
                     ]
 
                     if count < len(recv_ranks) - 1:
@@ -289,16 +286,20 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
                     # Get the global IDs to move
                     global_ids_of_sims_to_move = rank_wise_global_ids_of_active_sims[
                         send_rank
-                    ][0:sims]
+                    ][0 : int(sims)]
 
-                    global_send_map[send_rank].append((sims, recv_rank))
+                    global_send_map[send_rank].append(
+                        (global_ids_of_sims_to_move, recv_rank)
+                    )
 
-                    global_recv_map[recv_rank].append((sims, send_rank))
+                    global_recv_map[recv_rank].append(
+                        (global_ids_of_sims_to_move, send_rank)
+                    )
 
                     global_recv_sims[recv_rank] -= sims
 
                     # Remove the global IDs which are already mapped for moving
-                    del rank_wise_global_ids_of_active_sims[send_rank][0:sims]
+                    del rank_wise_global_ids_of_active_sims[send_rank][0 : int(sims)]
 
                     sims = 0
 

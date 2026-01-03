@@ -2,7 +2,10 @@
 
 ## latest
 
-- Add functionality to adaptively switch micro-scale models [#198](https://github.com/precice/micro-manager/pull/198)
+- Changed default values of adaptivity metrics output and similarity distance calculation norm [#213](https://github.com/precice/micro-manager/pull/213)
+- Fixed ordering of global IDs of micro simulation for load balancing to ensure consistency [#210](https://github.com/precice/micro-manager/pull/210)
+- Initiated triggering of load balancing at the start of the simulation when adaptivity is triggered [#207](https://github.com/precice/micro-manager/pull/207)
+- Added functionality to adaptively switch micro-scale models [#198](https://github.com/precice/micro-manager/pull/198)
 - Changed locations of profiling sections in the code base to reflect operations being profiled correctly [#205](https://github.com/precice/micro-manager/pull/205)
 - Added global metrics logging to local adaptivity [commit](https://github.com/precice/micro-manager/commit/1be626ff852a2e3e03a59d5859e5be0e1dd5d67a)
 - A rank-based round-robin scheme for deactivating simulations in global adaptivity [#202](https://github.com/precice/micro-manager/pull/202)

@@ -51,7 +51,7 @@ class Config:
         self._adaptivity_coarsening_constant = 0.5
         self._adaptivity_refining_constant = 0.5
         self._adaptivity_every_implicit_iteration = False
-        self._adaptivity_similarity_measure = "L1"
+        self._adaptivity_similarity_measure = "L2rel"
         self._adaptivity_output_type = ""
         self._adaptivity_output_n = 1
 
@@ -319,9 +319,8 @@ class Config:
                 )
             except BaseException:
                 self._logger.log_info_rank_zero(
-                    "No adaptivity output type provided. Defaulting to 'local'."
+                    "No adaptivity output type provided. No metrics will be output."
                 )
-                self._adaptivity_output_type = "local"
 
             try:
                 self._adaptivity_output_n = self._data["simulation_params"][
