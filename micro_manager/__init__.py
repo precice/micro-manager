@@ -3,6 +3,7 @@ import os
 
 from .config import Config
 from .micro_manager import MicroManagerCoupling
+from .tasking import generate_executor
 
 try:
     from .snapshot.snapshot import MicroManagerSnapshot
@@ -44,6 +45,7 @@ def main():
                 "The Micro Manager snapshot computation requires the h5py package."
             )
 
-    manager.initialize()
 
-    manager.solve()
+    with generate_executor(manager.get_config()) as exe:
+        manager.initialize(exe)
+        manager.solve()

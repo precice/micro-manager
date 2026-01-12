@@ -9,6 +9,7 @@ For more details see the MicroManagerCoupling class or the documentation at http
 
 from mpi4py import MPI
 from abc import ABC, abstractmethod
+from executorlib import BaseExecutor
 
 from .config import Config
 
@@ -29,6 +30,13 @@ class MicroManagerInterface(ABC):
     def solve(self):
         """
         Solve micro simulations.
+        """
+        pass
+
+    @abstractmethod
+    def get_config(self):
+        """
+        Get micro manager config.
         """
         pass
 
@@ -60,7 +68,7 @@ class MicroManager(MicroManagerInterface):
 
         self._config = Config(config_file)
 
-    def initialize(self):
+    def initialize(self, exe: BaseExecutor):
         """
         Initialize micro simulations. Not implemented
         """
@@ -75,3 +83,9 @@ class MicroManager(MicroManagerInterface):
         raise NotImplementedError(
             "Solving micro simulations is not implemented in base class"
         )
+
+    def get_config(self):
+        """
+        Get micro manager config.
+        """
+        return self._config

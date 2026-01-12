@@ -13,7 +13,7 @@ import importlib
 
 
 class ModelAdaptivity:
-    def __init__(self, configurator: Config, rank: int, log_file: str) -> None:
+    def __init__(self, configurator: Config, rank: int, log_file: str, exe) -> None:
         """
         Class constructor.
 
@@ -41,7 +41,7 @@ class ModelAdaptivity:
                     importlib.import_module(model_file, CLASS_NAME),
                     CLASS_NAME,
                 )
-                self._model_classes.append(create_simulation_class(model))
+                self._model_classes.append(create_simulation_class(model, configurator.get_tasks_ranks_per_task(), exe))
             except Exception as e:
                 self._logger.log_info_rank_zero(
                     f"Failed to load model class with error: {e}"

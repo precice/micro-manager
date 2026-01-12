@@ -74,6 +74,12 @@ class Config:
         self._m_adap_micro_file_names = None
         self._m_adap_switching_function = None
 
+        # Tasking information
+        self._tasks_max_ranks = None
+        self._tasks_ranks_per_task = None
+        self._tasks_type = "single"
+        self._tasks_cache_dir = None
+
     def set_logger(self, logger):
         """
         Set the logger for the Config class.
@@ -181,6 +187,43 @@ class Config:
             )
 
         self._micro_dt = self._data["simulation_params"]["micro_dt"]
+
+        try:
+            self._tasks_type = self._data["tasks_type"]
+            if self._tasks_type not in ['single', 'hpc']:
+                raise Exception("Tasks type must be 'single' or 'hpc'.")
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "Bad Task Type. Micro manager will operate in single mode."
+            )
+            self._tasks_type = "single"
+
+        try:
+            self._tasks_max_ranks = self._data["tasks_max_ranks"]
+            if type(self._tasks_max_ranks) != int:
+                raise Exception("Tasks max ranks must be an integer")
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "Bad Task Max Ranks. Micro manager will only use a single rank."
+            )
+            self._tasks_max_ranks = 1
+
+        try:
+            self._tasks_ranks_per_task = self._data["tasks_ranks_per_task"]
+            if type(self._tasks_ranks_per_task) != int or self._tasks_ranks_per_task > self._tasks_max_ranks:
+                raise Exception("Tasks ranks per task must be an integer")
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "Bad Task Ranks per Task. Micro manager will only use a single rank."
+            )
+            self._tasks_ranks_per_task = 1
+
+        try:
+            self._tasks_cache_dir = self._data["tasks_cache_dir"]
+            if type(self._tasks_cache_dir) != str:
+                raise Exception("Tasks cache directory must be a string")
+        except BaseException:
+            self._tasks_cache_dir = None
 
     def read_json_micro_manager(self):
         """
@@ -984,3 +1027,47 @@ class Config:
             String containing the path to the switching function file
         """
         return self._m_adap_switching_function
+
+    def get_tasks_type(self):
+        """
+        Get the type of the task model.
+
+        Returns
+        -------
+        task_type : str
+            Type of the task model.
+        """
+        return self._tasks_type
+
+    def get_tasks_max_ranks(self):
+        """
+        Get the maximum ranks of the task model.
+
+        Returns
+        -------
+        max_ranks : int
+            Maximum ranks of the task model.
+        """
+        return self._tasks_max_ranks
+
+    def get_tasks_ranks_per_task(self):
+        """
+        Get the number of ranks per task.
+
+        Returns
+        -------
+        ranks_per_task : int
+            Number of ranks per task.
+        """
+        return self._tasks_ranks_per_task
+
+    def get_tasks_cache_dir(self):
+        """
+        Get the path of the cache directory.
+
+        Returns
+        -------
+        cache_dir : str
+            Path of the cache directory.
+        """
+        return self._tasks_cache_dir

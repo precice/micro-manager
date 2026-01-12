@@ -14,6 +14,7 @@ import os
 import sys
 import subprocess
 import numpy as np
+from executorlib import BaseExecutor
 
 from micro_manager.micro_manager import MicroManager
 from .dataset import ReadWriteHDF
@@ -84,16 +85,14 @@ class MicroManagerSnapshot(MicroManager):
         - Merge output in parallel run.
         """
 
-        micro_problem_cls = create_simulation_class(self._micro_problem)
-
         # Loop over all macro parameters
         for elems in range(self._local_number_of_sims):
             # initialize micro simulation
             if elems == 0:
-                self._micro_sims = micro_problem_cls(self._global_ids_of_local_sims[0])
+                self._micro_sims = self._micro_problem_cls(self._global_ids_of_local_sims[0])
             else:
                 if not self._initialize_once:
-                    self._micro_sims = micro_problem_cls(
+                    self._micro_sims = self._micro_problem_cls(
                         self._global_ids_of_local_sims[elems]
                     )
 
@@ -176,7 +175,7 @@ class MicroManagerSnapshot(MicroManager):
 
         self._logger.log_info_rank_zero("Snapshot computation completed.")
 
-    def initialize(self) -> None:
+    def initialize(self, exe: BaseExecutor) -> None:
         """
         Initialize the Snapshot Computation by performing the following tasks:
         - Distribute the parameter data equally if the snapshot creation is executed in parallel.
@@ -256,16 +255,18 @@ class MicroManagerSnapshot(MicroManager):
         for i in range(self._local_number_of_sims):
             self._global_ids_of_local_sims.append(sim_id)
             sim_id += 1
-        self._micro_problem = getattr(
+        micro_problem = getattr(
             importlib.import_module(
                 self._config.get_micro_file_name(), "MicroSimulation"
             ),
             "MicroSimulation",
         )
 
+        self._micro_problem_cls = create_simulation_class(micro_problem, self._config.get_tasks_ranks_per_task(), exe)
+
         self._micro_sims_have_output = False
-        if hasattr(self._micro_problem, "output") and callable(
-            getattr(self._micro_problem, "output")
+        if hasattr(self._micro_problem_cls, "output") and callable(
+            getattr(self._micro_problem_cls, "output")
         ):
             self._micro_sims_have_output = True
 

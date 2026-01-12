@@ -22,6 +22,7 @@ from psutil import Process
 import csv
 import subprocess
 from functools import partial
+from executorlib import BaseExecutor
 
 import precice
 
@@ -34,7 +35,7 @@ from .adaptivity.model_adaptivity import ModelAdaptivity
 
 from .domain_decomposition import DomainDecomposer
 
-from .micro_simulation import create_simulation_class
+from .micro_simulation import create_simulation_class, MicroSimulationList
 from .tools.logging_wrapper import Logger
 
 
@@ -245,10 +246,12 @@ class MicroManagerCoupling(MicroManager):
 
             # Write a checkpoint
             if self._participant.requires_writing_checkpoint():
+                self._logger.log_info_rank_zero("<<<getting states>>>")
                 for i in range(self._local_number_of_sims):
                     sim_states_cp[i] = (
                         self._micro_sims[i].get_state() if self._micro_sims[i] else None
                     )
+                self._logger.log_info_rank_zero("<<<getting states done>>>")
 
             micro_sims_input = self._read_data_from_precice(dt)
 
@@ -256,7 +259,9 @@ class MicroManagerCoupling(MicroManager):
                 "micro_manager.solve.solve_micro_simulations"
             )
 
+            self._logger.log_info_rank_zero("<<<starting solver>>>")
             micro_sims_output = micro_sim_solve(micro_sims_input, dt)
+            self._logger.log_info_rank_zero("<<<finished solver>>>")
 
             self._participant.stop_last_profiling_section()
 
@@ -393,7 +398,7 @@ class MicroManagerCoupling(MicroManager):
 
         self._participant.finalize()
 
-    def initialize(self) -> None:
+    def initialize(self, exe: BaseExecutor) -> None:
         """
         Initialize the Micro Manager by performing the following tasks:
         - Decompose the domain if the Micro Manager is executed in parallel.
@@ -542,7 +547,7 @@ class MicroManagerCoupling(MicroManager):
         micro_problem_cls = None
         if self._is_model_adaptivity_on:
             self._model_adaptivity_controller: ModelAdaptivity = ModelAdaptivity(
-                self._config, self._rank, self._log_file
+                self._config, self._rank, self._log_file, exe
             )
             micro_problem_cls = (
                 self._model_adaptivity_controller.get_resolution_sim_class(0)
@@ -555,16 +560,15 @@ class MicroManagerCoupling(MicroManager):
                 "MicroSimulation",
             )
             micro_problem_cls = create_simulation_class(
-                micro_problem_base, "MicroSimulationDefault"
+                micro_problem_base, self._config.get_tasks_ranks_per_task(), exe, "MicroSimulationDefault",
             )
 
         # Create micro simulation objects
-        self._micro_sims = [0] * self._local_number_of_sims
-        if not self._lazy_init:
-            for i in range(self._local_number_of_sims):
-                self._micro_sims[i] = micro_problem_cls(
-                    self._global_ids_of_local_sims[i]
-                )
+        self._micro_sims = MicroSimulationList(exe, self._config.get_tasks_ranks_per_task(), self._local_number_of_sims, 0)
+        if not self._lazy_init: self._micro_sims.construct_instances(np.arange(self._local_number_of_sims), self._global_ids_of_local_sims, micro_problem_cls)
+
+
+        self._logger.log_info_rank_zero("<<<Constructed micro simulations>>>")
 
         if self._is_adaptivity_on:
             if self._config.get_adaptivity_type() == "local":
@@ -796,6 +800,7 @@ class MicroManagerCoupling(MicroManager):
             self._micro_sims_have_output = True
 
         self._participant.stop_last_profiling_section()
+        self._logger.log_info_rank_zero("<<<Finished initializing>>>")
 
     # ***************
     # Private methods
