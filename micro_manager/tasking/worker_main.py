@@ -2,7 +2,7 @@ import argparse
 import os
 from mpi4py import MPI
 
-from .connection import Connection, MPIConnection, SocketConnection
+from connection import Connection, MPIConnection, SocketConnection
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -27,15 +27,15 @@ if __name__ == '__main__':
     state_data = {}
 
     while True:
-        data = None
-        try: data = conn.recv(src_id)
+        task = None
+        try: task = conn.recv(src_id)
         except Exception: break
 
-        # TODO unpickle data into task and handle it
-        # TODO retain sim_obj...
-        # TODO should always be smth like this: output = task(state_data)
-        send_data = None # TODO needs to be set
-        try: conn.send(dst_id, send_data)
+        output = None
+        try: output = task(state_data)
+        except Exception: break
+
+        try: conn.send(dst_id, output)
         except Exception: break
 
     conn.close()

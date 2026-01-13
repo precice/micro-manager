@@ -1,7 +1,7 @@
 from .global_adaptivity import GlobalAdaptivityCalculator
 from .global_adaptivity_lb import GlobalAdaptivityLBCalculator
 from .local_adaptivity import LocalAdaptivityCalculator
-from adaptivity import AdaptivityCalculator
+from .adaptivity import AdaptivityCalculator
 
 def create_adaptivity_calculator(
     config,

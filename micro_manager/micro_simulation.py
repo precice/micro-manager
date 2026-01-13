@@ -161,8 +161,9 @@ class MicroSimulationClassAdapter:
 
     def check_initialize(self, test_instance, test_input):
         has_init = hasattr(self._sim_cls, 'initialize')
+        if not has_init: return False, False
         callable_init = callable(getattr(self._sim_cls, 'initialize'))
-        if not has_init or not callable_init: return False, False
+        if not callable_init: return False, False
 
         has_args = False
 
@@ -202,6 +203,7 @@ class MicroSimulationClassAdapter:
 
     def check_output(self):
         has_init = hasattr(self._sim_cls, 'output')
+        if not has_init: return False
         callable_init = callable(getattr(self._sim_cls, 'output'))
 
         return has_init and callable_init
