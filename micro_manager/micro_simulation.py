@@ -3,101 +3,202 @@ This file provides a function which creates a class Simulation. This class inher
 class MicroSimulation. A global ID member variable is defined for the class Simulation, which ensures that each
 created object is uniquely identifiable in a global setting.
 """
-class MicroSimulationWrapper:
-    # TODO support optional initialize
-    # TODO support optional output
 
-    def __init__(self, sim_cls, name, global_id, num_ranks, executor, late_init):
-        self._sim_cls = sim_cls # backend impl class
-        self._name = name # needs to be unique
-        self._gid = global_id
+from abc import ABC, abstractmethod
+import inspect
+import importlib as ipl
+
+from .tasking.task import *
+
+class MicroSimulationInterface(ABC):
+    @abstractmethod
+    def solve(self, micro_sim_input, dt): pass
+    @abstractmethod
+    def get_state(self): pass
+    @abstractmethod
+    def set_state(self, state): pass
+    @abstractmethod
+    def get_global_id(self): pass
+    @abstractmethod
+    def initialize(self, *args, **kwargs): pass
+    @abstractmethod
+    def output(self): pass
+
+
+class MicroSimulationLocal(MicroSimulationInterface):
+    def __init__(self, gid, sim_cls):
+        self._instance = sim_cls(gid)
+        self._gid = gid
+
+    def solve(self, micro_sim_input, dt):  return self._instance.solve(micro_sim_input, dt)
+    def get_state(self):                   return self._instance.get_state()
+    def set_state(self, state):            return self._instance.set_state(state)
+    def get_global_id(self):               return self._gid
+    def initialize(self, *args, **kwargs): return self._instance.initialize(*args, **kwargs)
+    def output(self):                      return self._instance.output()
+
+
+class MicroSimulationRemote(MicroSimulationInterface):
+    def __init__(self, gid, num_ranks, conn, sim_cls):
+        self._sim_cls = sim_cls  # backend impl class
+        self._gid = gid
         self._num_ranks = num_ranks
-        self._executor = executor
+        self._conn = conn
 
-        self._states = [None] * num_ranks # list of sims
-        self._instance = None
+        for worker_id in range(self._num_ranks):
+            task = ConstructTask(self._gid, self._sim_cls)
+            self._conn.send(worker_id, task)
 
-        if late_init: return
-
-        if self._num_ranks <= 1:
-            self._instance = sim_cls(self._gid)
-        else:
-            f_gen_instances = self._executor.submit(
-                MicroSimulationWrapper.gen_instances,
-                # args
-                gid=self._gid,
-                num_ranks=self._num_ranks,
-                sim_cls=self._sim_cls,
-                # execution params
-                resource_dict={"cores": self._num_ranks},
-            )
-
-            for rank, sim_state in f_gen_instances.result():
-                self._states[rank] = sim_state
+        for worker_id in range(self._num_ranks):
+            self._conn.recv(worker_id)
 
     def solve(self, micro_sim_input, dt):
-        if self._num_ranks <= 1:
-            return self._instance.solve(micro_sim_input, dt)
-        else:
-            f_solve = self._executor.submit(
-                MicroSimulationWrapper.solve_local,
-                # args
-                sim_cls=self._sim_cls,
-                states=self._states,
-                input=micro_sim_input,
-                dt=dt,
-                # execution params
-                resource_dict={"cores": self._num_ranks},
-            )
+        for worker_id in range(self._num_ranks):
+            task = SolveTask(self._gid, micro_sim_input, dt)
+            self._conn.send(worker_id, task)
 
-            results = f_solve.result()
-            result = None
-            for rank, output, state in results:
-                if rank == 0: result = output
-                self._states[rank] = state
+        result = None
+        for worker_id in range(self._num_ranks):
+            output = self._conn.recv(worker_id)
+            if worker_id == 0: result = output
 
-            return result
+        return result
 
     def get_state(self):
-        if self._num_ranks <= 1: return self._instance.get_state()
-        else: return self._states
+        for worker_id in range(self._num_ranks):
+            task = GetStateTask(self._gid)
+            self._conn.send(worker_id, task)
 
-    def set_state(self, states):
-        if self._num_ranks <= 1: self._instance.set_state(states)
-        else: self._states = states
+        result = {}
+        for worker_id in range(self._num_ranks):
+            result[worker_id] = self._conn.recv(worker_id)
 
-    def get_global_id(self): return self._gid
-    def get_name(self): return self._name
+        return result
 
-    @staticmethod
-    def gen_instances(gid, num_ranks, sim_cls):
-        from mpi4py import MPI
+    def set_state(self, state):
+        for worker_id in range(self._num_ranks):
+            task = SetStateTask(self._gid, state[worker_id])
+            self._conn.send(worker_id, task)
 
-        size = MPI.COMM_WORLD.Get_size()
-        rank = MPI.COMM_WORLD.Get_rank()
-        assert size == num_ranks
+        for worker_id in range(self._num_ranks):
+            self._conn.recv(worker_id)
 
-        return rank, sim_cls(gid).get_state()
+    def get_global_id(self):
+        return self._gid
 
-    @staticmethod
-    def solve_local(sim_cls, states, input, dt):
-        from mpi4py import MPI
+    def initialize(self, *args, **kwargs):
+        for worker_id in range(self._num_ranks):
+            task = InitializeTask(self._gid, *args, **kwargs)
+            self._conn.send(worker_id, task)
 
-        size = MPI.COMM_WORLD.Get_size()
-        rank = MPI.COMM_WORLD.Get_rank()
-        assert size == len(states)
-        sim = sim_cls(-1)
-        sim.set_state(states[rank])
+        result = None
+        for worker_id in range(self._num_ranks):
+            output = self._conn.recv(worker_id)
+            if worker_id == 0: result = output
 
-        if rank == 0:
-            output = sim.solve(input, dt)
-            return rank, output, sim.get_state()
+        return result
+
+    def output(self):
+        for worker_id in range(self._num_ranks):
+            task = OutputTask(self._gid)
+            self._conn.send(worker_id, task)
+
+        result = None
+        for worker_id in range(self._num_ranks):
+            output = self._conn.recv(worker_id)
+            if worker_id == 0: result = output
+
+        return result
+
+
+class MicroSimulationWrapper(MicroSimulationInterface):
+    """
+    If only a single rank is in use: will contain the micro sim instance.
+    Otherwise, it will delegate method calls to workers and not contain state.
+    """
+    def __init__(self, sim_cls, global_id, num_ranks, conn):
+        self._impl = None
+
+        if num_ranks > 1 and conn is not None:
+            self._impl = MicroSimulationRemote(global_id, num_ranks, conn, sim_cls)
         else:
-            sim.solve(input, dt)
-            return rank, None, sim.get_state()
+            self._impl = MicroSimulationLocal(global_id, sim_cls)
+
+    def solve(self, micro_sim_input, dt):  return self._impl.solve(micro_sim_input, dt)
+    def get_state(self):                   return self._impl.get_state()
+    def set_state(self, state):            return self._impl.set_state(state)
+    def get_global_id(self):               return self._impl.get_global_id()
+    def initialize(self, *args, **kwargs): return self._impl.initialize(*args, **kwargs)
+    def output(self):                      return self._impl.output()
 
 
-def create_simulation_class(micro_simulation_class, num_ranks, executor, sim_class_name=None):
+class MicroSimulationClassAdapter:
+    def __init__(self, sim_cls, name, num_ranks, conn, log):
+        self._sim_cls = sim_cls
+        self._name = name
+        self._num_ranks = num_ranks
+        self._conn = conn
+        self._log = log
+
+    def __class__(self): return self._name
+    def __call__(self, gid): return MicroSimulationWrapper(self._sim_cls, gid, self._num_ranks, self._conn)
+    @property
+    def backend_cls(self): return self._sim_cls
+
+    def check_initialize(self, test_instance, test_input):
+        has_init = hasattr(self._sim_cls, 'initialize')
+        callable_init = callable(getattr(self._sim_cls, 'initialize'))
+        if not has_init or not callable_init: return False, False
+
+        has_args = False
+
+        # Try to get the signature of the initialize() method, if it is written in Python
+        try:
+            argspec = inspect.getfullargspec(self._sim_cls.initialize)
+            # The first argument in the signature is self
+            if len(argspec.args) == 1: has_args = False
+            elif len(argspec.args) == 2: has_args = True
+            else:
+                raise Exception(
+                    "The initialize() method of the Micro simulation has an incorrect number of arguments."
+                )
+        except TypeError:
+            self._log.log_info_rank_zero(
+                "The signature of initialize() method of the micro simulation cannot be determined. " +
+                "Trying to determine the signature by calling the method."
+            )
+            # Try to call the initialize() method without initial data
+            try:
+                test_instance.initialize()
+                has_args = False
+            except TypeError:
+                self._log.log_info_rank_zero(
+                    "The initialize() method of the micro simulation has arguments. " +
+                    "Attempting to call it again with initial data."
+                )
+                try:
+                    test_instance.initialize(test_input)
+                    has_args = True
+                except TypeError:
+                    raise Exception(
+                        "The initialize() method of the Micro simulation has an incorrect number of arguments."
+                    )
+
+        return has_init and callable_init, has_args
+
+    def check_output(self):
+        has_init = hasattr(self._sim_cls, 'output')
+        callable_init = callable(getattr(self._sim_cls, 'output'))
+
+        return has_init and callable_init
+
+
+def load_backend_class(path_to_micro_file):
+    CLS_NAME = 'MicroSimulation'
+    return getattr(ipl.import_module(path_to_micro_file, CLS_NAME), CLS_NAME)
+
+
+def create_simulation_class(log, micro_simulation_class, num_ranks, conn=None, sim_class_name=None):
     """
     Creates a class Simulation which inherits from the class of the micro simulation.
 
@@ -117,28 +218,13 @@ def create_simulation_class(micro_simulation_class, num_ranks, executor, sim_cla
     if not hasattr(micro_simulation_class, "get_global_id"): raise ValueError("Invalid micro simulation class")
     if not hasattr(micro_simulation_class, "get_state"):     raise ValueError("Invalid micro simulation class")
     if not hasattr(micro_simulation_class, "set_state"):     raise ValueError("Invalid micro simulation class")
-    if not hasattr(micro_simulation_class, "solve"):        raise ValueError("Invalid micro simulation class")
+    if not hasattr(micro_simulation_class, "solve"):         raise ValueError("Invalid micro simulation class")
 
     if sim_class_name is None:
         if not hasattr(create_simulation_class, "sim_id"): create_simulation_class.sim_id = 0
         else: create_simulation_class.sim_id += 1
         sim_class_name = f"MicroSimulation{create_simulation_class.sim_id}"
 
-    cls_body = """
-backend_cls = sim_cls
-def __init__(self, global_id, late_init=False):
-    wrapper_cls.__init__(self, sim_cls, name, global_id, num_ranks, executor, late_init)
-    """
-    cls_dict = {}
-    local_globals = {
-        "__builtins__": __builtins__,
-        "wrapper_cls": MicroSimulationWrapper,
-        "sim_cls": micro_simulation_class,
-        "name": sim_class_name,
-        "num_ranks": num_ranks,
-        "executor": executor,
-    }
 
-    exec(cls_body, local_globals, cls_dict)
-    result_cls = type(sim_class_name, (MicroSimulationWrapper,), cls_dict)
+    result_cls = MicroSimulationClassAdapter(micro_simulation_class, sim_class_name, num_ranks, conn, log)
     return result_cls

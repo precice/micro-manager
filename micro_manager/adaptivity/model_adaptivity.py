@@ -8,6 +8,7 @@ from ..micro_simulation import create_simulation_class
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.misc import clamp_in_range
 from micro_manager.model_manager import ModelManager
+from micro_manager.tasking.connection import Connection
 
 import numpy as np
 import importlib
@@ -20,6 +21,8 @@ class ModelAdaptivity:
         configurator: Config,
         rank: int,
         log_file: str,
+        conn: Connection,
+        num_ranks: int,
     ) -> None:
         """
         Class constructor.
@@ -51,7 +54,7 @@ class ModelAdaptivity:
                     importlib.import_module(model_file, CLASS_NAME),
                     CLASS_NAME,
                 )
-                self._model_classes.append(create_simulation_class(model))
+                self._model_classes.append(create_simulation_class(self._logger, model, num_ranks, conn))
                 self._model_manager.register(
                     self._model_classes[pos], stateless_flags[pos]
                 )

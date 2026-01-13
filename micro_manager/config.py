@@ -76,6 +76,11 @@ class Config:
         self._m_adap_micro_stateless = None
         self._m_adap_switching_function = None
 
+        # Tasking
+        self._task_is_slurm = False
+        self._task_backend = "socket"
+        self._task_num_workers = 1
+
     def set_logger(self, logger):
         """
         Set the logger for the Config class.
@@ -194,6 +199,23 @@ class Config:
             )
 
         self._micro_dt = self._data["simulation_params"]["micro_dt"]
+
+        try:
+            if self._data["tasking"]:
+                backend = self._data["tasking"]["backend"]
+                if backend not in ["mpi", "socket"]:
+                    raise Exception("Backend must be either 'mpi' or 'socket'.")
+                self._task_backend = backend
+                if "is_slurm" in self._data["tasking"]:
+                    self._task_is_slurm = self._data["tasking"]["is_slurm"]
+                if "num_workers" in self._data["tasking"]:
+                    self._task_num_workers = self._data["tasking"]["num_workers"]
+                if self._task_is_slurm and backend == "mpi":
+                    raise Exception("MPI backend not supported on SLURM systems.")
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "No or incorrect tasking information provided. Micro manager will compute locally."
+            )
 
     def read_json_micro_manager(self):
         """
@@ -1040,3 +1062,36 @@ class Config:
             String containing the path to the switching function file
         """
         return self._m_adap_switching_function
+
+    def get_tasking_num_workers(self):
+        """
+        Get number of workers
+
+        Returns
+        -------
+        num_workers : int
+            Number of workers
+        """
+        return self._task_num_workers
+
+    def get_tasking_backend(self):
+        """
+        Get backend type
+
+        Returns
+        -------
+        backend : str
+            either socket or mpi
+        """
+        return self._task_backend
+
+    def get_tasking_use_slurm(self):
+        """
+        Get flag whether slurm is used
+
+        Returns
+        -------
+        use_slurm : bool
+            use slurm or not
+        """
+        return self._task_is_slurm

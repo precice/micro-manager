@@ -42,3 +42,19 @@ class SetStateTask(Task):
     def set(gid, state, state_data):
         state_data[gid].set_state(state)
         return None
+
+class InitializeTask(Task):
+    def __init__(self, gid, *args, **kwargs):
+        super().__init__(InitializeTask.initialize, *args, gid=gid, **kwargs)
+
+    @staticmethod
+    def initialize(gid, state_data, *args, **kwargs):
+        return state_data[gid].initialize(*args, **kwargs)
+
+class OutputTask(Task):
+    def __init__(self, gid):
+        super().__init__(OutputTask.output, gid=gid)
+
+    @staticmethod
+    def output(gid, state_data):
+        return state_data[gid].output()
