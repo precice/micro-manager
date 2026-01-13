@@ -17,6 +17,15 @@ class ConstructTask(Task):
         state_data[gid] = sim_cls(gid)
         return None
 
+class ConstructLateTask(Task):
+    def __init__(self, gid, sim_cls):
+        super().__init__(ConstructLateTask.initializer, gid=gid, sim_cls=sim_cls)
+
+    @staticmethod
+    def initializer(gid, sim_cls, state_data):
+        state_data[gid] = sim_cls(-1)
+        return None
+
 class SolveTask(Task):
     def __init__(self, gid, sim_input, dt):
         super().__init__(SolveTask.solve, gid=gid, sim_input=sim_input, dt=dt)

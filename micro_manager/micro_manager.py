@@ -201,28 +201,27 @@ class MicroManagerCoupling(MicroManager):
                 if (self._adaptivity_in_every_implicit_step or first_iteration) and (
                     self._n % self._adaptivity_n == 0
                 ):
-                    self._participant.start_profiling_section(
-                        "micro_manager.solve.adaptivity_computation"
-                    )
+                    self._participant.start_profiling_section("micro_manager.solve.adaptivity_computation")
 
                     self._adaptivity_controller.compute_adaptivity(
                         dt,
                         self._micro_sims,
                         self._data_for_adaptivity,
                     )
+                    active_sim_gids = self._adaptivity_controller.get_active_sim_global_ids()
+                    for gid in active_sim_gids: self._micro_sims_active_steps[gid] += 1
 
                     # Write a checkpoint if a simulation is just activated.
                     # This checkpoint will be asynchronous to the checkpoints written at the start of the time window.
-                    for i in range(self._local_number_of_sims):
-                        if sim_states_cp[i] is None and self._micro_sims[i]:
-                            sim_states_cp[i] = self._micro_sims[i].get_state()
-
-                    active_sim_gids = (
-                        self._adaptivity_controller.get_active_sim_global_ids()
-                    )
-
-                    for gid in active_sim_gids:
-                        self._micro_sims_active_steps[gid] += 1
+                    if self._is_model_adaptivity_on:
+                        self._model_adaptivity_controller.update_states(self._micro_sims, active_sim_gids)
+                        for i in range(self._local_number_of_sims):
+                            if sim_states_cp[i] is None and self._micro_sims[i]:
+                                sim_states_cp[i] = self._micro_sims[i].attachments
+                    else:
+                        for i in range(self._local_number_of_sims):
+                            if sim_states_cp[i] is None and self._micro_sims[i]:
+                                sim_states_cp[i] = self._micro_sims[i].get_state()
 
                     self._participant.stop_last_profiling_section()
 
@@ -251,10 +250,19 @@ class MicroManagerCoupling(MicroManager):
 
             # Write a checkpoint
             if self._participant.requires_writing_checkpoint():
-                for i in range(self._local_number_of_sims):
-                    sim_states_cp[i] = (
-                        self._micro_sims[i].get_state() if self._micro_sims[i] else None
-                    )
+                active_sim_gids = None
+                if self._is_adaptivity_on:
+                    active_sim_gids = self._adaptivity_controller.get_active_sim_local_ids()
+
+                if self._is_model_adaptivity_on:
+                    self._model_adaptivity_controller.update_states(self._micro_sims, active_sim_gids)
+                    for i in range(self._local_number_of_sims):
+                        sim_states_cp[i] = self._micro_sims[i].attachments if self._micro_sims[i] else None
+                else:
+                    for i in range(self._local_number_of_sims):
+                        sim_states_cp[i] = (
+                            self._micro_sims[i].get_state() if self._micro_sims[i] else None
+                        )
 
             micro_sims_input = self._read_data_from_precice(dt)
 
@@ -299,16 +307,27 @@ class MicroManagerCoupling(MicroManager):
 
             # Revert micro simulations to their last checkpoints if required
             if self._participant.requires_reading_checkpoint():
-                for i in range(self._local_number_of_sims):
-                    if self._micro_sims[i]:
-                        self._micro_sims[i].set_state(sim_states_cp[i])
+                if self._is_model_adaptivity_on:
+                    active_sim_gids = None
+                    if self._is_adaptivity_on:
+                        active_sim_gids = self._adaptivity_controller.get_active_sim_local_ids()
+
+                    for i in range(self._local_number_of_sims):
+                        if self._micro_sims[i]:
+                            self._micro_sims[i].attachments = sim_states_cp[i]
+                    self._model_adaptivity_controller.write_back_states(self._micro_sims, active_sim_gids)
+
+                else:
+                    for i in range(self._local_number_of_sims):
+                        if self._micro_sims[i]:
+                            self._micro_sims[i].set_state(sim_states_cp[i])
+
                 first_iteration = False
 
-            if (
-                self._participant.is_time_window_complete()
-            ):  # Time window has converged, now micro output can be generated
+            # Time window has converged, now micro output can be generated
+            if self._participant.is_time_window_complete():
                 self._t += dt  # Update time to the end of the time window
-                self._n += 1  # Update time step to the end of the time window
+                self._n += 1   # Update time step to the end of the time window
 
                 if self._micro_sims_have_output:
                     if self._n % self._micro_n_out == 0:

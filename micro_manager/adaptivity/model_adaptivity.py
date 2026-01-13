@@ -167,12 +167,77 @@ class ModelAdaptivity:
             if cur_res[idx] == tgt_res[idx]:
                 continue
 
-            sim_state = sims[idx].get_state()
-            sim_id = sims[idx].get_global_id()
-            sims[idx] = self._model_manager.get_instance(
-                sim_id, self.get_resolution_sim_class(tgt_res[idx])
-            )
-            sims[idx].set_state(sim_state)
+            sim = sims[idx]
+            gid = sim.get_global_id()
+            tgt_cls = self.get_resolution_sim_class(tgt_res[idx])
+
+            key     = f"{sim.__name__}-state"
+            key_new = f"{tgt_cls.__name__}-state"
+
+            new_state_exists = key_new in sim.attachments
+            sim.attachments[key] = sim.get_state()
+
+            sim_new = self._model_manager.get_instance(gid, tgt_cls, late_init=new_state_exists)
+            sim_new.attachments = sim.attachments
+
+            if new_state_exists:
+                sim_new_state = sim.attachments[key_new]
+                sim_new.set_state(sim_new_state)
+
+            sims[idx] = sim_new
+
+
+    def update_states(
+            self,
+            sims: list,
+            active_sim_ids: Optional = None,
+    ):
+        """
+        Stores the current state of the current model into local buffers.
+
+        Parameters
+        ----------
+        sims : list
+            List of all simulation objects.
+        active_sim_ids : [list, None]
+            List of all active simulation ids.
+        """
+        size = len(sims)
+        active_sims = self._create_active_mask(active_sim_ids, size)
+
+        for idx in range(size):
+            if not active_sims[idx]: continue
+
+            sim = sims[idx]
+            key = f"{sim.__name__}-state"
+            sim.attachments[key] = sim.get_state()
+
+
+    def write_back_states(
+            self,
+            sims: list,
+            active_sim_ids: Optional = None,
+    ):
+        """
+        Loads the current state of the current model into local buffers.
+
+        Parameters
+        ----------
+        sims : list
+            List of all simulation objects.
+        active_sim_ids : [list, None]
+            List of all active simulation ids.
+        """
+        size = len(sims)
+        active_sims = self._create_active_mask(active_sim_ids, size)
+
+        for idx in range(size):
+            if not active_sims[idx]: continue
+
+            sim = sims[idx]
+            key = f"{sim.__name__}-state"
+            sim.set_state(sim.attachments[key])
+
 
     def check_convergence(
         self,

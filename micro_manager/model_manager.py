@@ -59,7 +59,7 @@ class ModelManager:
         ):
             self._has_output_map[micro_sim_cls] = True
 
-    def get_instance(self, gid, micro_sim_cls):
+    def get_instance(self, gid, micro_sim_cls, *, late_init=False):
         if micro_sim_cls not in self._registered_classes:
             raise RuntimeError("Trying to create instance of unknown class!")
 
@@ -71,4 +71,4 @@ class ModelManager:
                 self._has_output_map[micro_sim_cls],
             )
         else:
-            return micro_sim_cls(gid)
+            return micro_sim_cls(gid, late_init=late_init)

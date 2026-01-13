@@ -20,33 +20,37 @@ class MicroSimulationInterface(ABC):
     @abstractmethod
     def get_global_id(self): pass
     @abstractmethod
+    def set_global_id(self, global_id): pass
+    @abstractmethod
     def initialize(self, *args, **kwargs): pass
     @abstractmethod
     def output(self): pass
 
 
 class MicroSimulationLocal(MicroSimulationInterface):
-    def __init__(self, gid, sim_cls):
-        self._instance = sim_cls(gid)
+    def __init__(self, gid, late_init, sim_cls):
         self._gid = gid
+        self._instance = sim_cls(-1 if late_init else gid)
 
     def solve(self, micro_sim_input, dt):  return self._instance.solve(micro_sim_input, dt)
     def get_state(self):                   return self._instance.get_state()
     def set_state(self, state):            return self._instance.set_state(state)
     def get_global_id(self):               return self._gid
+    def set_global_id(self, global_id):    self._gid = global_id
     def initialize(self, *args, **kwargs): return self._instance.initialize(*args, **kwargs)
     def output(self):                      return self._instance.output()
 
 
 class MicroSimulationRemote(MicroSimulationInterface):
-    def __init__(self, gid, num_ranks, conn, sim_cls):
+    def __init__(self, gid, late_init, num_ranks, conn, sim_cls):
         self._sim_cls = sim_cls  # backend impl class
         self._gid = gid
         self._num_ranks = num_ranks
         self._conn = conn
 
+        construct_cls = ConstructLateTask if late_init else ConstructTask
         for worker_id in range(self._num_ranks):
-            task = ConstructTask(self._gid, self._sim_cls)
+            task = construct_cls(self._gid, self._sim_cls)
             self._conn.send(worker_id, task)
 
         for worker_id in range(self._num_ranks):
@@ -86,6 +90,9 @@ class MicroSimulationRemote(MicroSimulationInterface):
     def get_global_id(self):
         return self._gid
 
+    def set_global_id(self, global_id):
+        self._gid = global_id
+
     def initialize(self, *args, **kwargs):
         for worker_id in range(self._num_ranks):
             task = InitializeTask(self._gid, *args, **kwargs)
@@ -116,20 +123,27 @@ class MicroSimulationWrapper(MicroSimulationInterface):
     If only a single rank is in use: will contain the micro sim instance.
     Otherwise, it will delegate method calls to workers and not contain state.
     """
-    def __init__(self, sim_cls, global_id, num_ranks, conn):
+    def __init__(self, name, sim_cls, global_id, late_init, num_ranks, conn):
         self._impl = None
 
         if num_ranks > 1 and conn is not None:
-            self._impl = MicroSimulationRemote(global_id, num_ranks, conn, sim_cls)
+            self._impl = MicroSimulationRemote(global_id, late_init, num_ranks, conn, sim_cls)
         else:
-            self._impl = MicroSimulationLocal(global_id, sim_cls)
+            self._impl = MicroSimulationLocal(global_id, late_init, sim_cls)
+
+        self._external_data = dict()
+        self._name = name
 
     def solve(self, micro_sim_input, dt):  return self._impl.solve(micro_sim_input, dt)
     def get_state(self):                   return self._impl.get_state()
     def set_state(self, state):            return self._impl.set_state(state)
     def get_global_id(self):               return self._impl.get_global_id()
+    def set_global_id(self, global_id):    return self._impl.set_global_id(global_id)
     def initialize(self, *args, **kwargs): return self._impl.initialize(*args, **kwargs)
     def output(self):                      return self._impl.output()
+    @property
+    def attachments(self):                 return self._external_data
+    def __class__(self):                   return self._name
 
 
 class MicroSimulationClassAdapter:
@@ -141,7 +155,7 @@ class MicroSimulationClassAdapter:
         self._log = log
 
     def __class__(self): return self._name
-    def __call__(self, gid): return MicroSimulationWrapper(self._sim_cls, gid, self._num_ranks, self._conn)
+    def __call__(self, gid, *, late_init=False): return MicroSimulationWrapper(self._name, self._sim_cls, gid, late_init, self._num_ranks, self._conn)
     @property
     def backend_cls(self): return self._sim_cls
 
