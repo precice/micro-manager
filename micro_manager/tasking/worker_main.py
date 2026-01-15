@@ -1,6 +1,7 @@
 import argparse
 import os
 from mpi4py import MPI
+from task import handle_task
 
 from connection import Connection, MPIConnection, SocketConnection
 
@@ -26,13 +27,21 @@ if __name__ == '__main__':
 
     state_data = {}
 
+    # register possible tasks
+    register_task = None
+    try: register_task = conn.recv(src_id)
+    except Exception: raise RuntimeError("Failed to recv register tasks")
+    output = register_task(state_data)
+    try: conn.send(dst_id, output)
+    except Exception: raise RuntimeError("Failed to send register tasks output")
+
     while True:
-        task = None
-        try: task = conn.recv(src_id)
+        task_descriptor = None
+        try: task_descriptor = conn.recv(src_id)
         except Exception: break
 
         output = None
-        try: output = task(state_data)
+        try: output = handle_task(state_data, task_descriptor)
         except Exception: break
 
         try: conn.send(dst_id, output)

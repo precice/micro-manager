@@ -184,6 +184,8 @@ def spawn_local_workers(
     conn : Connection
         Established connection on generator side
     """
+    from .task import RegisterAllTask
+
     if n_workers <= 1: return None
     conn = None
 
@@ -229,5 +231,11 @@ def spawn_local_workers(
             host=host,
             n_workers=n_workers
         )
+
+    from ..micro_simulation import load_backend_class
+
+    for worker_id in range(n_workers):
+        conn.send(worker_id, RegisterAllTask(load_backend_class))
+        conn.recv(worker_id)
 
     return conn

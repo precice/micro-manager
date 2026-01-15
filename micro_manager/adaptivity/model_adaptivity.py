@@ -4,7 +4,7 @@ Class ModelAdaptivity provides methods to change micro simulation resolution on 
 from typing import Union, Optional
 
 from ..config import Config
-from ..micro_simulation import create_simulation_class
+from ..micro_simulation import create_simulation_class, load_backend_class
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.misc import clamp_in_range
 from micro_manager.model_manager import ModelManager
@@ -47,14 +47,10 @@ class ModelAdaptivity:
         stateless_flags = configurator.get_model_adaptivity_micro_stateless()
         self._model_classes = []
         pos = 0
-        CLASS_NAME = "MicroSimulation"
         for model_file in self._model_files:
             try:
-                model = getattr(
-                    importlib.import_module(model_file, CLASS_NAME),
-                    CLASS_NAME,
-                )
-                self._model_classes.append(create_simulation_class(self._logger, model, num_ranks, conn))
+                model = load_backend_class(model_file)
+                self._model_classes.append(create_simulation_class(self._logger, model, model_file, num_ranks, conn))
                 self._model_manager.register(
                     self._model_classes[pos], stateless_flags[pos]
                 )

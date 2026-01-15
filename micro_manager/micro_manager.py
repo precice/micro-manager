@@ -586,6 +586,7 @@ class MicroManagerCoupling(MicroManager):
             micro_problem_cls = create_simulation_class(
                 self._logger,
                 micro_problem_base,
+                self._config.get_micro_file_name(),
                 self._config.get_tasking_num_workers(),
                 self._conn,
                 "MicroSimulationDefault"

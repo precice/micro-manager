@@ -42,15 +42,15 @@ class MicroSimulationLocal(MicroSimulationInterface):
 
 
 class MicroSimulationRemote(MicroSimulationInterface):
-    def __init__(self, gid, late_init, num_ranks, conn, sim_cls):
-        self._sim_cls = sim_cls  # backend impl class
+    def __init__(self, gid, late_init, num_ranks, conn, cls_path):
+        self._cls_path = cls_path
         self._gid = gid
         self._num_ranks = num_ranks
         self._conn = conn
 
         construct_cls = ConstructLateTask if late_init else ConstructTask
         for worker_id in range(self._num_ranks):
-            task = construct_cls(self._gid, self._sim_cls)
+            task = construct_cls.send_args(self._gid, self._cls_path)
             self._conn.send(worker_id, task)
 
         for worker_id in range(self._num_ranks):
@@ -58,7 +58,7 @@ class MicroSimulationRemote(MicroSimulationInterface):
 
     def solve(self, micro_sim_input, dt):
         for worker_id in range(self._num_ranks):
-            task = SolveTask(self._gid, micro_sim_input, dt)
+            task = SolveTask.send_args(self._gid, micro_sim_input, dt)
             self._conn.send(worker_id, task)
 
         result = None
@@ -70,7 +70,7 @@ class MicroSimulationRemote(MicroSimulationInterface):
 
     def get_state(self):
         for worker_id in range(self._num_ranks):
-            task = GetStateTask(self._gid)
+            task = GetStateTask.send_args(self._gid)
             self._conn.send(worker_id, task)
 
         result = {}
@@ -81,7 +81,7 @@ class MicroSimulationRemote(MicroSimulationInterface):
 
     def set_state(self, state):
         for worker_id in range(self._num_ranks):
-            task = SetStateTask(self._gid, state[worker_id])
+            task = SetStateTask.send_args(self._gid, state[worker_id])
             self._conn.send(worker_id, task)
 
         for worker_id in range(self._num_ranks):
@@ -95,7 +95,7 @@ class MicroSimulationRemote(MicroSimulationInterface):
 
     def initialize(self, *args, **kwargs):
         for worker_id in range(self._num_ranks):
-            task = InitializeTask(self._gid, *args, **kwargs)
+            task = InitializeTask.send_args(self._gid, *args, **kwargs)
             self._conn.send(worker_id, task)
 
         result = None
@@ -107,7 +107,7 @@ class MicroSimulationRemote(MicroSimulationInterface):
 
     def output(self):
         for worker_id in range(self._num_ranks):
-            task = OutputTask(self._gid)
+            task = OutputTask.send_args(self._gid)
             self._conn.send(worker_id, task)
 
         result = None
@@ -123,11 +123,11 @@ class MicroSimulationWrapper(MicroSimulationInterface):
     If only a single rank is in use: will contain the micro sim instance.
     Otherwise, it will delegate method calls to workers and not contain state.
     """
-    def __init__(self, name, sim_cls, global_id, late_init, num_ranks, conn):
+    def __init__(self, name, sim_cls, cls_path, global_id, late_init, num_ranks, conn):
         self._impl = None
 
         if num_ranks > 1 and conn is not None:
-            self._impl = MicroSimulationRemote(global_id, late_init, num_ranks, conn, sim_cls)
+            self._impl = MicroSimulationRemote(global_id, late_init, num_ranks, conn, cls_path)
         else:
             self._impl = MicroSimulationLocal(global_id, late_init, sim_cls)
 
@@ -147,15 +147,16 @@ class MicroSimulationWrapper(MicroSimulationInterface):
 
 
 class MicroSimulationClassAdapter:
-    def __init__(self, sim_cls, name, num_ranks, conn, log):
+    def __init__(self, sim_cls, cls_path, name, num_ranks, conn, log):
         self._sim_cls = sim_cls
+        self._cls_path = cls_path
         self._name = name
         self._num_ranks = num_ranks
         self._conn = conn
         self._log = log
 
     def __class__(self): return self._name
-    def __call__(self, gid, *, late_init=False): return MicroSimulationWrapper(self._name, self._sim_cls, gid, late_init, self._num_ranks, self._conn)
+    def __call__(self, gid, *, late_init=False): return MicroSimulationWrapper(self._name, self._sim_cls, self._cls_path, gid, late_init, self._num_ranks, self._conn)
     @property
     def backend_cls(self): return self._sim_cls
 
@@ -214,7 +215,7 @@ def load_backend_class(path_to_micro_file):
     return getattr(ipl.import_module(path_to_micro_file, CLS_NAME), CLS_NAME)
 
 
-def create_simulation_class(log, micro_simulation_class, num_ranks, conn=None, sim_class_name=None):
+def create_simulation_class(log, micro_simulation_class, path_to_micro_file, num_ranks, conn=None, sim_class_name=None):
     """
     Creates a class Simulation which inherits from the class of the micro simulation.
 
@@ -242,5 +243,5 @@ def create_simulation_class(log, micro_simulation_class, num_ranks, conn=None, s
         sim_class_name = f"MicroSimulation{create_simulation_class.sim_id}"
 
 
-    result_cls = MicroSimulationClassAdapter(micro_simulation_class, sim_class_name, num_ranks, conn, log)
+    result_cls = MicroSimulationClassAdapter(micro_simulation_class, path_to_micro_file, sim_class_name, num_ranks, conn, log)
     return result_cls

@@ -28,6 +28,10 @@ class ModelWrapper:
     def __class__(self):
         return self._backend.__class__
 
+    @property
+    def attachments(self):
+        return self._backend.attachments
+
 
 class ModelManager:
     def __init__(self):
