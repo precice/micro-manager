@@ -516,9 +516,10 @@ class Config:
                 "model_adaptivity_settings"
             ]["switching_function"]
 
-            if self._data["simulation_params"]["model_adaptivity_settings"][
+            if (
                 "micro_stateless"
-            ]:
+                in self._data["simulation_params"]["model_adaptivity_settings"]
+            ):
                 self._m_adap_micro_stateless = self._data["simulation_params"][
                     "model_adaptivity_settings"
                 ]["micro_stateless"]

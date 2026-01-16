@@ -3,6 +3,7 @@ from .global_adaptivity_lb import GlobalAdaptivityLBCalculator
 from .local_adaptivity import LocalAdaptivityCalculator
 from .adaptivity import AdaptivityCalculator
 
+
 def create_adaptivity_calculator(
     config,
     local_number_of_sims,
@@ -14,18 +15,25 @@ def create_adaptivity_calculator(
     comm,
     micro_problem_cls,
     model_manager,
-    use_lb
+    use_lb,
 ) -> AdaptivityCalculator:
     adaptivity_type = config.get_adaptivity_type()
 
-    if adaptivity_type == 'local':
+    if adaptivity_type == "local":
         return LocalAdaptivityCalculator(
-            config, local_number_of_sims, logger, rank, comm, micro_problem_cls, model_manager
+            config,
+            local_number_of_sims,
+            logger,
+            rank,
+            comm,
+            micro_problem_cls,
+            model_manager,
         )
 
-    if adaptivity_type == 'global':
+    if adaptivity_type == "global":
         cls = GlobalAdaptivityCalculator
-        if use_lb: cls = GlobalAdaptivityLBCalculator
+        if use_lb:
+            cls = GlobalAdaptivityLBCalculator
 
         return cls(
             config,
@@ -36,7 +44,7 @@ def create_adaptivity_calculator(
             rank,
             comm,
             micro_problem_cls,
-            model_manager
+            model_manager,
         )
 
     raise ValueError("Unknown adaptivity type")

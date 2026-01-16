@@ -32,6 +32,14 @@ class ModelWrapper:
     def attachments(self):
         return self._backend.attachments
 
+    @attachments.setter
+    def attachments(self, value):
+        self._backend.attachments = value
+
+    @property
+    def name(self):
+        return self._backend.name
+
 
 class ModelManager:
     def __init__(self):
@@ -49,7 +57,9 @@ class ModelManager:
         self._stateless_map[micro_sim_cls] = stateless
 
         if stateless:
-            self._backend_map[micro_sim_cls] = micro_sim_cls(-1)
+            self._backend_map[micro_sim_cls] = micro_sim_cls(
+                len(self._registered_classes) - 1
+            )
 
         self._has_init_map[micro_sim_cls] = False
         if hasattr(micro_sim_cls, "initialize") and callable(

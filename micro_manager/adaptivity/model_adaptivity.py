@@ -50,7 +50,11 @@ class ModelAdaptivity:
         for model_file in self._model_files:
             try:
                 model = load_backend_class(model_file)
-                self._model_classes.append(create_simulation_class(self._logger, model, model_file, num_ranks, conn))
+                self._model_classes.append(
+                    create_simulation_class(
+                        self._logger, model, model_file, num_ranks, conn
+                    )
+                )
                 self._model_manager.register(
                     self._model_classes[pos], stateless_flags[pos]
                 )
@@ -167,14 +171,17 @@ class ModelAdaptivity:
             gid = sim.get_global_id()
             tgt_cls = self.get_resolution_sim_class(tgt_res[idx])
 
-            key     = f"{sim.__name__}-state"
-            key_new = f"{tgt_cls.__name__}-state"
+            key = f"{sim.name}-state"
+            key_new = f"{tgt_cls.name}-state"
 
             new_state_exists = key_new in sim.attachments
             sim.attachments[key] = sim.get_state()
 
-            sim_new = self._model_manager.get_instance(gid, tgt_cls, late_init=new_state_exists)
+            sim_new = self._model_manager.get_instance(
+                gid, tgt_cls, late_init=new_state_exists
+            )
             sim_new.attachments = sim.attachments
+            sim_new.attachments[key_new] = sim_new.get_state()
 
             if new_state_exists:
                 sim_new_state = sim.attachments[key_new]
@@ -182,11 +189,10 @@ class ModelAdaptivity:
 
             sims[idx] = sim_new
 
-
     def update_states(
-            self,
-            sims: list,
-            active_sim_ids: Optional = None,
+        self,
+        sims: list,
+        active_sim_ids: Optional = None,
     ):
         """
         Stores the current state of the current model into local buffers.
@@ -202,17 +208,17 @@ class ModelAdaptivity:
         active_sims = self._create_active_mask(active_sim_ids, size)
 
         for idx in range(size):
-            if not active_sims[idx]: continue
+            if not active_sims[idx]:
+                continue
 
             sim = sims[idx]
-            key = f"{sim.__name__}-state"
+            key = f"{sim.name}-state"
             sim.attachments[key] = sim.get_state()
 
-
     def write_back_states(
-            self,
-            sims: list,
-            active_sim_ids: Optional = None,
+        self,
+        sims: list,
+        active_sim_ids: Optional = None,
     ):
         """
         Loads the current state of the current model into local buffers.
@@ -228,12 +234,12 @@ class ModelAdaptivity:
         active_sims = self._create_active_mask(active_sim_ids, size)
 
         for idx in range(size):
-            if not active_sims[idx]: continue
+            if not active_sims[idx]:
+                continue
 
             sim = sims[idx]
-            key = f"{sim.__name__}-state"
+            key = f"{sim.name}-state"
             sim.set_state(sim.attachments[key])
-
 
     def check_convergence(
         self,
@@ -320,7 +326,7 @@ class ModelAdaptivity:
             target resolution
         """
         return next(
-            (idx for idx, cls in enumerate(self._model_classes) if cls == type(sim))
+            (idx for idx, cls in enumerate(self._model_classes) if cls.name == sim.name)
         )
 
     def _gather_current_resolutions(

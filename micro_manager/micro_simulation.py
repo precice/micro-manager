@@ -10,21 +10,35 @@ import importlib as ipl
 
 from .tasking.task import *
 
+
 class MicroSimulationInterface(ABC):
     @abstractmethod
-    def solve(self, micro_sim_input, dt): pass
+    def solve(self, micro_sim_input, dt):
+        pass
+
     @abstractmethod
-    def get_state(self): pass
+    def get_state(self):
+        pass
+
     @abstractmethod
-    def set_state(self, state): pass
+    def set_state(self, state):
+        pass
+
     @abstractmethod
-    def get_global_id(self): pass
+    def get_global_id(self):
+        pass
+
     @abstractmethod
-    def set_global_id(self, global_id): pass
+    def set_global_id(self, global_id):
+        pass
+
     @abstractmethod
-    def initialize(self, *args, **kwargs): pass
+    def initialize(self, *args, **kwargs):
+        pass
+
     @abstractmethod
-    def output(self): pass
+    def output(self):
+        pass
 
 
 class MicroSimulationLocal(MicroSimulationInterface):
@@ -32,13 +46,26 @@ class MicroSimulationLocal(MicroSimulationInterface):
         self._gid = gid
         self._instance = sim_cls(-1 if late_init else gid)
 
-    def solve(self, micro_sim_input, dt):  return self._instance.solve(micro_sim_input, dt)
-    def get_state(self):                   return self._instance.get_state()
-    def set_state(self, state):            return self._instance.set_state(state)
-    def get_global_id(self):               return self._gid
-    def set_global_id(self, global_id):    self._gid = global_id
-    def initialize(self, *args, **kwargs): return self._instance.initialize(*args, **kwargs)
-    def output(self):                      return self._instance.output()
+    def solve(self, micro_sim_input, dt):
+        return self._instance.solve(micro_sim_input, dt)
+
+    def get_state(self):
+        return self._instance.get_state()
+
+    def set_state(self, state):
+        return self._instance.set_state(state)
+
+    def get_global_id(self):
+        return self._gid
+
+    def set_global_id(self, global_id):
+        self._gid = global_id
+
+    def initialize(self, *args, **kwargs):
+        return self._instance.initialize(*args, **kwargs)
+
+    def output(self):
+        return self._instance.output()
 
 
 class MicroSimulationRemote(MicroSimulationInterface):
@@ -64,7 +91,8 @@ class MicroSimulationRemote(MicroSimulationInterface):
         result = None
         for worker_id in range(self._num_ranks):
             output = self._conn.recv(worker_id)
-            if worker_id == 0: result = output
+            if worker_id == 0:
+                result = output
 
         return result
 
@@ -101,7 +129,8 @@ class MicroSimulationRemote(MicroSimulationInterface):
         result = None
         for worker_id in range(self._num_ranks):
             output = self._conn.recv(worker_id)
-            if worker_id == 0: result = output
+            if worker_id == 0:
+                result = output
 
         return result
 
@@ -113,7 +142,8 @@ class MicroSimulationRemote(MicroSimulationInterface):
         result = None
         for worker_id in range(self._num_ranks):
             output = self._conn.recv(worker_id)
-            if worker_id == 0: result = output
+            if worker_id == 0:
+                result = output
 
         return result
 
@@ -123,27 +153,52 @@ class MicroSimulationWrapper(MicroSimulationInterface):
     If only a single rank is in use: will contain the micro sim instance.
     Otherwise, it will delegate method calls to workers and not contain state.
     """
+
     def __init__(self, name, sim_cls, cls_path, global_id, late_init, num_ranks, conn):
         self._impl = None
 
         if num_ranks > 1 and conn is not None:
-            self._impl = MicroSimulationRemote(global_id, late_init, num_ranks, conn, cls_path)
+            self._impl = MicroSimulationRemote(
+                global_id, late_init, num_ranks, conn, cls_path
+            )
         else:
             self._impl = MicroSimulationLocal(global_id, late_init, sim_cls)
 
         self._external_data = dict()
         self._name = name
 
-    def solve(self, micro_sim_input, dt):  return self._impl.solve(micro_sim_input, dt)
-    def get_state(self):                   return self._impl.get_state()
-    def set_state(self, state):            return self._impl.set_state(state)
-    def get_global_id(self):               return self._impl.get_global_id()
-    def set_global_id(self, global_id):    return self._impl.set_global_id(global_id)
-    def initialize(self, *args, **kwargs): return self._impl.initialize(*args, **kwargs)
-    def output(self):                      return self._impl.output()
+    def solve(self, micro_sim_input, dt):
+        return self._impl.solve(micro_sim_input, dt)
+
+    def get_state(self):
+        return self._impl.get_state()
+
+    def set_state(self, state):
+        return self._impl.set_state(state)
+
+    def get_global_id(self):
+        return self._impl.get_global_id()
+
+    def set_global_id(self, global_id):
+        return self._impl.set_global_id(global_id)
+
+    def initialize(self, *args, **kwargs):
+        return self._impl.initialize(*args, **kwargs)
+
+    def output(self):
+        return self._impl.output()
+
     @property
-    def attachments(self):                 return self._external_data
-    def __class__(self):                   return self._name
+    def attachments(self):
+        return self._external_data
+
+    @attachments.setter
+    def attachments(self, value):
+        self._external_data = value
+
+    @property
+    def name(self):
+        return self._name
 
 
 class MicroSimulationClassAdapter:
@@ -155,16 +210,32 @@ class MicroSimulationClassAdapter:
         self._conn = conn
         self._log = log
 
-    def __class__(self): return self._name
-    def __call__(self, gid, *, late_init=False): return MicroSimulationWrapper(self._name, self._sim_cls, self._cls_path, gid, late_init, self._num_ranks, self._conn)
     @property
-    def backend_cls(self): return self._sim_cls
+    def name(self):
+        return self._name
+
+    def __call__(self, gid, *, late_init=False):
+        return MicroSimulationWrapper(
+            self._name,
+            self._sim_cls,
+            self._cls_path,
+            gid,
+            late_init,
+            self._num_ranks,
+            self._conn,
+        )
+
+    @property
+    def backend_cls(self):
+        return self._sim_cls
 
     def check_initialize(self, test_instance, test_input):
-        has_init = hasattr(self._sim_cls, 'initialize')
-        if not has_init: return False, False
-        callable_init = callable(getattr(self._sim_cls, 'initialize'))
-        if not callable_init: return False, False
+        has_init = hasattr(self._sim_cls, "initialize")
+        if not has_init:
+            return False, False
+        callable_init = callable(getattr(self._sim_cls, "initialize"))
+        if not callable_init:
+            return False, False
 
         has_args = False
 
@@ -172,16 +243,18 @@ class MicroSimulationClassAdapter:
         try:
             argspec = inspect.getfullargspec(self._sim_cls.initialize)
             # The first argument in the signature is self
-            if len(argspec.args) == 1: has_args = False
-            elif len(argspec.args) == 2: has_args = True
+            if len(argspec.args) == 1:
+                has_args = False
+            elif len(argspec.args) == 2:
+                has_args = True
             else:
                 raise Exception(
                     "The initialize() method of the Micro simulation has an incorrect number of arguments."
                 )
         except TypeError:
             self._log.log_info_rank_zero(
-                "The signature of initialize() method of the micro simulation cannot be determined. " +
-                "Trying to determine the signature by calling the method."
+                "The signature of initialize() method of the micro simulation cannot be determined. "
+                + "Trying to determine the signature by calling the method."
             )
             # Try to call the initialize() method without initial data
             try:
@@ -189,8 +262,8 @@ class MicroSimulationClassAdapter:
                 has_args = False
             except TypeError:
                 self._log.log_info_rank_zero(
-                    "The initialize() method of the micro simulation has arguments. " +
-                    "Attempting to call it again with initial data."
+                    "The initialize() method of the micro simulation has arguments. "
+                    + "Attempting to call it again with initial data."
                 )
                 try:
                     test_instance.initialize(test_input)
@@ -203,19 +276,27 @@ class MicroSimulationClassAdapter:
         return has_init and callable_init, has_args
 
     def check_output(self):
-        has_init = hasattr(self._sim_cls, 'output')
-        if not has_init: return False
-        callable_init = callable(getattr(self._sim_cls, 'output'))
+        has_init = hasattr(self._sim_cls, "output")
+        if not has_init:
+            return False
+        callable_init = callable(getattr(self._sim_cls, "output"))
 
         return has_init and callable_init
 
 
 def load_backend_class(path_to_micro_file):
-    CLS_NAME = 'MicroSimulation'
+    CLS_NAME = "MicroSimulation"
     return getattr(ipl.import_module(path_to_micro_file, CLS_NAME), CLS_NAME)
 
 
-def create_simulation_class(log, micro_simulation_class, path_to_micro_file, num_ranks, conn=None, sim_class_name=None):
+def create_simulation_class(
+    log,
+    micro_simulation_class,
+    path_to_micro_file,
+    num_ranks,
+    conn=None,
+    sim_class_name=None,
+):
     """
     Creates a class Simulation which inherits from the class of the micro simulation.
 
@@ -232,16 +313,23 @@ def create_simulation_class(log, micro_simulation_class, path_to_micro_file, num
     Simulation : class
         Definition of class Simulation defined in this function.
     """
-    if not hasattr(micro_simulation_class, "get_global_id"): raise ValueError("Invalid micro simulation class")
-    if not hasattr(micro_simulation_class, "get_state"):     raise ValueError("Invalid micro simulation class")
-    if not hasattr(micro_simulation_class, "set_state"):     raise ValueError("Invalid micro simulation class")
-    if not hasattr(micro_simulation_class, "solve"):         raise ValueError("Invalid micro simulation class")
+    if not hasattr(micro_simulation_class, "get_global_id"):
+        raise ValueError("Invalid micro simulation class")
+    if not hasattr(micro_simulation_class, "get_state"):
+        raise ValueError("Invalid micro simulation class")
+    if not hasattr(micro_simulation_class, "set_state"):
+        raise ValueError("Invalid micro simulation class")
+    if not hasattr(micro_simulation_class, "solve"):
+        raise ValueError("Invalid micro simulation class")
 
     if sim_class_name is None:
-        if not hasattr(create_simulation_class, "sim_id"): create_simulation_class.sim_id = 0
-        else: create_simulation_class.sim_id += 1
+        if not hasattr(create_simulation_class, "sim_id"):
+            create_simulation_class.sim_id = 0
+        else:
+            create_simulation_class.sim_id += 1
         sim_class_name = f"MicroSimulation{create_simulation_class.sim_id}"
 
-
-    result_cls = MicroSimulationClassAdapter(micro_simulation_class, path_to_micro_file, sim_class_name, num_ranks, conn, log)
+    result_cls = MicroSimulationClassAdapter(
+        micro_simulation_class, path_to_micro_file, sim_class_name, num_ranks, conn, log
+    )
     return result_cls

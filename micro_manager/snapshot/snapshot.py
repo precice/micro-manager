@@ -84,7 +84,13 @@ class MicroManagerSnapshot(MicroManager):
         - Merge output in parallel run.
         """
 
-        micro_problem_cls = create_simulation_class(self._logger, self._micro_problem, self._config.get_micro_file_name(), 1, None)
+        micro_problem_cls = create_simulation_class(
+            self._logger,
+            self._micro_problem,
+            self._config.get_micro_file_name(),
+            1,
+            None,
+        )
 
         # Loop over all macro parameters
         for elems in range(self._local_number_of_sims):

@@ -5,12 +5,16 @@ from task import handle_task
 
 from connection import Connection, MPIConnection, SocketConnection
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--backend", required=True, choices=["mpi", "socket"])
     parser.add_argument("--host", help="IP or localhost")
     parser.add_argument("--port", type=int, help="Port to open port in micro manager")
-    parser.add_argument("--parentrank", type=int, help="Parent rank of spawning micro manager mpi instance")
+    parser.add_argument(
+        "--parentrank",
+        type=int,
+        help="Parent rank of spawning micro manager mpi instance",
+    )
     args = parser.parse_args()
 
     rank = MPI.COMM_WORLD.Get_rank()
@@ -29,22 +33,32 @@ if __name__ == '__main__':
 
     # register possible tasks
     register_task = None
-    try: register_task = conn.recv(src_id)
-    except Exception: raise RuntimeError("Failed to recv register tasks")
+    try:
+        register_task = conn.recv(src_id)
+    except Exception:
+        raise RuntimeError("Failed to recv register tasks")
     output = register_task(state_data)
-    try: conn.send(dst_id, output)
-    except Exception: raise RuntimeError("Failed to send register tasks output")
+    try:
+        conn.send(dst_id, output)
+    except Exception:
+        raise RuntimeError("Failed to send register tasks output")
 
     while True:
         task_descriptor = None
-        try: task_descriptor = conn.recv(src_id)
-        except Exception: break
+        try:
+            task_descriptor = conn.recv(src_id)
+        except Exception:
+            break
 
         output = None
-        try: output = handle_task(state_data, task_descriptor)
-        except Exception: break
+        try:
+            output = handle_task(state_data, task_descriptor)
+        except Exception:
+            break
 
-        try: conn.send(dst_id, output)
-        except Exception: break
+        try:
+            conn.send(dst_id, output)
+        except Exception:
+            break
 
     conn.close()

@@ -8,13 +8,19 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 from mpi4py import MPI
 
+
 class Connection(ABC):
     @abstractmethod
-    def send(self, dst_id: int, obj: Any) -> None: pass
+    def send(self, dst_id: int, obj: Any) -> None:
+        pass
+
     @abstractmethod
-    def recv(self, src_id: int) -> Any: pass
+    def recv(self, src_id: int) -> Any:
+        pass
+
     @abstractmethod
-    def close(self) -> None: pass
+    def close(self) -> None:
+        pass
 
 
 class MPIConnection(Connection):
@@ -22,7 +28,9 @@ class MPIConnection(Connection):
         self.inter_comm = None
 
     @classmethod
-    def create_workers(cls, worker_exec: str, mpi_args: Optional, n_workers: int) -> "MPIConnection":
+    def create_workers(
+        cls, worker_exec: str, mpi_args: Optional, n_workers: int
+    ) -> "MPIConnection":
         comm = MPI.COMM_SELF
         conn = cls()
         conn.inter_comm = comm.Spawn(
@@ -55,7 +63,9 @@ class SocketConnection(Connection):
         self.sockets: Dict[int, socket.socket] = {}
 
     @classmethod
-    def create_workers(cls, worker_exec: str, launcher: list, host: str, n_workers: int) -> "SocketConnection":
+    def create_workers(
+        cls, worker_exec: str, launcher: list, host: str, n_workers: int
+    ) -> "SocketConnection":
         # create listening socket with ephemeral port
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.bind((host, 0))  # kernel picks free port
@@ -65,9 +75,12 @@ class SocketConnection(Connection):
         executable = [
             "python",
             worker_exec,
-            "--backend", "socket",
-            "--host", host,
-            "--port", str(port),
+            "--backend",
+            "socket",
+            "--host",
+            host,
+            "--port",
+            str(port),
         ]
         cmd = []
         cmd.extend(launcher)
@@ -113,7 +126,8 @@ class SocketConnection(Connection):
         return pickle.loads(payload)
 
     def close(self) -> None:
-        for sock in self.sockets.values(): sock.close()
+        for sock in self.sockets.values():
+            sock.close()
         self.sockets.clear()
 
 
@@ -186,22 +200,26 @@ def spawn_local_workers(
     """
     from .task import RegisterAllTask
 
-    if n_workers <= 1: return None
+    if n_workers <= 1:
+        return None
     conn = None
 
     # MPI BACKEND (non-Slurm only)
     if backend == "mpi":
-        if is_slurm: raise RuntimeError(
-            "MPI backend is not supported under Slurm. "
-            "Use socket backend instead."
-        )
+        if is_slurm:
+            raise RuntimeError(
+                "MPI backend is not supported under Slurm. "
+                "Use socket backend instead."
+            )
         comm = MPI.COMM_WORLD
         local_rank = comm.Get_rank()
         conn = MPIConnection.create_workers(
             worker_exec=worker_exec,
             mpi_args=[
-                "--backend", "mpi",
-                "--parentrank", str(local_rank),
+                "--backend",
+                "mpi",
+                "--parentrank",
+                str(local_rank),
             ],
             n_workers=n_workers,
         )
@@ -215,21 +233,20 @@ def spawn_local_workers(
         if is_slurm:
             launcher = [
                 "srun",
-                #"--exclusive",
-                "--ntasks", str(n_workers),
+                # "--exclusive",
+                "--ntasks",
+                str(n_workers),
                 "--kill-on-bad-exit=1",
             ]
         else:
             launcher = [
                 "mpiexec",
-                "-n", str(n_workers),
+                "-n",
+                str(n_workers),
             ]
 
         conn = SocketConnection.create_workers(
-            worker_exec=worker_exec,
-            launcher=launcher,
-            host=host,
-            n_workers=n_workers
+            worker_exec=worker_exec, launcher=launcher, host=host, n_workers=n_workers
         )
 
     from ..micro_simulation import load_backend_class
