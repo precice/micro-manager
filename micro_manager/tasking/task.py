@@ -115,5 +115,5 @@ class RegisterAllTask(Task):
 def handle_task(state_data, task_descriptor):
     name, args, kwargs = task_descriptor
     task = state_data["tasks"][name](*args, **kwargs)
-    print(f"handling task: {name} args={args} kwargs={kwargs}")
+    #print(f"handling task: {name} args={args} kwargs={kwargs}")
     return task(state_data)
