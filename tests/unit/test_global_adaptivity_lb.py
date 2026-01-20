@@ -22,6 +22,9 @@ class MicroSimulation:
     def get_state(self):
         return self._state.copy()
 
+    def solve(self, micro_input, dt):
+        pass
+
 
 class ModelManager:
     def get_instance(self, gid, micro_problem_cls):

@@ -21,6 +21,15 @@ class MicroSimulation:
             "micro-scalar-data": macro_data["macro-scalar-data"],
         }
 
+    def get_state(self):
+        return None
+
+    def set_state(self, state):
+        pass
+
+    def get_global_id(self):
+        return self.sim_id
+
 
 class TestSimulationCrashHandling(TestCase):
     def test_crash_handling(self):
