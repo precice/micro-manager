@@ -94,7 +94,11 @@ class TestFunctionCalls(TestCase):
         snapshot_object._micro_problem = MicroSimulation
 
         snapshot_object._micro_sims = create_simulation_class(
-            snapshot_object._micro_problem
+            MagicMock(),
+            snapshot_object._micro_problem,
+            None,
+            1,
+            None,
         )(0)
 
         micro_sim_output = snapshot_object._solve_micro_simulation(self.fake_read_data)
