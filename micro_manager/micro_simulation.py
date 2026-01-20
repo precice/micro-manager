@@ -61,6 +61,9 @@ class MicroSimulationLocal(MicroSimulationInterface):
     def set_global_id(self, global_id):
         self._gid = global_id
 
+    def __getattr__(self, name):
+        return getattr(self._impl, name)
+
     def initialize(self, *args, **kwargs):
         return self._instance.initialize(*args, **kwargs)
 
@@ -187,6 +190,9 @@ class MicroSimulationWrapper(MicroSimulationInterface):
 
     def output(self):
         return self._impl.output()
+
+    def __getattr__(self, name):
+        return getattr(self._impl, name)
 
     @property
     def attachments(self):
