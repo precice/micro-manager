@@ -53,3 +53,6 @@ class MicroSimulation:
 
     def set_state(self, state):
         self._state = copy.deepcopy(state)
+
+    def get_global_id(self):
+        return self._sim_id

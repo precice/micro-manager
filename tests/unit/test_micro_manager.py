@@ -21,6 +21,15 @@ class MicroSimulation:
             "micro-vector-data": macro_data["macro-vector-data"] + 1,
         }
 
+    def get_global_id(self):
+        pass
+
+    def get_state(self):
+        return None
+
+    def set_state(self, state):
+        pass
+
 
 class TestFunctioncalls(TestCase):
     def setUp(self):
