@@ -62,7 +62,7 @@ class MicroSimulationLocal(MicroSimulationInterface):
         self._gid = global_id
 
     def __getattr__(self, name):
-        return getattr(self._impl, name)
+        return getattr(self._instance, name)
 
     def initialize(self, *args, **kwargs):
         return self._instance.initialize(*args, **kwargs)
