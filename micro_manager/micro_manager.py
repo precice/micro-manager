@@ -977,10 +977,10 @@ class MicroManagerCoupling(MicroManager):
                     )
 
                     # Mark the micro sim as active for export
-                    micro_sims_output[lid]["active_state"] = 1
+                    micro_sims_output[lid]["Active-State"] = 1
                     gid = self._global_ids_of_local_sims[lid]
                     micro_sims_output[lid][
-                        "active_steps"
+                        "Active-Steps"
                     ] = self._micro_sims_active_steps[gid]
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
@@ -1033,10 +1033,10 @@ class MicroManagerCoupling(MicroManager):
 
         # Resolve micro sim output data for inactive simulations
         for inactive_lid in inactive_sim_lids:
-            micro_sims_output[inactive_lid]["active_state"] = 0
+            micro_sims_output[inactive_lid]["Active-State"] = 0
             gid = self._global_ids_of_local_sims[inactive_lid]
             micro_sims_output[inactive_lid][
-                "active_steps"
+                "Active-Steps"
             ] = self._micro_sims_active_steps[gid]
 
         # Collect micro sim output for adaptivity calculation
@@ -1178,8 +1178,8 @@ class MicroManagerCoupling(MicroManager):
             if self._is_adaptivity_on:
                 interpol_space.append(micro_sims_active_input_lists[neighbor].copy())
                 interpol_values.append(micro_sims_active_values[neighbor].copy())
-                interpol_values[-1].pop("active_state", None)
-                interpol_values[-1].pop("active_steps", None)
+                interpol_values[-1].pop("Active-State", None)
+                interpol_values[-1].pop("Active-Steps", None)
             else:
                 interpol_space.append(micro_sims_active_input_lists[neighbor].copy())
                 interpol_values.append(micro_sims_active_values[neighbor].copy())
@@ -1196,6 +1196,6 @@ class MicroManagerCoupling(MicroManager):
             )
         # Reintroduce removed information
         if self._is_adaptivity_on:
-            output_interpol["active_state"] = 1
-            output_interpol["active_steps"] = self._micro_sims_active_steps[unset_sim]
+            output_interpol["Active-State"] = 1
+            output_interpol["Active-Steps"] = self._micro_sims_active_steps[unset_sim]
         return output_interpol
