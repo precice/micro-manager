@@ -2,9 +2,9 @@
     "micro_file_name": "test_micro_simulation_crash_handling",
     "coupling_params": {
         "precice_config_file_name": "dummy-config.xml",
-        "macro_mesh_name": "dummy-macro-mesh",
-        "read_data_names": ["macro-scalar-data", "macro-vector-data"],
-        "write_data_names": ["micro-scalar-data", "micro-vector-data"]
+        "macro_mesh_name": "Macro-Mesh",
+        "read_data_names": ["Macro-Scalar-Data", "Macro-Vector-Data"],
+        "write_data_names": ["Micro-Scalar-Data", "Micro-Vector-Data"]
     },
     "simulation_params": {
         "micro_dt": 1.0,
@@ -13,7 +13,7 @@
         "adaptivity": true,
         "adaptivity_settings": {
             "type": "local",
-            "data": ["macro-scalar-data", "macro-vector-data"],
+            "data": ["Macro-Scalar-Data", "Macro-Vector-Data"],
             "history_param": 0.5,
             "coarsening_constant": 0.3,
             "refining_constant": 0.4,

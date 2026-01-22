@@ -262,7 +262,7 @@ class MicroManagerCoupling(MicroManager):
 
             if self._is_adaptivity_with_load_balancing:
                 for i in range(self._local_number_of_sims):
-                    micro_sims_output[i]["rank_of_sim"] = self._rank
+                    micro_sims_output[i]["Rank"] = self._rank
 
             # Check if more than a certain percentage of the micro simulations have crashed and terminate if threshold is exceeded
             if self._interpolate_crashed_sims:
