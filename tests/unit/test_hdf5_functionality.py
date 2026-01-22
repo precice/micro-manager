@@ -149,13 +149,13 @@ class TestHDFFunctionalities(TestCase):
             "hdf_files",
             "test_parameter.hdf5",
         )
-        read_data_names = {"macro-vector-data": True, "macro-scalar-data": False}
+        read_data_names = {"Macro-Vector-Data": True, "Macro-Scalar-Data": False}
         data_manager = ReadWriteHDF(MagicMock())
         read = data_manager.read_hdf(file_name, read_data_names, 0, -1)
         for i in range(len(read)):
-            self.assertEqual(read[i]["macro-scalar-data"], expected_macro_scalar)
+            self.assertEqual(read[i]["Macro-Scalar-Data"], expected_macro_scalar)
             self.assertListEqual(
-                read[i]["macro-vector-data"].tolist(), expected_macro_vector.tolist()
+                read[i]["Macro-Vector-Data"].tolist(), expected_macro_vector.tolist()
             )
 
     def test_get_parameter_space_length(self):
