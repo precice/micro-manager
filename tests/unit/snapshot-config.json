@@ -2,7 +2,7 @@
     "micro_file_name": "test_snapshot_computation",
     "output_directory": "output",
     "coupling_params": {
-        "parameter_file_name": "test_parameter.hdf5",
+        "parameter_file_name": "hdf_files/test_parameter.hdf5",
         "read_data_names": ["Macro-Scalar-Data", "Macro-Vector-Data"],
         "write_data_names": ["Micro-Scalar-Data", "Micro-Vector-Data"]
     },
