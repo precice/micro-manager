@@ -1,6 +1,6 @@
 # Micro Manager changelog
 
-## latest
+## v0.8.0
 
 - Conformed to naming standard in precice/tutorials [#215](https://github.com/precice/micro-manager/pull/215)
 - Changed default values of adaptivity metrics output and similarity distance calculation norm [#213](https://github.com/precice/micro-manager/pull/213)
