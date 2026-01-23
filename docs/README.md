@@ -33,3 +33,9 @@ To use the Micro Manager for a macro-micro coupling, your micro simulation code 
 To compute snapshots in an offline manner your simulation code also needs to be in a library format with a specific class name and functions with specific names. To set up a snapshot computation using the Micro Manager, follow these steps:
 
 - [Snapshot computation](tooling-micro-manager-snapshot-configuration.html)
+
+## Citing
+
+If you use this software, please cite our article in the Journal of Open Source Software:
+
+DOI: [10.21105/joss.05842](https://doi.org/10.21105/joss.05842)

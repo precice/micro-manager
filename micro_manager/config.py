@@ -37,7 +37,6 @@ class Config:
         self._micro_output_n = 1
         self._diagnostics_data_names = None
 
-        self._output_micro_sim_time = False
         self._mem_usage_output_type = ""
         self._mem_usage_output_n = 1
 
@@ -51,18 +50,29 @@ class Config:
         self._adaptivity_coarsening_constant = 0.5
         self._adaptivity_refining_constant = 0.5
         self._adaptivity_every_implicit_iteration = False
-        self._adaptivity_similarity_measure = "L1"
+        self._adaptivity_similarity_measure = "L2rel"
         self._adaptivity_output_type = ""
         self._adaptivity_output_n = 1
+
+        self._adaptivity_is_load_balancing = False
+        self._load_balancing_n = 1
+        self._load_balancing_threshold = 0
+        self._balance_inactive_sims = False
 
         # Snapshot information
         self._parameter_file_name = None
         self._postprocessing_file_name = None
         self._initialize_once = False
+        self._output_file_name = "snapshot_data"
 
         self._output_dir = None
 
         self._lazy_initialization = False
+
+        # Model Adaptivity information
+        self._m_adap = False
+        self._m_adap_micro_file_names = None
+        self._m_adap_switching_function = None
 
     def set_logger(self, logger):
         """
@@ -171,15 +181,6 @@ class Config:
             )
 
         self._micro_dt = self._data["simulation_params"]["micro_dt"]
-
-        try:
-            if self._data["diagnostics"]["output_micro_sim_solve_time"]:
-                self._output_micro_sim_time = True
-                self._write_data_names.append("solve_cpu_time")
-        except BaseException:
-            self._logger.log_info_rank_zero(
-                "Micro manager will not output time required to solve each micro simulation."
-            )
 
     def read_json_micro_manager(self):
         """
@@ -305,9 +306,8 @@ class Config:
                 )
             except BaseException:
                 self._logger.log_info_rank_zero(
-                    "No adaptivity output type provided. Defaulting to 'local'."
+                    "No adaptivity output type provided. No metrics will be output."
                 )
-                self._adaptivity_output_type = "local"
 
             try:
                 self._adaptivity_output_n = self._data["simulation_params"][
@@ -385,8 +385,101 @@ class Config:
                 )
                 self._adaptivity_every_implicit_iteration = False
 
-            self._write_data_names.append("active_state")
-            self._write_data_names.append("active_steps")
+            self._write_data_names.append("Active-State")
+            self._write_data_names.append("Active-Steps")
+
+        try:
+            self._adaptivity_is_load_balancing = self._data["simulation_params"][
+                "load_balancing"
+            ]
+            if self._adaptivity_is_load_balancing:
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will dynamically balance micro simulations based on the adaptivity computation."
+                )
+                self._write_data_names.append("rank_of_sim")
+                if not self._adaptivity_type == "global":
+                    raise Exception(
+                        "Load balancing can be done only with global adaptivity."
+                    )
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "Micro Manager will not dynamically balance micro simulations based on the adaptivity computation."
+            )
+
+        if self._adaptivity_is_load_balancing:
+            self._load_balancing_n = self._data["simulation_params"][
+                "load_balancing_settings"
+            ]["every_n_time_windows"]
+            self._logger.log_info_rank_zero(
+                "Load balancing will be done every "
+                + str(self._load_balancing_n)
+                + " time windows."
+            )
+
+            try:
+                self._load_balancing_threshold = self._data["simulation_params"][
+                    "load_balancing_settings"
+                ]["balancing_threshold"]
+                self._logger.log_info_rank_zero(
+                    "Load balancing threshold: " + str(self._load_balancing_threshold)
+                )
+            except BaseException:
+                self._logger.log_info_rank_zero(
+                    "No load balancing threshold provided. The threshold will be set to 0."
+                )
+
+            try:
+                self._balance_inactive_sims = self._data["simulation_params"][
+                    "load_balancing_settings"
+                ]["balance_inactive_sims"]
+                if self._balance_inactive_sims:
+                    self._logger.log_info_rank_zero(
+                        "Micro Manager will redistribute inactive simulations in the load balancing."
+                    )
+            except BaseException:
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will not redistribute inactive simulations in the load balancing. Only active simulations will be redistributed. Note that this may significantly increase the communication cost of the adaptivity."
+                )
+
+        try:
+            if self._data["simulation_params"]["model_adaptivity"]:
+                self._m_adap = True
+                self._logger.log_info_rank_zero(
+                    "Micro Manager will use Model Adaptivity."
+                )
+                if not self._data["simulation_params"]["model_adaptivity_settings"]:
+                    raise Exception(
+                        "Model Adaptivity is turned on but no model adaptivity settings are provided."
+                    )
+            else:
+                self._m_adap = False
+                if self._data["simulation_params"]["model_adaptivity_settings"]:
+                    raise Exception(
+                        "Model Adaptivity settings are provided but model adaptivity is turned off."
+                    )
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "Micro Manager will not adaptively switch simulation models."
+            )
+
+        if self._m_adap:
+            self._m_adap_micro_file_names = [
+                name.replace("/", ".").replace("\\", ".").replace(".py", "")
+                for name in self._data["simulation_params"][
+                    "model_adaptivity_settings"
+                ]["micro_file_names"]
+            ]
+
+            if len(self._m_adap_micro_file_names) < 2:
+                self._logger.log_info_rank_zero(
+                    "Not enough Micro Models provided for Model Adaptivity. Need min 2."
+                )
+                self._logger.log_info_rank_zero("Disabling Model Adaptivity.")
+                self._m_adap = False
+
+            self._m_adap_switching_function = self._data["simulation_params"][
+                "model_adaptivity_settings"
+            ]["switching_function"]
 
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"]:
@@ -430,6 +523,17 @@ class Config:
         self._logger.log_info_rank_zero(
             "Parameter file name: " + self._parameter_file_name
         )
+
+        try:
+            self._output_file_name = self._data["snapshot_params"]["output_file_name"]
+            self._logger.log_info_rank_zero(
+                "Output file name: " + self._output_file_name
+            )
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "No snapshot output file name provided. Defaulting to 'snapshot_data'."
+            )
+            self._output_file_name = "snapshot_data"
 
         try:
             self._postprocessing_file_name = (
@@ -564,17 +668,6 @@ class Config:
         """
         return self._micro_output_n
 
-    def write_micro_solve_time(self):
-        """
-        Depending on user input, micro manager will calculate execution time of solve() step of every micro simulation
-
-        Returns
-        -------
-        output_micro_sim_time : bool
-            True if micro simulation solve time is required.
-        """
-        return self._output_micro_sim_time
-
     def turn_on_adaptivity(self):
         """
         Boolean stating whether adaptivity is ot or not.
@@ -702,6 +795,50 @@ class Config:
         """
         return self._adaptivity_every_implicit_iteration
 
+    def is_adaptivity_with_load_balancing(self):
+        """
+        Check if adaptivity computation needs to be done with load balancing.
+
+        Returns
+        -------
+        adaptivity_is_load_balancing : bool
+            True if adaptivity computation needs to be done with load balancing, False otherwise.
+        """
+        return self._adaptivity_is_load_balancing
+
+    def get_load_balancing_n(self):
+        """
+        Get the load balancing frequency.
+
+        Returns
+        -------
+        load_balancing_n : int
+            Load balancing frequency
+        """
+        return self._load_balancing_n
+
+    def get_load_balancing_threshold(self):
+        """
+        Get the load balancing threshold to control how balanced the micro simulations need to be.
+
+        Returns
+        -------
+        load_balancing_threshold : float
+            Load balancing threshold
+        """
+        return self._load_balancing_threshold
+
+    def balance_inactive_sims(self):
+        """
+        Check if inactive simulations are to be redistributed in the load balancing.
+
+        Returns
+        -------
+        balance_inactive_sims : bool
+            True if inactive simulations are to be redistributed in the load balancing, False otherwise.
+        """
+        return self._balance_inactive_sims
+
     def initialize_sims_lazily(self):
         """
         Check if simulations are to be created only when they are required to be active for the very first time.
@@ -736,6 +873,17 @@ class Config:
         """
 
         return self._parameter_file_name
+
+    def get_output_file_name(self):
+        """
+        Get the name of the output file.
+
+        Returns
+        -------
+        output_file_name : string
+            Name of the hdf5 file containing the snapshot data.
+        """
+        return self._output_file_name
 
     def get_postprocessing_file_name(self):
         """
@@ -802,3 +950,37 @@ class Config:
             Output frequency of memory usage, so output every N timesteps
         """
         return self._mem_usage_output_n
+
+    def turn_on_model_adaptivity(self):
+        """
+        Boolean stating whether adaptivity is ot or not.
+
+        Returns
+        -------
+        adaptivity : bool
+            True is model adaptivity settings are done, False otherwise.
+
+        """
+        return self._m_adap
+
+    def get_model_adaptivity_file_names(self):
+        """
+        Get the paths to the Python scripts of the model-adaptive-micro-simulations.
+
+        Returns
+        -------
+        micro_file_names : string
+            String carrying the path to the Python script of the micro-simulation.
+        """
+        return self._m_adap_micro_file_names
+
+    def get_model_adaptivity_switching_function(self):
+        """
+        Get path to switching function file
+
+        Returns
+        -------
+        switching_function : str
+            String containing the path to the switching function file
+        """
+        return self._m_adap_switching_function

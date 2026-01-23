@@ -91,21 +91,25 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims
+            configurator,
+            nsims=self._number_of_sims,
+            micro_problem_cls=MicroSimulation,
+            base_logger=MagicMock(),
+            rank=0,
         )
         adaptivity_controller._hist_param = 0.5
         adaptivity_controller._adaptivity_data_names = [
-            "micro-scalar-data",
-            "micro-vector-data",
-            "macro-scalar-data",
-            "macro-vector-data",
+            "Micro-Scalar-Data",
+            "Micro-Vector-Data",
+            "Macro-Scalar-Data",
+            "Macro-Vector-Data",
         ]
 
         adaptivity_data = dict()
-        adaptivity_data["micro-scalar-data"] = self._micro_scalar_data
-        adaptivity_data["micro-vector-data"] = self._micro_vector_data
-        adaptivity_data["macro-scalar-data"] = self._macro_scalar_data
-        adaptivity_data["macro-vector-data"] = self._macro_vector_data
+        adaptivity_data["Micro-Scalar-Data"] = self._micro_scalar_data
+        adaptivity_data["Micro-Vector-Data"] = self._micro_vector_data
+        adaptivity_data["Macro-Scalar-Data"] = self._macro_scalar_data
+        adaptivity_data["Macro-Vector-Data"] = self._macro_vector_data
 
         adaptivity_controller._similarity_dists = self._similarity_dists
 
@@ -118,9 +122,6 @@ class TestLocalAdaptivity(TestCase):
             + self._dt * self._data_diff
         )
 
-        print("Expected similarity distances:\n", expected_similarity_dists)
-        print("Actual similarity distances:\n", adaptivity_controller._similarity_dists)
-
         self.assertTrue(
             np.array_equal(
                 expected_similarity_dists, adaptivity_controller._similarity_dists
@@ -129,7 +130,7 @@ class TestLocalAdaptivity(TestCase):
 
     def test_update_active_sims(self):
         """
-        Test functionality of updating active simulations in class AdaptivityCalculator.
+        Test functionality of updating active simulations in class LocalAdaptivityCalculator.
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
@@ -138,14 +139,19 @@ class TestLocalAdaptivity(TestCase):
             return_value="test_adaptivity_serial"
         )
 
-        adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims
+        adaptivity_controller = LocalAdaptivityCalculator(
+            configurator,
+            self._number_of_sims,
+            base_logger=MagicMock(),
+            rank=0,
+            comm=MagicMock(),
+            micro_problem_cls=MicroSimulation,
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
-            "macro-scalar-data",
-            "macro-vector-data",
+            "Macro-Scalar-Data",
+            "Macro-Vector-Data",
         ]
 
         adaptivity_controller._similarity_dists = self._similarity_dists
@@ -171,7 +177,11 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims
+            configurator,
+            nsims=self._number_of_sims,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
         )
 
         fake_data = np.array([[1], [2], [3]])
@@ -265,13 +275,17 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims
+            configurator,
+            nsims=self._number_of_sims,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
-            "macro-scalar-data",
-            "macro-vector-data",
+            "Macro-Scalar-Data",
+            "Macro-Vector-Data",
         ]
 
         adaptivity_controller._similarity_dists = self._similarity_dists
@@ -305,40 +319,23 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
             self._number_of_sims,
-            MagicMock(),
-            0,
-            comm_world=MPI.COMM_WORLD,
+            base_logger=MagicMock(),
+            rank=0,
+            comm=MPI.COMM_WORLD,
+            micro_problem_cls=MicroSimulation,
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
-            "macro-scalar-data",
-            "macro-vector-data",
+            "Macro-Scalar-Data",
+            "Macro-Vector-Data",
         ]
 
         # Third and fifth micro sim are active, rest are deactivate
         expected_is_sim_active = np.array([True, False, False, True, False])
         expected_sim_is_associated_to = np.array([-2, 0, 0, -2, 3])
 
-        similarity_dists = np.zeros((self._number_of_sims, self._number_of_sims))
-        for i in range(self._number_of_sims):
-            for j in range(self._number_of_sims):
-                similarity_dist = abs(
-                    self._micro_scalar_data[i] - self._micro_scalar_data[j]
-                )
-                similarity_dist += abs(
-                    self._macro_scalar_data[i] - self._macro_scalar_data[j]
-                )
-                for d in range(self._dim):
-                    similarity_dist += abs(
-                        self._micro_vector_data[i, d] - self._micro_vector_data[j, d]
-                    )
-                    similarity_dist += abs(
-                        self._macro_vector_data[i, d] - self._macro_vector_data[j, d]
-                    )
-                similarity_dists[i, j] = self._dt * similarity_dist
-
-        adaptivity_controller._similarity_dists = similarity_dists
+        adaptivity_controller._similarity_dists = self._similarity_dists
         adaptivity_controller._is_sim_active = np.array(
             [True, False, False, False, False]
         )

@@ -4,49 +4,46 @@
     <sink type="stream" output="stdout" filter="%Severity% > debug" enabled="true" />
   </log>
 
-  <data:scalar name="macro-scalar-data" />
-  <data:vector name="macro-vector-data" />
-  <data:scalar name="micro-scalar-data" />
-  <data:vector name="micro-vector-data" />
-  <data:scalar name="solve_cpu_time" />
+  <data:scalar name="Macro-Scalar" />
+  <data:vector name="Macro-Vector" />
+  <data:scalar name="Micro-Scalar" />
+  <data:vector name="Micro-Vector" />
 
-  <mesh name="macro-mesh" dimensions="3">
-    <use-data name="macro-scalar-data" />
-    <use-data name="macro-vector-data" />
-    <use-data name="micro-scalar-data" />
-    <use-data name="micro-vector-data" />
-    <use-data name="solve_cpu_time" />
+  <mesh name="Macro-Mesh" dimensions="3">
+    <use-data name="Macro-Scalar" />
+    <use-data name="Macro-Vector" />
+    <use-data name="Micro-Scalar" />
+    <use-data name="Micro-Vector" />
   </mesh>
 
-  <participant name="Macro-dummy">
-    <provide-mesh name="macro-mesh" />
-    <read-data name="micro-scalar-data" mesh="macro-mesh" />
-    <read-data name="micro-vector-data" mesh="macro-mesh" />
-    <write-data name="macro-scalar-data" mesh="macro-mesh" />
-    <write-data name="macro-vector-data" mesh="macro-mesh" />
+  <participant name="Macro-Dummy">
+    <provide-mesh name="Macro-Mesh" />
+    <read-data name="Micro-Scalar" mesh="Macro-Mesh" />
+    <read-data name="Micro-Vector" mesh="Macro-Mesh" />
+    <write-data name="Macro-Scalar" mesh="Macro-Mesh" />
+    <write-data name="Macro-Vector" mesh="Macro-Mesh" />
   </participant>
 
   <participant name="Micro-Manager">
-    <receive-mesh name="macro-mesh" from="Macro-dummy" direct-access="true" safety-factor="0.0" />
-    <read-data name="macro-scalar-data" mesh="macro-mesh" />
-    <read-data name="macro-vector-data" mesh="macro-mesh" />
-    <write-data name="micro-scalar-data" mesh="macro-mesh" />
-    <write-data name="micro-vector-data" mesh="macro-mesh" />
-    <write-data name="solve_cpu_time" mesh="macro-mesh" />
+    <receive-mesh name="Macro-Mesh" from="Macro-Dummy" direct-access="true" safety-factor="0.0" />
+    <read-data name="Macro-Scalar" mesh="Macro-Mesh" />
+    <read-data name="Macro-Vector" mesh="Macro-Mesh" />
+    <write-data name="Micro-Scalar" mesh="Macro-Mesh" />
+    <write-data name="Micro-Vector" mesh="Macro-Mesh" />
   </participant>
 
-  <m2n:sockets acceptor="Micro-Manager" connector="Macro-dummy" />
+  <m2n:sockets acceptor="Micro-Manager" connector="Macro-Dummy" />
 
   <coupling-scheme:serial-implicit>
-    <participants first="Macro-dummy" second="Micro-Manager" />
+    <participants first="Macro-Dummy" second="Micro-Manager" />
     <max-time value="3.0" />
     <time-window-size value="1.0" />
     <max-iterations value="5" />
-    <exchange data="micro-scalar-data" mesh="macro-mesh" from="Micro-Manager" to="Macro-dummy" />
-    <exchange data="micro-vector-data" mesh="macro-mesh" from="Micro-Manager" to="Macro-dummy" />
-    <exchange data="macro-scalar-data" mesh="macro-mesh" from="Macro-dummy" to="Micro-Manager" />
-    <exchange data="macro-vector-data" mesh="macro-mesh" from="Macro-dummy" to="Micro-Manager" />
-    <relative-convergence-measure limit="1e-5" data="macro-scalar-data" mesh="macro-mesh" />
-    <relative-convergence-measure limit="1e-5" data="micro-scalar-data" mesh="macro-mesh" />
+    <exchange data="Micro-Scalar" mesh="Macro-Mesh" from="Micro-Manager" to="Macro-Dummy" />
+    <exchange data="Micro-Vector" mesh="Macro-Mesh" from="Micro-Manager" to="Macro-Dummy" />
+    <exchange data="Macro-Scalar" mesh="Macro-Mesh" from="Macro-Dummy" to="Micro-Manager" />
+    <exchange data="Macro-Vector" mesh="Macro-Mesh" from="Macro-Dummy" to="Micro-Manager" />
+    <relative-convergence-measure limit="1e-5" data="Macro-Scalar" mesh="Macro-Mesh" />
+    <relative-convergence-measure limit="1e-5" data="Micro-Scalar" mesh="Macro-Mesh" />
   </coupling-scheme:serial-implicit>
 </precice-configuration>

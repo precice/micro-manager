@@ -26,19 +26,19 @@ def main():
 
     # preCICE setup
     if args.adaptivity == "no_adaptivity":
-        interface = precice.Participant("Macro-dummy", "precice-config.xml", 0, 1)
+        interface = precice.Participant("Macro-Dummy", "precice-config.xml", 0, 1)
     elif args.adaptivity == "adaptivity":
         interface = precice.Participant(
-            "Macro-dummy", "precice-config-adaptivity.xml", 0, 1
+            "Macro-Dummy", "precice-config-adaptivity.xml", 0, 1
         )
     else:
         raise ValueError("Unknown adaptivity setting")
 
     # define coupling meshes
-    read_mesh_name = write_mesh_name = "macro-mesh"
-    read_data_names = {"micro-scalar-data": 0, "micro-vector-data": 1}
+    read_mesh_name = write_mesh_name = "Macro-Mesh"
+    read_data_names = {"Micro-Scalar": 0, "Micro-Vector": 1}
 
-    write_data_names = {"macro-scalar-data": 0, "macro-vector-data": 1}
+    write_data_names = {"Macro-Scalar": 0, "Macro-Vector": 1}
 
     # Coupling mesh
     coords = np.zeros((nv, interface.get_mesh_dimensions(write_mesh_name)))
@@ -51,14 +51,12 @@ def main():
 
     write_scalar_data = np.zeros(nv)
     write_vector_data = np.zeros(
-        (nv, interface.get_data_dimensions(write_mesh_name, "macro-vector-data"))
+        (nv, interface.get_data_dimensions(write_mesh_name, "Macro-Vector"))
     )
 
     for i in range(nv):
         write_scalar_data[i] = i
-        for d in range(
-            interface.get_data_dimensions(write_mesh_name, "macro-vector-data")
-        ):
+        for d in range(interface.get_data_dimensions(write_mesh_name, "Macro-Vector")):
             write_vector_data[i, d] = i
 
     if interface.requires_initial_data():
@@ -97,7 +95,7 @@ def main():
         write_scalar_data[:] = read_scalar_data[:]
         for i in range(nv):
             for d in range(
-                interface.get_data_dimensions(read_mesh_name, "micro-vector-data")
+                interface.get_data_dimensions(read_mesh_name, "Micro-Vector")
             ):
                 write_vector_data[i, d] = read_vector_data[i, d]
                 if t > 1:  # to trigger adaptivity after some time
