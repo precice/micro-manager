@@ -80,6 +80,7 @@ class Config:
         self._task_is_slurm = False
         self._task_backend = "socket"
         self._task_num_workers = 1
+        self._task_mpi_impl = "open"
 
     def set_logger(self, logger):
         """
@@ -212,6 +213,10 @@ class Config:
                     self._task_num_workers = self._data["tasking"]["num_workers"]
                 if self._task_is_slurm and backend == "mpi":
                     raise Exception("MPI backend not supported on SLURM systems.")
+                if "mpi_impl" in self._data["tasking"]:
+                    self._task_mpi_impl = self._data["tasking"]["mpi_impl"]
+                    if self._task_mpi_impl not in ["open", "intel"]:
+                        raise Exception("mpi_impl must be either 'open' or 'intel'.")
         except BaseException:
             self._logger.log_info_rank_zero(
                 "No or incorrect tasking information provided. Micro manager will compute locally."
@@ -1096,3 +1101,14 @@ class Config:
             use slurm or not
         """
         return self._task_is_slurm
+
+    def get_mpi_impl(self):
+        """
+        Get mpi implementation type
+
+        Returns
+        -------
+        mpi_impl : str
+            mpi implementation type
+        """
+        return self._task_mpi_impl

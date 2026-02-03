@@ -131,6 +131,39 @@ class SocketConnection(Connection):
         self.sockets.clear()
 
 
+def get_mpi_pinning(mpi_impl: str, num_workers:int) -> list:
+    """
+    Returns a list containing args to determine MPI process pinning depending on the MPI implementation.
+
+    Parameters
+    ----------
+    mpi_impl : string
+        MPI implementation
+
+    Returns
+    -------
+    list
+        pinning args
+    """
+    args = []
+    rank = MPI.COMM_WORLD.Get_rank()
+    locations = ", ".join([str(i + rank * num_workers) for i in range(num_workers)])
+
+    if mpi_impl == "intel":
+        args.append("-genv")
+        args.append("I_MPI_PIN=1")
+        args.append("I_MPI_PIN_CELL=core")
+        args.append(f"I_MPI_PIN_PROCESSOR_LIST={locations}")
+
+    if mpi_impl == "open":
+        args.extend(["--bind-to", "core"])
+
+        args.extend(["--map-by", f"PE-LIST={locations}:ORDERED"])
+        args.extend(["--report-bindings"])
+
+    return args
+
+
 def get_local_ip(preferred_ifaces=None) -> str:
     """
     Returns a non-loopback IPv4 address without accessing external networks.
@@ -177,6 +210,7 @@ def spawn_local_workers(
     n_workers: int,
     backend: str,
     is_slurm: bool,
+    mpi_impl: str,
 ):
     """
     Spawn worker processes. On Slurm systems: MPI spawn now supported, socket backend enforced.
@@ -233,10 +267,10 @@ def spawn_local_workers(
         if is_slurm:
             launcher = [
                 "srun",
-                # "--exclusive",
-                "--ntasks",
-                str(n_workers),
-                "--kill-on-bad-exit=1",
+                f"--ntasks={n_workers}",
+                "--cpus-per-task=1",
+                "--cpu-bind=cores"
+                "--exclusive"
             ]
         else:
             launcher = [
@@ -244,6 +278,7 @@ def spawn_local_workers(
                 "-n",
                 str(n_workers),
             ]
+            launcher.extend(get_mpi_pinning(mpi_impl, n_workers))
 
         conn = SocketConnection.create_workers(
             worker_exec=worker_exec, launcher=launcher, host=host, n_workers=n_workers
