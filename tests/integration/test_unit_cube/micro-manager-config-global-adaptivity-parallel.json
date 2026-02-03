@@ -3,9 +3,9 @@
     "output_dir": "adaptivity_output",
     "coupling_params": {
         "precice_config_file_name": "precice-config.xml",
-        "macro_mesh_name": "macro-cube-mesh",
-        "write_data_names": ["micro-data-1", "micro-data-2"],
-        "read_data_names": ["macro-data-1"]
+        "macro_mesh_name": "Macro-Cube-Mesh",
+        "write_data_names": ["Micro-1", "Micro-2"],
+        "read_data_names": ["Macro-1"]
     },
     "simulation_params": {
         "micro_dt": 1.0,
@@ -14,7 +14,7 @@
         "adaptivity": true,
         "adaptivity_settings": {
             "type": "global",
-            "data": ["micro-data-1", "micro-data-2"],
+            "data": ["Micro-1", "Micro-2"],
             "history_param": 1.0,
             "coarsening_constant": 0.3,
             "refining_constant": 0.4,

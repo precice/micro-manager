@@ -108,17 +108,17 @@ class TestLocalAdaptivity(TestCase):
         )
         adaptivity_controller._hist_param = 0.5
         adaptivity_controller._adaptivity_data_names = [
-            "micro-scalar-data",
-            "micro-vector-data",
-            "macro-scalar-data",
-            "macro-vector-data",
+            "Micro-Scalar-Data",
+            "Micro-Vector-Data",
+            "Macro-Scalar-Data",
+            "Macro-Vector-Data",
         ]
 
         adaptivity_data = dict()
-        adaptivity_data["micro-scalar-data"] = self._micro_scalar_data
-        adaptivity_data["micro-vector-data"] = self._micro_vector_data
-        adaptivity_data["macro-scalar-data"] = self._macro_scalar_data
-        adaptivity_data["macro-vector-data"] = self._macro_vector_data
+        adaptivity_data["Micro-Scalar-Data"] = self._micro_scalar_data
+        adaptivity_data["Micro-Vector-Data"] = self._micro_vector_data
+        adaptivity_data["Macro-Scalar-Data"] = self._macro_scalar_data
+        adaptivity_data["Macro-Vector-Data"] = self._macro_vector_data
 
         adaptivity_controller._similarity_dists = self._similarity_dists
 
@@ -160,8 +160,8 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
-            "macro-scalar-data",
-            "macro-vector-data",
+            "Macro-Scalar-Data",
+            "Macro-Vector-Data",
         ]
 
         adaptivity_controller._similarity_dists = self._similarity_dists
@@ -296,8 +296,8 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
-            "macro-scalar-data",
-            "macro-vector-data",
+            "Macro-Scalar-Data",
+            "Macro-Vector-Data",
         ]
 
         adaptivity_controller._similarity_dists = self._similarity_dists
@@ -340,8 +340,8 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
-            "macro-scalar-data",
-            "macro-vector-data",
+            "Macro-Scalar-Data",
+            "Macro-Vector-Data",
         ]
 
         # Third and fifth micro sim are active, rest are deactivate

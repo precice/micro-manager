@@ -17,8 +17,8 @@ class MicroSimulation:
             raise Exception("Simulation experienced a crash")
 
         return {
-            "micro-vector-data": macro_data["macro-vector-data"],
-            "micro-scalar-data": macro_data["macro-scalar-data"],
+            "Micro-Vector-Data": macro_data["Macro-Vector-Data"],
+            "Micro-Scalar-Data": macro_data["Macro-Scalar-Data"],
         }
 
     def get_state(self):
@@ -42,7 +42,7 @@ class TestSimulationCrashHandling(TestCase):
         macro_data = []
         for i in [-2, -1, 1, 2]:
             macro_data.append(
-                {"macro-vector-data": np.array([i, i, i]), "macro-scalar-data": [i]}
+                {"Macro-Vector-Data": np.array([i, i, i]), "Macro-Scalar-Data": [i]}
             )
         expected_crash_vector_data = np.array([55 / 49, 55 / 49, 55 / 49])
         expected_crash_scalar_data = 55 / 49
@@ -65,19 +65,19 @@ class TestSimulationCrashHandling(TestCase):
 
         # Crashed simulation has interpolated value
         data_crashed = micro_sims_output[2]
-        self.assertEqual(data_crashed["micro-scalar-data"], expected_crash_scalar_data)
+        self.assertEqual(data_crashed["Micro-Scalar-Data"], expected_crash_scalar_data)
         self.assertListEqual(
-            data_crashed["micro-vector-data"].tolist(),
+            data_crashed["Micro-Vector-Data"].tolist(),
             expected_crash_vector_data.tolist(),
         )
         # Non-crashed simulations should remain constant
         data_normal = micro_sims_output[1]
         self.assertEqual(
-            data_normal["micro-scalar-data"], macro_data[1]["macro-scalar-data"]
+            data_normal["Micro-Scalar-Data"], macro_data[1]["Macro-Scalar-Data"]
         )
         self.assertListEqual(
-            data_normal["micro-vector-data"].tolist(),
-            macro_data[1]["macro-vector-data"].tolist(),
+            data_normal["Micro-Vector-Data"].tolist(),
+            macro_data[1]["Macro-Vector-Data"].tolist(),
         )
 
     def test_crash_handling_with_adaptivity(self):
@@ -90,7 +90,7 @@ class TestSimulationCrashHandling(TestCase):
         macro_data = []
         for i in [-2, -1, 1, 2, 10]:
             macro_data.append(
-                {"macro-vector-data": np.array([i, i, i]), "macro-scalar-data": [i]}
+                {"Macro-Vector-Data": np.array([i, i, i]), "Macro-Scalar-Data": [i]}
             )
         expected_crash_vector_data = np.array([55 / 49, 55 / 49, 55 / 49])
         expected_crash_scalar_data = 55 / 49
@@ -122,19 +122,19 @@ class TestSimulationCrashHandling(TestCase):
 
         # Crashed simulation has interpolated value
         data_crashed = micro_sims_output[2]
-        self.assertEqual(data_crashed["micro-scalar-data"], expected_crash_scalar_data)
+        self.assertEqual(data_crashed["Micro-Scalar-Data"], expected_crash_scalar_data)
         self.assertListEqual(
-            data_crashed["micro-vector-data"].tolist(),
+            data_crashed["Micro-Vector-Data"].tolist(),
             expected_crash_vector_data.tolist(),
         )
 
         # Inactive simulation that is associated with crashed simulation has same value
         data_associated = micro_sims_output[4]
         self.assertEqual(
-            data_associated["micro-scalar-data"], expected_crash_scalar_data
+            data_associated["Micro-Scalar-Data"], expected_crash_scalar_data
         )
         self.assertListEqual(
-            data_associated["micro-vector-data"].tolist(),
+            data_associated["Micro-Vector-Data"].tolist(),
             expected_crash_vector_data.tolist(),
         )
 

@@ -20,11 +20,11 @@ py::dict MicroSimulation::solve(py::dict macro_data, double dt)
 {
     //! Code below shows how to convert input macro data and use it in your C++ solver
 
-    // Create a double from macro_data["micro_scalar_data"], which is a Python float
-    double macro_scalar_data = macro_data["macro-scalar-data"].cast<double>();
+    // Create a double from macro_data["Macro-Scalar"], which is a Python float
+    double macro_scalar_data = macro_data["Macro-Scalar"].cast<double>();
 
-    // Create a pybind style Numpy array from macro_write_data["micro_vector_data"], which is a Numpy array
-    py::array_t<double> macro_vector_data = macro_data["macro-vector-data"].cast<py::array_t<double>>();
+    // Create a pybind style Numpy array from macro_write_data["Macro-Vector"], which is a Numpy array
+    py::array_t<double> macro_vector_data = macro_data["Macro-Vector"].cast<py::array_t<double>>();
     _micro_vector_data = std::vector<double>(macro_vector_data.data(), macro_vector_data.data() + macro_vector_data.size()); // convert numpy array to std::vector.
 
     // Change data
@@ -38,8 +38,8 @@ py::dict MicroSimulation::solve(py::dict macro_data, double dt)
     py::dict micro_write_data;
 
     // add micro_scalar_data and micro_vector_data to micro_write_data
-    micro_write_data["micro-scalar-data"] = _micro_scalar_data;
-    micro_write_data["micro-vector-data"] = _micro_vector_data; // numpy array is automatically converted to python list
+    micro_write_data["Micro-Scalar"] = _micro_scalar_data;
+    micro_write_data["Micro-Vector"] = _micro_vector_data; // numpy array is automatically converted to python list
 
     return micro_write_data;
 }

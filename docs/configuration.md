@@ -129,25 +129,25 @@ Example of model adaptivity configuration is
 
 ### Adding adaptivity in the preCICE XML configuration
 
-If adaptivity is used, the Micro Manager will attempt to write two scalar data per micro simulation to preCICE, called `active_state` and `active_steps`.
+If adaptivity is used, the Micro Manager will attempt to write two scalar data per micro simulation to preCICE, called `Active-State` and `Active-Steps`.
 
-- `active_state` is `1` if the micro simulation is active in the time window, and `0` if inactive.
-- `active_steps` is summation of `active_state` up to the current time window.
+- `Active-State` is `1` if the micro simulation is active in the time window, and `0` if inactive.
+- `Active-Steps` is summation of `Active-State` up to the current time window.
 
 The Micro Manager uses the output functionality of preCICE, hence these data sets need to be manually added to the preCICE configuration file. In the mesh and the participant Micro-Manager add the following lines:
 
 ```xml
-<data:scalar name="active_state"/>
-<data:scalar name="active_steps"/>
+<data:scalar name="Active-State"/>
+<data:scalar name="Active-Steps"/>
 
 <mesh name="macro-mesh">
-    <use-data name="active_state"/>
-    <use-data name="active_steps"/>
+    <use-data name="Active-State"/>
+    <use-data name="Active-Steps"/>
 </mesh>
 
 <participant name="Micro-Manager">
-    <write-data name="active_state" mesh="macro-mesh"/>
-    <write-data name="active_steps" mesh="macro-mesh"/>
+    <write-data name="Active-State" mesh="macro-mesh"/>
+    <write-data name="Active-Steps" mesh="macro-mesh"/>
 </participant>
 ```
 

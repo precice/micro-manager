@@ -18,13 +18,13 @@ class MicroSimulation:
     def solve(self, macro_data, dt):
         assert dt != 0
         self._micro_vector_data = []
-        self._micro_scalar_data = macro_data["macro-scalar-data"] + 1
+        self._micro_scalar_data = macro_data["Macro-Scalar"] + 1
         for d in range(self._dims):
-            self._micro_vector_data.append(macro_data["macro-vector-data"][d] + 1)
+            self._micro_vector_data.append(macro_data["Macro-Vector"][d] + 1)
 
         return {
-            "micro-scalar-data": self._micro_scalar_data.copy(),
-            "micro-vector-data": self._micro_vector_data.copy(),
+            "Micro-Scalar": self._micro_scalar_data.copy(),
+            "Micro-Vector": self._micro_vector_data.copy(),
         }
 
     def set_state(self, state):

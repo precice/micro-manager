@@ -37,16 +37,16 @@ class TestHDFFunctionalities(TestCase):
         # Create ouput files to merge
         input_data = [
             {
-                "macro_vector_data": np.array([1, 2, 3]),
-                "macro_scalar_data": 1,
-                "micro_vector_data": np.array([-1, -2, -3]),
-                "micro_scalar_data": -1,
+                "Macro-Vector-Data": np.array([1, 2, 3]),
+                "Macro-Scalar-Data": 1,
+                "Micro-Vector-Data": np.array([-1, -2, -3]),
+                "Micro-Scalar-Data": -1,
             },
             {
-                "macro_vector_data": np.array([4, 5, 6]),
-                "macro_scalar_data": 2,
-                "micro_vector_data": np.array([-4, -5, -6]),
-                "micro_scalar_data": -2,
+                "Macro-Vector-Data": np.array([4, 5, 6]),
+                "Macro-Scalar-Data": 2,
+                "Micro-Vector-Data": np.array([-4, -5, -6]),
+                "Micro-Scalar-Data": -2,
             },
         ]
         for data, file in zip(input_data, files):
@@ -69,20 +69,20 @@ class TestHDFFunctionalities(TestCase):
 
         for i in range(length):
             self.assertEqual(
-                output["macro_scalar_data"][i], input_data[i]["macro_scalar_data"]
+                output["Macro-Scalar-Data"][i], input_data[i]["Macro-Scalar-Data"]
             )
 
             self.assertListEqual(
-                output["macro_vector_data"][i].tolist(),
-                input_data[i]["macro_vector_data"].tolist(),
+                output["Macro-Vector-Data"][i].tolist(),
+                input_data[i]["Macro-Vector-Data"].tolist(),
             )
             self.assertEqual(
-                output["micro_scalar_data"][i], input_data[i]["micro_scalar_data"]
+                output["Micro-Scalar-Data"][i], input_data[i]["Micro-Scalar-Data"]
             )
 
             self.assertListEqual(
-                output["micro_vector_data"][i].tolist(),
-                input_data[i]["micro_vector_data"].tolist(),
+                output["Micro-Vector-Data"][i].tolist(),
+                input_data[i]["Micro-Vector-Data"].tolist(),
             )
 
         output.close()
@@ -102,12 +102,12 @@ class TestHDFFunctionalities(TestCase):
 
         # Create artificial output data
         macro_data = {
-            "macro_vector_data": np.array([3, 1, 2]),
-            "macro_scalar_data": 2,
+            "Macro-Vector-Data": np.array([3, 1, 2]),
+            "Macro-Scalar-Data": 2,
         }
         micro_data = {
-            "micro_vector_data": np.array([3, 2, 1]),
-            "micro_scalar_data": 1,
+            "Micro-Vector-Data": np.array([3, 2, 1]),
+            "Micro-Scalar-Data": 1,
         }
 
         expected_micro_vector_data = np.array([3, 2, 1])
@@ -123,17 +123,17 @@ class TestHDFFunctionalities(TestCase):
         test_file = h5py.File(file_name, "r")
 
         self.assertEqual(
-            (test_file["micro_scalar_data"][0]), expected_micro_scalar_data
+            (test_file["Micro-Scalar-Data"][0]), expected_micro_scalar_data
         )
         self.assertListEqual(
-            (test_file["micro_vector_data"][0]).tolist(),
+            (test_file["Micro-Vector-Data"][0]).tolist(),
             (expected_micro_vector_data).tolist(),
         )
         self.assertEqual(
-            (test_file["macro_scalar_data"][0]), expected_macro_scalar_data
+            (test_file["Macro-Scalar-Data"][0]), expected_macro_scalar_data
         )
         self.assertListEqual(
-            (test_file["macro_vector_data"][0]).tolist(),
+            (test_file["Macro-Vector-Data"][0]).tolist(),
             (expected_macro_vector_data).tolist(),
         )
         os.remove(file_name)
@@ -149,13 +149,13 @@ class TestHDFFunctionalities(TestCase):
             "hdf_files",
             "test_parameter.hdf5",
         )
-        read_data_names = {"macro_vector_data": True, "macro_scalar_data": False}
+        read_data_names = {"Macro-Vector-Data": True, "Macro-Scalar-Data": False}
         data_manager = ReadWriteHDF(MagicMock())
         read = data_manager.read_hdf(file_name, read_data_names, 0, -1)
         for i in range(len(read)):
-            self.assertEqual(read[i]["macro_scalar_data"], expected_macro_scalar)
+            self.assertEqual(read[i]["Macro-Scalar-Data"], expected_macro_scalar)
             self.assertListEqual(
-                read[i]["macro_vector_data"].tolist(), expected_macro_vector.tolist()
+                read[i]["Macro-Vector-Data"].tolist(), expected_macro_vector.tolist()
             )
 
     def test_get_parameter_space_length(self):

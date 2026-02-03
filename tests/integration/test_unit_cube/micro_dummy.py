@@ -28,8 +28,8 @@ class MicroSimulation:
 
     def initialize(self):
         return {
-            "micro-data-1": self._this_sim_type,
-            "micro-data-2": [
+            "Micro-1": self._this_sim_type,
+            "Micro-2": [
                 self._this_sim_type,
                 self._this_sim_type,
                 self._this_sim_type,
@@ -40,8 +40,8 @@ class MicroSimulation:
         time.sleep(self._this_sim_type * 0.001)
 
         return {
-            "micro-data-1": self._this_sim_type,
-            "micro-data-2": [
+            "Micro-1": self._this_sim_type,
+            "Micro-2": [
                 self._this_sim_type,
                 self._this_sim_type,
                 self._this_sim_type,

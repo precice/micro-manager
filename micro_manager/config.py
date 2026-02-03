@@ -425,8 +425,8 @@ class Config:
                 )
                 self._adaptivity_every_implicit_iteration = False
 
-            self._write_data_names.append("active_state")
-            self._write_data_names.append("active_steps")
+            self._write_data_names.append("Active-State")
+            self._write_data_names.append("Active-Steps")
 
         try:
             self._adaptivity_is_load_balancing = self._data["simulation_params"][

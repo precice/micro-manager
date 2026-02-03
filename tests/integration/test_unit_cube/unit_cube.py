@@ -18,9 +18,9 @@ def main():
     t = 0
 
     # preCICE setup
-    participant = precice.Participant("macro-cube", "precice-config.xml", 0, 1)
-    mesh_name = "macro-cube-mesh"
-    read_data_names = {"micro-data-1": 0, "micro-data-2": 1}
+    participant = precice.Participant("Macro-Cube", "precice-config.xml", 0, 1)
+    mesh_name = "Macro-Cube-Mesh"
+    read_data_names = {"Micro-1": 0, "Micro-2": 1}
 
     # Coupling mesh - unit cube with 5 points in each direction
     np_axis = args.np_axis
@@ -58,7 +58,7 @@ def main():
                 mesh_name, data_name, vertex_ids, 1.0
             )
 
-        participant.write_data(mesh_name, "macro-data-1", vertex_ids, np.ones(nv))
+        participant.write_data(mesh_name, "Macro-1", vertex_ids, np.ones(nv))
 
         participant.advance(dt)
         dt = participant.get_max_time_step_size()
