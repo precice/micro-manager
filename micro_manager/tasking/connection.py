@@ -131,7 +131,7 @@ class SocketConnection(Connection):
         self.sockets.clear()
 
 
-def get_mpi_pinning(mpi_impl: str, num_workers:int) -> list:
+def get_mpi_pinning(mpi_impl: str, num_workers: int) -> list:
     """
     Returns a list containing args to determine MPI process pinning depending on the MPI implementation.
 
@@ -269,8 +269,8 @@ def spawn_local_workers(
                 "srun",
                 f"--ntasks={n_workers}",
                 "--cpus-per-task=1",
-                "--cpu-bind=cores"
-                "--exclusive"
+                "--cpu-bind=cores",
+                "--exclusive",
             ]
         else:
             launcher = [

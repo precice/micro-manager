@@ -591,7 +591,7 @@ class MicroManagerCoupling(MicroManager):
             num_ranks,
             self._config.get_tasking_backend(),
             self._config.get_tasking_use_slurm(),
-            self._config.get_mpi_impl()
+            self._config.get_mpi_impl(),
         )
 
         # load micro sim
