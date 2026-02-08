@@ -2,6 +2,7 @@
 
 ## latest
 
+- Added support to run micro simulation in separate process with workers [#219](https://github.com/precice/micro-manager/pull/219)
 - Added abstraction layers to micro simulations to support more features [#218](https://github.com/precice/micro-manager/pull/218)
 
 ## v0.8.0
