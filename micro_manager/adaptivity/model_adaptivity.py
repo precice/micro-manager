@@ -4,11 +4,7 @@ Class ModelAdaptivity provides methods to change micro simulation resolution on 
 from typing import Union, Optional
 
 from micro_manager.config import Config
-from micro_manager.micro_simulation import (
-    create_simulation_class,
-    load_backend_class,
-    MicroSimulationClass,
-)
+from micro_manager.micro_simulation import create_simulation_class, load_backend_class, MicroSimulationClass
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.misc import clamp_in_range
 
@@ -43,8 +39,7 @@ class ModelAdaptivity:
                 model = load_backend_class(model_file)
                 self._model_classes.append(
                     create_simulation_class(
-                        self._logger,
-                        model,
+                        self._logger, model,
                     )
                 )
             except Exception as e:

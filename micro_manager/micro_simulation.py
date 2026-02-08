@@ -232,5 +232,7 @@ def create_simulation_class(
             create_simulation_class.sim_id += 1
         sim_class_name = f"MicroSimulation{create_simulation_class.sim_id}"
 
-    result_cls = MicroSimulationClass(micro_simulation_class, sim_class_name, log)
+    result_cls = MicroSimulationClass(
+        micro_simulation_class, sim_class_name, log
+    )
     return result_cls
