@@ -2,7 +2,7 @@
 
 ## latest
 
-- Add abstraction layers to micro simulations to support more features [#217](https://github.com/precice/micro-manager/pull/217)
+- Add abstraction layers to micro simulations to support more features [#218](https://github.com/precice/micro-manager/pull/218)
 
 ## v0.8.0
 
