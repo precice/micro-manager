@@ -25,6 +25,9 @@ class MicroSimulation:
     def get_state(self):
         pass
 
+    def solve(self, micro_input, dt):
+        pass
+
 
 class TestLocalAdaptivity(TestCase):
     def setUp(self):

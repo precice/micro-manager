@@ -22,6 +22,9 @@ class MicroSimulation:
     def get_state(self):
         return self._state.copy()
 
+    def solve(self, micro_input, dt):
+        pass
+
 
 class TestGlobalAdaptivityLB(TestCase):
     def setUp(self):
