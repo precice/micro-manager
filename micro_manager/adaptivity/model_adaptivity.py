@@ -39,7 +39,8 @@ class ModelAdaptivity:
                 model = load_backend_class(model_file)
                 self._model_classes.append(
                     create_simulation_class(
-                        self._logger, model,
+                        self._logger,
+                        model,
                     )
                 )
             except Exception as e:
@@ -160,9 +161,7 @@ class ModelAdaptivity:
             new_state_exists = key_new in sim.attachments
             sim.attachments[key] = sim.get_state()
 
-            sim_new = self.tgt_cls(
-                gid, late_init=new_state_exists
-            )
+            sim_new = self.tgt_cls(gid, late_init=new_state_exists)
             sim_new.attachments = sim.attachments
             sim_new.attachments[key_new] = sim_new.get_state()
 
