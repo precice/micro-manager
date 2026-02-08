@@ -39,7 +39,8 @@ class ModelAdaptivity:
                 model = load_backend_class(model_file)
                 self._model_classes.append(
                     create_simulation_class(
-                        self._logger, model,
+                        self._logger,
+                        model,
                     )
                 )
             except Exception as e:
