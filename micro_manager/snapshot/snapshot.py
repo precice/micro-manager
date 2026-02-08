@@ -87,6 +87,9 @@ class MicroManagerSnapshot(MicroManager):
         micro_problem_cls = create_simulation_class(
             self._logger,
             self._micro_problem,
+            self._config.get_micro_file_name(),
+            1,
+            None,
         )
 
         # Loop over all macro parameters
