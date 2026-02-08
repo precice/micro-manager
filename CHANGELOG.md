@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## latest
+
+- Add abstraction layers to micro simulations to support more features [#217](https://github.com/precice/micro-manager/pull/217)
+
 ## v0.8.0
 
 - Conformed to naming standard in precice/tutorials [#215](https://github.com/precice/micro-manager/pull/215)
