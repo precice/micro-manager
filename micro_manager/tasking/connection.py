@@ -85,7 +85,7 @@ class SocketConnection(Connection):
         cmd = []
         cmd.extend(launcher)
         cmd.extend(executable)
-        subprocess.Popen(cmd, env=os.environ.copy())
+        subprocess.Popen(cmd)#, env=os.environ.copy())
 
         conn = cls()
         for wid in range(n_workers):
@@ -147,12 +147,16 @@ def get_mpi_pinning(mpi_impl: str, num_workers: int) -> list:
     """
     args = []
     rank = MPI.COMM_WORLD.Get_rank()
-    locations = ", ".join([str(i + rank * num_workers) for i in range(num_workers)])
+    locations = ",".join([str(i + rank * num_workers) for i in range(num_workers)])
 
     if mpi_impl == "intel":
         args.append("-genv")
         args.append("I_MPI_PIN=1")
+        args.append("-genv")
         args.append("I_MPI_PIN_CELL=core")
+        args.append("-genv")
+        args.append("I_MPI_PIN_DOMAIN=1")
+        args.append("-genv")
         args.append(f"I_MPI_PIN_PROCESSOR_LIST={locations}")
 
     if mpi_impl == "open":
