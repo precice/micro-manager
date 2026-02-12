@@ -140,31 +140,39 @@ class ModelAdaptivity:
         """
         size = len(sims)
         active_sims = self._create_active_mask(active_sim_ids, size)
-        cur_res = self._gather_current_resolutions(sims, active_sims)
-        tgt_res = self._gather_target_resolutions(
-            cur_res, locations, t, inputs, prev_output, active_sims
+        current_res = self._gather_current_resolutions(sims, active_sims)
+        target_res = self._gather_target_resolutions(
+            current_res, locations, t, inputs, prev_output, active_sims
         )
 
-        self._logger.log_info_rank_zero(f"New resolutions for t={t}: {tgt_res}")
+        self._logger.log_info_rank_zero(f"New resolutions for t={t}: {target_res}")
 
         for idx in range(size):
-            if cur_res[idx] == tgt_res[idx]:
+            if current_res[idx] == target_res[idx]:
                 continue
 
             sim = sims[idx]
             gid = sim.get_global_id()
-            tgt_cls = self.get_resolution_sim_class(tgt_res[idx])
+            target_class = self.get_resolution_sim_class(target_res[idx])
 
+            # we store state for each resolution separately
+            # keys are sim names of respective resolution
             key = f"{sim.name}-state"
-            key_new = f"{tgt_cls.name}-state"
+            key_new = f"{target_class.name}-state"
 
+            # check if a state of the target resolution exists
+            # then update state buffer with current state
             new_state_exists = key_new in sim.attachments
             sim.attachments[key] = sim.get_state()
 
-            sim_new = self.tgt_cls(gid, late_init=new_state_exists)
+            # construct new sim and delay initialization if possible
+            sim_new = target_class(gid, late_init=new_state_exists)
+            # need to copy over the multi-state buffer to new sim object
             sim_new.attachments = sim.attachments
             sim_new.attachments[key_new] = sim_new.get_state()
 
+            # if state of target resolution exists
+            # use it to initialize
             if new_state_exists:
                 sim_new_state = sim.attachments[key_new]
                 sim_new.set_state(sim_new_state)
@@ -177,7 +185,7 @@ class ModelAdaptivity:
         active_sim_ids: Optional = None,
     ):
         """
-        Stores the current state of the current model into local buffers.
+        Updates the current state of the current model in the local buffers.
 
         Parameters
         ----------
