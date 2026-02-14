@@ -8,6 +8,12 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 from mpi4py import MPI
 
+# task import workaround
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).resolve().parent))
+from task import RegisterAllTask
+
 
 class Connection(ABC):
     @abstractmethod
@@ -64,7 +70,7 @@ class SocketConnection(Connection):
 
     @classmethod
     def create_workers(
-        cls, worker_exec: str, launcher: list, host: str, n_workers: int
+        cls, worker_exec: str, launcher: list, host: str, n_workers: int, env_opts: dict
     ) -> "SocketConnection":
         # create listening socket with ephemeral port
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -85,7 +91,10 @@ class SocketConnection(Connection):
         cmd = []
         cmd.extend(launcher)
         cmd.extend(executable)
-        subprocess.Popen(cmd)#, env=os.environ.copy())
+
+        env = os.environ.copy()
+        env.update(env_opts)
+        subprocess.Popen(cmd, env=env)
 
         conn = cls()
         for wid in range(n_workers):
@@ -131,7 +140,7 @@ class SocketConnection(Connection):
         self.sockets.clear()
 
 
-def get_mpi_pinning(mpi_impl: str, num_workers: int) -> list:
+def get_mpi_pinning(mpi_impl: str, num_workers: int):
     """
     Returns a list containing args to determine MPI process pinning depending on the MPI implementation.
 
@@ -148,16 +157,19 @@ def get_mpi_pinning(mpi_impl: str, num_workers: int) -> list:
     args = []
     rank = MPI.COMM_WORLD.Get_rank()
     locations = ",".join([str(i + rank * num_workers) for i in range(num_workers)])
-
+    options = {}
     if mpi_impl == "intel":
-        args.append("-genv")
-        args.append("I_MPI_PIN=1")
-        args.append("-genv")
-        args.append("I_MPI_PIN_CELL=core")
-        args.append("-genv")
-        args.append("I_MPI_PIN_DOMAIN=1")
-        args.append("-genv")
-        args.append(f"I_MPI_PIN_PROCESSOR_LIST={locations}")
+        options.update({
+            "I_MPI_DEBUG": "5",
+            "I_MPI_PIN": "1",
+            "I_MPI_PIN_CELL": "core",
+            "I_MPI_PIN_DOMAIN": "1",
+            "I_MPI_PIN_PROCESSOR_LIST":locations,
+        })
+
+        for key, value in options.items():
+            args.append("-genv")
+            args.append(f"{key}={value}")
 
     if mpi_impl == "open":
         args.extend(["--bind-to", "core"])
@@ -165,7 +177,7 @@ def get_mpi_pinning(mpi_impl: str, num_workers: int) -> list:
         args.extend(["--map-by", f"PE-LIST={locations}:ORDERED"])
         args.extend(["--report-bindings"])
 
-    return args
+    return args, options
 
 
 def get_local_ip(preferred_ifaces=None) -> str:
@@ -236,8 +248,6 @@ def spawn_local_workers(
     conn : Connection
         Established connection on generator side
     """
-    from .task import RegisterAllTask
-
     if n_workers <= 1:
         return None
     conn = None
@@ -265,7 +275,7 @@ def spawn_local_workers(
     # SOCKET BACKEND
     if backend == "socket":
         host = get_local_ip()
-
+        pin_args, pin_options = get_mpi_pinning(mpi_impl, n_workers)
         # launch workers
         launcher = None
         if is_slurm:
@@ -279,13 +289,15 @@ def spawn_local_workers(
         else:
             launcher = [
                 "mpiexec",
+                "-ppn",
+                str(n_workers),
                 "-n",
                 str(n_workers),
             ]
-            launcher.extend(get_mpi_pinning(mpi_impl, n_workers))
+            launcher.extend(pin_args)
 
         conn = SocketConnection.create_workers(
-            worker_exec=worker_exec, launcher=launcher, host=host, n_workers=n_workers
+            worker_exec=worker_exec, launcher=launcher, host=host, n_workers=n_workers, env_opts=pin_options
         )
 
     from ..micro_simulation import load_backend_class
