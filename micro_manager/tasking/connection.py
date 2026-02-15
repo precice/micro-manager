@@ -287,13 +287,16 @@ def spawn_local_workers(
                 "--exclusive",
             ]
         else:
-            launcher = [
-                "mpiexec",
-                "-ppn",
-                str(n_workers),
+            launcher = ["mpiexec"]
+            if mpi_impl == "intel":
+                launcher.extend([
+                    "-ppn",
+                    str(n_workers)
+                ])
+            launcher.extend([
                 "-n",
-                str(n_workers),
-            ]
+                str(n_workers)
+            ])
             launcher.extend(pin_args)
 
         conn = SocketConnection.create_workers(
