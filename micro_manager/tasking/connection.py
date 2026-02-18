@@ -156,9 +156,33 @@ def get_mpi_pinning(mpi_impl: str, num_workers: int):
     """
     args = []
     rank = MPI.COMM_WORLD.Get_rank()
-    locations = ",".join([str(i + rank * num_workers) for i in range(num_workers)])
+    size = MPI.COMM_WORLD.Get_size()
+
     options = {}
     if mpi_impl == "intel":
+        if "I_MPI_INFO_LCPU" in os.environ:
+            nCPU = int(os.environ["I_MPI_INFO_LCPU"]) / 2
+        else:
+            raise RuntimeError("Cannot Determine CPU count")
+
+        if os.path.exists("./hosts.micro"):
+            with open("./hosts.micro", "r") as f:
+                hosts = f.readlines()
+        else:
+            raise RuntimeError("Cannot Nodes")
+
+        if size % len(hosts) != 0:
+            raise RuntimeError("Num ranks must be divisible by number of hosts")
+
+        mm_ppn = size // len(hosts)
+        node_idx = rank // mm_ppn
+        node = hosts[node_idx].replace("\n", "")
+
+        locations_int = list(os.sched_getaffinity(0))
+        if any([pos >= nCPU for pos in locations_int]):
+            raise RuntimeError("Pinning Error: trying to pin to HT CPU")
+        locations = ",".join([str(i) for i in locations_int])
+
         options.update({
             "I_MPI_DEBUG": "5",
             "I_MPI_PIN": "1",
@@ -170,10 +194,12 @@ def get_mpi_pinning(mpi_impl: str, num_workers: int):
         for key, value in options.items():
             args.append("-genv")
             args.append(f"{key}={value}")
+        args.append("-host")
+        args.append(f"{node}")
 
     if mpi_impl == "open":
         args.extend(["--bind-to", "core"])
-
+        locations = ",".join([str(i + rank * num_workers) for i in range(num_workers)])
         args.extend(["--map-by", f"PE-LIST={locations}:ORDERED"])
         args.extend(["--report-bindings"])
 
