@@ -11,6 +11,7 @@ from mpi4py import MPI
 # task import workaround
 import sys
 from pathlib import Path
+
 sys.path.append(str(Path(__file__).resolve().parent))
 from task import RegisterAllTask
 
@@ -183,13 +184,15 @@ def get_mpi_pinning(mpi_impl: str, num_workers: int):
             raise RuntimeError("Pinning Error: trying to pin to HT CPU")
         locations = ",".join([str(i) for i in locations_int])
 
-        options.update({
-            "I_MPI_DEBUG": "5",
-            "I_MPI_PIN": "1",
-            "I_MPI_PIN_CELL": "core",
-            "I_MPI_PIN_DOMAIN": "1",
-            "I_MPI_PIN_PROCESSOR_LIST":locations,
-        })
+        options.update(
+            {
+                "I_MPI_DEBUG": "5",
+                "I_MPI_PIN": "1",
+                "I_MPI_PIN_CELL": "core",
+                "I_MPI_PIN_DOMAIN": "1",
+                "I_MPI_PIN_PROCESSOR_LIST": locations,
+            }
+        )
 
         for key, value in options.items():
             args.append("-genv")
@@ -315,18 +318,16 @@ def spawn_local_workers(
         else:
             launcher = ["mpiexec"]
             if mpi_impl == "intel":
-                launcher.extend([
-                    "-ppn",
-                    str(n_workers)
-                ])
-            launcher.extend([
-                "-n",
-                str(n_workers)
-            ])
+                launcher.extend(["-ppn", str(n_workers)])
+            launcher.extend(["-n", str(n_workers)])
             launcher.extend(pin_args)
 
         conn = SocketConnection.create_workers(
-            worker_exec=worker_exec, launcher=launcher, host=host, n_workers=n_workers, env_opts=pin_options
+            worker_exec=worker_exec,
+            launcher=launcher,
+            host=host,
+            n_workers=n_workers,
+            env_opts=pin_options,
         )
 
     from ..micro_simulation import load_backend_class

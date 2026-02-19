@@ -27,7 +27,9 @@ if __name__ == "__main__":
         conn = MPIConnection.connect_to_micromanager(MPI.Comm.Get_parent())
         dst_id = src_id = args.parentrank
     else:
-        print(f"Launched Worker with Socket rank: {rank}, IP: {args.host} Port: {args.port}")
+        print(
+            f"Launched Worker with Socket rank: {rank}, IP: {args.host} Port: {args.port}"
+        )
         conn = SocketConnection.connect_to_micromanager(worker_id, args.host, args.port)
         dst_id = src_id = worker_id
     print(f"Worker rank {rank} connected to parent")
