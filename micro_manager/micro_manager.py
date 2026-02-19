@@ -34,7 +34,7 @@ from .adaptivity.model_adaptivity import ModelAdaptivity
 
 from .domain_decomposition import DomainDecomposer
 
-from .micro_simulation import create_simulation_class
+from .micro_simulation import create_simulation_class, load_backend_class
 from .tools.logging_wrapper import Logger
 
 
@@ -175,6 +175,11 @@ class MicroManagerCoupling(MicroManager):
         process = Process()
 
         micro_sim_solve = self._get_solve_variant()
+        state_loader = lambda sim: sim.get_state()
+        state_setter = lambda sim, state: sim.set_state(state)
+        if self._is_model_adaptivity_on:
+            state_loader = lambda sim: sim.attachments
+            state_setter = lambda sim, state: sim.attachments.update(state)
         # TODO adapt variant to also use special mada case, iterates in itself and will prob
         # call _solve_micro_simulations or _solve_micro_simulations_with_adaptivity internally
         # should use ModelAdaptivity methods to coordinate
@@ -204,19 +209,21 @@ class MicroManagerCoupling(MicroManager):
                         self._micro_sims,
                         self._data_for_adaptivity,
                     )
-
-                    # Write a checkpoint if a simulation is just activated.
-                    # This checkpoint will be asynchronous to the checkpoints written at the start of the time window.
-                    for i in range(self._local_number_of_sims):
-                        if sim_states_cp[i] is None and self._micro_sims[i]:
-                            sim_states_cp[i] = self._micro_sims[i].get_state()
-
                     active_sim_gids = (
                         self._adaptivity_controller.get_active_sim_global_ids()
                     )
-
                     for gid in active_sim_gids:
                         self._micro_sims_active_steps[gid] += 1
+
+                    # Write a checkpoint if a simulation is just activated.
+                    # This checkpoint will be asynchronous to the checkpoints written at the start of the time window.
+                    if self._is_model_adaptivity_on:
+                        self._model_adaptivity_controller.update_states(
+                            self._micro_sims, active_sim_gids
+                        )
+                    for i in range(self._local_number_of_sims):
+                        if sim_states_cp[i] is None and self._micro_sims[i]:
+                            sim_states_cp[i] = state_loader(self._micro_sims[i])
 
                     self._participant.stop_last_profiling_section()
 
@@ -245,9 +252,20 @@ class MicroManagerCoupling(MicroManager):
 
             # Write a checkpoint
             if self._participant.requires_writing_checkpoint():
+                if self._is_model_adaptivity_on:
+                    active_sim_gids = None
+                    if self._is_adaptivity_on:
+                        active_sim_gids = (
+                            self._adaptivity_controller.get_active_sim_local_ids()
+                        )
+                    self._model_adaptivity_controller.update_states(
+                        self._micro_sims, active_sim_gids
+                    )
                 for i in range(self._local_number_of_sims):
                     sim_states_cp[i] = (
-                        self._micro_sims[i].get_state() if self._micro_sims[i] else None
+                        state_loader(self._micro_sims[i])
+                        if self._micro_sims[i]
+                        else None
                     )
 
             micro_sims_input = self._read_data_from_precice(dt)
@@ -295,12 +313,22 @@ class MicroManagerCoupling(MicroManager):
             if self._participant.requires_reading_checkpoint():
                 for i in range(self._local_number_of_sims):
                     if self._micro_sims[i]:
-                        self._micro_sims[i].set_state(sim_states_cp[i])
+                        state_setter(self._micro_sims[i], sim_states_cp[i])
+
+                if self._is_model_adaptivity_on:
+                    active_sim_gids = None
+                    if self._is_adaptivity_on:
+                        active_sim_gids = (
+                            self._adaptivity_controller.get_active_sim_local_ids()
+                        )
+                    self._model_adaptivity_controller.write_back_states(
+                        self._micro_sims, active_sim_gids
+                    )
+
                 first_iteration = False
 
-            if (
-                self._participant.is_time_window_complete()
-            ):  # Time window has converged, now micro output can be generated
+            # Time window has converged, now micro output can be generated
+            if self._participant.is_time_window_complete():
                 self._t += dt  # Update time to the end of the time window
                 self._n += 1  # Update time step to the end of the time window
 
@@ -421,10 +449,7 @@ class MicroManagerCoupling(MicroManager):
                     " and does not match the dimensions of the macro mesh."
                 )
 
-            domain_decomposer = DomainDecomposer(
-                self._rank,
-                self._size,
-            )
+            domain_decomposer = DomainDecomposer(self._rank, self._size)
 
         if self._is_parallel and not self._is_adaptivity_with_load_balancing:
             coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds(
@@ -548,14 +573,11 @@ class MicroManagerCoupling(MicroManager):
                 self._model_adaptivity_controller.get_resolution_sim_class(0)
             )
         else:
-            micro_problem_base = getattr(
-                importlib.import_module(
-                    self._config.get_micro_file_name(), "MicroSimulation"
-                ),
-                "MicroSimulation",
-            )
+            micro_problem_base = load_backend_class(self._config.get_micro_file_name())
             micro_problem_cls = create_simulation_class(
-                micro_problem_base, "MicroSimulationDefault"
+                self._logger,
+                micro_problem_base,
+                "MicroSimulationDefault",
             )
 
         # Create micro simulation objects
@@ -624,9 +646,8 @@ class MicroManagerCoupling(MicroManager):
             is_initial_data_available = False
         else:
             is_initial_data_available = True
-            if (
-                self._lazy_init
-            ):  # For lazy initialization, compute adaptivity with the initial macro data
+            # For lazy initialization, compute adaptivity with the initial macro data
+            if self._lazy_init:
                 for i in range(self._local_number_of_sims):
                     for name in self._adaptivity_macro_data_names:
                         self._data_for_adaptivity[name][i] = initial_data[i][name]
@@ -654,45 +675,13 @@ class MicroManagerCoupling(MicroManager):
                 )
 
         # Boolean which states if the initialize() method of the micro simulation requires initial data
-        sim_requires_init_data = False
-
-        # Check if provided micro simulation has an initialize() method
-        if hasattr(micro_problem_cls, "initialize") and callable(
-            getattr(micro_problem_cls, "initialize")
-        ):
-            self._micro_sims_init = True  # Starting value before setting
-
-            try:  # Try to get the signature of the initialize() method, if it is written in Python
-                argspec = inspect.getfullargspec(micro_problem_cls.initialize)
-                if (
-                    len(argspec.args) == 1
-                ):  # The first argument in the signature is self
-                    sim_requires_init_data = False
-                elif len(argspec.args) == 2:
-                    sim_requires_init_data = True
-                else:
-                    raise Exception(
-                        "The initialize() method of the Micro simulation has an incorrect number of arguments."
-                    )
-            except TypeError:
-                self._logger.log_info_rank_zero(
-                    "The signature of initialize() method of the micro simulation cannot be determined. Trying to determine the signature by calling the method."
-                )
-                # Try to get the signature of the initialize() method, if it is not written in Python
-                try:  # Try to call the initialize() method without initial data
-                    self._micro_sims[first_id].initialize()
-                    sim_requires_init_data = False
-                except TypeError:
-                    self._logger.log_info_rank_zero(
-                        "The initialize() method of the micro simulation has arguments. Attempting to call it again with initial data."
-                    )
-                    try:  # Try to call the initialize() method with initial data
-                        self._micro_sims[first_id].initialize(initial_data[first_id])
-                        sim_requires_init_data = True
-                    except TypeError:
-                        raise Exception(
-                            "The initialize() method of the Micro simulation has an incorrect number of arguments."
-                        )
+        (
+            self._micro_sims_init,
+            sim_requires_init_data,
+        ) = micro_problem_cls.check_initialize(
+            self._micro_sims[first_id],
+            initial_data[first_id] if is_initial_data_available else None,
+        )
 
         if sim_requires_init_data and not is_initial_data_available:
             raise Exception(
@@ -701,7 +690,6 @@ class MicroManagerCoupling(MicroManager):
 
         # Get initial data from micro simulations if initialize() method exists
         if self._micro_sims_init:
-
             # Call initialize() method of the micro simulation to check if it returns any initial data
             if sim_requires_init_data:
                 initial_micro_output = self._micro_sims[first_id].initialize(
@@ -710,9 +698,8 @@ class MicroManagerCoupling(MicroManager):
             else:
                 initial_micro_output = self._micro_sims[first_id].initialize()
 
-            if (
-                initial_micro_output is None
-            ):  # Check if the detected initialize() method returns any data
+            # Check if the detected initialize() method returns any data
+            if initial_micro_output is None:
                 self._logger.log_warning_rank_zero(
                     "The initialize() call of the Micro simulation has not returned any initial data."
                     " This means that the initialize() call has no effect on the adaptivity. The initialize method will nevertheless still be called."
@@ -765,9 +752,8 @@ class MicroManagerCoupling(MicroManager):
                                 ] = initial_micro_output[name]
                                 initial_micro_data[name][i] = initial_micro_output[name]
 
-                    if (
-                        self._lazy_init
-                    ):  # If lazy initialization is on, initial states of inactive simulations need to be determined
+                    # If lazy initialization is on, initial states of inactive simulations need to be determined
+                    if self._lazy_init:
                         self._adaptivity_controller.get_full_field_micro_output(
                             initial_micro_data
                         )
@@ -789,11 +775,7 @@ class MicroManagerCoupling(MicroManager):
                         for i in range(1, self._local_number_of_sims):
                             self._micro_sims[i].initialize()
 
-        self._micro_sims_have_output = False
-        if hasattr(micro_problem_cls, "output") and callable(
-            getattr(micro_problem_cls, "output")
-        ):
-            self._micro_sims_have_output = True
+        self._micro_sims_have_output = micro_problem_cls.check_output()
 
         self._participant.stop_last_profiling_section()
 

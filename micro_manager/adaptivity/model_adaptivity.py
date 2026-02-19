@@ -3,8 +3,12 @@ Class ModelAdaptivity provides methods to change micro simulation resolution on 
 """
 from typing import Union, Optional
 
-from ..config import Config
-from ..micro_simulation import create_simulation_class
+from micro_manager.config import Config
+from micro_manager.micro_simulation import (
+    create_simulation_class,
+    load_backend_class,
+    MicroSimulationClass,
+)
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.misc import clamp_in_range
 
@@ -34,14 +38,15 @@ class ModelAdaptivity:
         )
 
         self._model_classes = []
-        CLASS_NAME = "MicroSimulation"
         for model_file in self._model_files:
             try:
-                model = getattr(
-                    importlib.import_module(model_file, CLASS_NAME),
-                    CLASS_NAME,
+                model = load_backend_class(model_file)
+                self._model_classes.append(
+                    create_simulation_class(
+                        self._logger,
+                        model,
+                    )
                 )
-                self._model_classes.append(create_simulation_class(model))
             except Exception as e:
                 self._logger.log_info_rank_zero(
                     f"Failed to load model class with error: {e}"
@@ -84,8 +89,8 @@ class ModelAdaptivity:
             Array with gaussian point for respective sim. D is the mesh dimension.
         t : float
             Current time in simulation.
-        inputs : list[dict]
-            List of input objects.
+        input : dict
+            input object.
         prev_output : [None, dict-like]
             Contains the output of the previous model evaluation.
 
@@ -115,9 +120,9 @@ class ModelAdaptivity:
         locations: np.ndarray,
         t: float,
         inputs: list[dict],
-        prev_output: dict,
+        prev_output: Optional[list[dict]],
         sims: list,
-        active_sim_ids: Optional[list[int]] = None,
+        active_sim_ids: Optional[list] = None,
     ) -> None:
         """
         Switches models within sims list. If active_sim_ids is None, all sims are considered as active.
@@ -139,30 +144,105 @@ class ModelAdaptivity:
         """
         size = len(sims)
         active_sims = self._create_active_mask(active_sim_ids, size)
-        cur_res = self._gather_current_resolutions(sims, active_sims)
-        tgt_res = self._gather_target_resolutions(
-            cur_res, locations, t, inputs, prev_output, active_sims
+        current_res = self._gather_current_resolutions(sims, active_sims)
+        target_res = self._gather_target_resolutions(
+            current_res, locations, t, inputs, prev_output, active_sims
         )
 
-        self._logger.log_info_rank_zero(f"New resolutions for t={t}: {tgt_res}")
+        self._logger.log_info_rank_zero(f"New resolutions for t={t}: {target_res}")
 
         for idx in range(size):
-            if cur_res[idx] == tgt_res[idx]:
+            if current_res[idx] == target_res[idx]:
                 continue
 
-            sim_state = sims[idx].get_state()
-            sim_id = sims[idx].get_global_id()
-            sims[idx] = self.get_resolution_sim_class(tgt_res[idx])(sim_id)
-            sims[idx].set_state(sim_state)
+            sim = sims[idx]
+            gid = sim.get_global_id()
+            target_class = self.get_resolution_sim_class(target_res[idx])
+
+            # we store state for each resolution separately
+            # keys are sim names of respective resolution
+            key = f"{sim.name}-state"
+            key_new = f"{target_class.name}-state"
+
+            # check if a state of the target resolution exists
+            # then update state buffer with current state
+            new_state_exists = key_new in sim.attachments
+            sim.attachments[key] = sim.get_state()
+
+            # construct new sim and delay initialization if possible
+            sim_new = target_class(gid, late_init=new_state_exists)
+            # need to copy over the multi-state buffer to new sim object
+            sim_new.attachments = sim.attachments
+            sim_new.attachments[key_new] = sim_new.get_state()
+
+            # if state of target resolution exists
+            # use it to initialize
+            if new_state_exists:
+                sim_new_state = sim.attachments[key_new]
+                sim_new.set_state(sim_new_state)
+
+            sims[idx] = sim_new
+
+    def update_states(
+        self,
+        sims: list,
+        active_sim_ids: Optional[list] = None,
+    ):
+        """
+        Updates the current state of the current model in the local buffers.
+
+        Parameters
+        ----------
+        sims : list
+            List of all simulation objects.
+        active_sim_ids : [list, None]
+            List of all active simulation ids.
+        """
+        size = len(sims)
+        active_sims = self._create_active_mask(active_sim_ids, size)
+
+        for idx in range(size):
+            if not active_sims[idx]:
+                continue
+
+            sim = sims[idx]
+            key = f"{sim.name}-state"
+            sim.attachments[key] = sim.get_state()
+
+    def write_back_states(
+        self,
+        sims: list,
+        active_sim_ids: Optional[list] = None,
+    ):
+        """
+        Loads the current state of the current model into local buffers.
+
+        Parameters
+        ----------
+        sims : list
+            List of all simulation objects.
+        active_sim_ids : [list, None]
+            List of all active simulation ids.
+        """
+        size = len(sims)
+        active_sims = self._create_active_mask(active_sim_ids, size)
+
+        for idx in range(size):
+            if not active_sims[idx]:
+                continue
+
+            sim = sims[idx]
+            key = f"{sim.name}-state"
+            sim.set_state(sim.attachments[key])
 
     def check_convergence(
         self,
         locations: np.ndarray,
         t: float,
-        inputs: list[dict],
-        prev_output: Optional[dict],
+        inputs: list,
+        prev_output: Optional[list[dict]],
         sims: list,
-        active_sim_ids: Optional[list[int]] = None,
+        active_sim_ids: Optional[list] = None,
     ) -> None:
         """
         Similarly to switch_models, checks whether models would be switched in next step.
@@ -209,7 +289,7 @@ class ModelAdaptivity:
 
     def get_resolution_sim_class(
         self, resolution: Union[int, np.ndarray]
-    ) -> Union[object, np.ndarray]:
+    ) -> Union[MicroSimulationClass, list[MicroSimulationClass]]:
         """
         Looks up the class associated with the provided resolution.
 
@@ -227,9 +307,7 @@ class ModelAdaptivity:
             clamp_in_range(resolution, 0, len(self._model_classes) - 1)
         ]
 
-    def get_sim_class_resolution(
-        self, sim: Union[object, np.ndarray]
-    ) -> Union[int, np.ndarray]:
+    def get_sim_class_resolution(self, sim: MicroSimulationClass) -> int:
         """
         Looks up the resolution associated with the provided simulation object.
 
@@ -244,11 +322,11 @@ class ModelAdaptivity:
             target resolution
         """
         return next(
-            (idx for idx, cls in enumerate(self._model_classes) if cls == type(sim))
+            (idx for idx, cls in enumerate(self._model_classes) if cls.name == sim.name)
         )
 
     def _gather_current_resolutions(
-        self, sims: list[object], active_sims: np.ndarray
+        self, sims: list, active_sims: np.ndarray
     ) -> np.ndarray:
         """
         Gathers current resolutions. Inactive sims have resolution -1.
@@ -278,7 +356,7 @@ class ModelAdaptivity:
         locations: np.ndarray,
         t: float,
         inputs: list[dict],
-        prev_output: dict,
+        prev_output: Optional[list[dict]],
         active_sims: np.ndarray,
     ) -> np.ndarray:
         """
@@ -320,7 +398,7 @@ class ModelAdaptivity:
         )
         return res_tgt
 
-    def _create_active_mask(self, active_sim_ids: list[int], size: int) -> np.ndarray:
+    def _create_active_mask(self, active_sim_ids: list, size: int) -> np.ndarray:
         """
         Converts list of active simulation ids to np boolean mask.
 

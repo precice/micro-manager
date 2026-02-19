@@ -13,19 +13,22 @@ import numpy as np
 from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
+from micro_manager.config import Config
+from micro_manager.tools.logging_wrapper import Logger
+from micro_manager.micro_simulation import MicroSimulationClass
 
 
 class GlobalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(
         self,
-        configurator,
+        configurator: Config,
         global_number_of_sims: int,
         global_ids: list,
         participant,
-        base_logger,
+        base_logger: Logger,
         rank: int,
-        comm,
-        micro_problem_cls,
+        comm: MPI.Comm,
+        micro_problem_cls: MicroSimulationClass,
     ) -> None:
         """
         Class constructor.

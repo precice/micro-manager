@@ -32,3 +32,6 @@ class MicroSimulation:
 
     def get_state(self):
         return self._state
+
+    def get_global_id(self):
+        return self._sim_id
