@@ -3,8 +3,8 @@ Class ModelAdaptivity provides methods to change micro simulation resolution on 
 """
 from typing import Union, Optional
 
-from ..config import Config
-from ..micro_simulation import create_simulation_class, load_backend_class
+from micro_manager.config import Config
+from micro_manager.micro_simulation import create_simulation_class, load_backend_class, MicroSimulationClass
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.misc import clamp_in_range
 
@@ -85,8 +85,8 @@ class ModelAdaptivity:
             Array with gaussian point for respective sim. D is the mesh dimension.
         t : float
             Current time in simulation.
-        inputs : list[dict]
-            List of input objects.
+        input : dict
+            input object.
         prev_output : [None, dict-like]
             Contains the output of the previous model evaluation.
 
@@ -115,10 +115,10 @@ class ModelAdaptivity:
         self,
         locations: np.ndarray,
         t: float,
-        inputs: list,
-        prev_output: dict,
+        inputs: list[dict],
+        prev_output: Optional[list[dict]],
         sims: list,
-        active_sim_ids: Optional = None,
+        active_sim_ids: Optional[list] = None,
     ) -> None:
         """
         Switches models within sims list. If active_sim_ids is None, all sims are considered as active.
@@ -182,7 +182,7 @@ class ModelAdaptivity:
     def update_states(
         self,
         sims: list,
-        active_sim_ids: Optional = None,
+        active_sim_ids: Optional[list] = None,
     ):
         """
         Updates the current state of the current model in the local buffers.
@@ -208,7 +208,7 @@ class ModelAdaptivity:
     def write_back_states(
         self,
         sims: list,
-        active_sim_ids: Optional = None,
+        active_sim_ids: Optional[list] = None,
     ):
         """
         Loads the current state of the current model into local buffers.
@@ -236,9 +236,9 @@ class ModelAdaptivity:
         locations: np.ndarray,
         t: float,
         inputs: list,
-        prev_output: Optional,
+        prev_output: Optional[list[dict]],
         sims: list,
-        active_sim_ids: Optional = None,
+        active_sim_ids: Optional[list] = None,
     ) -> None:
         """
         Similarly to switch_models, checks whether models would be switched in next step.
@@ -283,7 +283,7 @@ class ModelAdaptivity:
         """
         return len(self._model_classes)
 
-    def get_resolution_sim_class(self, resolution: Union) -> Union:
+    def get_resolution_sim_class(self, resolution: Union[int, np.ndarray]) -> Union[MicroSimulationClass, list[MicroSimulationClass]]:
         """
         Looks up the class associated with the provided resolution.
 
@@ -301,7 +301,7 @@ class ModelAdaptivity:
             clamp_in_range(resolution, 0, len(self._model_classes) - 1)
         ]
 
-    def get_sim_class_resolution(self, sim: Union) -> Union:
+    def get_sim_class_resolution(self, sim: MicroSimulationClass) -> int:
         """
         Looks up the resolution associated with the provided simulation object.
 
@@ -349,8 +349,8 @@ class ModelAdaptivity:
         cur_res: np.ndarray,
         locations: np.ndarray,
         t: float,
-        inputs: list,
-        prev_output: dict,
+        inputs: list[dict],
+        prev_output: Optional[list[dict]],
         active_sims: np.ndarray,
     ) -> np.ndarray:
         """

@@ -9,17 +9,20 @@ from copy import deepcopy
 from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
+from micro_manager.config import Config
+from micro_manager.micro_simulation import MicroSimulationClass
+from micro_manager.tools.logging_wrapper import Logger
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(
         self,
-        configurator,
-        num_sims,
-        base_logger,
-        rank,
-        comm,
-        micro_problem_cls,
+        configurator: Config,
+        num_sims: int,
+        base_logger: Logger,
+        rank: int,
+        comm: MPI.Comm,
+        micro_problem_cls: MicroSimulationClass,
     ) -> None:
         """
         Class constructor.
@@ -48,8 +51,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
     def compute_adaptivity(
         self,
-        dt,
-        micro_sims,
+        dt: float,
+        micro_sims: list,
         data_for_adaptivity: dict,
     ) -> None:
         """
