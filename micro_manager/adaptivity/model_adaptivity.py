@@ -4,7 +4,11 @@ Class ModelAdaptivity provides methods to change micro simulation resolution on 
 from typing import Union, Optional
 
 from micro_manager.config import Config
-from micro_manager.micro_simulation import create_simulation_class, load_backend_class, MicroSimulationClass
+from micro_manager.micro_simulation import (
+    create_simulation_class,
+    load_backend_class,
+    MicroSimulationClass,
+)
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.misc import clamp_in_range
 
@@ -283,7 +287,9 @@ class ModelAdaptivity:
         """
         return len(self._model_classes)
 
-    def get_resolution_sim_class(self, resolution: Union[int, np.ndarray]) -> Union[MicroSimulationClass, list[MicroSimulationClass]]:
+    def get_resolution_sim_class(
+        self, resolution: Union[int, np.ndarray]
+    ) -> Union[MicroSimulationClass, list[MicroSimulationClass]]:
         """
         Looks up the class associated with the provided resolution.
 
