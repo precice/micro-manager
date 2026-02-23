@@ -121,17 +121,17 @@ class DomainDecomposer:
 
         micro_sims_on_rank = 0
         for position in macro_coords:
-    inside = True
-    for d in range(len(ranks_per_axis)):
-        is_upper_boundary = np.isclose(local_mesh_bounds[d * 2 + 1], macro_bounds[d * 2 + 1])
-        if not (
-            position[d] >= local_mesh_bounds[d * 2]
-            and (position[d] <= local_mesh_bounds[d * 2 + 1] if is_upper_boundary else position[d] < local_mesh_bounds[d * 2 + 1])
-        ):
-            inside = False
-            break
-    if inside:
-        macro_coords_on_this_rank.append(position)
-        micro_sims_on_rank += 1
+            inside = True
+            for d in range(len(ranks_per_axis)):
+                is_upper_boundary = np.isclose(local_mesh_bounds[d * 2 + 1], macro_bounds[d * 2 + 1])
+                if not (
+                    position[d] >= local_mesh_bounds[d * 2]
+                    and (position[d] <= local_mesh_bounds[d * 2 + 1] if is_upper_boundary else position[d] < local_mesh_bounds[d * 2 + 1])
+                ):
+                    inside = False
+                    break
+            if inside:
+                macro_coords_on_this_rank.append(position)
+                micro_sims_on_rank += 1
 
         return micro_sims_on_rank, macro_coords_on_this_rank
