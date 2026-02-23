@@ -1,6 +1,31 @@
 import argparse
 import os
 
+
+def _check_dependencies():
+    missing = []
+    for package, import_name in [
+        ("pyprecice", "precice"),
+        ("numpy", "numpy"),
+        ("mpi4py", "mpi4py"),
+        ("psutil", "psutil"),
+    ]:
+        try:
+            __import__(import_name)
+        except ImportError:
+            missing.append(package)
+
+    if missing:
+        raise ImportError(
+            "The following required packages are missing: {}. "
+            "Please install them via: pip install {}".format(
+                ", ".join(missing), " ".join(missing)
+            )
+        )
+
+
+_check_dependencies()
+
 from .config import Config
 from .micro_simulation import MicroSimulationInterface
 from .micro_manager import MicroManagerCoupling
