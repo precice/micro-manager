@@ -15,7 +15,7 @@ from .tasking.task import (
     OutputTask,
     SolveTask,
     SetStateTask,
-    GetStateTask
+    GetStateTask,
 )
 
 

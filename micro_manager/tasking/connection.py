@@ -45,9 +45,17 @@ class MPIConnection(Connection):
         args.extend(mpi_args or [])
 
         env = os.environ.copy()
-        check_btl_base = "OMPI_MCA_btl" not in env or env["OMPI_MCA_btl"] != "self,vader,tcp"
-        check_btl_tcp = "OMPI_MCA_btl_tcp_if_include" not in env or env["OMPI_MCA_btl_tcp_if_include"] != "lo"
-        check_mca_oob = "OMPI_MCA_oob_tcp_if_include" not in env or env["OMPI_MCA_oob_tcp_if_include"] != "lo"
+        check_btl_base = (
+            "OMPI_MCA_btl" not in env or env["OMPI_MCA_btl"] != "self,vader,tcp"
+        )
+        check_btl_tcp = (
+            "OMPI_MCA_btl_tcp_if_include" not in env
+            or env["OMPI_MCA_btl_tcp_if_include"] != "lo"
+        )
+        check_mca_oob = (
+            "OMPI_MCA_oob_tcp_if_include" not in env
+            or env["OMPI_MCA_oob_tcp_if_include"] != "lo"
+        )
         if check_btl_base or check_btl_tcp or check_mca_oob:
             msg = (
                 "Cannot launch MPI workers. Please set the following environment variables:\n"

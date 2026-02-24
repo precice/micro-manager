@@ -9,6 +9,7 @@ class Task:
 
     Inheriting classes need to call super.__init__ with the function to be called and the args and kwargs to be bound.
     """
+
     def __init__(self, fn, *args, **kwargs):
         self.fn = fn
         self.args = args
@@ -31,6 +32,7 @@ class ConstructTask(Task):
     in the state object under ['sim_instances'][gid]. If the desired class has not yet been loaded, then this
     will be done by the 'load_function' prior to construction.
     """
+
     def __init__(self, gid, cls_path):
         super().__init__(ConstructTask.initializer, gid=gid, cls_path=cls_path)
 
@@ -51,6 +53,7 @@ class ConstructLateTask(Task):
     Similar to ConstructTask, it will construct an instance and store it. However, it will pass -1 as the gid to the
     instance to allow for late initialization, if the micro simulation supports it.
     """
+
     def __init__(self, gid, cls_path):
         super().__init__(ConstructLateTask.initializer, gid=gid, cls_path=cls_path)
 
@@ -71,6 +74,7 @@ class SolveTask(Task):
     Given a gid, input data and the current dt, the SolveTask will call the solve function of its respective
     simulation object, that is stored in the state object under ['sim_instances'][gid].
     """
+
     def __init__(self, gid, sim_input, dt):
         super().__init__(SolveTask.solve, gid=gid, sim_input=sim_input, dt=dt)
 
@@ -85,6 +89,7 @@ class GetStateTask(Task):
     Given a gid, the GetStateTask will call the get_state function of its respective
     simulation object, that is stored in the state object under ['sim_instances'][gid].
     """
+
     def __init__(self, gid):
         super().__init__(GetStateTask.get, gid=gid)
 
@@ -98,6 +103,7 @@ class SetStateTask(Task):
     Given a gid and a state the SetStateTask will call the set_state function of its respective
     simulation object, that is stored in the state object under ['sim_instances'][gid].
     """
+
     def __init__(self, gid, state):
         super().__init__(SetStateTask.set, gid=gid, state=state)
 
@@ -113,6 +119,7 @@ class InitializeTask(Task):
     simulation object, that is stored in the state object under ['sim_instances'][gid].
     All arguments will be passed along.
     """
+
     def __init__(self, gid, *args, **kwargs):
         super().__init__(InitializeTask.initialize, *args, gid=gid, **kwargs)
 
@@ -126,6 +133,7 @@ class OutputTask(Task):
     Given a gid, the OutputTask will call the output function of its respective
     simulation object, that is stored in the state object under ['sim_instances'][gid].
     """
+
     def __init__(self, gid):
         super().__init__(OutputTask.output, gid=gid)
 
@@ -133,10 +141,12 @@ class OutputTask(Task):
     def output(gid, state_data):
         return state_data["sim_instances"][gid].output()
 
+
 class ShutdownTask(Task):
     """
     The ShutdownTask will raise an exception in order to exit out of the work loop with in the worker_main.
     """
+
     def __init__(self):
         super().__init__(ShutdownTask.shutdown)
 
@@ -153,6 +163,7 @@ class RegisterAllTask(Task):
 
     Each worker has a state object (state_data). It is provided to each task when it is called.
     """
+
     def __init__(self, load_function):
         super().__init__(RegisterAllTask.register, load_function=load_function)
 
