@@ -16,6 +16,8 @@ jobs:
         with:
           path: micro-manager
       - uses: mpi4py/setup-mpi@v1
+        env:
+          MPI: openmpi
 
       - name: Install dependencies
         run: |
