@@ -20,32 +20,124 @@ from .tasking.task import (
 
 
 class MicroSimulationInterface(ABC):
+    """
+    Abstract base class for micro simulations. Users should inherit from this class
+    when creating their micro simulation and implement all abstract methods.
+
+    Example usage:
+
+        from micro_manager import MicroSimulationInterface
+
+        class MicroSimulation(MicroSimulationInterface):
+            def __init__(self, sim_id):
+                self._sim_id = sim_id
+
+            def initialize(self, initial_data=None):
+                pass
+
+            def solve(self, macro_data, dt):
+                return {}
+
+            def get_state(self):
+                return None
+
+            def set_state(self, state):
+                pass
+
+            def get_global_id(self):
+                return self._sim_id
+
+            def set_global_id(self, global_id):
+                self._sim_id = global_id
+
+            def output(self):
+                pass
+    """
+
+    @abstractmethod
+    def initialize(self, *args, **kwargs):
+        """
+        Initialize the micro simulation. Called once before the coupling loop starts.
+
+        Parameters
+        ----------
+        initial_data : dict, optional
+            Initial data passed from the Micro Manager.
+        """
+        pass
+
     @abstractmethod
     def solve(self, micro_sim_input, dt):
+        """
+        Solve the micro simulation for one time step.
+
+        Parameters
+        ----------
+        micro_sim_input : dict
+            Input data from the macro simulation.
+        dt : float
+            Time step size.
+
+        Returns
+        -------
+        dict
+            Output data to be passed to the macro simulation.
+        """
         pass
 
     @abstractmethod
     def get_state(self):
+        """
+        Return the current state of the micro simulation for checkpointing.
+
+        Returns
+        -------
+        object
+            The current state of the micro simulation.
+        """
         pass
 
     @abstractmethod
     def set_state(self, state):
+        """
+        Set the state of the micro simulation from a checkpoint.
+
+        Parameters
+        ----------
+        state : object
+            The state to restore.
+        """
         pass
 
     @abstractmethod
     def get_global_id(self):
+        """
+        Return the global ID of this micro simulation instance.
+
+        Returns
+        -------
+        int
+            Global ID of the micro simulation.
+        """
         pass
 
     @abstractmethod
     def set_global_id(self, global_id):
-        pass
+        """
+        Set the global ID of this micro simulation instance.
 
-    @abstractmethod
-    def initialize(self, *args, **kwargs):
+        Parameters
+        ----------
+        global_id : int
+            Global ID to assign.
+        """
         pass
 
     @abstractmethod
     def output(self):
+        """
+        Optional output method called after each solve step.
+        """
         pass
 
 
@@ -302,7 +394,14 @@ class MicroSimulationClass:
 
 def load_backend_class(path_to_micro_file):
     CLS_NAME = "MicroSimulation"
-    return getattr(ipl.import_module(path_to_micro_file, CLS_NAME), CLS_NAME)
+    cls = getattr(ipl.import_module(path_to_micro_file, CLS_NAME), CLS_NAME)
+    if not issubclass(cls, MicroSimulationInterface):
+        raise TypeError(
+            "The MicroSimulation class in '{}' must inherit from MicroSimulationInterface. "
+            "Please update your class definition to: "
+            "class MicroSimulation(MicroSimulationInterface)".format(path_to_micro_file)
+        )
+    return cls
 
 
 def create_simulation_class(

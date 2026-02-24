@@ -2,6 +2,7 @@ import argparse
 import os
 
 from .config import Config
+from .micro_simulation import MicroSimulationInterface
 from .micro_manager import MicroManagerCoupling
 
 try:
