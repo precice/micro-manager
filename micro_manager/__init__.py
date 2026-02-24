@@ -24,8 +24,6 @@ def _check_dependencies():
         )
 
 
-_check_dependencies()
-
 from .config import Config
 from .micro_simulation import MicroSimulationInterface
 from .micro_manager import MicroManagerCoupling
@@ -39,6 +37,7 @@ except ImportError:
 
 
 def main():
+    _check_dependencies()
 
     parser = argparse.ArgumentParser(description=".")
     parser.add_argument(
