@@ -23,6 +23,7 @@ from pathlib import Path
 data_size = 32
 num_workers = 2
 
+
 class MicroSimulation:
     def __init__(self, sim_id):
         self._rank = MPI.COMM_WORLD.Get_rank()
@@ -38,7 +39,7 @@ class MicroSimulation:
     def solve(self, macro_data, dt):
         data = macro_data["task-data"]
 
-        data_per_rank = data_size//num_workers
+        data_per_rank = data_size // num_workers
 
         data_local = data[data_per_rank * self._rank : data_per_rank * (self._rank + 1)]
         sum_local = np.asarray(data_local).sum()
@@ -69,17 +70,20 @@ class TestTasking(TestCase):
     """
     Can only test for general functionality, not pinning.
     """
+
     def setUp(self):
         # cannot use mpi, would need to set certain env flags
         mm_dir = os.path.abspath(str(Path(__file__).resolve().parent.parent.parent))
         worker_exec = os.path.join(mm_dir, "micro_manager", "tasking", "worker_main.py")
 
-        self.conn = spawn_local_workers(worker_exec, num_workers, "socket", False, "open", "")
-        self.input_data = {
-            "task-data": np.arange(data_size)
-        }
+        self.conn = spawn_local_workers(
+            worker_exec, num_workers, "socket", False, "open", ""
+        )
+        self.input_data = {"task-data": np.arange(data_size)}
         self.expected_output = (data_size - 1) * data_size / 2
-        self.cls_path = os.path.abspath(str(Path(__file__).resolve())).replace(".py", "")
+        self.cls_path = os.path.abspath(str(Path(__file__).resolve())).replace(
+            ".py", ""
+        )
         self.sim_cls = create_simulation_class(
             MagicMock(),
             MicroSimulation,
@@ -87,7 +91,6 @@ class TestTasking(TestCase):
             num_workers,
             self.conn,
         )
-
 
     def tearDown(self):
         super().tearDown()
@@ -180,21 +183,18 @@ class TestTasking(TestCase):
             self.conn.send(i, SetStateTask.send_args(gid, states[i]))
         self.recv()
 
-
         self.send(GetStateTask.send_args(gid_new))
         result_manual = self.recv()
         self.assertEqual(result_manual[0]["gid"], gid_new)
         self.assertEqual(result_manual[0]["state"], "Important State Information")
-
 
     def send(self, args):
         for i in range(num_workers):
             self.conn.send(i, args)
 
     def recv(self):
-        return [
-            self.conn.recv(i) for i in range(num_workers)
-        ]
+        return [self.conn.recv(i) for i in range(num_workers)]
+
 
 if __name__ == "__main__":
     import unittest
