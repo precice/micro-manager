@@ -13,7 +13,7 @@ import sys
 from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parent))
-from task import RegisterAllTask
+from task import RegisterAllTask, ShutdownTask
 
 
 class Connection(ABC):
@@ -33,16 +33,34 @@ class Connection(ABC):
 class MPIConnection(Connection):
     def __init__(self):
         self.inter_comm = None
+        self._num_workers = 0
 
     @classmethod
     def create_workers(
         cls, worker_exec: str, mpi_args: Optional, n_workers: int
     ) -> "MPIConnection":
+        args = [worker_exec]
+        args.extend(mpi_args or [])
+
+        env = os.environ.copy()
+        check_btl_base = "OMPI_MCA_btl" not in env or env["OMPI_MCA_btl"] != "self,vader,tcp"
+        check_btl_tcp = "OMPI_MCA_btl_tcp_if_include" not in env or env["OMPI_MCA_btl_tcp_if_include"] != "lo"
+        check_mca_oob = "OMPI_MCA_oob_tcp_if_include" not in env or env["OMPI_MCA_oob_tcp_if_include"] != "lo"
+        if check_btl_base or check_btl_tcp or check_mca_oob:
+            msg = (
+                "Cannot launch MPI workers. Please set the following environment variables:\n"
+                "\tOMPI_MCA_btl=self,vader,tcp\n"
+                "\tOMPI_MCA_btl_tcp_if_include=lo\n"
+                "\tOMPI_MCA_oob_tcp_if_include=lo\n"
+            )
+            raise RuntimeError(msg)
+
         comm = MPI.COMM_SELF
         conn = cls()
+        conn._num_workers = n_workers
         conn.inter_comm = comm.Spawn(
-            f"python {worker_exec}",
-            args=mpi_args or [],
+            "python",
+            args=args,
             maxprocs=n_workers,
         )
         return conn
@@ -58,10 +76,14 @@ class MPIConnection(Connection):
         self.inter_comm.send(data, dest=dst_id, tag=0)
 
     def recv(self, src_id: int) -> Any:
-        data = self.inter_comm.recv(source=src_id, tag=1)
+        data = self.inter_comm.recv(source=src_id, tag=0)
         return pickle.loads(data)
 
     def close(self) -> None:
+        if self._num_workers > 0:
+            for i in range(self._num_workers):
+                self.send(i, ShutdownTask.send_args())
+
         self.inter_comm.Disconnect()
 
 
@@ -295,8 +317,6 @@ def spawn_local_workers(
             mpi_args=[
                 "--backend",
                 "mpi",
-                "--parentrank",
-                str(local_rank),
             ],
             n_workers=n_workers,
         )

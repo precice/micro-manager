@@ -90,6 +90,14 @@ class OutputTask(Task):
     def output(gid, state_data):
         return state_data["sim_instances"][gid].output()
 
+class ShutdownTask(Task):
+    def __init__(self):
+        super().__init__(ShutdownTask.shutdown)
+
+    @staticmethod
+    def shutdown(state_data):
+        raise RuntimeError("Stopping Worker")
+
 
 class RegisterAllTask(Task):
     def __init__(self, load_function):
@@ -105,6 +113,7 @@ class RegisterAllTask(Task):
         task_dict[SetStateTask.__name__] = SetStateTask
         task_dict[InitializeTask.__name__] = InitializeTask
         task_dict[OutputTask.__name__] = OutputTask
+        task_dict[ShutdownTask.__name__] = ShutdownTask
         state_data["tasks"] = task_dict
         state_data["sim_classes"] = dict()
         state_data["sim_instances"] = dict()

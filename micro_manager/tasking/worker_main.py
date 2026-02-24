@@ -10,11 +10,6 @@ if __name__ == "__main__":
     parser.add_argument("--backend", required=True, choices=["mpi", "socket"])
     parser.add_argument("--host", help="IP or localhost")
     parser.add_argument("--port", type=int, help="Port to open port in micro manager")
-    parser.add_argument(
-        "--parentrank",
-        type=int,
-        help="Parent rank of spawning micro manager mpi instance",
-    )
     args = parser.parse_args()
 
     rank = MPI.COMM_WORLD.Get_rank()
@@ -25,7 +20,6 @@ if __name__ == "__main__":
     if args.backend == "mpi":
         print(f"Launched Worker with MPI rank: {rank}")
         conn = MPIConnection.connect_to_micromanager(MPI.Comm.Get_parent())
-        dst_id = src_id = args.parentrank
     else:
         print(
             f"Launched Worker with Socket rank: {rank}, IP: {args.host} Port: {args.port}"
