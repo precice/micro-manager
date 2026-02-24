@@ -16,10 +16,16 @@ jobs:
         with:
           path: micro-manager
 
-      - name: Setup MPI
-        uses: mpi4py/setup-mpi@v1
-        with:
-          mpi: openmpi@5
+      - name: Install OpenMPI 5
+        run: |
+          wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.5.tar.gz
+          tar -xzf openmpi-5.0.5.tar.gz
+          cd openmpi-5.0.5
+          ./configure --prefix=/usr/local
+          make -j$(nproc)
+          sudo make install
+          echo "/usr/local/lib" | sudo tee /etc/ld.so.conf.d/openmpi.conf
+          sudo ldconfig
 
       - name: Install dependencies
         run: |
