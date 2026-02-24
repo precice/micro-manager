@@ -396,10 +396,14 @@ def load_backend_class(path_to_micro_file):
     CLS_NAME = "MicroSimulation"
     cls = getattr(ipl.import_module(path_to_micro_file, CLS_NAME), CLS_NAME)
     if not issubclass(cls, MicroSimulationInterface):
-        raise TypeError(
-            "The MicroSimulation class in '{}' must inherit from MicroSimulationInterface. "
+        import warnings
+        warnings.warn(
+            "The MicroSimulation class in '{}' does not inherit from MicroSimulationInterface. "
             "Please update your class definition to: "
-            "class MicroSimulation(MicroSimulationInterface)".format(path_to_micro_file)
+            "class MicroSimulation(MicroSimulationInterface). "
+            "In a future version this will become an error.".format(path_to_micro_file),
+            DeprecationWarning,
+            stacklevel=2,
         )
     return cls
 
