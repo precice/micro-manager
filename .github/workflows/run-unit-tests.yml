@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v6
         with:
           path: micro-manager
-          
+
       - name: Setup MPI
         uses: mpi4py/setup-mpi@v1
         with:
@@ -44,6 +44,9 @@ jobs:
 
       - name: Install Micro Manager and run tasking unit test
         working-directory: micro-manager
+        env:
+          OMPI_ALLOW_RUN_AS_ROOT: "1"
+          OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: "1"
         run: |
           . .venv/bin/activate
           pip uninstall -y pyprecice
