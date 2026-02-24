@@ -19,7 +19,7 @@ jobs:
       - name: Setup MPI
         uses: mpi4py/setup-mpi@v1
         with:
-          mpi: openmpi
+          mpi: openmpi@5
 
       - name: Install dependencies
         run: |
