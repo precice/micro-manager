@@ -39,12 +39,10 @@ jobs:
         working-directory: micro-manager
         run: |
           . .venv/bin/activate
-          cd tests/unit
-          python3 -m coverage run --source=micro_manager -m unittest discover -s . -p "test_*.py"
+          python3 -m coverage run --source=micro_manager -m unittest discover -s tests/unit -p "test_*.py"
 
       - name: Check coverage threshold
         working-directory: micro-manager
         run: |
           . .venv/bin/activate
-          cd tests/unit
-          python3 ../../check_coverage.py
+          python3 check_coverage.py
