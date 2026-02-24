@@ -4,6 +4,7 @@ from mpi4py import MPI
 from task import handle_task
 
 from connection import Connection, MPIConnection, SocketConnection
+from micro_manager.tools.logging_wrapper import Logger
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -14,19 +15,18 @@ if __name__ == "__main__":
 
     rank = MPI.COMM_WORLD.Get_rank()
     size = MPI.COMM_WORLD.Get_size()
+    log = Logger("Worker", rank=rank)
     worker_id = rank
 
     conn, dst_id, src_id = None, 0, 0
     if args.backend == "mpi":
-        print(f"Launched Worker with MPI rank: {rank}")
-        conn = MPIConnection.connect_to_micromanager(MPI.Comm.Get_parent())
+        log.log_info(f"Launched Worker with MPI rank: {rank}")
+        conn = MPIConnection.connect_to_micro_manager(MPI.Comm.Get_parent())
     else:
-        print(
-            f"Launched Worker with Socket rank: {rank}, IP: {args.host} Port: {args.port}"
-        )
-        conn = SocketConnection.connect_to_micromanager(worker_id, args.host, args.port)
+        log.log_info(f"Launched Worker with Socket rank: {rank}, IP: {args.host} Port: {args.port}")
+        conn = SocketConnection.connect_to_micro_manager(worker_id, args.host, args.port)
         dst_id = src_id = worker_id
-    print(f"Worker rank {rank} connected to parent")
+    log.log_info(f"Worker rank {rank} connected to parent")
     state_data = {}
 
     # register possible tasks

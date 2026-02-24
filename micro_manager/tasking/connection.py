@@ -8,7 +8,9 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Optional
 from mpi4py import MPI
 
-# task import workaround
+# worker_main gets spawned not part of the micro_manager package.
+# Therefore, imports do not work properly. As worker_main requires connection.py,
+# this here is a workaround to still load it.
 import sys
 from pathlib import Path
 
@@ -66,16 +68,37 @@ class MPIConnection(Connection):
         return conn
 
     @classmethod
-    def connect_to_micromanager(cls, parent_comm) -> "MPIConnection":
+    def connect_to_micro_manager(cls, parent_comm) -> "MPIConnection":
         conn = cls()
         conn.inter_comm = parent_comm
         return conn
 
     def send(self, dst_id: int, obj: Any) -> None:
+        """
+        Sends any data (obj) to the worker with id (dst_id). dst_id corresponds to the
+        worker MPI process rank. Data is encoded by pickling it. Thus, one form of pickling must be implemented for
+        the data type of (obj). Data is transferred using an MPI inter-process communicator.
+
+        Parameters
+        ----------
+        dst_id : int
+            Worker MPI process rank.
+        obj : Any
+            Data to send. (needs implemented pickling interface)
+        """
         data = pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
         self.inter_comm.send(data, dest=dst_id, tag=0)
 
     def recv(self, src_id: int) -> Any:
+        """
+        Receives data from the worker with id (src_id). src_id corresponds to the
+        worker MPI process rank. Data is transferred using an MPI inter-process communicator.
+
+        Parameters
+        ----------
+        src_id : int
+            Worker MPI process rank.
+        """
         data = self.inter_comm.recv(source=src_id, tag=0)
         return pickle.loads(data)
 
@@ -128,7 +151,7 @@ class SocketConnection(Connection):
         return conn
 
     @classmethod
-    def connect_to_micromanager(
+    def connect_to_micro_manager(
         cls, worker_id: int, host: str, port: int
     ) -> "SocketConnection":
         conn = cls()
@@ -138,12 +161,35 @@ class SocketConnection(Connection):
         return conn
 
     def send(self, dst_id: int, obj: Any) -> None:
+        """
+        Sends any data (obj) to the worker with id (dst_id). dst_id corresponds to the
+        worker MPI process rank. Data is encoded by pickling it. Thus, one form of pickling must be implemented for
+        the data type of (obj). Data is transferred using a socket by first encoding a header
+        (containing the data size), followed by the actual data.
+
+        Parameters
+        ----------
+        dst_id : int
+            Worker MPI process rank.
+        obj : Any
+            Data to send. (needs implemented pickling interface)
+        """
         sock = self.sockets[dst_id]
         data = pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
         header = struct.pack("!Q", len(data))
         sock.sendall(header + data)
 
     def recv(self, src_id: int) -> Any:
+        """
+        Receives data from the worker with id (src_id). src_id corresponds to the
+        worker MPI process rank. Data is transferred using a socket. First reads the header to determine the data size.
+        Then reads the incoming data.
+
+        Parameters
+        ----------
+        src_id : int
+            Worker MPI process rank.
+        """
         sock = self.sockets[src_id]
         header = sock.recv(8)
         if not header:
@@ -163,7 +209,7 @@ class SocketConnection(Connection):
         self.sockets.clear()
 
 
-def get_mpi_pinning(mpi_impl: str, num_workers: int):
+def get_mpi_pinning(mpi_impl: str, num_workers: int, hostfile: str):
     """
     Returns a list containing args to determine MPI process pinning depending on the MPI implementation.
 
@@ -183,29 +229,24 @@ def get_mpi_pinning(mpi_impl: str, num_workers: int):
 
     options = {}
     if mpi_impl == "intel":
-        if "I_MPI_INFO_LCPU" in os.environ:
-            nCPU = int(os.environ["I_MPI_INFO_LCPU"]) / 2
-        else:
-            raise RuntimeError("Cannot Determine CPU count")
-
-        if os.path.exists("./hosts.micro"):
-            with open("./hosts.micro", "r") as f:
+        if os.path.exists(hostfile):
+            with open(hostfile, "r") as f:
                 hosts = f.readlines()
         else:
-            raise RuntimeError("Cannot Nodes")
+            raise RuntimeError("Cannot determine target nodes")
 
         if size % len(hosts) != 0:
-            raise RuntimeError("Num ranks must be divisible by number of hosts")
+            raise RuntimeError("Number of ranks must be divisible by number of hosts")
 
         mm_ppn = size // len(hosts)
         node_idx = rank // mm_ppn
         node = hosts[node_idx].replace("\n", "")
 
         locations_int = list(os.sched_getaffinity(0))
-        if any([pos >= nCPU for pos in locations_int]):
-            raise RuntimeError("Pinning Error: trying to pin to HT CPU")
         locations = ",".join([str(i) for i in locations_int])
 
+        # See: https://www.intel.com/content/www/us/en/developer/tools/oneapi/mpi-library-pinning-simulator.html
+        # for more details and a nice visualization
         options.update(
             {
                 "I_MPI_DEBUG": "5",
@@ -255,6 +296,7 @@ def get_local_ip(preferred_ifaces=None) -> str:
             if name not in addrs:
                 continue
             for a in addrs[name]:
+                # trying to find an interface that is not loopback (127.xx)
                 if a.family == socket.AF_INET and not a.address.startswith("127."):
                     return a.address
 
@@ -263,6 +305,7 @@ def get_local_ip(preferred_ifaces=None) -> str:
         for a in iface_addrs:
             if a.family == socket.AF_INET:
                 ip = a.address
+                # trying to find an interface that is not loopback (127.xx) or link-local (169.254.xx)
                 if not ip.startswith("127.") and not ip.startswith("169.254."):
                     candidates.append(ip)
 
@@ -278,6 +321,7 @@ def spawn_local_workers(
     backend: str,
     is_slurm: bool,
     mpi_impl: str,
+    hostfile: str,
 ):
     """
     Spawn worker processes. On Slurm systems: MPI spawn now supported, socket backend enforced.
@@ -293,6 +337,10 @@ def spawn_local_workers(
         mpi or socket
     is_slurm : bool
         is our system slurm based?
+    mpi_impl : string
+        MPI implementation [intel or open]
+    hostfile : str
+        Path to Hostfile containing hosts for workers
 
     Returns
     -------
@@ -324,7 +372,7 @@ def spawn_local_workers(
     # SOCKET BACKEND
     if backend == "socket":
         host = get_local_ip()
-        pin_args, pin_options = get_mpi_pinning(mpi_impl, n_workers)
+        pin_args, pin_options = get_mpi_pinning(mpi_impl, n_workers, hostfile)
         # launch workers
         launcher = None
         if is_slurm:
@@ -352,6 +400,10 @@ def spawn_local_workers(
 
     from ..micro_simulation import load_backend_class
 
+    # Send RegisterAllTask to all workers, which sets up the local worker state
+    # and registers all potentially used tasks on the workers side.
+    # By doing so, less pickling needs to be done during operation. Only the task name and data need to be transferred.
+    # Workers can then locally re-construct the task based on the registered tasks.
     for worker_id in range(n_workers):
         conn.send(worker_id, RegisterAllTask(load_backend_class))
         conn.recv(worker_id)

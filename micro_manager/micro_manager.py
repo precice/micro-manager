@@ -421,6 +421,8 @@ class MicroManagerCoupling(MicroManager):
                     for i, rss_mb in enumerate(avg_mem_usage):
                         writer.writerow([mem_usage_n[i], rss_mb])
 
+        if self._conn is not None:
+            self._conn.close()
         self._participant.finalize()
 
     def initialize(self) -> None:
@@ -576,6 +578,7 @@ class MicroManagerCoupling(MicroManager):
             self._config.get_tasking_backend(),
             self._config.get_tasking_use_slurm(),
             self._config.get_mpi_impl(),
+            self._config.get_tasking_hostfile(),
         )
 
         # load micro sim

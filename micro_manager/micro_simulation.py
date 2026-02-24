@@ -8,7 +8,15 @@ from abc import ABC, abstractmethod
 import inspect
 import importlib as ipl
 
-from .tasking.task import *
+from .tasking.task import (
+    ConstructTask,
+    ConstructLateTask,
+    InitializeTask,
+    OutputTask,
+    SolveTask,
+    SetStateTask,
+    GetStateTask
+)
 
 
 class MicroSimulationInterface(ABC):

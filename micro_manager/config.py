@@ -79,6 +79,7 @@ class Config:
         self._task_backend = "socket"
         self._task_num_workers = 1
         self._task_mpi_impl = "open"
+        self._task_pinning_hostfile = "./hosts.micro"
 
     def set_logger(self, logger):
         """
@@ -204,9 +205,11 @@ class Config:
                     self._task_mpi_impl = self._data["tasking"]["mpi_impl"]
                     if self._task_mpi_impl not in ["open", "intel"]:
                         raise Exception("mpi_impl must be either 'open' or 'intel'.")
+                if "hostfile" in self._data["tasking"]:
+                    self._task_pinning_hostfile = self._data["tasking"]["hostfile"]
         except BaseException:
             self._logger.log_info_rank_zero(
-                "No or incorrect tasking information provided. Micro manager will compute locally."
+                "No or incorrect tasking information provided. Micro manager will not create workers and instead solve micro simulations locally."
             )
 
     def read_json_micro_manager(self):
@@ -1044,6 +1047,17 @@ class Config:
             use slurm or not
         """
         return self._task_is_slurm
+
+    def get_tasking_hostfile(self):
+        """
+        Get hostfile path for workers
+
+        Returns
+        -------
+        hostfile : str
+            Hostfile path for workers
+        """
+        return self._task_pinning_hostfile
 
     def get_mpi_impl(self):
         """
