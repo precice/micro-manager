@@ -39,7 +39,15 @@ class ConstructTask(Task):
     @staticmethod
     def initializer(gid, cls_path, state_data):
         if cls_path not in state_data["sim_classes"]:
-            state_data["sim_classes"][cls_path] = state_data["load_function"](cls_path)
+            import os
+            import sys
+            from pathlib import Path
+
+            ms_dir = os.path.abspath(str(Path(cls_path).resolve().parent))
+            sys.path.append(ms_dir)
+            _, file_name = os.path.split(os.path.abspath(str(Path(cls_path).resolve())))
+
+            state_data["sim_classes"][cls_path] = state_data["load_function"](file_name)
         cls = state_data["sim_classes"][cls_path]
 
         if gid in state_data["sim_classes"]:
@@ -60,7 +68,15 @@ class ConstructLateTask(Task):
     @staticmethod
     def initializer(gid, cls_path, state_data):
         if cls_path not in state_data["sim_classes"]:
-            state_data["sim_classes"][cls_path] = state_data["load_function"](cls_path)
+            import os
+            import sys
+            from pathlib import Path
+
+            ms_dir = os.path.abspath(str(Path(cls_path).resolve().parent))
+            sys.path.append(ms_dir)
+            _, file_name = os.path.split(os.path.abspath(str(Path(cls_path).resolve())))
+
+            state_data["sim_classes"][cls_path] = state_data["load_function"](file_name)
         cls = state_data["sim_classes"][cls_path]
 
         if gid in state_data["sim_classes"]:
@@ -110,7 +126,15 @@ class SetStateTask(Task):
     @staticmethod
     def set(gid, state, state_data):
         state_data["sim_instances"][gid].set_state(state)
-        return None
+
+        # if gid was changed, we want to move it to the right location
+        check_gid = state_data["sim_instances"][gid].get_global_id()
+        if check_gid != gid:
+            state_data["sim_instances"][check_gid] = state_data["sim_instances"][gid]
+            del state_data["sim_instances"][gid]
+            return check_gid
+
+        return gid
 
 
 class InitializeTask(Task):

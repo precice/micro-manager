@@ -123,8 +123,10 @@ class MicroSimulationRemote(MicroSimulationInterface):
             task = SetStateTask.send_args(self._gid, state[worker_id])
             self._conn.send(worker_id, task)
 
+        result = {}
         for worker_id in range(self._num_ranks):
-            self._conn.recv(worker_id)
+            result[worker_id] = self._conn.recv(worker_id)
+        self._gid = result[0]
 
     def get_global_id(self):
         return self._gid

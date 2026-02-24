@@ -37,6 +37,14 @@ jobs:
           cd tests/unit
           python3 -m unittest test_micro_manager.py
 
+      - name: Install Micro Manager and run tasking unit test
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          pip uninstall -y pyprecice
+          cd tests/unit
+          python3 -m unittest test_tasking.py
+
       - name: Install Micro Manager and run interpolation unit test
         working-directory: micro-manager
         run: |
