@@ -15,9 +15,11 @@ jobs:
       - uses: actions/checkout@v6
         with:
           path: micro-manager
-      - uses: mpi4py/setup-mpi@v1
-        env:
-          MPI: openmpi
+          
+      - name: Setup MPI
+        uses: mpi4py/setup-mpi@v1
+        with:
+          mpi: openmpi
 
       - name: Install dependencies
         run: |
