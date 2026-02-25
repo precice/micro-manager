@@ -1,6 +1,14 @@
 from unittest import TestCase
 from unittest.mock import MagicMock
 
+import os
+import sys
+from pathlib import Path
+# no clue why this TestCase does not see the local precice.py
+# So we add path here and load it
+sys.path.append(os.getcwd())
+from . import precice
+
 import numpy as np
 from mpi4py import MPI
 
@@ -15,10 +23,6 @@ from micro_manager.tasking.task import (
     SetStateTask,
     GetStateTask,
 )
-
-import os
-import sys
-from pathlib import Path
 
 data_size = 32
 num_workers = 2
