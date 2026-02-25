@@ -7,7 +7,7 @@ from pathlib import Path
 # no clue why this TestCase does not see the local precice.py
 # So we add path here and load it
 sys.path.append(os.getcwd())
-from . import precice
+import precice
 
 import numpy as np
 from mpi4py import MPI
