@@ -126,7 +126,7 @@ class Config:
         try:
             self._micro_stateless = self._data["micro_stateless"]
             self._logger.log_info_rank_zero(
-                "Only creating one full instance of Micro Model."
+                "Only creating one full instance of MicroSimulation."
             )
         except:
             self._micro_stateless = False
