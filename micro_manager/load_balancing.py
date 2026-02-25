@@ -258,6 +258,7 @@ class LoadBalancer:
         # Delete the active simulations which no longer exist on this rank
         for gid in send_map.keys():
             lid = self._global_ids.index(gid)
+            self._sim_list[lid].destroy()
             del self._sim_list[lid]
             self._global_ids.remove(gid)
             if self._adaptivity_controller is not None:

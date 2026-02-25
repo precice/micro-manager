@@ -22,32 +22,21 @@ from .tasking.task import (
 
 class MicroSimulationInterface(ABC):
     @abstractmethod
-    def solve(self, micro_sim_input, dt):
-        pass
-
+    def solve(self, micro_sim_input, dt): ...
     @abstractmethod
-    def get_state(self):
-        pass
-
+    def get_state(self): ...
     @abstractmethod
-    def set_state(self, state):
-        pass
-
+    def set_state(self, state): ...
     @abstractmethod
-    def get_global_id(self):
-        pass
-
+    def get_global_id(self): ...
     @abstractmethod
-    def set_global_id(self, global_id):
-        pass
-
+    def set_global_id(self, global_id): ...
     @abstractmethod
-    def initialize(self, *args, **kwargs):
-        pass
-
+    def initialize(self, *args, **kwargs): ...
     @abstractmethod
-    def output(self):
-        pass
+    def output(self): ...
+    @abstractmethod
+    def destroy(self): ...
 
 
 class MicroSimulationLocal(MicroSimulationInterface):
@@ -79,6 +68,9 @@ class MicroSimulationLocal(MicroSimulationInterface):
     def output(self):
         return self._instance.output()
 
+    def destroy(self):
+        self._instance = None
+
 
 class MicroSimulationRemote(MicroSimulationInterface):
     def __init__(self, gid, late_init, num_ranks, conn, cls_path):
@@ -90,14 +82,6 @@ class MicroSimulationRemote(MicroSimulationInterface):
         construct_cls = ConstructLateTask if late_init else ConstructTask
         for worker_id in range(self._num_ranks):
             task = construct_cls.send_args(self._gid, self._cls_path)
-            self._conn.send(worker_id, task)
-
-        for worker_id in range(self._num_ranks):
-            self._conn.recv(worker_id)
-
-    def __del__(self):
-        for worker_id in range(self._num_ranks):
-            task = DeleteTask.send_args(self._gid)
             self._conn.send(worker_id, task)
 
         for worker_id in range(self._num_ranks):
@@ -169,6 +153,14 @@ class MicroSimulationRemote(MicroSimulationInterface):
 
         return result
 
+    def destroy(self):
+        for worker_id in range(self._num_ranks):
+            task = DeleteTask.send_args(self._gid)
+            self._conn.send(worker_id, task)
+
+        for worker_id in range(self._num_ranks):
+            self._conn.recv(worker_id)
+
 
 class MicroSimulationWrapper(MicroSimulationInterface):
     """
@@ -188,9 +180,6 @@ class MicroSimulationWrapper(MicroSimulationInterface):
 
         self._external_data = dict()
         self._name = name
-
-    def __del__(self):
-        del self._impl
 
     def solve(self, micro_sim_input, dt):
         return self._impl.solve(micro_sim_input, dt)
@@ -212,6 +201,9 @@ class MicroSimulationWrapper(MicroSimulationInterface):
 
     def output(self):
         return self._impl.output()
+
+    def destroy(self):
+        return self._impl.destroy()
 
     def __getattr__(self, name):
         return getattr(self._impl, name)

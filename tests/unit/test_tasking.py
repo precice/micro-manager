@@ -181,6 +181,7 @@ class TestTasking(TestCase):
         self.assertEqual(result_interface[0]["gid"], gid_new)
         self.assertEqual(result_interface[0]["state"], "Important State Information")
 
+        sim.destroy()
         del sim
 
         sim = self.sim_cls(gid)

@@ -199,6 +199,8 @@ class ModelAdaptivity:
                 sim_new_state = sim.attachments[key_new]
                 sim_new.set_state(sim_new_state)
 
+            # release resources of previous sim and set to new sim
+            sims[idx].destroy()
             sims[idx] = sim_new
 
     def update_states(

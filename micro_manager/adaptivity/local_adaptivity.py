@@ -310,4 +310,5 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         # Delete the inactive micro simulations which have not been activated
         for i in range(self._is_sim_active.size):
             if not self._is_sim_active[i]:
+                micro_sims[i].destroy()
                 micro_sims[i] = 0
