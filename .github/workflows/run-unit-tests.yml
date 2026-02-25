@@ -80,7 +80,7 @@ jobs:
           . .venv/bin/activate
           pip uninstall -y pyprecice
           cd tests/unit
-          mpiexec -n 2 python3 -m unittest test_micro_manager.py
+          python3 -m unittest test_tasking.py
 
       - name: Install Micro Manager and run interpolation unit test
         working-directory: micro-manager
