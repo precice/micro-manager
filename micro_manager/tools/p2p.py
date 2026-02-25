@@ -116,12 +116,12 @@ def p2p_comm(
     send_map_list = comm.allgather(send_map_local)
 
     for d in send_map_list:
-        for i, rank in d.items():
+        for i, r in d.items():
             if is_sim_on_this_rank[i]:
                 if i in send_map:
-                    send_map[i].append(rank)
+                    send_map[i].append(r)
                 else:
-                    send_map[i] = [rank]
+                    send_map[i] = [r]
 
     # Asynchronous send operations
     send_reqs = []
