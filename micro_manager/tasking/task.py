@@ -32,8 +32,8 @@ class DeleteTask(Task):
 
     @staticmethod
     def delete_gid(gid, state_data):
-        if gid in state_data["sim_classes"]:
-            del state_data["sim_classes"][gid]
+        if gid in state_data["sim_instances"]:
+            del state_data["sim_instances"][gid]
         return None
 
 
@@ -61,8 +61,8 @@ class ConstructTask(Task):
             state_data["sim_classes"][cls_path] = state_data["load_function"](file_name)
         cls = state_data["sim_classes"][cls_path]
 
-        if gid in state_data["sim_classes"]:
-            del state_data["sim_classes"][gid]
+        if gid in state_data["sim_instances"]:
+            del state_data["sim_instances"][gid]
         state_data["sim_instances"][gid] = cls(gid)
         return None
 
@@ -90,8 +90,8 @@ class ConstructLateTask(Task):
             state_data["sim_classes"][cls_path] = state_data["load_function"](file_name)
         cls = state_data["sim_classes"][cls_path]
 
-        if gid in state_data["sim_classes"]:
-            del state_data["sim_classes"][gid]
+        if gid in state_data["sim_instances"]:
+            del state_data["sim_instances"][gid]
         state_data["sim_instances"][gid] = cls(-1)
         return None
 
