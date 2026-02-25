@@ -101,7 +101,8 @@ class MPIConnection(Connection):
         obj : Any
             Data to send. (needs implemented pickling interface)
         """
-        if not self.open: return
+        if not self.open:
+            return
         data = pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
         self.inter_comm.send(data, dest=dst_id, tag=0)
 
@@ -115,7 +116,8 @@ class MPIConnection(Connection):
         src_id : int
             Worker MPI process rank.
         """
-        if not self.open: return None
+        if not self.open:
+            return None
         data = self.inter_comm.recv(source=src_id, tag=0)
         return pickle.loads(data)
 
@@ -197,7 +199,8 @@ class SocketConnection(Connection):
         obj : Any
             Data to send. (needs implemented pickling interface)
         """
-        if not self.open: return
+        if not self.open:
+            return
         sock = self.sockets[dst_id]
         data = pickle.dumps(obj, protocol=pickle.HIGHEST_PROTOCOL)
         header = struct.pack("!Q", len(data))
@@ -214,7 +217,8 @@ class SocketConnection(Connection):
         src_id : int
             Worker MPI process rank.
         """
-        if not self.open: return None
+        if not self.open:
+            return None
         sock = self.sockets[src_id]
         header = sock.recv(8)
         if not header:
@@ -236,6 +240,7 @@ class SocketConnection(Connection):
 
     def is_open(self) -> bool:
         return self.open
+
 
 def get_mpi_pinning(mpi_impl: str, num_workers: int, hostfile: str):
     """

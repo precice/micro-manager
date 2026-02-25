@@ -309,7 +309,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             self._adaptivity_output_type == "all"
             or self._adaptivity_output_type == "local"
         ):
-            ranks_of_sims = get_ranks_of_sims(self._global_ids, self._rank, self._comm, self._global_number_of_sims)
+            ranks_of_sims = get_ranks_of_sims(
+                self._global_ids, self._rank, self._comm, self._global_number_of_sims
+            )
 
             assoc_ranks = []  # Ranks to which inactive sims on this rank are associated
             for gid in self._global_ids:
@@ -433,7 +435,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             self._global_number_of_sims,
             self._is_sim_on_this_rank,
             assoc_active_gids,
-            micro_output
+            micro_output,
         )
 
         # Add received output of active sims to inactive sims on this rank

@@ -25,6 +25,7 @@ class Task:
         """
         return cls.__name__, args, kwargs
 
+
 class DeleteTask(Task):
     def __init__(self, gid):
         super().__init__(DeleteTask.delete_gid, gid=gid)

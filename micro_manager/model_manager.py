@@ -122,7 +122,9 @@ class ModelManager:
         cls = self.get_cls_by_name(name)
         return self._stateless_map[cls]
 
-    def get_instance_by_name(self, gid: int, name: str, *, late_init: bool=False) -> MicroSimulationInterface:
+    def get_instance_by_name(
+        self, gid: int, name: str, *, late_init: bool = False
+    ) -> MicroSimulationInterface:
         """
         Creates an instance of the requested class determined by its name. If the class should be initialized later,
         the request will be delegated to the micro simulation object (in case it supports it).
@@ -143,7 +145,9 @@ class ModelManager:
         """
         return self.get_instance(gid, self.get_cls_by_name(name), late_init=late_init)
 
-    def get_instance_by_idx(self, gid: int, idx: int, *, late_init: bool=False) -> MicroSimulationInterface:
+    def get_instance_by_idx(
+        self, gid: int, idx: int, *, late_init: bool = False
+    ) -> MicroSimulationInterface:
         """
         Creates an instance of the requested class determined by its index. If the class should be initialized later,
         the request will be delegated to the micro simulation object (in case it supports it).
@@ -162,7 +166,9 @@ class ModelManager:
         micro_sim : MicroSimulationInterface
             Instance of the requested micro simulation class, either delegator or compute instance
         """
-        return self.get_instance(gid, self._registered_classes[idx], late_init=late_init)
+        return self.get_instance(
+            gid, self._registered_classes[idx], late_init=late_init
+        )
 
     def get_instance(
         self, gid: int, micro_sim_cls: MicroSimulationClass, *, late_init: bool = False

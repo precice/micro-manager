@@ -2,6 +2,7 @@ import hashlib
 import numpy as np
 from mpi4py import MPI
 
+
 def get_ranks_of_sims(global_ids, rank, comm, global_number_of_sims) -> np.ndarray:
     """
     Get the ranks of all simulations.
@@ -35,6 +36,7 @@ def get_ranks_of_sims(global_ids, rank, comm, global_number_of_sims) -> np.ndarr
 
     return ranks_of_sims
 
+
 def create_tag(sim_id: int, src_rank: int, dest_rank: int) -> int:
     """
     For a given simulations ID, source rank, and destination rank, a unique tag is created.
@@ -54,13 +56,20 @@ def create_tag(sim_id: int, src_rank: int, dest_rank: int) -> int:
         Unique tag.
     """
     send_hashtag = hashlib.sha256()
-    send_hashtag.update(
-        (str(src_rank) + str(sim_id) + str(dest_rank)).encode("utf-8")
-    )
+    send_hashtag.update((str(src_rank) + str(sim_id) + str(dest_rank)).encode("utf-8"))
     tag = int(send_hashtag.hexdigest()[:6], base=16)
     return tag
 
-def p2p_comm(global_ids, rank, comm, global_number_of_sims, is_sim_on_this_rank, assoc_active_ids: list, data: list) -> list:
+
+def p2p_comm(
+    global_ids,
+    rank,
+    comm,
+    global_number_of_sims,
+    is_sim_on_this_rank,
+    assoc_active_ids: list,
+    data: list,
+) -> list:
     """
     Handle process to process communication for a given set of associated active IDs and data.
 
@@ -90,8 +99,12 @@ def p2p_comm(global_ids, rank, comm, global_number_of_sims, is_sim_on_this_rank,
     rank_of_sim = get_ranks_of_sims(global_ids, rank, comm, global_number_of_sims)
 
     send_map_local = dict()  # keys are global IDs, values are rank to send to
-    send_map =  dict()       # keys are global IDs of sims to send, values are ranks to send the sims to
-    recv_map = dict()        # keys are global IDs to receive, values are ranks to receive from
+    send_map = (
+        dict()
+    )  # keys are global IDs of sims to send, values are ranks to send the sims to
+    recv_map = (
+        dict()
+    )  # keys are global IDs to receive, values are ranks to receive from
 
     for i in assoc_active_ids:
         # Add simulation and its rank to receive map
@@ -124,7 +137,7 @@ def p2p_comm(global_ids, rank, comm, global_number_of_sims, is_sim_on_this_rank,
     for gid, recv_rank in recv_map.items():
         tag = create_tag(gid, recv_rank, rank)
         bufsize = (
-                1 << 30
+            1 << 30
         )  # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
         req = comm.irecv(bufsize, source=recv_rank, tag=tag)
         recv_reqs.append(req)
@@ -133,6 +146,3 @@ def p2p_comm(global_ids, rank, comm, global_number_of_sims, is_sim_on_this_rank,
     MPI.Request.Waitall(send_reqs)
 
     return recv_reqs
-
-
-

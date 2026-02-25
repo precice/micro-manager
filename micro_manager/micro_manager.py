@@ -158,7 +158,9 @@ class MicroManagerCoupling(MicroManager):
         if self._is_model_adaptivity_on:
             self.state_loader = lambda sim: sim.attachments
             self.state_setter = lambda sim, state: sim.attachments.update(state)
-        self._is_load_balancing = self._config.turn_on_load_balancing() and self._is_parallel
+        self._is_load_balancing = (
+            self._config.turn_on_load_balancing() and self._is_parallel
+        )
         self._load_balancing_n = self._config.get_load_balancing_n()
         self.load_balancing = None
 
@@ -232,17 +234,19 @@ class MicroManagerCoupling(MicroManager):
             # handle load balancing, in first iteration all sims are assumed to have same cost
             performed_lb = False
             if lb_counter % self._load_balancing_n == 0 or first_iteration:
-                #self._participant.start_profiling_section("micro_manager.solve.load_balancing")
+                # self._participant.start_profiling_section("micro_manager.solve.load_balancing")
                 self.load_balancing.balance()
                 self._local_number_of_sims = len(self._global_ids_of_local_sims)
                 # Reset simulation state checkpoints after load balancing
                 sim_states_cp = [None] * self._local_number_of_sims
                 if self._is_adaptivity_on:
                     for name in self._adaptivity_data_names:
-                        self._data_for_adaptivity[name] = [0] * self._local_number_of_sims
+                        self._data_for_adaptivity[name] = [
+                            0
+                        ] * self._local_number_of_sims
                 # Reset simulation crash state information after load balancing
                 self._has_sim_crashed = [False] * self._local_number_of_sims
-                #self._participant.stop_last_profiling_section()
+                # self._participant.stop_last_profiling_section()
                 performed_lb = True
             lb_counter += 1
 
@@ -895,9 +899,13 @@ class MicroManagerCoupling(MicroManager):
             if not self._has_sim_crashed[count]:
                 # Attempt to solve the micro simulation
                 try:
-                    self.load_balancing.pre_sim_solve(self._global_ids_of_local_sims[count])
+                    self.load_balancing.pre_sim_solve(
+                        self._global_ids_of_local_sims[count]
+                    )
                     micro_sims_output[count] = sim.solve(micro_sims_input[count], dt)
-                    self.load_balancing.post_sim_solve(self._global_ids_of_local_sims[count])
+                    self.load_balancing.post_sim_solve(
+                        self._global_ids_of_local_sims[count]
+                    )
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
@@ -969,11 +977,15 @@ class MicroManagerCoupling(MicroManager):
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[lid]:
                 try:
-                    self.load_balancing.pre_sim_solve(self._global_ids_of_local_sims[lid])
+                    self.load_balancing.pre_sim_solve(
+                        self._global_ids_of_local_sims[lid]
+                    )
                     micro_sims_output[lid] = self._micro_sims[lid].solve(
                         micro_sims_input[lid], dt
                     )
-                    self.load_balancing.post_sim_solve(self._global_ids_of_local_sims[lid])
+                    self.load_balancing.post_sim_solve(
+                        self._global_ids_of_local_sims[lid]
+                    )
 
                     # Mark the micro sim as active for export
                     micro_sims_output[lid]["Active-State"] = 1
