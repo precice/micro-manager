@@ -11,6 +11,7 @@ from micro_manager.micro_simulation import (
 )
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.misc import clamp_in_range
+from micro_manager.model_manager import ModelManager
 from micro_manager.tasking.connection import Connection
 
 import numpy as np
@@ -20,6 +21,7 @@ import importlib
 class ModelAdaptivity:
     def __init__(
         self,
+        model_manager: ModelManager,
         configurator: Config,
         rank: int,
         log_file: str,
@@ -40,12 +42,15 @@ class ModelAdaptivity:
         """
         self._logger = Logger(__name__, log_file, rank)
 
+        self._model_manager = model_manager
         self._model_files = configurator.get_model_adaptivity_file_names()
         self._switching_func_name = (
             configurator.get_model_adaptivity_switching_function()
         )
 
+        stateless_flags = configurator.get_model_adaptivity_micro_stateless()
         self._model_classes = []
+        pos = 0
         for model_file in self._model_files:
             try:
                 model = load_backend_class(model_file)
@@ -54,6 +59,10 @@ class ModelAdaptivity:
                         self._logger, model, model_file, num_ranks, conn
                     )
                 )
+                self._model_manager.register(
+                    self._model_classes[pos], stateless_flags[pos]
+                )
+                pos += 1
             except Exception as e:
                 self._logger.log_info_rank_zero(
                     f"Failed to load model class with error: {e}"
@@ -177,7 +186,9 @@ class ModelAdaptivity:
             sim.attachments[key] = sim.get_state()
 
             # construct new sim and delay initialization if possible
-            sim_new = target_class(gid, late_init=new_state_exists)
+            sim_new = self._model_manager.get_instance(
+                gid, target_class, late_init=new_state_exists
+            )
             # need to copy over the multi-state buffer to new sim object
             sim_new.attachments = sim.attachments
             sim_new.attachments[key_new] = sim_new.get_state()
