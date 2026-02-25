@@ -543,7 +543,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         for gid in self._global_ids:
             if not self._is_sim_active[gid]:
                 lid = self._global_ids.index(gid)
-                micro_sims[lid].destroy()
+                if type(micro_sims[lid]).__name__ == "MicroSimulationWrapper":
+                    micro_sims[lid].destroy()
                 micro_sims[lid] = 0
 
         self._precice_participant.stop_last_profiling_section()
