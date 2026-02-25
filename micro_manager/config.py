@@ -25,6 +25,7 @@ class Config:
         self._config_file_name = config_file_name
         self._logger = None
         self._micro_file_name = None
+        self._micro_stateless = False
 
         self._precice_config_file_name = None
         self._macro_mesh_name = None
@@ -72,6 +73,7 @@ class Config:
         # Model Adaptivity information
         self._m_adap = False
         self._m_adap_micro_file_names = None
+        self._m_adap_micro_stateless = None
         self._m_adap_switching_function = None
 
         # Tasking
@@ -120,6 +122,17 @@ class Config:
             .replace("\\", ".")
             .replace(".py", "")
         )
+
+        try:
+            self._micro_stateless = self._data["micro_stateless"]
+            self._logger.log_info_rank_zero(
+                "Only creating one full instance of Micro Model."
+            )
+        except:
+            self._micro_stateless = False
+            self._logger.log_info_rank_zero(
+                "Creating full instance of Micro Model per mesh vertex."
+            )
 
         self._logger.log_info_rank_zero(
             "Micro simulation file name: " + self._data["micro_file_name"]
@@ -511,6 +524,28 @@ class Config:
                 "model_adaptivity_settings"
             ]["switching_function"]
 
+            if (
+                "micro_stateless"
+                in self._data["simulation_params"]["model_adaptivity_settings"]
+            ):
+                self._m_adap_micro_stateless = self._data["simulation_params"][
+                    "model_adaptivity_settings"
+                ]["micro_stateless"]
+            else:
+                self._m_adap_micro_stateless = [False] * len(
+                    self._m_adap_micro_file_names
+                )
+
+            for i in range(len(self._m_adap_micro_file_names)):
+                if self._m_adap_micro_stateless[i]:
+                    self._logger.log_info_rank_zero(
+                        f"Only creating one full instance of Micro Model {i}."
+                    )
+                else:
+                    self._logger.log_info_rank_zero(
+                        f"Creating full instance of Micro Model {i} per mesh vertex."
+                    )
+
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"]:
                 self._interpolate_crash = True
@@ -686,6 +721,17 @@ class Config:
             String carrying the path to the Python script of the micro-simulation.
         """
         return self._micro_file_name
+
+    def turn_on_micro_stateless(self):
+        """
+        Boolean stating whether micro model is stateless or not.
+
+        Returns
+        -------
+        stateless : bool
+            True if micro model is stateless, False otherwise.
+        """
+        return self._micro_stateless
 
     def get_micro_output_n(self):
         """
@@ -1003,6 +1049,17 @@ class Config:
             String carrying the path to the Python script of the micro-simulation.
         """
         return self._m_adap_micro_file_names
+
+    def get_model_adaptivity_micro_stateless(self):
+        """
+        List of boolean stating whether the respective micro model is stateless or not.
+
+        Returns
+        -------
+        stateless : list
+            True if micro model is stateless, False otherwise.
+        """
+        return self._m_adap_micro_stateless
 
     def get_model_adaptivity_switching_function(self):
         """
