@@ -1,6 +1,13 @@
 import argparse
 import os
 from mpi4py import MPI
+
+# only used for tests that require precice
+# pyprecice does not exist in CI, thus dummy is provided in test pipeline
+# but for that cwd is needed in module PATH
+import sys
+sys.path.append(os.getcwd())
+
 from task import handle_task
 
 from connection import Connection, MPIConnection, SocketConnection
