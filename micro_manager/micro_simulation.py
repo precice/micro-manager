@@ -94,6 +94,11 @@ class MicroSimulationRemote(MicroSimulationInterface):
         for worker_id in range(self._num_ranks):
             self._conn.recv(worker_id)
 
+    def __del__(self):
+        for worker_id in range(self._num_ranks):
+            task = DeleteTask.send_args(self._gid)
+            self._conn.send(worker_id, task)
+
     def solve(self, micro_sim_input, dt):
         for worker_id in range(self._num_ranks):
             task = SolveTask.send_args(self._gid, micro_sim_input, dt)

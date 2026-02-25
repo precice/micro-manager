@@ -25,6 +25,16 @@ class Task:
         """
         return cls.__name__, args, kwargs
 
+class DeleteTask(Task):
+    def __init__(self, gid):
+        super().__init__(DeleteTask.delete_gid, gid=gid)
+
+    @staticmethod
+    def delete_gid(gid, state_data):
+        if gid in state_data["sim_classes"]:
+            del state_data["sim_classes"][gid]
+        return None
+
 
 class ConstructTask(Task):
     """
@@ -194,6 +204,7 @@ class RegisterAllTask(Task):
     @staticmethod
     def register(state_data, load_function):
         task_dict = dict()
+        task_dict[DeleteTask.__name__] = DeleteTask
         task_dict[ConstructTask.__name__] = ConstructTask
         task_dict[ConstructLateTask.__name__] = ConstructLateTask
         task_dict[SolveTask.__name__] = SolveTask

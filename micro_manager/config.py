@@ -55,10 +55,9 @@ class Config:
         self._adaptivity_output_type = ""
         self._adaptivity_output_n = 1
 
-        self._adaptivity_is_load_balancing = False
+        self._load_balancing = False
         self._load_balancing_n = 1
-        self._load_balancing_threshold = 0
-        self._balance_inactive_sims = False
+        self._load_balancing_partitioning = 0
 
         # Snapshot information
         self._parameter_file_name = None
@@ -432,15 +431,15 @@ class Config:
             self._write_data_names.append("Active-Steps")
 
         try:
-            self._adaptivity_is_load_balancing = self._data["simulation_params"][
+            self._load_balancing = self._data["simulation_params"][
                 "load_balancing"
             ]
-            if self._adaptivity_is_load_balancing:
+            if self._load_balancing:
                 self._logger.log_info_rank_zero(
-                    "Micro Manager will dynamically balance micro simulations based on the adaptivity computation."
+                    "Micro Manager will dynamically balance micro simulations based on compute times."
                 )
-                self._write_data_names.append("rank_of_sim")
-                if not self._adaptivity_type == "global":
+                #self._write_data_names.append("rank_of_sim")
+                if self._adaptivity and not self._adaptivity_type == "global":
                     raise Exception(
                         "Load balancing can be done only with global adaptivity."
                     )
@@ -449,7 +448,7 @@ class Config:
                 "Micro Manager will not dynamically balance micro simulations based on the adaptivity computation."
             )
 
-        if self._adaptivity_is_load_balancing:
+        if self._load_balancing:
             self._load_balancing_n = self._data["simulation_params"][
                 "load_balancing_settings"
             ]["every_n_time_windows"]
@@ -460,28 +459,12 @@ class Config:
             )
 
             try:
-                self._load_balancing_threshold = self._data["simulation_params"][
+                self._load_balancing_partitioning = self._data["simulation_params"][
                     "load_balancing_settings"
-                ]["balancing_threshold"]
-                self._logger.log_info_rank_zero(
-                    "Load balancing threshold: " + str(self._load_balancing_threshold)
-                )
+                ]["partitioning"]
             except BaseException:
                 self._logger.log_info_rank_zero(
-                    "No load balancing threshold provided. The threshold will be set to 0."
-                )
-
-            try:
-                self._balance_inactive_sims = self._data["simulation_params"][
-                    "load_balancing_settings"
-                ]["balance_inactive_sims"]
-                if self._balance_inactive_sims:
-                    self._logger.log_info_rank_zero(
-                        "Micro Manager will redistribute inactive simulations in the load balancing."
-                    )
-            except BaseException:
-                self._logger.log_info_rank_zero(
-                    "Micro Manager will not redistribute inactive simulations in the load balancing. Only active simulations will be redistributed. Note that this may significantly increase the communication cost of the adaptivity."
+                    "Micro Manager will not load balance. Must provide partitioning type."
                 )
 
         try:
@@ -871,16 +854,16 @@ class Config:
         """
         return self._adaptivity_every_implicit_iteration
 
-    def is_adaptivity_with_load_balancing(self):
+    def turn_on_load_balancing(self):
         """
-        Check if adaptivity computation needs to be done with load balancing.
+        Check if load balancing should be performed.
 
         Returns
         -------
-        adaptivity_is_load_balancing : bool
-            True if adaptivity computation needs to be done with load balancing, False otherwise.
+        load_balancing : bool
+            True if load balancing needs to be done, False otherwise.
         """
-        return self._adaptivity_is_load_balancing
+        return self._load_balancing
 
     def get_load_balancing_n(self):
         """
@@ -893,27 +876,16 @@ class Config:
         """
         return self._load_balancing_n
 
-    def get_load_balancing_threshold(self):
+    def get_load_balancing_partitioning(self):
         """
-        Get the load balancing threshold to control how balanced the micro simulations need to be.
+        Get the load balancing partitioning type
 
         Returns
         -------
-        load_balancing_threshold : float
-            Load balancing threshold
+        load_balancing_partitioning : str
+            Load balancing partitioning type
         """
-        return self._load_balancing_threshold
-
-    def balance_inactive_sims(self):
-        """
-        Check if inactive simulations are to be redistributed in the load balancing.
-
-        Returns
-        -------
-        balance_inactive_sims : bool
-            True if inactive simulations are to be redistributed in the load balancing, False otherwise.
-        """
-        return self._balance_inactive_sims
+        return self._load_balancing_partitioning
 
     def initialize_sims_lazily(self):
         """
