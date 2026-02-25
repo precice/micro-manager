@@ -131,7 +131,7 @@ class Config:
         except:
             self._micro_stateless = False
             self._logger.log_info_rank_zero(
-                "Creating full instance of Micro Model per mesh vertex."
+                "Creating an instance of MicroSimulation for each mesh vertex."
             )
 
         self._logger.log_info_rank_zero(
