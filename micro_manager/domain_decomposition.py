@@ -91,7 +91,7 @@ class DomainDecomposer:
 
     def get_local_sims_and_macro_coords(
         self, macro_bounds: list, ranks_per_axis: list, macro_coords: np.ndarray
-    ) -> tuple:
+    ) -> tuple[int, list]:
         """
         Decompose the micro simulations among all ranks based on their positions in the macro domain.
 
