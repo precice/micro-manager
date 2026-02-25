@@ -12,6 +12,7 @@ from .adaptivity import AdaptivityCalculator
 from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.tools.logging_wrapper import Logger
+from micro_manager.model_manager import ModelManager
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
@@ -23,6 +24,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         rank: int,
         comm: MPI.Comm,
         micro_problem_cls: MicroSimulationClass,
+        model_manager: ModelManager,
     ) -> None:
         """
         Class constructor.
@@ -41,8 +43,12 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             Communicator for MPI.
         micro_problem_cls : callable
             Class of micro problem.
+        model_manager : object of class ModelManager
+            Handles instantiation of micro simulation.
         """
-        super().__init__(configurator, num_sims, micro_problem_cls, base_logger, rank)
+        super().__init__(
+            configurator, num_sims, micro_problem_cls, model_manager, base_logger, rank
+        )
         self._comm = comm
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
@@ -295,7 +301,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         # Update the set of inactive micro sims
         for i in to_be_activated_ids:
             associated_active_id = self._sim_is_associated_to[i]
-            micro_sims[i] = self._micro_problem_cls(i)
+            micro_sims[i] = self._model_manager.get_instance(i, self._micro_problem_cls)
             micro_sims[i].set_state(micro_sims[associated_active_id].get_state())
             self._sim_is_associated_to[
                 i

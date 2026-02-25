@@ -25,15 +25,14 @@ from functools import partial
 
 import precice
 
+from .model_manager import ModelManager
 from .micro_manager_base import MicroManager
 
-from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
-from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
-from .adaptivity.global_adaptivity_lb import GlobalAdaptivityLBCalculator
 from .adaptivity.model_adaptivity import ModelAdaptivity
+from .adaptivity.adaptivity_selection import create_adaptivity_calculator
 
 from .domain_decomposition import DomainDecomposer
-
+from .tasking.connection import spawn_local_workers
 from .micro_simulation import create_simulation_class, load_backend_class
 from .tools.logging_wrapper import Logger
 
@@ -155,6 +154,9 @@ class MicroManagerCoupling(MicroManager):
 
         self._t = 0  # global time
         self._n = 0  # sim-step
+
+        self._model_manager = ModelManager()
+        self._conn = None
 
     # **************
     # Public methods
@@ -419,6 +421,8 @@ class MicroManagerCoupling(MicroManager):
                     for i, rss_mb in enumerate(avg_mem_usage):
                         writer.writerow([mem_usage_n[i], rss_mb])
 
+        if self._conn is not None:
+            self._conn.close()
         self._participant.finalize()
 
     def initialize(self) -> None:
@@ -564,10 +568,29 @@ class MicroManagerCoupling(MicroManager):
         if self._interpolate_crashed_sims:
             self._interpolant = Interpolation(self._logger)
 
+        # Setup remote workers
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        worker_exec = os.path.join(base_dir, "tasking", "worker_main.py")
+        num_ranks = self._config.get_tasking_num_workers()
+        self._conn = spawn_local_workers(
+            worker_exec,
+            num_ranks,
+            self._config.get_tasking_backend(),
+            self._config.get_tasking_use_slurm(),
+            self._config.get_mpi_impl(),
+            self._config.get_tasking_hostfile(),
+        )
+
+        # load micro sim
         micro_problem_cls = None
         if self._is_model_adaptivity_on:
             self._model_adaptivity_controller: ModelAdaptivity = ModelAdaptivity(
-                self._config, self._rank, self._log_file
+                self._model_manager,
+                self._config,
+                self._rank,
+                self._log_file,
+                self._conn,
+                num_ranks,
             )
             micro_problem_cls = (
                 self._model_adaptivity_controller.get_resolution_sim_class(0)
@@ -577,56 +600,37 @@ class MicroManagerCoupling(MicroManager):
             micro_problem_cls = create_simulation_class(
                 self._logger,
                 micro_problem_base,
+                self._config.get_micro_file_name(),
+                self._config.get_tasking_num_workers(),
+                self._conn,
                 "MicroSimulationDefault",
+            )
+            self._model_manager.register(
+                micro_problem_cls, self._config.turn_on_micro_stateless()
             )
 
         # Create micro simulation objects
         self._micro_sims = [0] * self._local_number_of_sims
         if not self._lazy_init:
             for i in range(self._local_number_of_sims):
-                self._micro_sims[i] = micro_problem_cls(
-                    self._global_ids_of_local_sims[i]
+                self._micro_sims[i] = self._model_manager.get_instance(
+                    self._global_ids_of_local_sims[i], micro_problem_cls
                 )
 
         if self._is_adaptivity_on:
-            if self._config.get_adaptivity_type() == "local":
-                self._adaptivity_controller: LocalAdaptivityCalculator = (
-                    LocalAdaptivityCalculator(
-                        self._config,
-                        self._local_number_of_sims,
-                        self._logger,
-                        self._rank,
-                        self._comm,
-                        micro_problem_cls,
-                    )
-                )
-            elif self._config.get_adaptivity_type() == "global":
-                if self._is_adaptivity_with_load_balancing:
-                    self._adaptivity_controller: GlobalAdaptivityLBCalculator = (
-                        GlobalAdaptivityLBCalculator(
-                            self._config,
-                            self._global_number_of_sims,
-                            self._global_ids_of_local_sims,
-                            self._participant,
-                            self._logger,
-                            self._rank,
-                            self._comm,
-                            micro_problem_cls,
-                        )
-                    )
-                else:
-                    self._adaptivity_controller: GlobalAdaptivityCalculator = (
-                        GlobalAdaptivityCalculator(
-                            self._config,
-                            self._global_number_of_sims,
-                            self._global_ids_of_local_sims,
-                            self._participant,
-                            self._logger,
-                            self._rank,
-                            self._comm,
-                            micro_problem_cls,
-                        )
-                    )
+            self._adaptivity_controller = create_adaptivity_calculator(
+                self._config,
+                self._local_number_of_sims,
+                self._global_number_of_sims,
+                self._global_ids_of_local_sims,
+                self._participant,
+                self._logger,
+                self._rank,
+                self._comm,
+                micro_problem_cls,
+                self._model_manager,
+                self._is_adaptivity_with_load_balancing,
+            )
 
             self._micro_sims_active_steps = np.zeros(
                 self._global_number_of_sims
@@ -665,8 +669,8 @@ class MicroManagerCoupling(MicroManager):
                     return
 
                 for i in active_sim_lids:
-                    self._micro_sims[i] = micro_problem_cls(
-                        self._global_ids_of_local_sims[i]
+                    self._micro_sims[i] = self._model_manager.get_instance(
+                        self._global_ids_of_local_sims[i], micro_problem_cls
                     )
 
                 first_id = active_sim_lids[0]  # First active simulation ID
