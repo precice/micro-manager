@@ -1,4 +1,9 @@
-from micro_manager.micro_simulation import MicroSimulationClass, MicroSimulationWrapper, MicroSimulationInterface
+from micro_manager.micro_simulation import (
+    MicroSimulationClass,
+    MicroSimulationWrapper,
+    MicroSimulationInterface,
+)
+
 
 class ModelWrapper(MicroSimulationInterface):
     """
@@ -54,10 +59,11 @@ class ModelManager:
     use model instancing. To generate instances use the get_instance method regardless of model instancing,
     as the ModelManager handles either case.
     """
+
     def __init__(self):
         self._registered_classes: list[MicroSimulationClass] = []
-        self._stateless_map     : dict[MicroSimulationClass, bool] = dict()
-        self._backend_map       : dict[MicroSimulationClass, MicroSimulationWrapper] = dict()
+        self._stateless_map: dict[MicroSimulationClass, bool] = dict()
+        self._backend_map: dict[MicroSimulationClass, MicroSimulationWrapper] = dict()
 
     def register(self, micro_sim_cls: MicroSimulationClass, stateless: bool):
         """
@@ -81,7 +87,9 @@ class ModelManager:
                 len(self._registered_classes) - 1
             )
 
-    def get_instance(self, gid: int, micro_sim_cls: MicroSimulationClass, *, late_init: bool=False) -> MicroSimulationInterface:
+    def get_instance(
+        self, gid: int, micro_sim_cls: MicroSimulationClass, *, late_init: bool = False
+    ) -> MicroSimulationInterface:
         """
         Creates an instance of the requested class. If the class should be initialized later,
         the request will be delegated to the micro simulation object (in case it supports it).
