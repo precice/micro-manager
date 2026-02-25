@@ -33,7 +33,7 @@ from .adaptivity.global_adaptivity_lb import GlobalAdaptivityLBCalculator
 from .adaptivity.model_adaptivity import ModelAdaptivity
 
 from .domain_decomposition import DomainDecomposer
-
+from .tasking.connection import spawn_local_workers
 from .micro_simulation import create_simulation_class, load_backend_class
 from .tools.logging_wrapper import Logger
 
@@ -155,6 +155,8 @@ class MicroManagerCoupling(MicroManager):
 
         self._t = 0  # global time
         self._n = 0  # sim-step
+
+        self._conn = None
 
     # **************
     # Public methods
@@ -419,6 +421,8 @@ class MicroManagerCoupling(MicroManager):
                     for i, rss_mb in enumerate(avg_mem_usage):
                         writer.writerow([mem_usage_n[i], rss_mb])
 
+        if self._conn is not None:
+            self._conn.close()
         self._participant.finalize()
 
     def initialize(self) -> None:
@@ -564,10 +568,28 @@ class MicroManagerCoupling(MicroManager):
         if self._interpolate_crashed_sims:
             self._interpolant = Interpolation(self._logger)
 
+        # Setup remote workers
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        worker_exec = os.path.join(base_dir, "tasking", "worker_main.py")
+        num_ranks = self._config.get_tasking_num_workers()
+        self._conn = spawn_local_workers(
+            worker_exec,
+            num_ranks,
+            self._config.get_tasking_backend(),
+            self._config.get_tasking_use_slurm(),
+            self._config.get_mpi_impl(),
+            self._config.get_tasking_hostfile(),
+        )
+
+        # load micro sim
         micro_problem_cls = None
         if self._is_model_adaptivity_on:
             self._model_adaptivity_controller: ModelAdaptivity = ModelAdaptivity(
-                self._config, self._rank, self._log_file
+                self._config,
+                self._rank,
+                self._log_file,
+                self._conn,
+                num_ranks,
             )
             micro_problem_cls = (
                 self._model_adaptivity_controller.get_resolution_sim_class(0)
@@ -577,6 +599,9 @@ class MicroManagerCoupling(MicroManager):
             micro_problem_cls = create_simulation_class(
                 self._logger,
                 micro_problem_base,
+                self._config.get_micro_file_name(),
+                self._config.get_tasking_num_workers(),
+                self._conn,
                 "MicroSimulationDefault",
             )
 

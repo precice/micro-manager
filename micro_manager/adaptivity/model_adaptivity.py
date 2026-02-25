@@ -11,13 +11,21 @@ from micro_manager.micro_simulation import (
 )
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.misc import clamp_in_range
+from micro_manager.tasking.connection import Connection
 
 import numpy as np
 import importlib
 
 
 class ModelAdaptivity:
-    def __init__(self, configurator: Config, rank: int, log_file: str) -> None:
+    def __init__(
+        self,
+        configurator: Config,
+        rank: int,
+        log_file: str,
+        conn: Connection,
+        num_ranks: int,
+    ) -> None:
         """
         Class constructor.
 
@@ -43,8 +51,7 @@ class ModelAdaptivity:
                 model = load_backend_class(model_file)
                 self._model_classes.append(
                     create_simulation_class(
-                        self._logger,
-                        model,
+                        self._logger, model, model_file, num_ranks, conn
                     )
                 )
             except Exception as e:

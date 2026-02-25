@@ -74,6 +74,13 @@ class Config:
         self._m_adap_micro_file_names = None
         self._m_adap_switching_function = None
 
+        # Tasking
+        self._task_is_slurm = False
+        self._task_backend = "socket"
+        self._task_num_workers = 1
+        self._task_mpi_impl = "open"
+        self._task_pinning_hostfile = "./hosts.micro"
+
     def set_logger(self, logger):
         """
         Set the logger for the Config class.
@@ -181,6 +188,29 @@ class Config:
             )
 
         self._micro_dt = self._data["simulation_params"]["micro_dt"]
+
+        try:
+            if self._data["tasking"]:
+                backend = self._data["tasking"]["backend"]
+                if backend not in ["mpi", "socket"]:
+                    raise Exception("Backend must be either 'mpi' or 'socket'.")
+                self._task_backend = backend
+                if "is_slurm" in self._data["tasking"]:
+                    self._task_is_slurm = self._data["tasking"]["is_slurm"]
+                if "num_workers" in self._data["tasking"]:
+                    self._task_num_workers = self._data["tasking"]["num_workers"]
+                if self._task_is_slurm and backend == "mpi":
+                    raise Exception("MPI backend not supported on SLURM systems.")
+                if "mpi_impl" in self._data["tasking"]:
+                    self._task_mpi_impl = self._data["tasking"]["mpi_impl"]
+                    if self._task_mpi_impl not in ["open", "intel"]:
+                        raise Exception("mpi_impl must be either 'open' or 'intel'.")
+                if "hostfile" in self._data["tasking"]:
+                    self._task_pinning_hostfile = self._data["tasking"]["hostfile"]
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "No or incorrect tasking information provided. Micro manager will not create workers and instead solve micro simulations locally."
+            )
 
     def read_json_micro_manager(self):
         """
@@ -984,3 +1014,58 @@ class Config:
             String containing the path to the switching function file
         """
         return self._m_adap_switching_function
+
+    def get_tasking_num_workers(self):
+        """
+        Get number of workers
+
+        Returns
+        -------
+        num_workers : int
+            Number of workers
+        """
+        return self._task_num_workers
+
+    def get_tasking_backend(self):
+        """
+        Get backend type
+
+        Returns
+        -------
+        backend : str
+            either socket or mpi
+        """
+        return self._task_backend
+
+    def get_tasking_use_slurm(self):
+        """
+        Get flag whether slurm is used
+
+        Returns
+        -------
+        use_slurm : bool
+            use slurm or not
+        """
+        return self._task_is_slurm
+
+    def get_tasking_hostfile(self):
+        """
+        Get hostfile path for workers
+
+        Returns
+        -------
+        hostfile : str
+            Hostfile path for workers
+        """
+        return self._task_pinning_hostfile
+
+    def get_mpi_impl(self):
+        """
+        Get mpi implementation type
+
+        Returns
+        -------
+        mpi_impl : str
+            mpi implementation type
+        """
+        return self._task_mpi_impl
