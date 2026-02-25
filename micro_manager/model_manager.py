@@ -1,16 +1,17 @@
-class ModelWrapper:
+from micro_simulation import MicroSimulationClass, MicroSimulationWrapper, MicroSimulationInterface
+
+class ModelWrapper(MicroSimulationInterface):
     """
-    Stateless Model Wrapper
+    Stateless Model Wrapper, will delegate any method call to the main compute instance.
+    This is used to replace instances in the main simulation container.
     """
 
-    def __init__(self, global_id, backend, attach_init, attach_output):
+    def __init__(self, global_id, backend):
         self._global_id = global_id
         self._backend = backend
 
-        if attach_init:
-            self.initialize = backend.initialize
-        if attach_output:
-            self.output = backend.output
+    def set_global_id(self, global_id):
+        self._global_id = global_id
 
     def get_global_id(self) -> int:
         return self._global_id
@@ -23,6 +24,12 @@ class ModelWrapper:
 
     def set_state(self, state):
         self._backend.set_state(state)
+
+    def initialize(self, *args, **kwargs):
+        return self._backend.initialize(*args, **kwargs)
+
+    def output(self):
+        return self._backend.output()
 
     @property
     def __class__(self):
@@ -42,14 +49,27 @@ class ModelWrapper:
 
 
 class ModelManager:
+    """
+    Manages all used micro simulation models. Stores their classes and checks whether they may
+    use model instancing. To generate instances use the get_instance method regardless of model instancing,
+    as the ModelManager handles either case.
+    """
     def __init__(self):
-        self._registered_classes = []
-        self._stateless_map = dict()
-        self._backend_map = dict()
-        self._has_init_map = dict()
-        self._has_output_map = dict()
+        self._registered_classes: list[MicroSimulationClass] = []
+        self._stateless_map     : dict[MicroSimulationClass, bool] = dict()
+        self._backend_map       : dict[MicroSimulationClass, MicroSimulationWrapper] = dict()
 
-    def register(self, micro_sim_cls, stateless):
+    def register(self, micro_sim_cls: MicroSimulationClass, stateless: bool):
+        """
+        Register a micro simulation class to create an instance of later.
+
+        Parameters
+        ----------
+        micro_sim_cls : MicroSimulationClass
+            Micro simulation class to register.
+        stateless: bool
+            Is the simulation class stateless.
+        """
         if micro_sim_cls in self._registered_classes:
             return
 
@@ -61,19 +81,25 @@ class ModelManager:
                 len(self._registered_classes) - 1
             )
 
-        self._has_init_map[micro_sim_cls] = False
-        if hasattr(micro_sim_cls, "initialize") and callable(
-            getattr(micro_sim_cls, "initialize")
-        ):
-            self._has_init_map[micro_sim_cls] = True
+    def get_instance(self, gid: int, micro_sim_cls: MicroSimulationClass, *, late_init: bool=False) -> MicroSimulationInterface:
+        """
+        Creates an instance of the requested class. If the class should be initialized later,
+        the request will be delegated to the micro simulation object (in case it supports it).
 
-        self._has_output_map[micro_sim_cls] = False
-        if hasattr(micro_sim_cls, "output") and callable(
-            getattr(micro_sim_cls, "output")
-        ):
-            self._has_output_map[micro_sim_cls] = True
+        Parameters
+        ----------
+        gid: int
+            Global Simulation ID
+        micro_sim_cls: MicroSimulationClass
+            Requested micro simulation class
+        late_init: bool
+            Should the simulation be initialized later?
 
-    def get_instance(self, gid, micro_sim_cls, *, late_init=False):
+        Returns
+        -------
+        micro_sim : MicroSimulationInterface
+            Instance of the requested micro simulation class, either delegator or compute instance
+        """
         if micro_sim_cls not in self._registered_classes:
             raise RuntimeError("Trying to create instance of unknown class!")
 
@@ -81,8 +107,6 @@ class ModelManager:
             return ModelWrapper(
                 gid,
                 self._backend_map[micro_sim_cls],
-                self._has_init_map[micro_sim_cls],
-                self._has_output_map[micro_sim_cls],
             )
         else:
             return micro_sim_cls(gid, late_init=late_init)
