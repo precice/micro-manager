@@ -37,11 +37,9 @@ jobs:
           wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.5.tar.gz
           tar -xzf openmpi-5.0.5.tar.gz
           cd openmpi-5.0.5
-          ./configure --prefix=/usr/local
+          ./configure --prefix=$HOME/openmpi
           make -j$(nproc)
           make install
-          echo "/usr/local/lib" | tee /etc/ld.so.conf.d/openmpi.conf
-          ldconfig
 
       - name: Configure OpenMPI
         run: |
