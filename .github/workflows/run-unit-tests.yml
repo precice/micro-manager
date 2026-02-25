@@ -79,6 +79,9 @@ jobs:
         env:
           OMPI_ALLOW_RUN_AS_ROOT: "1"
           OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: "1"
+          OMPI_MCA_btl: "self,tcp"
+          OMPI_MCA_btl_tcp_if_include: "lo"
+          OMPI_MCA_oob_tcp_if_include: "lo"
         run: |
           . .venv/bin/activate
           pip uninstall -y pyprecice
