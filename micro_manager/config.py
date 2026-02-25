@@ -57,7 +57,7 @@ class Config:
 
         self._load_balancing = False
         self._load_balancing_n = 1
-        self._load_balancing_partitioning = 0
+        self._load_balancing_partitioning = "lpt"
 
         # Snapshot information
         self._parameter_file_name = None
