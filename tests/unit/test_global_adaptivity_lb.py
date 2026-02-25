@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import numpy as np
 from mpi4py import MPI
 
-#from micro_manager.adaptivity.global_adaptivity_lb import GlobalAdaptivityLBCalculator
+# from micro_manager.adaptivity.global_adaptivity_lb import GlobalAdaptivityLBCalculator
 
 
 class MicroSimulation:
@@ -57,48 +57,49 @@ class TestGlobalAdaptivityLB(TestCase):
         Run this test in parallel using MPI with 2 ranks.
         """
         pass
-        #global_number_of_sims = 8
-#
-        #if self._rank == 0:
-        #    global_ids = [0, 1, 2, 3]
-        #    expected_global_ids = [2, 3]
-        #elif self._rank == 1:
-        #    global_ids = [4, 5, 6, 7]
-        #    expected_global_ids = [4, 5, 6, 7, 0, 1]
-#
-        #expected_ranks_of_sims = [1, 1, 0, 0, 1, 1, 1, 1]
-#
-        #adaptivity_controller = GlobalAdaptivityLBCalculator(
-        #    self._configurator,
-        #    global_number_of_sims,
-        #    global_ids,
-        #    participant=MagicMock(),
-        #    base_logger=MagicMock(),
-        #    rank=self._rank,
-        #    comm=self._comm,
-        #    micro_problem_cls=MicroSimulation,
-        #    model_manager=ModelManager(),
-        #)
-#
-        #adaptivity_controller._is_sim_active = np.array(
-        #    [True, True, True, True, False, False, False, False]
-        #)
-#
-        #micro_sims = []
-        #for i in global_ids:
-        #    micro_sims.append(MicroSimulation(i))
-#
-        #adaptivity_controller._redistribute_active_sims(micro_sims)
-#
-        #actual_global_ids = []
-        #for sim in micro_sims:
-        #    actual_global_ids.append(sim.get_global_id())
-#
-        #self.assertEqual(actual_global_ids, expected_global_ids)
-#
-        #actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
-#
-        #self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
+        # global_number_of_sims = 8
+
+    #
+    # if self._rank == 0:
+    #    global_ids = [0, 1, 2, 3]
+    #    expected_global_ids = [2, 3]
+    # elif self._rank == 1:
+    #    global_ids = [4, 5, 6, 7]
+    #    expected_global_ids = [4, 5, 6, 7, 0, 1]
+    #
+    # expected_ranks_of_sims = [1, 1, 0, 0, 1, 1, 1, 1]
+    #
+    # adaptivity_controller = GlobalAdaptivityLBCalculator(
+    #    self._configurator,
+    #    global_number_of_sims,
+    #    global_ids,
+    #    participant=MagicMock(),
+    #    base_logger=MagicMock(),
+    #    rank=self._rank,
+    #    comm=self._comm,
+    #    micro_problem_cls=MicroSimulation,
+    #    model_manager=ModelManager(),
+    # )
+    #
+    # adaptivity_controller._is_sim_active = np.array(
+    #    [True, True, True, True, False, False, False, False]
+    # )
+    #
+    # micro_sims = []
+    # for i in global_ids:
+    #    micro_sims.append(MicroSimulation(i))
+    #
+    # adaptivity_controller._redistribute_active_sims(micro_sims)
+    #
+    # actual_global_ids = []
+    # for sim in micro_sims:
+    #    actual_global_ids.append(sim.get_global_id())
+    #
+    # self.assertEqual(actual_global_ids, expected_global_ids)
+    #
+    # actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
+    #
+    # self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
 
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
@@ -109,45 +110,46 @@ class TestGlobalAdaptivityLB(TestCase):
         Run this test in parallel using MPI with 2 ranks.
         """
         pass
-        #global_number_of_sims = 5
-#
-        #if self._rank == 0:
-        #    global_ids = [0, 2]
-        #    expected_global_ids = [0, 2, 4]
-        #elif self._rank == 1:
-        #    global_ids = [1, 3, 4]
-        #    expected_global_ids = [1, 3]
-#
-        #expected_ranks_of_sims = [0, 1, 0, 1, 0]
-#
-        #adaptivity_controller = GlobalAdaptivityLBCalculator(
-        #    self._configurator,
-        #    global_number_of_sims,
-        #    global_ids,
-        #    participant=MagicMock(),
-        #    base_logger=MagicMock(),
-        #    rank=self._rank,
-        #    comm=self._comm,
-        #    micro_problem_cls=MicroSimulation,
-        #    model_manager=ModelManager(),
-        #)
-#
-        #adaptivity_controller._is_sim_active = np.array(
-        #    [True, True, False, False, False]
-        #)
-        #adaptivity_controller._sim_is_associated_to = [-2, -2, 0, 1, 0]
-#
-        #micro_sims = []
-        #for i in global_ids:
-        #    micro_sims.append(MicroSimulation(i))
-#
-        #adaptivity_controller._redistribute_inactive_sims(micro_sims)
-#
-        #self.assertEqual(global_ids, expected_global_ids)
-#
-        #actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
-#
-        #self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
+        # global_number_of_sims = 5
+
+    #
+    # if self._rank == 0:
+    #    global_ids = [0, 2]
+    #    expected_global_ids = [0, 2, 4]
+    # elif self._rank == 1:
+    #    global_ids = [1, 3, 4]
+    #    expected_global_ids = [1, 3]
+    #
+    # expected_ranks_of_sims = [0, 1, 0, 1, 0]
+    #
+    # adaptivity_controller = GlobalAdaptivityLBCalculator(
+    #    self._configurator,
+    #    global_number_of_sims,
+    #    global_ids,
+    #    participant=MagicMock(),
+    #    base_logger=MagicMock(),
+    #    rank=self._rank,
+    #    comm=self._comm,
+    #    micro_problem_cls=MicroSimulation,
+    #    model_manager=ModelManager(),
+    # )
+    #
+    # adaptivity_controller._is_sim_active = np.array(
+    #    [True, True, False, False, False]
+    # )
+    # adaptivity_controller._sim_is_associated_to = [-2, -2, 0, 1, 0]
+    #
+    # micro_sims = []
+    # for i in global_ids:
+    #    micro_sims.append(MicroSimulation(i))
+    #
+    # adaptivity_controller._redistribute_inactive_sims(micro_sims)
+    #
+    # self.assertEqual(global_ids, expected_global_ids)
+    #
+    # actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
+    #
+    # self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
 
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 4, "This test only works with 4 ranks."
@@ -158,70 +160,71 @@ class TestGlobalAdaptivityLB(TestCase):
         Run this test in parallel using MPI with 4 ranks.
         """
         pass
-        #global_number_of_sims = 15
-#
-        #if self._rank == 0:
-        #    global_ids = [0, 1, 2, 3]
-        #    expected_global_ids = [1, 2, 3]
-        #elif self._rank == 1:
-        #    global_ids = [4, 5, 6, 7]
-        #    expected_global_ids = [4, 5, 6, 7, 0]
-        #elif self._rank == 2:
-        #    global_ids = [8, 9, 10, 11]
-        #    expected_global_ids = [8, 9, 10, 11, 12]
-        #elif self._rank == 3:
-        #    global_ids = [12, 13, 14]
-        #    expected_global_ids = [13, 14]
-#
-        #expected_ranks_of_sims = [1, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3]
-#
-        #adaptivity_controller = GlobalAdaptivityLBCalculator(
-        #    self._configurator,
-        #    global_number_of_sims,
-        #    global_ids,
-        #    participant=MagicMock(),
-        #    base_logger=MagicMock(),
-        #    rank=self._rank,
-        #    comm=self._comm,
-        #    micro_problem_cls=MicroSimulation,
-        #    model_manager=ModelManager(),
-        #)
-#
-        #adaptivity_controller._is_sim_active = np.array(
-        #    [
-        #        True,
-        #        True,
-        #        True,
-        #        False,
-        #        False,
-        #        False,
-        #        False,
-        #        False,
-        #        True,
-        #        False,
-        #        False,
-        #        False,
-        #        True,
-        #        True,
-        #        True,
-        #    ]
-        #)
-#
-        #micro_sims = []
-        #for i in global_ids:
-        #    micro_sims.append(MicroSimulation(i))
-#
-        #adaptivity_controller._redistribute_active_sims(micro_sims)
-#
-        #actual_global_ids = []
-        #for sim in micro_sims:
-        #    actual_global_ids.append(sim.get_global_id())
-#
-        #self.assertEqual(actual_global_ids, expected_global_ids)
-#
-        #actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
-#
-        #self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
+        # global_number_of_sims = 15
+
+    #
+    # if self._rank == 0:
+    #    global_ids = [0, 1, 2, 3]
+    #    expected_global_ids = [1, 2, 3]
+    # elif self._rank == 1:
+    #    global_ids = [4, 5, 6, 7]
+    #    expected_global_ids = [4, 5, 6, 7, 0]
+    # elif self._rank == 2:
+    #    global_ids = [8, 9, 10, 11]
+    #    expected_global_ids = [8, 9, 10, 11, 12]
+    # elif self._rank == 3:
+    #    global_ids = [12, 13, 14]
+    #    expected_global_ids = [13, 14]
+    #
+    # expected_ranks_of_sims = [1, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3]
+    #
+    # adaptivity_controller = GlobalAdaptivityLBCalculator(
+    #    self._configurator,
+    #    global_number_of_sims,
+    #    global_ids,
+    #    participant=MagicMock(),
+    #    base_logger=MagicMock(),
+    #    rank=self._rank,
+    #    comm=self._comm,
+    #    micro_problem_cls=MicroSimulation,
+    #    model_manager=ModelManager(),
+    # )
+    #
+    # adaptivity_controller._is_sim_active = np.array(
+    #    [
+    #        True,
+    #        True,
+    #        True,
+    #        False,
+    #        False,
+    #        False,
+    #        False,
+    #        False,
+    #        True,
+    #        False,
+    #        False,
+    #        False,
+    #        True,
+    #        True,
+    #        True,
+    #    ]
+    # )
+    #
+    # micro_sims = []
+    # for i in global_ids:
+    #    micro_sims.append(MicroSimulation(i))
+    #
+    # adaptivity_controller._redistribute_active_sims(micro_sims)
+    #
+    # actual_global_ids = []
+    # for sim in micro_sims:
+    #    actual_global_ids.append(sim.get_global_id())
+    #
+    # self.assertEqual(actual_global_ids, expected_global_ids)
+    #
+    # actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
+    #
+    # self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
 
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 4, "This test only works with 4 ranks."
@@ -232,80 +235,82 @@ class TestGlobalAdaptivityLB(TestCase):
         Run this test in parallel using MPI with 4 ranks.
         """
         pass
-        #global_number_of_sims = 15
+        # global_number_of_sims = 15
+
+
 #
-        #if self._rank == 0:
-        #    global_ids = [1, 2, 3]
-        #    expected_global_ids = [1, 2, 4, 9, 10]
-        #elif self._rank == 1:
-        #    global_ids = [4, 5, 6, 7, 12]
-        #    expected_global_ids = [6, 7, 12]
-        #elif self._rank == 2:
-        #    global_ids = [0, 8, 9, 10, 11]
-        #    expected_global_ids = [0, 8, 11, 3]
-        #elif self._rank == 3:
-        #    global_ids = [13, 14]
-        #    expected_global_ids = [13, 14, 5]
+# if self._rank == 0:
+#    global_ids = [1, 2, 3]
+#    expected_global_ids = [1, 2, 4, 9, 10]
+# elif self._rank == 1:
+#    global_ids = [4, 5, 6, 7, 12]
+#    expected_global_ids = [6, 7, 12]
+# elif self._rank == 2:
+#    global_ids = [0, 8, 9, 10, 11]
+#    expected_global_ids = [0, 8, 11, 3]
+# elif self._rank == 3:
+#    global_ids = [13, 14]
+#    expected_global_ids = [13, 14, 5]
 #
-        #expected_ranks_of_sims = [2, 0, 0, 2, 0, 3, 1, 1, 2, 0, 0, 2, 1, 3, 3]
+# expected_ranks_of_sims = [2, 0, 0, 2, 0, 3, 1, 1, 2, 0, 0, 2, 1, 3, 3]
 #
-        #adaptivity_controller = GlobalAdaptivityLBCalculator(
-        #    self._configurator,
-        #    global_number_of_sims,
-        #    global_ids,
-        #    participant=MagicMock(),
-        #    base_logger=MagicMock(),
-        #    rank=self._rank,
-        #    comm=self._comm,
-        #    micro_problem_cls=MicroSimulation,
-        #    model_manager=ModelManager(),
-        #)
+# adaptivity_controller = GlobalAdaptivityLBCalculator(
+#    self._configurator,
+#    global_number_of_sims,
+#    global_ids,
+#    participant=MagicMock(),
+#    base_logger=MagicMock(),
+#    rank=self._rank,
+#    comm=self._comm,
+#    micro_problem_cls=MicroSimulation,
+#    model_manager=ModelManager(),
+# )
 #
-        #adaptivity_controller._is_sim_active = np.array(
-        #    [
-        #        True,
-        #        True,
-        #        True,
-        #        False,
-        #        False,
-        #        False,
-        #        False,
-        #        False,
-        #        True,
-        #        False,
-        #        False,
-        #        False,
-        #        True,
-        #        True,
-        #        True,
-        #    ]
-        #)
-        #adaptivity_controller._sim_is_associated_to = [
-        #    -2,
-        #    -2,
-        #    -2,
-        #    0,
-        #    1,
-        #    13,
-        #    12,
-        #    12,
-        #    -2,
-        #    1,
-        #    2,
-        #    8,
-        #    -2,
-        #    -2,
-        #    -2,
-        #]
+# adaptivity_controller._is_sim_active = np.array(
+#    [
+#        True,
+#        True,
+#        True,
+#        False,
+#        False,
+#        False,
+#        False,
+#        False,
+#        True,
+#        False,
+#        False,
+#        False,
+#        True,
+#        True,
+#        True,
+#    ]
+# )
+# adaptivity_controller._sim_is_associated_to = [
+#    -2,
+#    -2,
+#    -2,
+#    0,
+#    1,
+#    13,
+#    12,
+#    12,
+#    -2,
+#    1,
+#    2,
+#    8,
+#    -2,
+#    -2,
+#    -2,
+# ]
 #
-        #micro_sims = []
-        #for i in global_ids:
-        #    micro_sims.append(MicroSimulation(i))
+# micro_sims = []
+# for i in global_ids:
+#    micro_sims.append(MicroSimulation(i))
 #
-        #adaptivity_controller._redistribute_inactive_sims(micro_sims)
+# adaptivity_controller._redistribute_inactive_sims(micro_sims)
 #
-        #self.assertEqual(global_ids, expected_global_ids)
+# self.assertEqual(global_ids, expected_global_ids)
 #
-        #actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
+# actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
 #
-        #self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
+# self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
