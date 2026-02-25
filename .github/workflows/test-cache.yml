@@ -1,0 +1,42 @@
+name: Test Cache
+on: workflow_dispatch
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    container: precice/precice:nightly
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          path: micro-manager
+
+      - name: Install dependencies
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-dev python3-venv git pkg-config
+          apt-get -qq install wget build-essential
+
+      - name: Load Cache
+        id: load-cache
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/cache-test
+          key: ct-${{ runner.os }}-build
+
+      - name: Populate Cache
+        if: steps.load-cache.outputs.cache-hit != 'true'
+        run: |
+          echo "This is test data" > ~/cache-test/foo.txt
+          echo "Populated Cache"
+
+      - name: Save Cache
+        if: steps.load-cache.outputs.cache-hit != 'true'
+        id: store-cache
+        uses: actions/cache/save@v5
+        with:
+          path: ~/cache-test
+          key: ct-${{ runner.os }}-build
+
+      - name: Use Cache Data
+        run:
+          cat ~/cache-test/foo.txt
