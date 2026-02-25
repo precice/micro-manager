@@ -6,7 +6,7 @@ import sys
 from pathlib import Path
 # no clue why this TestCase does not see the local precice.py
 # So we add path here and load it
-sys.path.append(os.getcwd())
+sys.path.append(str(Path(__file__).resolve().parent))
 import precice
 
 import numpy as np

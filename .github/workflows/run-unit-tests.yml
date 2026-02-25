@@ -78,7 +78,6 @@ jobs:
           OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: "1"
         run: |
           . .venv/bin/activate
-          pip uninstall -y pyprecice
           cd tests/unit
           python3 -m unittest test_tasking.py
 
