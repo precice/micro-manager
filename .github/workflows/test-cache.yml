@@ -1,5 +1,12 @@
 name: Test Cache
-on: workflow_dispatch
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - "*"
 
 jobs:
   test:
