@@ -307,8 +307,28 @@ class MicroSimulationClass:
 
 
 def load_backend_class(path_to_micro_file):
+    def try_load(name):
+        try:
+            return getattr(ipl.import_module(path_to_micro_file, name), name)
+        except ImportError as ie:
+            return None
+        except AttributeError as ae:
+            return None
+
     CLS_NAME = "MicroSimulation"
-    return getattr(ipl.import_module(path_to_micro_file, CLS_NAME), CLS_NAME)
+    # attempt to load with base name
+    result = try_load(CLS_NAME)
+    if result is not None:
+        return result
+
+    # attempt to load with appended indices
+    for i in range(10):
+        result = try_load(f"{CLS_NAME}{i}")
+        if result is not None:
+            return result
+
+    # failed to load any class
+    raise RuntimeError(f"Could not load micro simulation from {path_to_micro_file}")
 
 
 def create_simulation_class(
