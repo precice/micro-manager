@@ -26,7 +26,7 @@ jobs:
         id: ompi-cache-load
         uses: actions/cache/restore@v5
         with:
-          path: $HOME/openmpi
+          path: ~/openmpi
           key: openmpi-v5-${{ runner.os }}-build
 
       - name: Build OpenMPI 5
@@ -35,6 +35,7 @@ jobs:
           wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.5.tar.gz
           tar -xzf openmpi-5.0.5.tar.gz
           cd openmpi-5.0.5
+          mkdir -p ~/openmpi
           ./configure --prefix=$HOME/openmpi
           make -j$(nproc)
           make install
@@ -44,7 +45,7 @@ jobs:
         id: ompi-cache-store
         uses: actions/cache/save@v5
         with:
-          path: $HOME/openmpi
+          path: ~/openmpi
           key: openmpi-v5-${{ runner.os }}-build
 
       - name: Configure OpenMPI
@@ -53,6 +54,7 @@ jobs:
           echo "$HOME/openmpi/lib" >> $GITHUB_PATH
           export LD_LIBRARY_PATH=$HOME/openmpi/lib:$LD_LIBRARY_PATH
           export PATH=$HOME/openmpi/bin:$PATH
+          ldconfig
           which mpiexec
           mpiexec --version
 
