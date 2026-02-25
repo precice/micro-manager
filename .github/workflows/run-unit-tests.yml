@@ -41,12 +41,19 @@ jobs:
           make -j$(nproc)
           make install
 
+      - name: Save OpenMPI 5 to cache
+        if: steps.ompi-cache.outputs.cache-hit != 'true'
+        uses: actions/cache@v3
+        with:
+          path: $HOME/openmpi
+          key: openmpi-v5-${{ runner.os }}-build
+
       - name: Configure OpenMPI
         run: |
           echo "$HOME/openmpi/bin" >> $GITHUB_PATH
           echo "$HOME/openmpi/lib" >> $GITHUB_PATH
           export LD_LIBRARY_PATH=$HOME/openmpi/lib:$LD_LIBRARY_PATH
-          where mpiexec
+          which mpiexec
           mpiexec --version
 
       - name: Create a virtual environment and install Micro Manager in it
