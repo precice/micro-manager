@@ -2,7 +2,7 @@
 
 ## latest
 
-- Added load balancing based on micro simulation solve timings [#227](https://github.com/precice/micro-manager/pull/227)
+- Added load balancing based on micro simulation solve timings [#228](https://github.com/precice/micro-manager/pull/228)
 - Added option to use compute instances to reduce memory consumption [#226](https://github.com/precice/micro-manager/pull/226)
 - Added support to run micro simulations in separate processes with workers [#219](https://github.com/precice/micro-manager/pull/219)
 - Added abstraction layers to micro simulations to support more features [#218](https://github.com/precice/micro-manager/pull/218)
