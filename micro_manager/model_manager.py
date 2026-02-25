@@ -67,7 +67,7 @@ class ModelManager:
 
     def register(self, micro_sim_cls: MicroSimulationClass, stateless: bool):
         """
-        Register a micro simulation class to create an instance of later.
+        Register a micro simulation class to create an instance of it later.
 
         Parameters
         ----------
