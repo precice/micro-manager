@@ -1,4 +1,4 @@
-from micro_simulation import MicroSimulationClass, MicroSimulationWrapper, MicroSimulationInterface
+from micro_manager.micro_simulation import MicroSimulationClass, MicroSimulationWrapper, MicroSimulationInterface
 
 class ModelWrapper(MicroSimulationInterface):
     """
