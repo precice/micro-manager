@@ -33,6 +33,7 @@ jobs:
       - name: Populate Cache
         if: steps.load-cache.outputs.cache-hit != 'true'
         run: |
+          mkdir -p ~/cache-test
           echo "This is test data" > ~/cache-test/foo.txt
           echo "Populated Cache"
 
