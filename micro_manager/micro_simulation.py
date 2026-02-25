@@ -11,6 +11,7 @@ import importlib as ipl
 from .tasking.task import (
     ConstructTask,
     ConstructLateTask,
+    DeleteTask,
     InitializeTask,
     OutputTask,
     SolveTask,
