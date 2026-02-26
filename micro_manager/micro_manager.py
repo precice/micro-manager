@@ -609,7 +609,7 @@ class MicroManagerCoupling(MicroManager):
             )
 
         # Create micro simulation objects
-        self._micro_sims = [0] * self._local_number_of_sims
+        self._micro_sims = [None] * self._local_number_of_sims
         if not self._lazy_init:
             for i in range(self._local_number_of_sims):
                 self._micro_sims[i] = self._model_manager.get_instance(

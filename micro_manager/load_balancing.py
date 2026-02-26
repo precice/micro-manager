@@ -4,18 +4,21 @@ from typing import Optional
 from mpi4py import MPI
 import numpy as np
 
+from precice import Participant
+
+from micro_manager.config import Config
+from micro_manager.adaptivity.adaptivity import AdaptivityCalculator
 from micro_manager.model_manager import ModelManager
 from micro_manager.tools.logging_wrapper import Logger
-from micro_manager.config import Config
 from micro_manager.tools.p2p import create_tag, get_ranks_of_sims
 
 
 class LoadBalancer:
     def __init__(
         self,
-        precice_participant,
+        precice_participant: Participant,
         model_manager: ModelManager,
-        adaptivity_controller: Optional,
+        adaptivity_controller: Optional[AdaptivityCalculator],
         state_loader: callable,
         state_setter: callable,
         log: Logger,
@@ -26,6 +29,36 @@ class LoadBalancer:
         comm: MPI.Comm,
         rank: int,
     ):
+        """
+        Constructs LoadBalancer.
+
+        Parameters
+        ----------
+        precice_participant: Participant
+            preCICE participant object from coupling
+        model_manager: ModelManager
+            model manager object to construct instances
+        adaptivity_controller: Optional[AdaptivityCalculator]
+            handles adaptivity calculation if provided
+        state_loader: callable
+            loads state from micro simulation
+        state_setter: callable
+            sets state of micro simulation
+        log: Logger
+            logger object
+        config: Config
+            configuration object
+        sim_list: list
+            list of simulation objects
+        global_ids: list
+            list of global ids on this rank
+        global_number_of_sims: int
+            total number of simulations in this run
+        comm: MPI.Comm
+            used MPI communicator
+        rank: int
+            local rank
+        """
         self._enabled = config.turn_on_load_balancing()
         self._precice_participant = precice_participant
         self._model_manager = model_manager
@@ -57,6 +90,9 @@ class LoadBalancer:
             )
 
     def balance(self):
+        """
+        Requests load balancing. If LoadBalancing is disabled, returns immediately.
+        """
         if not self._enabled:
             return
 
@@ -67,12 +103,23 @@ class LoadBalancer:
         # self._precice_participant.stop_last_profiling_section()
 
     def pre_sim_solve(self, gid):
+        """
+        Notify load balancer that the micro simulation with the provided gid will start to run its solve method.
+        """
         self._balance_metric_local[gid] = time.time()
 
     def post_sim_solve(self, gid):
+        """
+        Notify load balancer that the micro simulation with the provided gid has finished its solve method.
+        """
         self._balance_metric_local[gid] = time.time() - self._balance_metric_local[gid]
 
     def update(self):
+        """
+        Needs to be called after all micro simulations have finished their solve method.
+        Updates the load balancing metric and shares it globally.
+        """
+
         # used to distribute balancing metric
         self._balance_metric_global[:] = 0
         tmp = self._comm.allgather(self._balance_metric_local)
@@ -87,12 +134,42 @@ class LoadBalancer:
     #    PARTITIONING
     # ==================
     def get_partition_impl(self, name):
+        """
+        Provides the selected partitioning algorithm.
+
+        Parameters
+        ----------
+        name: str
+            partitioning algorithm name
+
+        Returns
+        -------
+        function: callable
+            selected partitioning algorithm
+        """
         if name == "lpt":
             return self.partition_lpt
         else:
             return self.partition_dummy
 
     def partition_lpt(self, n_parts, current_partitioning):
+        """
+        Partitions the recorded workload using the LPT algorithm.
+
+        Parameters
+        ----------
+        n_parts: int
+            number of partitions (number of ranks)
+        current_partitioning: np.ndarray
+            array of assignments of each work item to one partition < n_parts
+
+        Returns
+        -------
+        partitioning: np.ndarray
+            output of LPT algorithm
+        workload: np.ndarray
+            workload per partition
+        """
         sorted_workload_indices = np.argsort(self._balance_metric_global)[
             ::-1
         ]  # descending
@@ -110,6 +187,24 @@ class LoadBalancer:
         return assignment, workload_per_partition
 
     def partition_dummy(self, n_parts, current_partitioning):
+        """
+        WARNING: Do not use this! This is only a dummy implementation that sends
+        the entire workload to the first partition. All others are empty.
+
+        Parameters
+        ----------
+        n_parts: int
+            number of partitions (number of ranks)
+        current_partitioning: np.ndarray
+            array of assignments of each work item to one partition < n_parts
+
+        Returns
+        -------
+        partition: np.ndarray
+            output of LPT algorithm
+        workload: np.ndarray
+            workload per partition
+        """
         # do not use this, just an example -> will send all to rank 0
         workload_per_partition = np.zeros(n_parts)
         workload_per_partition[0] = np.sum(self._balance_metric_global)
@@ -183,6 +278,14 @@ class LoadBalancer:
         return send_map, recv_map
 
     def _get_global_active_gids(self):
+        """
+        Get global IDs of all active gids. This is based on local ids.
+
+        Returns
+        -------
+        active_gids: list[int]
+            list of global active gids
+        """
         # local count
         active_gid_arr = None
         if self._adaptivity_controller is not None:
@@ -201,10 +304,16 @@ class LoadBalancer:
         return global_active_gids
 
     def _get_global_inactive_gids(self):
+        """
+        Get global IDs of all inactive gids. This is based on local ids.
+
+        Returns
+        -------
+        inactive_gids: list[int]
+            list of global inactive gids
+        """
         global_active_gids = set(self._get_global_active_gids())
-        global_inactive_gids = global_active_gids.difference(
-            set(np.arange(self._global_number_of_sims))
-        )
+        global_inactive_gids = set(np.arange(self._global_number_of_sims)).difference(global_active_gids)
         return list(global_inactive_gids)
 
     def _exchange_sims(self, send_map, recv_map, inactive_map={}):
@@ -228,13 +337,13 @@ class LoadBalancer:
             lid = self._global_ids.index(gid)
 
             # prepare send data
-            cls_name = self._sim_list[lid].name
-            is_stateless = self._model_manager.is_stateless(cls_name)
             is_inactive = inactive_map[gid] if gid in inactive_map else False
+            cls_name = None if is_inactive else self._sim_list[lid].name
+            is_stateless = None if is_inactive else self._model_manager.is_stateless(cls_name)
             send_data = (
-                None
-                if is_stateless or is_inactive
-                else self._state_loader(self._sim_list[lid]),
+                is_inactive,
+                is_stateless,
+                None if is_stateless or is_inactive else self._state_loader(self._sim_list[lid]),
                 cls_name,
                 gid,
             )
@@ -255,10 +364,12 @@ class LoadBalancer:
         # Wait for all non-blocking communication to complete
         MPI.Request.Waitall(send_reqs)
 
-        # Delete the active simulations which no longer exist on this rank
+        # Delete the simulations which no longer exist on this rank
         for gid in send_map.keys():
             lid = self._global_ids.index(gid)
-            self._sim_list[lid].destroy()
+            is_active = gid not in inactive_map
+            if is_active:
+                self._sim_list[lid].destroy()
             del self._sim_list[lid]
             self._global_ids.remove(gid)
             if self._adaptivity_controller is not None:
@@ -266,11 +377,12 @@ class LoadBalancer:
 
         # Create simulations and set them to the received states
         for req in recv_reqs:
-            state, cls_name, gid = req.wait()
+            is_inactive, is_stateless, state, cls_name, gid = req.wait()
             self._sim_list.append(
+                None if is_inactive else
                 self._model_manager.get_instance_by_name(gid, cls_name)
             )
-            if state is not None:
+            if not is_stateless and state is not None:
                 self._state_setter(self._sim_list[-1], state)
             self._global_ids.append(gid)
             if self._adaptivity_controller is not None:
@@ -295,6 +407,7 @@ class CountLB(LoadBalancer):
         config: Config,
         sim_list: list,
         global_ids: list,
+        global_number_of_sims: int,
         comm: MPI.Comm,
         rank: int,
     ):
@@ -308,6 +421,7 @@ class CountLB(LoadBalancer):
             config,
             sim_list,
             global_ids,
+            global_number_of_sims,
             comm,
             rank,
         )

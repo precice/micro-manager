@@ -109,6 +109,22 @@ class ModelManager:
         idx = cls_names.index(name)
         return self._registered_classes[idx]
 
+    def get_cls_by_idx(self, idx: int) -> MicroSimulationClass:
+        """
+        Returns the class determined by its index
+
+        Parameters
+        ----------
+        idx: int
+            index of registered class
+
+        Returns
+        -------
+        sim_class: MicroSimulationClass
+            Class given by index
+        """
+        return self._registered_classes[idx]
+
     def is_stateless(self, name: str) -> bool:
         """
         Returns whether the class given by its name is stateless.

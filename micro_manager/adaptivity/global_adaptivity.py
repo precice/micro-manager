@@ -513,7 +513,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         sim_states_and_global_ids = []
         for lid, sim in enumerate(micro_sims):
-            if sim == 0:
+            if sim == 0 or sim is None:
                 sim_states_and_global_ids.append((None, self._global_ids[lid]))
             else:
                 sim_states_and_global_ids.append((sim.get_state(), sim.get_global_id()))
@@ -545,7 +545,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 lid = self._global_ids.index(gid)
                 if type(micro_sims[lid]).__name__ == "MicroSimulationWrapper":
                     micro_sims[lid].destroy()
-                micro_sims[lid] = 0
+                micro_sims[lid] = None
 
         self._precice_participant.stop_last_profiling_section()
 

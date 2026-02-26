@@ -312,4 +312,4 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             if not self._is_sim_active[i]:
                 if type(micro_sims[i]).__name__ == "MicroSimulationWrapper":
                     micro_sims[i].destroy()
-                micro_sims[i] = 0
+                micro_sims[i] = None
