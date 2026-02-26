@@ -36,6 +36,10 @@ class ModelWrapper(MicroSimulationInterface):
     def output(self):
         return self._backend.output()
 
+    def destroy(self):
+        # we do not want to delete our compute instance
+        pass
+
     @property
     def __class__(self):
         return self._backend.__class__

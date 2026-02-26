@@ -165,7 +165,7 @@ class ModelAdaptivity:
             current_res, locations, t, inputs, prev_output, active_sims
         )
 
-        self._logger.log_info_rank_zero(f"New resolutions for t={t}: {target_res}")
+        self._logger.log_info(f"New resolutions for t={t}: {target_res}")
 
         for idx in range(size):
             if current_res[idx] == target_res[idx]:
