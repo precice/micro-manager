@@ -313,7 +313,9 @@ class LoadBalancer:
             list of global inactive gids
         """
         global_active_gids = set(self._get_global_active_gids())
-        global_inactive_gids = set(np.arange(self._global_number_of_sims)).difference(global_active_gids)
+        global_inactive_gids = set(np.arange(self._global_number_of_sims)).difference(
+            global_active_gids
+        )
         return list(global_inactive_gids)
 
     def _exchange_sims(self, send_map, recv_map, inactive_map={}):
@@ -339,11 +341,15 @@ class LoadBalancer:
             # prepare send data
             is_inactive = inactive_map[gid] if gid in inactive_map else False
             cls_name = None if is_inactive else self._sim_list[lid].name
-            is_stateless = None if is_inactive else self._model_manager.is_stateless(cls_name)
+            is_stateless = (
+                None if is_inactive else self._model_manager.is_stateless(cls_name)
+            )
             send_data = (
                 is_inactive,
                 is_stateless,
-                None if is_stateless or is_inactive else self._state_loader(self._sim_list[lid]),
+                None
+                if is_stateless or is_inactive
+                else self._state_loader(self._sim_list[lid]),
                 cls_name,
                 gid,
             )
@@ -379,8 +385,9 @@ class LoadBalancer:
         for req in recv_reqs:
             is_inactive, is_stateless, state, cls_name, gid = req.wait()
             self._sim_list.append(
-                None if is_inactive else
-                self._model_manager.get_instance_by_name(gid, cls_name)
+                None
+                if is_inactive
+                else self._model_manager.get_instance_by_name(gid, cls_name)
             )
             if not is_stateless and state is not None:
                 self._state_setter(self._sim_list[-1], state)

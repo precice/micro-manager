@@ -43,7 +43,6 @@ class ModelManager:
         return self._cls(gid, late_init=late_init)
 
 
-
 class TestGlobalAdaptivityLB(TestCase):
     def setUp(self):
         self._comm = MPI.COMM_WORLD
@@ -106,7 +105,9 @@ class TestGlobalAdaptivityLB(TestCase):
             actual_global_ids.append(sim.get_global_id())
         self.assertListEqual(sorted(actual_global_ids), expected_global_ids)
 
-        actual_ranks_of_sims = get_ranks_of_sims(global_ids, self._rank, self._comm, global_number_of_sims)
+        actual_ranks_of_sims = get_ranks_of_sims(
+            global_ids, self._rank, self._comm, global_number_of_sims
+        )
         self.assertListEqual(list(expected_ranks_of_sims), list(actual_ranks_of_sims))
 
     @unittest.skipUnless(
@@ -177,5 +178,7 @@ class TestGlobalAdaptivityLB(TestCase):
 
         self.assertListEqual(sorted(global_ids), expected_global_ids)
 
-        actual_ranks_of_sims = get_ranks_of_sims(global_ids, self._rank, self._comm, global_number_of_sims)
+        actual_ranks_of_sims = get_ranks_of_sims(
+            global_ids, self._rank, self._comm, global_number_of_sims
+        )
         self.assertListEqual(list(expected_ranks_of_sims), list(actual_ranks_of_sims))
