@@ -7,6 +7,7 @@ import importlib
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
+from micro_manager.model_manager import ModelManager
 
 import numpy as np
 
@@ -17,6 +18,7 @@ class AdaptivityCalculator:
         configurator: Config,
         nsims: int,
         micro_problem_cls: MicroSimulationClass,
+        model_manager: ModelManager,
         base_logger: Logger,
         rank: int,
     ) -> None:
@@ -31,6 +33,8 @@ class AdaptivityCalculator:
             Number of micro simulations.
         micro_problem_cls : callable
             Class of micro problem.
+        model_manager : object
+            Handles instantiation of micro simulation.
         base_logger : object of class Logger
             Logger object to log messages.
         rank : int
@@ -44,6 +48,7 @@ class AdaptivityCalculator:
         self._adaptivity_output_type = configurator.get_adaptivity_output_type()
 
         self._micro_problem_cls = micro_problem_cls
+        self._model_manager = model_manager
 
         self._coarse_tol = 0.0
         self._ref_tol = 0.0

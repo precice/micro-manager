@@ -13,6 +13,7 @@ from .global_adaptivity import GlobalAdaptivityCalculator
 from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.tools.logging_wrapper import Logger
+from micro_manager.model_manager import ModelManager
 
 
 class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
@@ -26,6 +27,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         rank: int,
         comm: MPI.Comm,
         micro_problem_cls: MicroSimulationClass,
+        model_manager: ModelManager,
     ) -> None:
         """
         Class constructor.
@@ -48,6 +50,8 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             Communicator for MPI.
         micro_problem_cls : callable
             Class of micro problem.
+        model_manager : object of class ModelManager
+            Handles instantiation of the micro simulation.
         """
         super().__init__(
             configurator,
@@ -58,6 +62,7 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
             rank,
             comm,
             micro_problem_cls,
+            model_manager,
         )
 
         self._base_logger = base_logger
@@ -370,7 +375,9 @@ class GlobalAdaptivityLBCalculator(GlobalAdaptivityCalculator):
         # Create simulations and set them to the received states
         for req in recv_reqs:
             output, gid = req.wait()
-            micro_sims.append(self._micro_problem_cls(gid))
+            micro_sims.append(
+                self._model_manager.get_instance(gid, self._micro_problem_cls)
+            )
             micro_sims[-1].set_state(output)
             self._global_ids.append(gid)
             self._is_sim_on_this_rank[gid] = True
