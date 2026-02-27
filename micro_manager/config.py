@@ -470,22 +470,32 @@ class Config:
                 self._load_balancing = False
 
             try:
-                self._load_balancing_type = self._data["simulation_params"]["load_balancing_settings"]["type"]
+                self._load_balancing_type = self._data["simulation_params"][
+                    "load_balancing_settings"
+                ]["type"]
             except BaseException:
                 self._load_balancing_type = "time"
-            self._logger.log_info_rank_zero(f"Load balancing will use {self._load_balancing_type} based balancing.")
+            self._logger.log_info_rank_zero(
+                f"Load balancing will use {self._load_balancing_type} based balancing."
+            )
 
             try:
-                self._load_balancing_threshold = self._data["simulation_params"]["load_balancing_settings"]["threshold"]
+                self._load_balancing_threshold = self._data["simulation_params"][
+                    "load_balancing_settings"
+                ]["threshold"]
             except BaseException:
                 self._load_balancing_threshold = 0
                 self._logger.log_info_rank_zero("Load balancing will use 0 threshold.")
 
             try:
-                self._load_balancing_balance_inactive_sims = self._data["simulation_params"]["load_balancing_settings"]["balance_inactive_sims"]
+                self._load_balancing_balance_inactive_sims = self._data[
+                    "simulation_params"
+                ]["load_balancing_settings"]["balance_inactive_sims"]
             except BaseException:
                 self._load_balancing_balance_inactive_sims = False
-                self._logger.log_info_rank_zero("Load balancing will not consider inactive simulations.")
+                self._logger.log_info_rank_zero(
+                    "Load balancing will not consider inactive simulations."
+                )
 
         try:
             if self._data["simulation_params"]["model_adaptivity"]:
