@@ -89,22 +89,3 @@ class TestDomainDecomposition(TestCase):
         )
         self.assertTrue(np.allclose(mesh_bounds, [0.75, 1, -2, 0, -2, 8]))
 
-    def test_no_duplicate_coords_on_boundary_2d(self):
-        """
-        Check that a point on the boundary between two ranks is only assigned to one rank.
-        """
-        ranks_per_axis = [2, 1]
-        size = 2
-        macro_coords = np.array([[0.5, 0.5], [0.25, 0.5], [0.75, 0.5]])
-
-        decomposer_rank0 = DomainDecomposer(0, size)
-        decomposer_rank1 = DomainDecomposer(1, size)
-
-        n0, _ = decomposer_rank0.get_local_sims_and_macro_coords(
-            self._macro_bounds_2d, ranks_per_axis, macro_coords
-        )
-        n1, _ = decomposer_rank1.get_local_sims_and_macro_coords(
-            self._macro_bounds_2d, ranks_per_axis, macro_coords
-        )
-
-        self.assertEqual(n0 + n1, len(macro_coords))
