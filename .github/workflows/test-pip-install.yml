@@ -1,0 +1,39 @@
+name: Test pip installation and dependency check
+
+on:
+  push:
+    branches:
+      - develop
+      - p2
+  pull_request:
+    branches:
+      - develop
+
+jobs:
+  test-pip-install:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install MPI
+        run: sudo apt-get update && sudo apt-get install -y libopenmpi-dev
+
+      - name: Install preCICE (required for pyprecice)
+        run: |
+          sudo apt-get install -y software-properties-common
+          sudo add-apt-repository ppa:precice/precice
+          sudo apt-get update
+          sudo apt-get install -y libprecice-dev
+
+      - name: Install micro-manager-precice via pip
+        run: pip install .
+
+      - name: Run dependency check
+        run: micro-manager-precice --test-dependencies
