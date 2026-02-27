@@ -56,8 +56,11 @@ class Config:
         self._adaptivity_output_n = 1
 
         self._load_balancing = False
+        self._load_balancing_type = "time"
         self._load_balancing_n = 1
         self._load_balancing_partitioning = "lpt"
+        self._load_balancing_threshold = 0
+        self._load_balancing_balance_inactive_sims = False
 
         # Snapshot information
         self._parameter_file_name = None
@@ -464,6 +467,25 @@ class Config:
                 self._logger.log_info_rank_zero(
                     "Micro Manager will not load balance. Must provide partitioning type."
                 )
+                self._load_balancing = False
+
+            try:
+                self._load_balancing_type = self._data["simulation_params"]["load_balancing_settings"]["type"]
+            except BaseException:
+                self._load_balancing_type = "time"
+            self._logger.log_info_rank_zero(f"Load balancing will use {self._load_balancing_type} based balancing.")
+
+            try:
+                self._load_balancing_threshold = self._data["simulation_params"]["load_balancing_settings"]["threshold"]
+            except BaseException:
+                self._load_balancing_threshold = 0
+                self._logger.log_info_rank_zero("Load balancing will use 0 threshold.")
+
+            try:
+                self._load_balancing_balance_inactive_sims = self._data["simulation_params"]["load_balancing_settings"]["balance_inactive_sims"]
+            except BaseException:
+                self._load_balancing_balance_inactive_sims = False
+                self._logger.log_info_rank_zero("Load balancing will not consider inactive simulations.")
 
         try:
             if self._data["simulation_params"]["model_adaptivity"]:
@@ -873,6 +895,39 @@ class Config:
             Load balancing frequency
         """
         return self._load_balancing_n
+
+    def get_load_balancing_type(self):
+        """
+        Get load balancing type.
+
+        Returns
+        -------
+        type : str
+            Load balancing type.
+        """
+        return self._load_balancing_type
+
+    def get_load_balancing_threshold(self):
+        """
+        Get load balancing threshold.
+
+        Returns
+        -------
+        load_balancing_threshold : float
+            Load balancing threshold
+        """
+        return self._load_balancing_threshold
+
+    def turn_on_load_balancing_inactive(self):
+        """
+        Check if load balancing should be performed on inactive micro simulations.
+
+        Returns
+        -------
+        balancing_inactive : bool
+            True if load balancing should consider inactive simulations, False otherwise.
+        """
+        return self._load_balancing_balance_inactive_sims
 
     def get_load_balancing_partitioning(self):
         """

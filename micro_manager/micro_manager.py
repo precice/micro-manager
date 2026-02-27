@@ -37,7 +37,7 @@ from .domain_decomposition import DomainDecomposer
 from .tasking.connection import spawn_local_workers
 from .micro_simulation import create_simulation_class, load_backend_class
 from .tools.logging_wrapper import Logger
-from .load_balancing import LoadBalancer
+from .load_balancing import create_load_balancer
 
 
 try:
@@ -779,7 +779,7 @@ class MicroManagerCoupling(MicroManager):
 
         self._micro_sims_have_output = micro_problem_cls.check_output()
 
-        self.load_balancing = LoadBalancer(
+        self.load_balancing = create_load_balancer(
             self._participant,
             self._model_manager,
             self._adaptivity_controller if self._is_adaptivity_on else None,

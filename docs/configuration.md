@@ -164,17 +164,23 @@ Afterwards balancing is performed `every_n_time_windows`.
 Upon activation, further configuration must be provided in `load_balancing_settings`.
 The following parameters can be set
 
-| Parameter              | Description                               | Default |
-|------------------------|-------------------------------------------|---------|
-| `every_n_time_windows` | Frequency of balancing the simulations.   | `1`     |
-| `partitioning`         | Partitioning Algorithm. Options: ["lpt"]. | `"lpt"` |
+| Parameter               | Description                                      | Default  |
+|-------------------------|--------------------------------------------------|----------|
+| `every_n_time_windows`  | Frequency of balancing the simulations.          | `1`      |
+| `partitioning`          | Partitioning Algorithm. Options: ["lpt"].        | `"lpt"`  |
+| `type`                  | Load balancing type. Options: ["time", "active"] | `"time"` |
+| `threshold`             | Threshold parameter                              | `0`      |
+| `balance_inactive_sims` | Balance inactive simulations                     | `False`  |
 
 ```json
 "simulation_params": {
     "load_balancing": true,
     "load_balancing_settings": {
-        "every_n_time_windows": ["python-dummy/micro_dummy", "python-dummy/micro_dummy", "python-dummy/micro_dummy"],
-        "partitioning": "mada_switcher"
+        "every_n_time_windows": 5,
+        "partitioning": "lpt",
+        "type": "active",
+        "threshold": 2,
+        "balance_inactive_sims": true
     }
 }
 ```

@@ -396,18 +396,266 @@ class LoadBalancer:
                 self._adaptivity_controller.set_is_on_rank(gid, True)
 
 
-class CountLB(LoadBalancer):
+class ActiveBalancer(LoadBalancer):
     """
-    CountLB will attempt to balance the number of micro simulations between ranks.
-    If Adaptivity is to be used, then only GlobalAdaptivity is supported.
-    In that case, only active simulation counts are considered for rebalancing.
+    ActiveBalancer will attempt to balance the number of active micro simulations between ranks.
     """
+    def __init__(self,
+                 precice_participant: Participant,
+                 model_manager: ModelManager,
+                 adaptivity_controller: Optional[AdaptivityCalculator],
+                 state_loader: callable,
+                 state_setter: callable,
+                 log: Logger,
+                 config: Config,
+                 sim_list: list,
+                 global_ids: list,
+                 global_number_of_sims: int,
+                 comm: MPI.Comm,
+                 rank: int,
+                 ):
+        super().__init__(precice_participant, model_manager, adaptivity_controller, state_loader, state_setter, log, config, sim_list, global_ids, global_number_of_sims, comm, rank)
+        self._partition_impl = lambda a, b: None, None
+        self._threshold = config.get_load_balancing_threshold()
+        self._balance_inactive_sims = config.turn_on_load_balancing_inactive()
 
-    def __init__(
-        self,
-        precice_participant,
+        if adaptivity_controller is None:
+            raise ValueError("Active Count balancing requires GlobalAdaptivityCalculator")
+
+    def pre_sim_solve(self, gid):
+        pass
+
+    def post_sim_solve(self, gid):
+        pass
+
+    def update(self):
+        pass
+
+    def _get_active_exchange_counts(self):
+        avg_active_sims = np.count_nonzero(self._adaptivity_controller._is_sim_active) / self._comm.size
+        f_avg_active_sims = np.floor(avg_active_sims - self._threshold)
+        c_avg_active_sims = np.ceil(avg_active_sims + self._threshold)
+
+        active_sims_local_ids = self._adaptivity_controller.get_active_sim_local_ids()
+        n_active_sims_local = len(active_sims_local_ids)
+        send_sims = 0  # Sims that this rank wants to send
+        recv_sims = 0  # Sims that this rank wants to receive
+
+        if f_avg_active_sims == c_avg_active_sims:
+            if n_active_sims_local < avg_active_sims:
+                recv_sims = int(avg_active_sims) - n_active_sims_local
+            elif n_active_sims_local > avg_active_sims:
+                send_sims = n_active_sims_local - int(avg_active_sims)
+        else:
+            if n_active_sims_local < f_avg_active_sims:
+                recv_sims = f_avg_active_sims - n_active_sims_local
+            elif n_active_sims_local == f_avg_active_sims:
+                recv_sims += 1
+            elif n_active_sims_local > c_avg_active_sims:
+                send_sims = n_active_sims_local - c_avg_active_sims
+            elif n_active_sims_local == c_avg_active_sims:
+                send_sims += 1
+
+        # Number of active sims that each rank wants to send and receive
+        global_send_sims = self._comm.allgather(send_sims)
+        global_recv_sims = self._comm.allgather(recv_sims)
+
+        n_global_send_sims = sum(global_send_sims)
+        n_global_recv_sims = sum(global_recv_sims)
+
+        return global_send_sims, global_recv_sims, n_global_send_sims, n_global_recv_sims
+
+    def _get_active_comm_maps(self, global_send_sims: list, global_recv_sims: list):
+        """
+        Create dictionaries which map global IDs of simulations to ranks for sending and receiving.
+
+        Parameters
+        ----------
+        global_send_sims : list
+            Number of simulations that each rank sends.
+        global_recv_sims : list
+            Number of simulations that each rank receives.
+
+        Returns
+        -------
+        tuple of dicts
+            send_map : dict
+                keys are global IDs of sim states to send, values are ranks to send the sims to
+            recv_map : dict
+                keys are global IDs of sim states to receive, values are ranks to receive from
+        """
+        active_sims_global_ids = list(self._adaptivity_controller.get_active_sim_global_ids())
+        rank_wise_global_ids_of_active_sims = self._comm.allgather(active_sims_global_ids)
+
+        # Keys are ranks sending sims, values are lists of tuples: (list of global IDs to send, the rank to send them to)
+        global_send_map: dict[int, list] = dict()
+
+        # Keys are ranks receiving sims, values are lists of tuples: (list of global IDs to receive, the rank to receive them from)
+        global_recv_map: dict[int, list] = dict()
+
+        for rank in [i for i, e in enumerate(global_send_sims) if e != 0]:
+            global_send_map[rank] = []
+
+        for rank in [i for i, e in enumerate(global_recv_sims) if e != 0]:
+            global_recv_map[rank] = []
+
+        send_ranks = list(global_send_map.keys())
+        recv_ranks = list(global_recv_map.keys())
+
+        count = 0
+        recv_rank = recv_ranks[count]
+
+        for send_rank in send_ranks:
+            sims = global_send_sims[send_rank]
+            while sims > 0:
+                if global_recv_sims[recv_rank] <= sims:
+                    # Get the global IDs to move
+                    global_ids_of_sims_to_move = rank_wise_global_ids_of_active_sims[
+                                                     send_rank
+                                                 ][0: int(global_recv_sims[recv_rank])]
+
+                    global_send_map[send_rank].append(
+                        (global_ids_of_sims_to_move, recv_rank)
+                    )
+
+                    global_recv_map[recv_rank].append(
+                        (global_ids_of_sims_to_move, send_rank)
+                    )
+
+                    sims -= global_recv_sims[recv_rank]
+
+                    # Remove the global IDs which are already mapped for moving
+                    del rank_wise_global_ids_of_active_sims[send_rank][
+                        0: int(global_recv_sims[recv_rank])
+                        ]
+
+                    if count < len(recv_ranks) - 1:
+                        count += 1
+                        recv_rank = recv_ranks[count]
+
+                elif global_recv_sims[recv_rank] > sims:
+                    # Get the global IDs to move
+                    global_ids_of_sims_to_move = rank_wise_global_ids_of_active_sims[
+                                                     send_rank
+                                                 ][0: int(sims)]
+
+                    global_send_map[send_rank].append(
+                        (global_ids_of_sims_to_move, recv_rank)
+                    )
+
+                    global_recv_map[recv_rank].append(
+                        (global_ids_of_sims_to_move, send_rank)
+                    )
+
+                    global_recv_sims[recv_rank] -= sims
+
+                    # Remove the global IDs which are already mapped for moving
+                    del rank_wise_global_ids_of_active_sims[send_rank][0: int(sims)]
+
+                    sims = 0
+
+        # keys are global IDs of sim states to send, values are ranks to send the sims to
+        send_map: dict[int, int] = dict()
+
+        # keys are global IDs of sim states to receive, values are ranks to receive from
+        recv_map: dict[int, int] = dict()
+
+        if self._rank in global_send_map:
+            for send_info in global_send_map[self._rank]:
+                send_rank = send_info[1]
+                for gid in send_info[0]:
+                    send_map[gid] = send_rank
+
+        if self._rank in global_recv_map:
+            for recv_info in global_recv_map[self._rank]:
+                recv_rank = recv_info[1]
+                for gid in recv_info[0]:
+                    recv_map[gid] = recv_rank
+
+        return send_map, recv_map
+
+    def _get_inactive_comm_maps(self):
+        send_map: dict[int, int] = dict()
+        recv_map: dict[int, int] = dict()
+        ranks_of_sims = get_ranks_of_sims(self._global_ids, self._rank, self._comm, self._global_number_of_sims)
+        global_ids_of_inactive_sims = self._get_global_inactive_gids()
+
+        for gid in global_ids_of_inactive_sims:
+            assoc_active_gid = self._adaptivity_controller._sim_is_associated_to[gid]
+            rank_of_inactive_sim = ranks_of_sims[gid]
+            rank_of_assoc_active_sim = ranks_of_sims[assoc_active_gid]
+            if rank_of_inactive_sim != rank_of_assoc_active_sim:
+                if rank_of_inactive_sim == self._rank:
+                    send_map[gid] = rank_of_assoc_active_sim
+                if rank_of_assoc_active_sim == self._rank:
+                    recv_map[gid] = rank_of_inactive_sim
+
+        return send_map, recv_map
+
+    @staticmethod
+    def _correct_active_exchange_data(
+            global_send_sims,
+            global_recv_sims,
+            n_global_send_sims,
+            n_global_recv_sims
+    ):
+        if n_global_send_sims < n_global_recv_sims:
+            excess_recv_sims = n_global_recv_sims - n_global_send_sims
+            while excess_recv_sims > 0:
+                for i, e in enumerate(global_recv_sims):
+                    if e <= 0:
+                        continue
+                    # Remove the excess receive request from the rank
+                    global_recv_sims[i] -= 1
+                    excess_recv_sims -= 1
+                    if excess_recv_sims == 0:
+                        break
+        elif n_global_send_sims > n_global_recv_sims:
+            excess_send_sims = n_global_send_sims - n_global_recv_sims
+            while excess_send_sims > 0:
+                for i, e in enumerate(global_send_sims):
+                    if e <= 0:
+                        continue
+                    # Remove the excess send request
+                    global_send_sims[i] -= 1
+                    excess_send_sims -= 1
+                    if excess_send_sims == 0:
+                        break
+
+    def _get_communication_maps(self, *args, **kwargs):
+        (
+            global_send_sims,
+            global_recv_sims,
+            n_global_send_sims,
+            n_global_recv_sims
+        ) = self._get_active_exchange_counts()
+
+        send_map: dict[int, int] = dict()
+        recv_map: dict[int, int] = dict()
+
+        if n_global_send_sims == 0 and n_global_recv_sims == 0:
+            self._log.log_warning_rank_zero(
+                "It appears that the micro simulations are already fairly balanced. No load balancing will be done. Try changing the threshold value to induce load balancing."
+            )
+            return send_map, recv_map
+        ActiveBalancer._correct_active_exchange_data(global_send_sims, global_recv_sims, n_global_send_sims, n_global_recv_sims)
+        send_map_active, recv_map_active = self._get_active_comm_maps(global_send_sims, global_recv_sims)
+        send_map.update(send_map_active)
+        recv_map.update(recv_map_active)
+
+        # if requested, also balance inactive simulations if there was a change in active simulations
+        if self._balance_inactive_sims:
+            send_map_inactive, recv_map_inactive = self._get_inactive_comm_maps()
+            send_map.update(send_map_inactive)
+            recv_map.update(recv_map_inactive)
+
+        return send_map, recv_map
+
+
+def create_load_balancer(
+        precice_participant: Participant,
         model_manager: ModelManager,
-        adaptivity_controller: Optional,
+        adaptivity_controller: Optional[AdaptivityCalculator],
         state_loader: callable,
         state_setter: callable,
         log: Logger,
@@ -417,29 +665,27 @@ class CountLB(LoadBalancer):
         global_number_of_sims: int,
         comm: MPI.Comm,
         rank: int,
-    ):
-        super().__init__(
-            precice_participant,
-            model_manager,
-            adaptivity_controller,
-            state_loader,
-            state_setter,
-            log,
-            config,
-            sim_list,
-            global_ids,
-            global_number_of_sims,
-            comm,
-            rank,
-        )
+) -> LoadBalancer:
+    lb_type = config.get_load_balancing_type()
 
-    def pre_sim_solve(self, gid):
-        pass
+    if lb_type == "time":
+        lb_cls = LoadBalancer
+    elif lb_type == "active":
+        lb_cls = ActiveBalancer
+    else:
+        raise RuntimeError(f"Unknown load balancing type: {lb_type}")
 
-    def post_sim_solve(self, gid):
-        pass
-
-    def update(self):
-        # used to distribute balancing metric
-        self._balance_metric_global[:] = 0
-        self._balance_metric_global[np.array(self._get_global_active_gids())] = 1
+    return lb_cls(
+        precice_participant,
+        model_manager,
+        adaptivity_controller,
+        state_loader,
+        state_setter,
+        log,
+        config,
+        sim_list,
+        global_ids,
+        global_number_of_sims,
+        comm,
+        rank,
+    )
