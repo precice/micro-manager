@@ -139,7 +139,7 @@ class ModelAdaptivity:
         prev_output: Optional[list[dict]],
         sims: list,
         active_sim_ids: Optional[list] = None,
-    ) -> None:
+    ) -> list[int]:
         """
         Switches models within sims list. If active_sim_ids is None, all sims are considered as active.
 
@@ -157,6 +157,11 @@ class ModelAdaptivity:
             List of all simulation objects.
         active_sim_ids : [list, None]
             List of all active simulation ids.
+
+        Returns
+        -------
+        switched_lids : list[int]
+            List of lids of simulations that were switched.
         """
         size = len(sims)
         active_sims = self._create_active_mask(active_sim_ids, size)
@@ -202,6 +207,8 @@ class ModelAdaptivity:
             # release resources of previous sim and set to new sim
             sims[idx].destroy()
             sims[idx] = sim_new
+
+        return np.argwhere((current_res - target_res) != 0).tolist()
 
     def update_states(
         self,

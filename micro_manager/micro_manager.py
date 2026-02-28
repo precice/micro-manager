@@ -875,7 +875,7 @@ class MicroManagerCoupling(MicroManager):
                     self._macro_mesh_name, dname, [], np.array([])
                 )
 
-    def _solve_micro_simulations(self, micro_sims_input: list, dt: float) -> list:
+    def _solve_micro_simulations(self, micro_sims_input: list, dt: float, computed_outputs: dict = {}) -> list:
         """
         Solve all micro simulations and assemble the micro simulations outputs in a list of dicts format.
 
@@ -886,6 +886,8 @@ class MicroManagerCoupling(MicroManager):
             solve a micro simulation.
         dt : float
             Time step size.
+        computed_outputs : dict
+            Dictionary of global ids to already computed outputs
 
         Returns
         -------
@@ -895,6 +897,12 @@ class MicroManagerCoupling(MicroManager):
         micro_sims_output: list[dict] = [None] * self._local_number_of_sims
 
         for count, sim in enumerate(self._micro_sims):
+            # skip already computed outputs
+            gid = self._global_ids_of_local_sims[count]
+            if gid in computed_outputs:
+                micro_sims_output[count] = computed_outputs[gid]
+                continue
+
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[count]:
                 # Attempt to solve the micro simulation
@@ -950,7 +958,7 @@ class MicroManagerCoupling(MicroManager):
         return micro_sims_output
 
     def _solve_micro_simulations_with_adaptivity(
-        self, micro_sims_input: list, dt: float
+        self, micro_sims_input: list, dt: float, computed_outputs: dict = {}
     ) -> list:
         """
         Adaptively solve micro simulations and assemble the micro simulations outputs in a list of dicts format.
@@ -962,6 +970,8 @@ class MicroManagerCoupling(MicroManager):
             solve a micro simulation.
         dt : float
             Time step size.
+        computed_outputs : dict
+            Dictionary of global ids to already computed outputs
 
         Returns
         -------
@@ -974,6 +984,12 @@ class MicroManagerCoupling(MicroManager):
 
         # Solve all active micro simulations
         for lid in active_sim_lids:
+            # skip already computed outputs
+            gid = self._global_ids_of_local_sims[lid]
+            if gid in computed_outputs:
+                micro_sims_output[lid] = computed_outputs[gid]
+                continue
+
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
             if not self._has_sim_crashed[lid]:
                 try:
@@ -1068,7 +1084,7 @@ class MicroManagerCoupling(MicroManager):
         output = None
 
         while self._model_adaptivity_controller.should_iterate():
-            self._model_adaptivity_controller.switch_models(
+            switched_lids = self._model_adaptivity_controller.switch_models(
                 self._mesh_vertex_coords[self._global_ids_of_local_sims],
                 self._t,
                 micro_sims_input,
@@ -1076,7 +1092,14 @@ class MicroManagerCoupling(MicroManager):
                 self._micro_sims,
                 active_sim_ids,
             )
-            output = solve_variant(micro_sims_input, dt)
+            computed_outputs = {}
+            if output is not None:
+                for lid, out in enumerate(output):
+                    if lid in switched_lids:
+                        continue
+                    gid = self._global_ids_of_local_sims[lid]
+                    computed_outputs[gid] = out
+            output = solve_variant(micro_sims_input, dt, computed_outputs)
             self._model_adaptivity_controller.check_convergence(
                 self._mesh_vertex_coords[self._global_ids_of_local_sims],
                 self._t,
