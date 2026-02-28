@@ -5,6 +5,8 @@
 - Added option to use compute instances to reduce memory consumption [#226](https://github.com/precice/micro-manager/pull/226)
 - Added support to run micro simulations in separate processes with workers [#219](https://github.com/precice/micro-manager/pull/219)
 - Added abstraction layers to micro simulations to support more features [#218](https://github.com/precice/micro-manager/pull/218)
+- Micro simulations can now pass local data exclusively for the adaptivity similarity distance calculation, without sending it to the macro simulation. Configure via `local_data` in `adaptivity_settings`. ([#25](https://github.com/precice/micro-manager/issues/25))
+
 
 ## v0.8.0
 

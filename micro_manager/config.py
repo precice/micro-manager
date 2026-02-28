@@ -46,6 +46,7 @@ class Config:
         self._adaptivity = False
         self._adaptivity_type = ""
         self._data_for_adaptivity = dict()
+        self._local_data_for_adaptivity = dict()
         self._adaptivity_n = 1
         self._adaptivity_history_param = 0.5
         self._adaptivity_coarsening_constant = 0.5
@@ -310,6 +311,15 @@ class Config:
             self._data_for_adaptivity = self._data["simulation_params"][
                 "adaptivity_settings"
             ]["data"]
+
+            self._local_data_for_adaptivity = self._data["simulation_params"][
+                "adaptivity_settings"
+            ].get("local_data", {})
+            if self._local_data_for_adaptivity:
+                self._logger.log_info_rank_zero(
+                    "Local data used only for adaptivity (not sent to macro): "
+                    + str(self._local_data_for_adaptivity)
+                )
 
             self._logger.log_info_rank_zero(
                 "Data used for adaptivity: " + str(self._data_for_adaptivity)
@@ -778,6 +788,19 @@ class Config:
             the data are scalar or vector as values.
         """
         return self._data_for_adaptivity
+
+    def get_local_data_for_adaptivity(self):
+        """
+        Get names of micro simulation local data to be used only for similarity distance calculation in adaptivity.
+        This data is not sent to the macro simulation.
+
+        Returns
+        -------
+        local_data_for_adaptivity : dict_like
+            A dictionary containing the names of the local adaptivity data as keys and information on whether
+            the data are scalar or vector as values.
+        """
+        return self._local_data_for_adaptivity
 
     def get_adaptivity_n(self):
         """

@@ -129,12 +129,20 @@ class MicroManagerCoupling(MicroManager):
                 if name in self._write_data_names:
                     self._adaptivity_micro_data_names.append(name)
 
+            # Names of micro simulation local data used only for adaptivity (not sent to macro)
+            self._adaptivity_local_data_names: list = list(
+                self._config.get_local_data_for_adaptivity().keys()
+            )
+
             self._adaptivity_in_every_implicit_step = (
                 self._config.is_adaptivity_required_in_every_implicit_iteration()
             )
 
             if self._is_adaptivity_with_load_balancing:
                 self._load_balancing_n = self._config.get_load_balancing_n()
+
+        if not self._is_adaptivity_on:
+            self._adaptivity_local_data_names: list = []
 
         self._adaptivity_n = self._config.get_adaptivity_n()
 
@@ -543,6 +551,8 @@ class MicroManagerCoupling(MicroManager):
         if self._is_adaptivity_on:
             for name in self._adaptivity_data_names:
                 self._data_for_adaptivity[name] = [0] * self._local_number_of_sims
+            for name in self._adaptivity_local_data_names:
+                self._data_for_adaptivity[name] = [0] * self._local_number_of_sims
 
         # Create lists of global IDs
         self._global_ids_of_local_sims = []  # DECLARATION
@@ -747,6 +757,10 @@ class MicroManagerCoupling(MicroManager):
                                     i
                                 ] = initial_micro_output[name]
                                 initial_micro_data[name][i] = initial_micro_output[name]
+                            for name in self._adaptivity_local_data_names:
+                                if name in initial_micro_output:
+                                    self._data_for_adaptivity[name][i] = initial_micro_output[name]
+                                    initial_micro_data[name][i] = initial_micro_output[name]
                     else:
                         for i in micro_sims_to_init:
                             initial_micro_output = self._micro_sims[i].initialize()
@@ -755,6 +769,10 @@ class MicroManagerCoupling(MicroManager):
                                     i
                                 ] = initial_micro_output[name]
                                 initial_micro_data[name][i] = initial_micro_output[name]
+                            for name in self._adaptivity_local_data_names:
+                                if name in initial_micro_output:
+                                    self._data_for_adaptivity[name][i] = initial_micro_output[name]
+                                    initial_micro_data[name][i] = initial_micro_output[name]
 
                     # If lazy initialization is on, initial states of inactive simulations need to be determined
                     if self._lazy_init:
@@ -766,6 +784,9 @@ class MicroManagerCoupling(MicroManager):
                                 self._data_for_adaptivity[name][i] = initial_micro_data[
                                     name
                                 ][i]
+                            for name in self._adaptivity_local_data_names:
+                                if name in initial_micro_data:
+                                    self._data_for_adaptivity[name][i] = initial_micro_data[name][i]
                         del initial_micro_data  # Once the initial data is fed into the adaptivity data, it is no longer required
 
                 else:
@@ -1029,6 +1050,10 @@ class MicroManagerCoupling(MicroManager):
         for i in range(self._local_number_of_sims):
             for name in self._adaptivity_micro_data_names:
                 self._data_for_adaptivity[name][i] = micro_sims_output[i][name]
+            # Collect local data provided by micro sims only for adaptivity (not sent to macro)
+            for name in self._adaptivity_local_data_names:
+                if name in micro_sims_output[i]:
+                    self._data_for_adaptivity[name][i] = micro_sims_output[i].pop(name)
 
         return micro_sims_output
 

@@ -150,3 +150,49 @@ if __name__ == "__main__":
     import unittest
 
     unittest.main()
+
+
+class MicroSimulationWithLocalAdaptivityData:
+    def __init__(self, sim_id):
+        self.very_important_value = 0
+
+    def initialize(self):
+        pass
+
+    def solve(self, macro_data, dt):
+        return {
+            "Micro-Scalar-Data": macro_data["Macro-Scalar-Data"] + 1,
+            "Micro-Vector-Data": macro_data["Macro-Vector-Data"] + 1,
+            "Micro-Local-Data": 42.0,  # local data only for adaptivity, not sent to macro
+        }
+
+
+class TestLocalAdaptivityData(TestCase):
+    def test_local_adaptivity_data_not_written_to_precice(self):
+        """
+        Test that data listed under 'local_data' in adaptivity_settings is used for
+        adaptivity calculation but is NOT passed to preCICE write_data.
+        """
+        manager = micro_manager.MicroManagerCoupling(
+            "micro-manager-config-local-adaptivity-data.json"
+        )
+        manager.initialize()
+
+        # Verify local data name is registered
+        self.assertIn("Micro-Local-Data", manager._adaptivity_local_data_names)
+
+        # Simulate a solve step on one active sim
+        micro_sims_input = [
+            {"Macro-Scalar-Data": 1, "Macro-Vector-Data": np.array([0, 1, 2])}
+        ] * manager._local_number_of_sims
+
+        output = manager._solve_micro_simulations_with_adaptivity(
+            micro_sims_input, 0.1
+        )
+
+        # Local data must be collected in _data_for_adaptivity
+        self.assertIn("Micro-Local-Data", manager._data_for_adaptivity)
+
+        # Local data must NOT appear in the output sent to preCICE
+        for sim_output in output:
+            self.assertNotIn("Micro-Local-Data", sim_output)
