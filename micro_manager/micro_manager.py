@@ -875,7 +875,9 @@ class MicroManagerCoupling(MicroManager):
                     self._macro_mesh_name, dname, [], np.array([])
                 )
 
-    def _solve_micro_simulations(self, micro_sims_input: list, dt: float, computed_outputs: dict = {}) -> list:
+    def _solve_micro_simulations(
+        self, micro_sims_input: list, dt: float, computed_outputs: dict = {}
+    ) -> list:
         """
         Solve all micro simulations and assemble the micro simulations outputs in a list of dicts format.
 
