@@ -376,10 +376,9 @@ class MicroSimulationClass:
         """
         Check whether the micro simulation class implements ``initialize``.
 
-        If the class inherits from ``MicroSimulationInterface``, use
-        ``requires_initialize()`` to determine whether the method is overridden.
-        Otherwise, fall back to ``hasattr`` for backwards compatibility with
-        classes that do not inherit from the interface (e.g. pybind11 classes).
+        Since ``load_backend_class`` guarantees that ``self._sim_cls`` always
+        inherits from ``MicroSimulationInterface``, we can rely on
+        ``requires_initialize()`` directly. No ``issubclass`` guard is needed.
 
         Parameters
         ----------
@@ -393,20 +392,7 @@ class MicroSimulationClass:
         tuple[bool, bool]
             (has_initialize, requires_initial_data)
         """
-        # If the class inherits from MicroSimulationInterface, use requires_initialize()
-        try:
-            if issubclass(self._sim_cls, MicroSimulationInterface):
-                # Check at class level without relying on instance state
-                if self._sim_cls.initialize is MicroSimulationInterface.initialize:
-                    return False, False
-        except TypeError:
-            pass  # pybind11 classes may not support issubclass
-
-        has_init = hasattr(self._sim_cls, "initialize")
-        if not has_init:
-            return False, False
-        callable_init = callable(getattr(self._sim_cls, "initialize"))
-        if not callable_init:
+        if not test_instance.requires_initialize():
             return False, False
 
         has_args = False
@@ -445,55 +431,146 @@ class MicroSimulationClass:
                         "The initialize() method of the Micro simulation has an incorrect number of arguments."
                     )
 
-        return has_init and callable_init, has_args
+        return True, has_args
 
     def check_output(self) -> bool:
         """
         Check whether the micro simulation class implements ``output``.
 
-        If the class inherits from ``MicroSimulationInterface``, use
-        ``requires_output()`` to determine whether the method is overridden.
-        Otherwise, fall back to ``hasattr`` for backwards compatibility.
+        Since ``load_backend_class`` guarantees that ``self._sim_cls`` always
+        inherits from ``MicroSimulationInterface``, we can rely on
+        ``requires_output()`` directly at the class level.
 
         Returns
         -------
         bool
-            True if the micro simulation class has a callable ``output`` method.
+            True if the micro simulation class overrides the ``output`` method.
         """
-        # If the class inherits from MicroSimulationInterface, use requires_output()
-        try:
-            if issubclass(self._sim_cls, MicroSimulationInterface):
-                # Check at class level without instantiating
-                return self._sim_cls.output is not MicroSimulationInterface.output
-        except TypeError:
-            pass  # pybind11 classes may not support issubclass
-
-        has_output = hasattr(self._sim_cls, "output")
-        if not has_output:
-            return False
-        return callable(getattr(self._sim_cls, "output"))
+        return self._sim_cls.output is not MicroSimulationInterface.output
 
 
-def load_backend_class(path_to_micro_file):
+def _wrap_non_interface_class(cls: type, path_to_micro_file: str) -> type:
+    """
+    Dynamically create a class that inherits from MicroSimulationInterface
+    and delegates all method calls to the provided class.
+
+    This ensures that load_backend_class always returns a class that adheres
+    to MicroSimulationInterface, even for pybind11 classes or legacy classes
+    that do not explicitly inherit from it.
+
+    Parameters
+    ----------
+    cls : type
+        The original micro simulation class (e.g. loaded via pybind11).
+    path_to_micro_file : str
+        Path string used for the deprecation warning message.
+
+    Returns
+    -------
+    type
+        A new class inheriting from MicroSimulationInterface that wraps cls.
+    """
+    import warnings
+
+    warnings.warn(
+        "The MicroSimulation class in '{}' does not inherit from MicroSimulationInterface. "
+        "Please update your class definition to: "
+        "class MicroSimulation(MicroSimulationInterface). "
+        "In a future version this will become an error.".format(path_to_micro_file),
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+    # Determine whether the original class provides initialize / output
+    has_initialize = callable(getattr(cls, "initialize", None))
+    has_output = callable(getattr(cls, "output", None))
+
+    # Build the class body: __init__ and mandatory interface methods
+    class_body = """
+def __init__(self, global_id):
+    self._wrapped = wrapped_cls(global_id)
+    self._global_id = global_id
+
+def solve(self, micro_sim_input, dt):
+    return self._wrapped.solve(micro_sim_input, dt)
+
+def get_state(self):
+    return self._wrapped.get_state()
+
+def set_state(self, state):
+    return self._wrapped.set_state(state)
+
+def get_global_id(self):
+    return self._global_id
+
+def set_global_id(self, global_id):
+    self._global_id = global_id
+    if hasattr(self._wrapped, "set_global_id"):
+        self._wrapped.set_global_id(global_id)
+
+def __getattr__(self, name):
+    return getattr(self._wrapped, name)
+"""
+
+    # Only add initialize override if the wrapped class actually has it,
+    # so that requires_initialize() returns True for those classes.
+    if has_initialize:
+        class_body += """
+def initialize(self, *args, **kwargs):
+    return self._wrapped.initialize(*args, **kwargs)
+"""
+
+    # Only add output override if the wrapped class actually has it,
+    # so that requires_output() returns True for those classes.
+    if has_output:
+        class_body += """
+def output(self):
+    return self._wrapped.output()
+"""
+
+    class_dict = {}
+    exec(class_body, {"wrapped_cls": cls, "__builtins__": __builtins__}, class_dict)
+
+    wrapper_cls = type(
+        "MicroSimulationWrapper_{}".format(cls.__name__),
+        (MicroSimulationInterface,),
+        class_dict,
+    )
+    return wrapper_cls
+
+
+def load_backend_class(path_to_micro_file: str) -> type:
+    """
+    Load the MicroSimulation class from the given module path.
+
+    Always returns a class that inherits from MicroSimulationInterface.
+    If the loaded class does not inherit from it (e.g. pybind11 classes or
+    legacy classes), it is wrapped in a dynamically created adapter class
+    that delegates all calls to the original and correctly implements
+    requires_initialize() and requires_output().
+
+    Parameters
+    ----------
+    path_to_micro_file : str
+        Dotted module path to the micro simulation file.
+
+    Returns
+    -------
+    type
+        A class inheriting from MicroSimulationInterface.
+    """
     CLS_NAME = "MicroSimulation"
     cls = getattr(ipl.import_module(path_to_micro_file, CLS_NAME), CLS_NAME)
+
     try:
         inherits = issubclass(cls, MicroSimulationInterface)
     except TypeError:
-        # pybind11 classes may not support issubclass checks
+        # pybind11 extension types may not support issubclass — wrap them
         inherits = False
 
     if not inherits:
-        import warnings
+        cls = _wrap_non_interface_class(cls, path_to_micro_file)
 
-        warnings.warn(
-            "The MicroSimulation class in '{}' does not inherit from MicroSimulationInterface. "
-            "Please update your class definition to: "
-            "class MicroSimulation(MicroSimulationInterface). "
-            "In a future version this will become an error.".format(path_to_micro_file),
-            DeprecationWarning,
-            stacklevel=2,
-        )
     return cls
 
 
