@@ -89,7 +89,7 @@ class MicroSimulationInterface(ABC):
 
         Returns
         -------
-        dict
+        micro_sim_output : dict
             Output data to be passed to the macro simulation.
         """
         pass
@@ -101,7 +101,7 @@ class MicroSimulationInterface(ABC):
 
         Returns
         -------
-        object
+        state : object
             The current state of the micro simulation.
         """
         pass
@@ -125,7 +125,7 @@ class MicroSimulationInterface(ABC):
 
         Returns
         -------
-        int
+        global_id : int
             Global ID of the micro simulation.
         """
         pass
@@ -156,7 +156,7 @@ class MicroSimulationInterface(ABC):
 
         Returns
         -------
-        bool
+        requires_initialize : bool
             True if ``initialize`` is overridden, False otherwise.
         """
         return type(self).initialize is not MicroSimulationInterface.initialize
@@ -168,7 +168,7 @@ class MicroSimulationInterface(ABC):
 
         Returns
         -------
-        bool
+        requires_output : bool
             True if ``output`` is overridden, False otherwise.
         """
         return type(self).output is not MicroSimulationInterface.output
@@ -390,7 +390,7 @@ class MicroSimulationClass:
         return self._sim_cls
 
     def check_initialize(
-        self, test_instance: object, test_input: dict
+        self, test_instance: MicroSimulationInterface, test_input: dict
     ) -> tuple[bool, bool]:
         """
         Check whether the micro simulation class implements ``initialize``.
@@ -408,7 +408,7 @@ class MicroSimulationClass:
 
         Returns
         -------
-        tuple[bool, bool]
+        check_result : tuple[bool, bool]
             (has_initialize, requires_initial_data)
         """
         if not test_instance.requires_initialize():
@@ -462,7 +462,7 @@ class MicroSimulationClass:
 
         Returns
         -------
-        bool
+        check_result : bool
             True if the micro simulation class overrides the ``output`` method.
         """
         return self._sim_cls.output is not MicroSimulationInterface.output
@@ -551,7 +551,7 @@ def output(self):
     exec(class_body, {"wrapped_cls": cls, "__builtins__": __builtins__}, class_dict)
 
     wrapper_cls = type(
-        "MicroSimulationWrapper_{}".format(cls.__name__),
+        "CompatibilityWrapper_{}".format(cls.__name__),
         (MicroSimulationInterface,),
         class_dict,
     )
