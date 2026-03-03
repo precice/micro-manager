@@ -30,7 +30,8 @@ class LoadBalancer:
         rank: int,
     ):
         """
-        Constructs LoadBalancer.
+        Constructs LoadBalancer. If load balancing is disabled, this will return a dummy instance
+        in which balancing request become NOOPs.
 
         Parameters
         ----------
@@ -102,13 +103,13 @@ class LoadBalancer:
         self._redistribute()
         # self._precice_participant.stop_last_profiling_section()
 
-    def pre_sim_solve(self, gid):
+    def pre_sim_solve(self, gid: int):
         """
         Notify load balancer that the micro simulation with the provided gid will start to run its solve method.
         """
         self._balance_metric_local[gid] = time.time()
 
-    def post_sim_solve(self, gid):
+    def post_sim_solve(self, gid: int):
         """
         Notify load balancer that the micro simulation with the provided gid has finished its solve method.
         """
@@ -133,7 +134,7 @@ class LoadBalancer:
     # ==================
     #    PARTITIONING
     # ==================
-    def get_partition_impl(self, name):
+    def get_partition_impl(self, name: str):
         """
         Provides the selected partitioning algorithm.
 
@@ -152,9 +153,10 @@ class LoadBalancer:
         else:
             return self.partition_dummy
 
-    def partition_lpt(self, n_parts, current_partitioning):
+    def partition_lpt(self, n_parts: int, current_partitioning: np.ndarray):
         """
-        Partitions the recorded workload using the LPT algorithm.
+        Partitions the recorded workload using the Longest-processing-time-first scheduling algorithm.
+        For more details see: https://en.wikipedia.org/wiki/Longest-processing-time-first_scheduling
 
         Parameters
         ----------
@@ -186,7 +188,7 @@ class LoadBalancer:
 
         return assignment, workload_per_partition
 
-    def partition_dummy(self, n_parts, current_partitioning):
+    def partition_dummy(self, n_parts: int, current_partitioning: np.ndarray):
         """
         WARNING: Do not use this! This is only a dummy implementation that sends
         the entire workload to the first partition. All others are empty.
@@ -216,7 +218,11 @@ class LoadBalancer:
     # ==================
     #      HELPERS
     # ==================
-    def _redistribute(self):
+    def _redistribute(self) -> None:
+        """
+        Main implementation of load balancing. First computes the new partitioning.
+        Then send/receives micro simulations accordingly.
+        """
         self._precice_participant.start_profiling_section(
             "micro_manager.solve.load_balancing.init"
         )
@@ -239,8 +245,6 @@ class LoadBalancer:
         )
         self._exchange_sims(send_map, recv_map, {gid: True for gid in inactive_gids})
         self._precice_participant.stop_last_profiling_section()
-
-        self._log.log_info(f"Load Balancing: new sim count={len(self._sim_list)} ")
 
     def _get_communication_maps(
         self, current_partitioning: np.ndarray, target_partitioning: np.ndarray

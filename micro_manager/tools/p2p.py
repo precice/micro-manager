@@ -62,12 +62,12 @@ def create_tag(sim_id: int, src_rank: int, dest_rank: int) -> int:
 
 
 def p2p_comm(
-    global_ids,
-    rank,
-    comm,
-    global_number_of_sims,
-    is_sim_on_this_rank,
-    assoc_active_ids: list,
+    global_ids: list[int],
+    rank: int,
+    comm: MPI.Comm,
+    global_number_of_sims: int,
+    is_sim_on_this_rank: list[bool],
+    assoc_active_ids: list[int],
     data: list,
 ) -> list:
     """
@@ -75,7 +75,7 @@ def p2p_comm(
 
     Parameters
     ----------
-    global_ids : list
+    global_ids : list[int]
         Global ids on local rank.
     rank : int
         Rank of simulation.
@@ -83,9 +83,9 @@ def p2p_comm(
         MPI communicator.
     global_number_of_sims : int
         Global number of sims.
-    is_sim_on_this_rank: list
-        TODO what?
-    assoc_active_ids : list
+    is_sim_on_this_rank: list[bool]
+        Bool flags of whether a simulation given its gid is on this rank or not.
+    assoc_active_ids : list[int]
         Global IDs of active simulations which are not on this rank and are associated to
         the inactive simulations on this rank.
     data : list

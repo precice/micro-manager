@@ -437,16 +437,16 @@ class Config:
             self._load_balancing = self._data["simulation_params"]["load_balancing"]
             if self._load_balancing:
                 self._logger.log_info_rank_zero(
-                    "Micro Manager will dynamically balance micro simulations based on compute times."
+                    "Micro Manager will dynamically balance micro simulations."
                 )
-                # self._write_data_names.append("rank_of_sim")
+                self._write_data_names.append("rank_of_sim")
                 if self._adaptivity and not self._adaptivity_type == "global":
                     raise Exception(
                         "Load balancing can be done only with global adaptivity."
                     )
         except BaseException:
             self._logger.log_info_rank_zero(
-                "Micro Manager will not dynamically balance micro simulations based on the adaptivity computation."
+                "Micro Manager will not dynamically balance micro simulations."
             )
 
         if self._load_balancing:

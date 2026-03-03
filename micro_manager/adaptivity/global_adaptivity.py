@@ -543,6 +543,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         for gid in self._global_ids:
             if not self._is_sim_active[gid]:
                 lid = self._global_ids.index(gid)
+                # Release resources now, especially for remote simulation instance.
+                # If left to garbage collector this might lead to a race condition.
+                # Releasing with call to sim.destroy(), afterwards reference in sim
+                # sim list can be removed.
                 if type(micro_sims[lid]).__name__ == "MicroSimulationWrapper":
                     micro_sims[lid].destroy()
                 micro_sims[lid] = None
