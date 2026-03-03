@@ -211,11 +211,12 @@ class MicroSimulationLocal(MicroSimulationInterface):
 
 
 class MicroSimulationRemote(MicroSimulationInterface):
-    def __init__(self, gid, late_init, num_ranks, conn, cls_path):
+    def __init__(self, gid, late_init, num_ranks, conn, cls_path, sim_cls):
         self._cls_path = cls_path
         self._gid = gid
         self._num_ranks = num_ranks
         self._conn = conn
+        self._sim_cls = sim_cls
 
         construct_cls = ConstructLateTask if late_init else ConstructTask
         for worker_id in range(self._num_ranks):
@@ -291,6 +292,12 @@ class MicroSimulationRemote(MicroSimulationInterface):
 
         return result
 
+    def requires_initialize(self) -> bool:
+        return self._sim_cls.initialize is not MicroSimulationInterface.initialize
+
+    def requires_output(self) -> bool:
+        return self._sim_cls.output is not MicroSimulationInterface.output
+
 
 class MicroSimulationWrapper(MicroSimulationInterface):
     """
@@ -303,7 +310,7 @@ class MicroSimulationWrapper(MicroSimulationInterface):
 
         if num_ranks > 1 and conn is not None:
             self._impl = MicroSimulationRemote(
-                global_id, late_init, num_ranks, conn, cls_path
+                global_id, late_init, num_ranks, conn, cls_path, sim_cls
             )
         else:
             self._impl = MicroSimulationLocal(global_id, late_init, sim_cls)
