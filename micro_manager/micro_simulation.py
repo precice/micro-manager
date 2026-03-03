@@ -24,50 +24,59 @@ class MicroSimulationInterface(ABC):
     Abstract base class for micro simulations. Users should inherit from this class
     when creating their micro simulation and implement all abstract methods.
 
-    Example usage:
+    The methods ``initialize`` and ``output`` are optional — override them only if
+    your simulation needs them. The Micro Manager checks ``requires_initialize()``
+    and ``requires_output()`` to decide whether to call them.
+
+    Example usage::
 
         from micro_manager import MicroSimulationInterface
 
         class MicroSimulation(MicroSimulationInterface):
-            def __init__(self, sim_id):
+            def __init__(self, sim_id: int) -> None:
                 self._sim_id = sim_id
 
-            def initialize(self, initial_data=None):
+            def initialize(self, initial_data: dict | None = None) -> dict | None:
                 pass
 
-            def solve(self, macro_data, dt):
+            def solve(self, macro_data: dict, dt: float) -> dict:
                 return {}
 
-            def get_state(self):
+            def get_state(self) -> object:
                 return None
 
-            def set_state(self, state):
+            def set_state(self, state: object) -> None:
                 pass
 
-            def get_global_id(self):
+            def get_global_id(self) -> int:
                 return self._sim_id
 
-            def set_global_id(self, global_id):
+            def set_global_id(self, global_id: int) -> None:
                 self._sim_id = global_id
 
-            def output(self):
+            def output(self) -> None:
                 pass
     """
 
-    @abstractmethod
-    def initialize(self, *args, **kwargs):
+    def initialize(self, *args, **kwargs) -> dict | None:
         """
         Initialize the micro simulation. Called once before the coupling loop starts.
+        This method is optional. Override it if your simulation requires initialization.
 
         Parameters
         ----------
         initial_data : dict, optional
             Initial data passed from the Micro Manager.
+
+        Returns
+        -------
+        dict or None
+            Optional initial output data to be used in the adaptivity calculation.
         """
         pass
 
     @abstractmethod
-    def solve(self, micro_sim_input, dt):
+    def solve(self, micro_sim_input: dict, dt: float) -> dict:
         """
         Solve the micro simulation for one time step.
 
@@ -86,7 +95,7 @@ class MicroSimulationInterface(ABC):
         pass
 
     @abstractmethod
-    def get_state(self):
+    def get_state(self) -> object:
         """
         Return the current state of the micro simulation for checkpointing.
 
@@ -98,7 +107,7 @@ class MicroSimulationInterface(ABC):
         pass
 
     @abstractmethod
-    def set_state(self, state):
+    def set_state(self, state: object) -> None:
         """
         Set the state of the micro simulation from a checkpoint.
 
@@ -110,7 +119,7 @@ class MicroSimulationInterface(ABC):
         pass
 
     @abstractmethod
-    def get_global_id(self):
+    def get_global_id(self) -> int:
         """
         Return the global ID of this micro simulation instance.
 
@@ -122,7 +131,7 @@ class MicroSimulationInterface(ABC):
         pass
 
     @abstractmethod
-    def set_global_id(self, global_id):
+    def set_global_id(self, global_id: int) -> None:
         """
         Set the global ID of this micro simulation instance.
 
@@ -133,12 +142,36 @@ class MicroSimulationInterface(ABC):
         """
         pass
 
-    @abstractmethod
-    def output(self):
+    def output(self) -> None:
         """
         Optional output method called after each solve step.
+        Override this method if your simulation needs to write output at each step.
         """
         pass
+
+    def requires_initialize(self) -> bool:
+        """
+        Return True if this simulation class overrides the ``initialize`` method.
+        The Micro Manager calls this to determine whether initialization is needed.
+
+        Returns
+        -------
+        bool
+            True if ``initialize`` is overridden, False otherwise.
+        """
+        return type(self).initialize is not MicroSimulationInterface.initialize
+
+    def requires_output(self) -> bool:
+        """
+        Return True if this simulation class overrides the ``output`` method.
+        The Micro Manager calls this to determine whether output is needed.
+
+        Returns
+        -------
+        bool
+            True if ``output`` is overridden, False otherwise.
+        """
+        return type(self).output is not MicroSimulationInterface.output
 
 
 class MicroSimulationLocal(MicroSimulationInterface):
@@ -337,7 +370,37 @@ class MicroSimulationClass:
     def backend_cls(self):
         return self._sim_cls
 
-    def check_initialize(self, test_instance, test_input):
+    def check_initialize(
+        self, test_instance: object, test_input: dict
+    ) -> tuple[bool, bool]:
+        """
+        Check whether the micro simulation class implements ``initialize``.
+
+        If the class inherits from ``MicroSimulationInterface``, use
+        ``requires_initialize()`` to determine whether the method is overridden.
+        Otherwise, fall back to ``hasattr`` for backwards compatibility with
+        classes that do not inherit from the interface (e.g. pybind11 classes).
+
+        Parameters
+        ----------
+        test_instance : object
+            An instance of the micro simulation class used for signature probing.
+        test_input : dict
+            Sample input data used to probe whether ``initialize`` accepts arguments.
+
+        Returns
+        -------
+        tuple[bool, bool]
+            (has_initialize, requires_initial_data)
+        """
+        # If the class inherits from MicroSimulationInterface, use requires_initialize()
+        try:
+            if issubclass(self._sim_cls, MicroSimulationInterface):
+                if not test_instance.requires_initialize():
+                    return False, False
+        except TypeError:
+            pass  # pybind11 classes may not support issubclass
+
         has_init = hasattr(self._sim_cls, "initialize")
         if not has_init:
             return False, False
@@ -383,20 +446,48 @@ class MicroSimulationClass:
 
         return has_init and callable_init, has_args
 
-    def check_output(self):
-        has_init = hasattr(self._sim_cls, "output")
-        if not has_init:
-            return False
-        callable_init = callable(getattr(self._sim_cls, "output"))
+    def check_output(self) -> bool:
+        """
+        Check whether the micro simulation class implements ``output``.
 
-        return has_init and callable_init
+        If the class inherits from ``MicroSimulationInterface``, use
+        ``requires_output()`` to determine whether the method is overridden.
+        Otherwise, fall back to ``hasattr`` for backwards compatibility.
+
+        Returns
+        -------
+        bool
+            True if the micro simulation class has a callable ``output`` method.
+        """
+        # If the class inherits from MicroSimulationInterface, use requires_output()
+        try:
+            if issubclass(self._sim_cls, MicroSimulationInterface):
+                instance = self._sim_cls.__new__(self._sim_cls)
+                try:
+                    return instance.requires_output()
+                except Exception:
+                    pass
+        except TypeError:
+            pass  # pybind11 classes may not support issubclass
+
+        has_output = hasattr(self._sim_cls, "output")
+        if not has_output:
+            return False
+        return callable(getattr(self._sim_cls, "output"))
 
 
 def load_backend_class(path_to_micro_file):
     CLS_NAME = "MicroSimulation"
     cls = getattr(ipl.import_module(path_to_micro_file, CLS_NAME), CLS_NAME)
-    if not issubclass(cls, MicroSimulationInterface):
+    try:
+        inherits = issubclass(cls, MicroSimulationInterface)
+    except TypeError:
+        # pybind11 classes may not support issubclass checks
+        inherits = False
+
+    if not inherits:
         import warnings
+
         warnings.warn(
             "The MicroSimulation class in '{}' does not inherit from MicroSimulationInterface. "
             "Please update your class definition to: "
