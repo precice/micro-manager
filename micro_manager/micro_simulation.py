@@ -203,6 +203,12 @@ class MicroSimulationLocal(MicroSimulationInterface):
     def output(self):
         return self._instance.output()
 
+    def requires_initialize(self) -> bool:
+        return self._instance.requires_initialize()
+
+    def requires_output(self) -> bool:
+        return self._instance.requires_output()
+
 
 class MicroSimulationRemote(MicroSimulationInterface):
     def __init__(self, gid, late_init, num_ranks, conn, cls_path):
@@ -325,6 +331,12 @@ class MicroSimulationWrapper(MicroSimulationInterface):
 
     def output(self):
         return self._impl.output()
+
+    def requires_initialize(self) -> bool:
+        return self._impl.requires_initialize()
+
+    def requires_output(self) -> bool:
+        return self._impl.requires_output()
 
     def __getattr__(self, name):
         return getattr(self._impl, name)
