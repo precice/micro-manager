@@ -508,7 +508,6 @@ def _wrap_non_interface_class(cls: type, path_to_micro_file: str) -> type:
     class_body = """
 def __init__(self, global_id):
     self._wrapped = wrapped_cls(global_id)
-    self._global_id = global_id
 
 def solve(self, micro_sim_input, dt):
     return self._wrapped.solve(micro_sim_input, dt)
@@ -520,12 +519,10 @@ def set_state(self, state):
     return self._wrapped.set_state(state)
 
 def get_global_id(self):
-    return self._global_id
+    return self._wrapped.get_global_id()
 
 def set_global_id(self, global_id):
-    self._global_id = global_id
-    if hasattr(self._wrapped, "set_global_id"):
-        self._wrapped.set_global_id(global_id)
+    self._wrapped.set_global_id(global_id)
 
 def __getattr__(self, name):
     return getattr(self._wrapped, name)
