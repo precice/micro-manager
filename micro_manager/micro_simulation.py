@@ -396,7 +396,8 @@ class MicroSimulationClass:
         # If the class inherits from MicroSimulationInterface, use requires_initialize()
         try:
             if issubclass(self._sim_cls, MicroSimulationInterface):
-                if not test_instance.requires_initialize():
+                # Check at class level without relying on instance state
+                if self._sim_cls.initialize is MicroSimulationInterface.initialize:
                     return False, False
         except TypeError:
             pass  # pybind11 classes may not support issubclass
@@ -462,11 +463,8 @@ class MicroSimulationClass:
         # If the class inherits from MicroSimulationInterface, use requires_output()
         try:
             if issubclass(self._sim_cls, MicroSimulationInterface):
-                instance = self._sim_cls.__new__(self._sim_cls)
-                try:
-                    return instance.requires_output()
-                except Exception:
-                    pass
+                # Check at class level without instantiating
+                return self._sim_cls.output is not MicroSimulationInterface.output
         except TypeError:
             pass  # pybind11 classes may not support issubclass
 
