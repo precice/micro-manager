@@ -123,10 +123,9 @@ class DomainDecomposer:
         for position in macro_coords:
             inside = True
             for d in range(len(ranks_per_axis)):
-                is_upper_boundary = np.isclose(local_mesh_bounds[d * 2 + 1], macro_bounds[d * 2 + 1])
                 if not (
                     position[d] >= local_mesh_bounds[d * 2]
-                    and (position[d] <= local_mesh_bounds[d * 2 + 1] if is_upper_boundary else position[d] < local_mesh_bounds[d * 2 + 1])
+                    and position[d] <= local_mesh_bounds[d * 2 + 1]
                 ):
                     inside = False
                     break
