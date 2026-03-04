@@ -1,7 +1,8 @@
 # Micro Manager changelog
 
-## latest
+## v0.8.0
 
+- Conformed to naming standard in precice/tutorials [#215](https://github.com/precice/micro-manager/pull/215)
 - Changed default values of adaptivity metrics output and similarity distance calculation norm [#213](https://github.com/precice/micro-manager/pull/213)
 - Fixed ordering of global IDs of micro simulation for load balancing to ensure consistency [#210](https://github.com/precice/micro-manager/pull/210)
 - Initiated triggering of load balancing at the start of the simulation when adaptivity is triggered [#207](https://github.com/precice/micro-manager/pull/207)

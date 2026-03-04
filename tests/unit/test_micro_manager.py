@@ -14,32 +14,32 @@ class MicroSimulation:
         pass
 
     def solve(self, macro_data, dt):
-        assert macro_data["macro-scalar-data"] == 1
-        assert macro_data["macro-vector-data"].tolist() == [0, 1, 2]
+        assert macro_data["Macro-Scalar-Data"] == 1
+        assert macro_data["Macro-Vector-Data"].tolist() == [0, 1, 2]
         return {
-            "micro-scalar-data": macro_data["macro-scalar-data"] + 1,
-            "micro-vector-data": macro_data["macro-vector-data"] + 1,
+            "Micro-Scalar-Data": macro_data["Macro-Scalar-Data"] + 1,
+            "Micro-Vector-Data": macro_data["Macro-Vector-Data"] + 1,
         }
 
 
 class TestFunctioncalls(TestCase):
     def setUp(self):
-        self.fake_read_data_names = ["macro-scalar-data", "macro-vector-data"]
+        self.fake_read_data_names = ["Macro-Scalar-Data", "Macro-Vector-Data"]
         self.fake_read_data = [
-            {"macro-scalar-data": 1, "macro-vector-data": np.array([0, 1, 2])}
+            {"Macro-Scalar-Data": 1, "Macro-Vector-Data": np.array([0, 1, 2])}
         ] * 4
         self.fake_write_data_names = [
-            "micro-scalar-data",
-            "micro-vector-data",
-            "active_state",
-            "active_steps",
+            "Micro-Scalar-Data",
+            "Micro-Vector-Data",
+            "Active-State",
+            "Active-Steps",
         ]
         self.fake_write_data = [
             {
-                "micro-scalar-data": 1,
-                "micro-vector-data": np.array([0, 1, 2]),
-                "active_state": 0,
-                "active_steps": 0,
+                "Micro-Scalar-Data": 1,
+                "Micro-Vector-Data": np.array([0, 1, 2]),
+                "Active-State": 0,
+                "Active-Steps": 0,
             }
         ] * 4
         self.macro_bounds = [0.0, 25.0, 0.0, 25.0, 0.0, 25.0]
@@ -86,10 +86,10 @@ class TestFunctioncalls(TestCase):
         read_data = manager._read_data_from_precice(1.0)
 
         for data, fake_data in zip(read_data, self.fake_read_data):
-            self.assertEqual(data["macro-scalar-data"], 1)
+            self.assertEqual(data["Macro-Scalar-Data"], 1)
             self.assertListEqual(
-                data["macro-vector-data"].tolist(),
-                fake_data["macro-vector-data"].tolist(),
+                data["Macro-Vector-Data"].tolist(),
+                fake_data["Macro-Vector-Data"].tolist(),
             )
 
     def test_solve_micro_sims(self):
@@ -106,11 +106,11 @@ class TestFunctioncalls(TestCase):
         micro_sims_output = manager._solve_micro_simulations(self.fake_read_data, 1.0)
 
         for data, fake_data in zip(micro_sims_output, self.fake_write_data):
-            self.assertEqual(data["micro-scalar-data"], 2)
+            self.assertEqual(data["Micro-Scalar-Data"], 2)
 
             self.assertListEqual(
-                data["micro-vector-data"].tolist(),
-                (fake_data["micro-vector-data"] + 1).tolist(),
+                data["Micro-Vector-Data"].tolist(),
+                (fake_data["Micro-Vector-Data"] + 1).tolist(),
             )
 
     def test_config(self):
@@ -124,7 +124,7 @@ class TestFunctioncalls(TestCase):
             config._precice_config_file_name.split("/")[-1], "dummy-config.xml"
         )
         self.assertEqual(config._micro_file_name, "test_micro_manager")
-        self.assertEqual(config._macro_mesh_name, "dummy-macro-mesh")
+        self.assertEqual(config._macro_mesh_name, "Macro-Mesh")
         self.assertEqual(config._micro_output_n, 10)
         self.assertListEqual(config._read_data_names, self.fake_read_data_names)
         self.assertListEqual(self.fake_write_data_names, config._write_data_names)

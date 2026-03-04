@@ -4,48 +4,48 @@
     <sink type="stream" output="stdout" filter="%Severity% > debug" enabled="true" />
   </log>
 
-  <data:scalar name="micro-data-1" />
-  <data:vector name="micro-data-2" />
-  <data:scalar name="macro-data-1" />
-  <data:scalar name="active_state" />
-  <data:scalar name="active_steps" />
-  <data:scalar name="rank_of_sim" />
+  <data:scalar name="Micro-1" />
+  <data:vector name="Micro-2" />
+  <data:scalar name="Macro-1" />
+  <data:scalar name="Active-State" />
+  <data:scalar name="Active-Steps" />
+  <data:scalar name="Rank" />
 
-  <mesh name="macro-cube-mesh" dimensions="3">
-    <use-data name="micro-data-1" />
-    <use-data name="micro-data-2" />
-    <use-data name="macro-data-1" />
-    <use-data name="active_state" />
-    <use-data name="active_steps" />
-    <use-data name="rank_of_sim" />
+  <mesh name="Macro-Cube-Mesh" dimensions="3">
+    <use-data name="Micro-1" />
+    <use-data name="Micro-2" />
+    <use-data name="Macro-1" />
+    <use-data name="Active-State" />
+    <use-data name="Active-Steps" />
+    <use-data name="Rank" />
   </mesh>
 
-  <participant name="macro-cube">
-    <provide-mesh name="macro-cube-mesh" />
-    <read-data name="micro-data-1" mesh="macro-cube-mesh" />
-    <read-data name="micro-data-2" mesh="macro-cube-mesh" />
-    <write-data name="macro-data-1" mesh="macro-cube-mesh" />
+  <participant name="Macro-Cube">
+    <provide-mesh name="Macro-Cube-Mesh" />
+    <read-data name="Micro-1" mesh="Macro-Cube-Mesh" />
+    <read-data name="Micro-2" mesh="Macro-Cube-Mesh" />
+    <write-data name="Macro-1" mesh="Macro-Cube-Mesh" />
   </participant>
 
   <participant name="Micro-Manager">
-    <receive-mesh name="macro-cube-mesh" from="macro-cube" direct-access="true" />
-    <read-data name="macro-data-1" mesh="macro-cube-mesh" />
-    <write-data name="micro-data-1" mesh="macro-cube-mesh" />
-    <write-data name="micro-data-2" mesh="macro-cube-mesh" />
-    <write-data name="active_state" mesh="macro-cube-mesh" />
-    <write-data name="active_steps" mesh="macro-cube-mesh" />
-    <write-data name="rank_of_sim" mesh="macro-cube-mesh" />
+    <receive-mesh name="Macro-Cube-Mesh" from="Macro-Cube" direct-access="true" />
+    <read-data name="Macro-1" mesh="Macro-Cube-Mesh" />
+    <write-data name="Micro-1" mesh="Macro-Cube-Mesh" />
+    <write-data name="Micro-2" mesh="Macro-Cube-Mesh" />
+    <write-data name="Active-State" mesh="Macro-Cube-Mesh" />
+    <write-data name="Active-Steps" mesh="Macro-Cube-Mesh" />
+    <write-data name="Rank" mesh="Macro-Cube-Mesh" />
     <export:vtu directory="output" />
   </participant>
 
-  <m2n:sockets acceptor="Micro-Manager" connector="macro-cube" />
+  <m2n:sockets acceptor="Micro-Manager" connector="Macro-Cube" />
 
   <coupling-scheme:serial-explicit>
-    <participants first="Micro-Manager" second="macro-cube" />
+    <participants first="Micro-Manager" second="Macro-Cube" />
     <max-time value="3" />
     <time-window-size value="1" />
-    <exchange data="micro-data-1" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube" />
-    <exchange data="micro-data-2" mesh="macro-cube-mesh" from="Micro-Manager" to="macro-cube" />
-    <exchange data="macro-data-1" mesh="macro-cube-mesh" from="macro-cube" to="Micro-Manager" />
+    <exchange data="Micro-1" mesh="Macro-Cube-Mesh" from="Micro-Manager" to="Macro-Cube" />
+    <exchange data="Micro-2" mesh="Macro-Cube-Mesh" from="Micro-Manager" to="Macro-Cube" />
+    <exchange data="Macro-1" mesh="Macro-Cube-Mesh" from="Macro-Cube" to="Micro-Manager" />
   </coupling-scheme:serial-explicit>
 </precice-configuration>
