@@ -31,7 +31,7 @@ from .micro_manager_base import MicroManager
 from .adaptivity.model_adaptivity import ModelAdaptivity
 from .adaptivity.adaptivity_selection import create_adaptivity_calculator
 
-from .domain_decomposition import DomainDecomposer
+from .domain_decomposition import DomainDecomposer, filter_duplicate_coords
 from .tasking.connection import spawn_local_workers
 from .micro_simulation import create_simulation_class, load_backend_class
 from .tools.logging_wrapper import Logger
@@ -481,30 +481,13 @@ class MicroManagerCoupling(MicroManager):
 
         if self._is_parallel:
             # Gather all vertex coords and IDs from all ranks onto all ranks,
-            # find globally duplicated coords, and remove them from this rank
-            # while preserving the preCICE ID-coord pairing.
+            # filter out coords already claimed by lower-ranked ranks.
             all_coords = self._comm.allgather(self._mesh_vertex_coords)
             all_ids = self._comm.allgather(self._mesh_vertex_ids)
 
-            # Build a global set of (coord, id) pairs seen by previous ranks
-            seen_coords = set()
-            keep_mask = np.ones(len(self._mesh_vertex_coords), dtype=bool)
-
-            for rank in range(self._size):
-                for i, coord in enumerate(all_coords[rank]):
-                    coord_key = tuple(np.round(coord, decimals=10))
-                    if rank < self._rank:
-                        # Mark coords already claimed by earlier ranks
-                        seen_coords.add(coord_key)
-                    elif rank == self._rank:
-                        # Only keep coords not already claimed by earlier ranks
-                        if coord_key in seen_coords:
-                            keep_mask[i] = False
-                        else:
-                            seen_coords.add(coord_key)
-
-            self._mesh_vertex_coords = self._mesh_vertex_coords[keep_mask]
-            self._mesh_vertex_ids = self._mesh_vertex_ids[keep_mask]
+            self._mesh_vertex_coords, self._mesh_vertex_ids = filter_duplicate_coords(
+                self._rank, self._size, all_coords, all_ids
+            )
 
         if self._mesh_vertex_coords.size == 0:
             raise Exception("Macro mesh has no vertices.")

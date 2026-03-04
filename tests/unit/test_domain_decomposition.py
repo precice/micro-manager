@@ -1,6 +1,6 @@
 from unittest import TestCase
 import numpy as np
-from micro_manager.domain_decomposition import DomainDecomposer
+from micro_manager.domain_decomposition import DomainDecomposer, filter_duplicate_coords
 
 
 class TestDomainDecomposition(TestCase):
@@ -100,31 +100,8 @@ class TestDomainDecomposition(TestCase):
 class TestDuplicateCoordFiltering(TestCase):
     """
     Test that duplicate vertex coordinates returned by preCICE on rank boundaries
-    are correctly deduplicated, with lower-ranked ranks taking ownership.
+    are correctly filtered, with lower-ranked ranks taking ownership.
     """
-
-    def _run_dedup(self, my_rank, size, all_coords, all_ids):
-        """
-        Reproduce the deduplication logic from micro_manager.py for testing.
-        """
-        mesh_vertex_coords = np.array(all_coords[my_rank])
-        mesh_vertex_ids = np.array(all_ids[my_rank])
-
-        seen_coords = set()
-        keep_mask = np.ones(len(mesh_vertex_coords), dtype=bool)
-
-        for rank in range(size):
-            for i, coord in enumerate(all_coords[rank]):
-                coord_key = tuple(np.round(coord, decimals=10))
-                if rank < my_rank:
-                    seen_coords.add(coord_key)
-                elif rank == my_rank:
-                    if coord_key in seen_coords:
-                        keep_mask[i] = False
-                    else:
-                        seen_coords.add(coord_key)
-
-        return mesh_vertex_coords[keep_mask], mesh_vertex_ids[keep_mask]
 
     def test_no_duplicates(self):
         """
@@ -136,10 +113,10 @@ class TestDuplicateCoordFiltering(TestCase):
         ]
         all_ids = [[0, 1], [2, 3]]
 
-        coords, ids = self._run_dedup(0, 2, all_coords, all_ids)
+        coords, ids = filter_duplicate_coords(0, 2, all_coords, all_ids)
         self.assertEqual(len(coords), 2)
 
-        coords, ids = self._run_dedup(1, 2, all_coords, all_ids)
+        coords, ids = filter_duplicate_coords(1, 2, all_coords, all_ids)
         self.assertEqual(len(coords), 2)
 
     def test_duplicate_on_boundary_rank0_keeps(self):
@@ -155,12 +132,12 @@ class TestDuplicateCoordFiltering(TestCase):
         all_ids = [[0, 1], [1, 2]]
 
         # Rank 0 should keep both its coords
-        coords0, ids0 = self._run_dedup(0, 2, all_coords, all_ids)
+        coords0, ids0 = filter_duplicate_coords(0, 2, all_coords, all_ids)
         self.assertEqual(len(coords0), 2)
         self.assertTrue(np.allclose(coords0[1], shared))
 
         # Rank 1 should drop the shared coord
-        coords1, ids1 = self._run_dedup(1, 2, all_coords, all_ids)
+        coords1, ids1 = filter_duplicate_coords(1, 2, all_coords, all_ids)
         self.assertEqual(len(coords1), 1)
         self.assertTrue(np.allclose(coords1[0], [1.0, 0.0]))
 
@@ -176,13 +153,13 @@ class TestDuplicateCoordFiltering(TestCase):
         ]
         all_ids = [[0, 1], [0, 2], [0, 3]]
 
-        coords0, _ = self._run_dedup(0, 3, all_coords, all_ids)
+        coords0, _ = filter_duplicate_coords(0, 3, all_coords, all_ids)
         self.assertEqual(len(coords0), 2)
 
-        coords1, _ = self._run_dedup(1, 3, all_coords, all_ids)
+        coords1, _ = filter_duplicate_coords(1, 3, all_coords, all_ids)
         self.assertEqual(len(coords1), 1)
         self.assertTrue(np.allclose(coords1[0], [1.0, 0.0]))
 
-        coords2, _ = self._run_dedup(2, 3, all_coords, all_ids)
+        coords2, _ = filter_duplicate_coords(2, 3, all_coords, all_ids)
         self.assertEqual(len(coords2), 1)
         self.assertTrue(np.allclose(coords2[0], [2.0, 0.0]))

@@ -134,3 +134,57 @@ class DomainDecomposer:
                 micro_sims_on_rank += 1
 
         return micro_sims_on_rank, macro_coords_on_this_rank
+
+
+def filter_duplicate_coords(
+    my_rank: int,
+    size: int,
+    all_coords: list,
+    all_ids: list,
+) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Filter out vertex coordinates that are already owned by a lower-ranked rank.
+
+    When a macro-point lies exactly on the boundary between two rank bounding
+    boxes, preCICE returns it to both ranks. This function ensures every vertex
+    is processed by exactly one rank — the lowest-ranked rank that received it —
+    while preserving the preCICE ID-coord pairing.
+
+    Parameters
+    ----------
+    my_rank : int
+        MPI rank of the calling process.
+    size : int
+        Total number of MPI processes.
+    all_coords : list
+        List of numpy arrays, one per rank, containing vertex coordinates.
+    all_ids : list
+        List of arrays, one per rank, containing preCICE vertex IDs.
+
+    Returns
+    -------
+    filtered_coords : numpy.ndarray
+        Vertex coordinates with duplicates removed.
+    filtered_ids : numpy.ndarray
+        preCICE vertex IDs corresponding to the filtered coordinates.
+    """
+    mesh_vertex_coords = np.array(all_coords[my_rank])
+    mesh_vertex_ids = np.array(all_ids[my_rank])
+
+    seen_coords = set()
+    keep_mask = np.ones(len(mesh_vertex_coords), dtype=bool)
+
+    for rank in range(size):
+        for i, coord in enumerate(all_coords[rank]):
+            coord_key = tuple(np.round(coord, decimals=10))
+            if rank < my_rank:
+                # Mark coords already claimed by earlier ranks
+                seen_coords.add(coord_key)
+            elif rank == my_rank:
+                # Only keep coords not already claimed by earlier ranks
+                if coord_key in seen_coords:
+                    keep_mask[i] = False
+                else:
+                    seen_coords.add(coord_key)
+
+    return mesh_vertex_coords[keep_mask], mesh_vertex_ids[keep_mask]
