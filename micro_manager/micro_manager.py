@@ -586,6 +586,7 @@ class MicroManagerCoupling(MicroManager):
             self._model_adaptivity_controller: ModelAdaptivity = ModelAdaptivity(
                 self._model_manager,
                 self._config,
+                self._comm,
                 self._rank,
                 self._log_file,
                 self._conn,

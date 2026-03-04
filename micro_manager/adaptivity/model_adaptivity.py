@@ -14,6 +14,7 @@ from micro_manager.tools.misc import clamp_in_range
 from micro_manager.model_manager import ModelManager
 from micro_manager.tasking.connection import Connection
 
+from mpi4py import MPI
 import numpy as np
 import importlib
 
@@ -23,6 +24,7 @@ class ModelAdaptivity:
         self,
         model_manager: ModelManager,
         configurator: Config,
+        comm: MPI.Comm,
         rank: int,
         log_file: str,
         conn: Connection,
@@ -33,15 +35,24 @@ class ModelAdaptivity:
 
         Parameters
         ----------
+        model_manager: ModelManager
+            ModelManager instance
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
+        comm: MPI.Comm
+            MPI communicator
         rank : int
             Rank of the MPI communicator.
         log_file : str
             Path to the log file to write to.
+        conn: Connection
+            Connection to workers
+        num_ranks : int
+            Number of workers
         """
         self._logger = Logger(__name__, log_file, rank)
 
+        self._comm = comm
         self._model_manager = model_manager
         self._model_files = configurator.get_model_adaptivity_file_names()
         self._switching_func_name = (
@@ -301,7 +312,9 @@ class ModelAdaptivity:
             next_switch[idx] = self._switching_func(
                 resolutions[idx], locations[idx], t, inputs[idx], prev_out
             )
-        self._converged = np.all(next_switch == 0)
+        local_num_changes = np.sum(next_switch != 0)
+        global_num_changes = self._comm.allreduce(local_num_changes, op=MPI.SUM)
+        self._converged = global_num_changes == 0
 
     def get_num_resolutions(self) -> int:
         """
