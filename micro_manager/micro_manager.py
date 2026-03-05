@@ -768,15 +768,20 @@ class MicroManagerCoupling(MicroManager):
                     if (
                         self._lazy_init
                     ):  # If lazy initialization is on, initial states of inactive simulations need to be determined
-                        self._adaptivity_controller.get_full_field_micro_output(
-                            initial_micro_data
+                        initial_micro_data_list = [
+                            dict(zip(initial_micro_data, t))
+                            for t in zip(*initial_micro_data.values())
+                        ]
+                        initial_micro_data_list = (
+                            self._adaptivity_controller.get_full_field_micro_output(
+                                initial_micro_data_list
+                            )
                         )
                         for i in range(self._local_number_of_sims):
                             for name in self._adaptivity_micro_data_names:
-                                self._data_for_adaptivity[name][i] = initial_micro_data[
-                                    name
-                                ][i]
-                        del initial_micro_data  # Once the initial data is fed into the adaptivity data, it is no longer required
+                                self._data_for_adaptivity[name][
+                                    i
+                                ] = initial_micro_data_list[i][name]
 
                 else:
                     self._logger.log_warning_rank_zero(
