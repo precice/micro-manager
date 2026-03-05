@@ -678,7 +678,9 @@ class MicroManagerCoupling(MicroManager):
                 )
 
         # Boolean which states if the initialize() method of the micro simulation requires initial data
-        test_instance = self._model_manager.get_instance(self._global_number_of_sims + 1, micro_problem_cls)
+        test_instance = self._model_manager.get_instance(
+            self._global_number_of_sims + 1, micro_problem_cls
+        )
         test_data = None
         if is_initial_data_available:
             test_data = initial_data[0]
