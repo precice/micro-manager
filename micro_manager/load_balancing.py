@@ -246,6 +246,9 @@ class LoadBalancer:
         self._exchange_sims(send_map, recv_map, {gid: True for gid in inactive_gids})
         self._precice_participant.stop_last_profiling_section()
 
+        sims_per_rank = self._comm.gather(len(self._sim_list), 0)
+        self._log.log_info_rank_zero(f"Load Balancing Number of Simulations per Rank: {sims_per_rank}")
+
     def _get_communication_maps(
         self, current_partitioning: np.ndarray, target_partitioning: np.ndarray
     ) -> tuple:
@@ -434,9 +437,11 @@ class ActiveBalancer(LoadBalancer):
             comm,
             rank,
         )
-        self._partition_impl = lambda a, b: None, None
+        self._partition_impl = lambda a, b: (None, None)
         self._threshold = config.get_load_balancing_threshold()
         self._balance_inactive_sims = config.turn_on_load_balancing_inactive()
+        self._bypass_skip = False # used for testing
+        self._bypass_active = False # used for testing
 
         if adaptivity_controller is None:
             raise ValueError(
@@ -655,29 +660,27 @@ class ActiveBalancer(LoadBalancer):
                         break
 
     def _get_communication_maps(self, *args, **kwargs):
-        (
-            global_send_sims,
-            global_recv_sims,
-            n_global_send_sims,
-            n_global_recv_sims,
-        ) = self._get_active_exchange_counts()
-
         send_map: dict[int, int] = dict()
         recv_map: dict[int, int] = dict()
 
-        if n_global_send_sims == 0 and n_global_recv_sims == 0:
-            self._log.log_warning_rank_zero(
-                "It appears that the micro simulations are already fairly balanced. No load balancing will be done. Try changing the threshold value to induce load balancing."
-            )
-            return send_map, recv_map
-        ActiveBalancer._correct_active_exchange_data(
-            global_send_sims, global_recv_sims, n_global_send_sims, n_global_recv_sims
-        )
-        send_map_active, recv_map_active = self._get_active_comm_maps(
-            global_send_sims, global_recv_sims
-        )
-        send_map.update(send_map_active)
-        recv_map.update(recv_map_active)
+        if not self._bypass_active:
+            (
+                global_send_sims,
+                global_recv_sims,
+                n_global_send_sims,
+                n_global_recv_sims,
+            ) = self._get_active_exchange_counts()
+
+            if n_global_send_sims == 0 and n_global_recv_sims == 0 and not self._bypass_skip:
+                self._log.log_warning_rank_zero(
+                    "It appears that the micro simulations are already fairly balanced. No load balancing will be done. Try changing the threshold value to induce load balancing."
+                )
+                return send_map, recv_map
+            if n_global_send_sims != 0 or n_global_recv_sims != 0:
+                ActiveBalancer._correct_active_exchange_data(global_send_sims, global_recv_sims, n_global_send_sims, n_global_recv_sims)
+                send_map_active, recv_map_active = self._get_active_comm_maps(global_send_sims, global_recv_sims)
+                send_map.update(send_map_active)
+                recv_map.update(recv_map_active)
 
         # if requested, also balance inactive simulations if there was a change in active simulations
         if self._balance_inactive_sims:
