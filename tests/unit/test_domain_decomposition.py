@@ -1,6 +1,6 @@
 from unittest import TestCase
 import numpy as np
-from micro_manager.domain_decomposition import DomainDecomposer, filter_duplicate_coords
+from micro_manager.domain_decomposition import DomainDecomposer
 
 
 class TestDomainDecomposition(TestCase):
@@ -113,10 +113,14 @@ class TestDuplicateCoordFiltering(TestCase):
         ]
         all_ids = [[0, 1], [2, 3]]
 
-        coords, ids = filter_duplicate_coords(0, 2, all_coords, all_ids)
+        coords, ids = DomainDecomposer(0, 2).filter_duplicate_coords(
+            all_coords, all_ids
+        )
         self.assertEqual(len(coords), 2)
 
-        coords, ids = filter_duplicate_coords(1, 2, all_coords, all_ids)
+        coords, ids = DomainDecomposer(1, 2).filter_duplicate_coords(
+            all_coords, all_ids
+        )
         self.assertEqual(len(coords), 2)
 
     def test_duplicate_on_boundary_rank0_keeps(self):
@@ -132,12 +136,16 @@ class TestDuplicateCoordFiltering(TestCase):
         all_ids = [[0, 1], [1, 2]]
 
         # Rank 0 should keep both its coords
-        coords0, ids0 = filter_duplicate_coords(0, 2, all_coords, all_ids)
+        coords0, ids0 = DomainDecomposer(0, 2).filter_duplicate_coords(
+            all_coords, all_ids
+        )
         self.assertEqual(len(coords0), 2)
         self.assertTrue(np.allclose(coords0[1], shared))
 
         # Rank 1 should drop the shared coord
-        coords1, ids1 = filter_duplicate_coords(1, 2, all_coords, all_ids)
+        coords1, ids1 = DomainDecomposer(1, 2).filter_duplicate_coords(
+            all_coords, all_ids
+        )
         self.assertEqual(len(coords1), 1)
         self.assertTrue(np.allclose(coords1[0], [1.0, 0.0]))
 
@@ -153,13 +161,13 @@ class TestDuplicateCoordFiltering(TestCase):
         ]
         all_ids = [[0, 1], [0, 2], [0, 3]]
 
-        coords0, _ = filter_duplicate_coords(0, 3, all_coords, all_ids)
+        coords0, _ = DomainDecomposer(0, 3).filter_duplicate_coords(all_coords, all_ids)
         self.assertEqual(len(coords0), 2)
 
-        coords1, _ = filter_duplicate_coords(1, 3, all_coords, all_ids)
+        coords1, _ = DomainDecomposer(1, 3).filter_duplicate_coords(all_coords, all_ids)
         self.assertEqual(len(coords1), 1)
         self.assertTrue(np.allclose(coords1[0], [1.0, 0.0]))
 
-        coords2, _ = filter_duplicate_coords(2, 3, all_coords, all_ids)
+        coords2, _ = DomainDecomposer(2, 3).filter_duplicate_coords(all_coords, all_ids)
         self.assertEqual(len(coords2), 1)
         self.assertTrue(np.allclose(coords2[0], [2.0, 0.0]))

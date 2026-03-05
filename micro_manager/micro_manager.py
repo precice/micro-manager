@@ -31,7 +31,7 @@ from .micro_manager_base import MicroManager
 from .adaptivity.model_adaptivity import ModelAdaptivity
 from .adaptivity.adaptivity_selection import create_adaptivity_calculator
 
-from .domain_decomposition import DomainDecomposer, filter_duplicate_coords
+from .domain_decomposition import DomainDecomposer
 from .tasking.connection import spawn_local_workers
 from .micro_simulation import create_simulation_class, load_backend_class
 from .tools.logging_wrapper import Logger
@@ -485,8 +485,8 @@ class MicroManagerCoupling(MicroManager):
             all_coords = self._comm.allgather(self._mesh_vertex_coords)
             all_ids = self._comm.allgather(self._mesh_vertex_ids)
 
-            self._mesh_vertex_coords, self._mesh_vertex_ids = filter_duplicate_coords(
-                self._rank, self._size, all_coords, all_ids
+            self._mesh_vertex_coords, self._mesh_vertex_ids = (
+                domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
             )
 
         if self._mesh_vertex_coords.size == 0:
@@ -737,9 +737,9 @@ class MicroManagerCoupling(MicroManager):
                     # Save initial data from first micro simulation as we anyway have it
                     for name in initial_micro_output.keys():
                         if name in self._data_for_adaptivity:
-                            self._data_for_adaptivity[name][
-                                first_id
-                            ] = initial_micro_output[name]
+                            self._data_for_adaptivity[name][first_id] = (
+                                initial_micro_output[name]
+                            )
                         else:
                             raise Exception(
                                 "The initialize() method needs to return data which is required for the adaptivity calculation."
@@ -752,17 +752,17 @@ class MicroManagerCoupling(MicroManager):
                                 initial_data[i]
                             )
                             for name in self._adaptivity_micro_data_names:
-                                self._data_for_adaptivity[name][
-                                    i
-                                ] = initial_micro_output[name]
+                                self._data_for_adaptivity[name][i] = (
+                                    initial_micro_output[name]
+                                )
                                 initial_micro_data[name][i] = initial_micro_output[name]
                     else:
                         for i in micro_sims_to_init:
                             initial_micro_output = self._micro_sims[i].initialize()
                             for name in self._adaptivity_micro_data_names:
-                                self._data_for_adaptivity[name][
-                                    i
-                                ] = initial_micro_output[name]
+                                self._data_for_adaptivity[name][i] = (
+                                    initial_micro_output[name]
+                                )
                                 initial_micro_data[name][i] = initial_micro_output[name]
 
                     # If lazy initialization is on, initial states of inactive simulations need to be determined
@@ -974,9 +974,9 @@ class MicroManagerCoupling(MicroManager):
                     # Mark the micro sim as active for export
                     micro_sims_output[lid]["Active-State"] = 1
                     gid = self._global_ids_of_local_sims[lid]
-                    micro_sims_output[lid][
-                        "Active-Steps"
-                    ] = self._micro_sims_active_steps[gid]
+                    micro_sims_output[lid]["Active-Steps"] = (
+                        self._micro_sims_active_steps[gid]
+                    )
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
@@ -1030,9 +1030,9 @@ class MicroManagerCoupling(MicroManager):
         for inactive_lid in inactive_sim_lids:
             micro_sims_output[inactive_lid]["Active-State"] = 0
             gid = self._global_ids_of_local_sims[inactive_lid]
-            micro_sims_output[inactive_lid][
-                "Active-Steps"
-            ] = self._micro_sims_active_steps[gid]
+            micro_sims_output[inactive_lid]["Active-Steps"] = (
+                self._micro_sims_active_steps[gid]
+            )
 
         # Collect micro sim output for adaptivity calculation
         for i in range(self._local_number_of_sims):
