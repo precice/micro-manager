@@ -16,17 +16,17 @@ jobs:
     container: precice/precice:nightly
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: micro-manager
 
       - name: Install dependencies
-        working-directory: micro-manager
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev python3-venv git pkg-config
 
       - name: Create a virtual environment and install Micro Manager with coverage
+        timeout-minutes: 6
         working-directory: micro-manager
         run: |
           python3 -m venv .venv
@@ -36,13 +36,19 @@ jobs:
           pip uninstall -y pyprecice
 
       - name: Run unit tests with coverage
-        working-directory: micro-manager
+        working-directory: micro-manager/tests/unit
         run: |
-          . .venv/bin/activate
-          python3 -m coverage run --source=micro_manager -m unittest discover -s tests/unit -p "test_*.py"
+          . ../../.venv/bin/activate
+          python3 -m coverage run --source=../../micro_manager -m unittest test_micro_manager
+          python3 -m coverage run --source=../../micro_manager -a -m unittest test_micro_simulation_crash_handling
+          python3 -m coverage run --source=../../micro_manager -a -m unittest test_adaptivity_serial
+          python3 -m coverage run --source=../../micro_manager -a -m unittest test_domain_decomposition
+          python3 -m coverage run --source=../../micro_manager -a -m unittest test_interpolation
+          python3 -m coverage run --source=../../micro_manager -a -m unittest test_hdf5_functionality
+          python3 -m coverage run --source=../../micro_manager -a -m unittest test_snapshot_computation
 
       - name: Check coverage threshold
-        working-directory: micro-manager
+        working-directory: micro-manager/tests/unit
         run: |
-          . .venv/bin/activate
-          python3 check_coverage.py
+          . ../../.venv/bin/activate
+          python3 ../../check_coverage.py
