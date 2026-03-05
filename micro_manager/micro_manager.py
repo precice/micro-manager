@@ -237,6 +237,7 @@ class MicroManagerCoupling(MicroManager):
                 # self._participant.start_profiling_section("micro_manager.solve.load_balancing")
                 self.load_balancing.balance()
                 self._local_number_of_sims = len(self._global_ids_of_local_sims)
+                self._is_rank_empty = self._local_number_of_sims == 0
                 # Reset simulation state checkpoints after load balancing
                 sim_states_cp = [None] * self._local_number_of_sims
                 if self._is_adaptivity_on:
