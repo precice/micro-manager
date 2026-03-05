@@ -237,9 +237,7 @@ class TestLBActive(TestCase):
         expected_ranks_of_sims = [1, 1, 0, 0, 1, 1, 1, 1]
 
         adaptivity_controller = GlobalAdaptivityCalculator(
-            np.array(
-                [True, True, True, True, False, False, False, False]
-            ),
+            np.array([True, True, True, True, False, False, False, False]),
             active_lids,
             active_gids,
             [-2] * global_number_of_sims,
@@ -277,7 +275,7 @@ class TestLBActive(TestCase):
 
         actual_global_ids = []
         for sim in micro_sims:
-           actual_global_ids.append(sim.get_global_id())
+            actual_global_ids.append(sim.get_global_id())
         self.assertListEqual(actual_global_ids, expected_global_ids)
 
         actual_ranks_of_sims = get_ranks_of_sims(
@@ -313,9 +311,7 @@ class TestLBActive(TestCase):
         expected_ranks_of_sims = [0, 1, 0, 1, 0]
 
         adaptivity_controller = GlobalAdaptivityCalculator(
-            np.array(
-                [True, True, False, False, False]
-            ),
+            np.array([True, True, False, False, False]),
             active_lids,
             active_gids,
             [-2, -2, 0, 1, 0],
@@ -379,30 +375,46 @@ class TestLBActive(TestCase):
 
         # active_gids_global = [0, 1, 2, 8, 12, 13, 14]
         if self._rank == 0:
-           global_ids = [0, 1, 2, 3]
-           expected_global_ids = [1, 2, 3]
-           active_lids = [0, 1, 2]
-           active_gids = [0, 1, 2]
+            global_ids = [0, 1, 2, 3]
+            expected_global_ids = [1, 2, 3]
+            active_lids = [0, 1, 2]
+            active_gids = [0, 1, 2]
         elif self._rank == 1:
-           global_ids = [4, 5, 6, 7]
-           expected_global_ids = [4, 5, 6, 7, 0]
-           active_lids = []
-           active_gids = []
+            global_ids = [4, 5, 6, 7]
+            expected_global_ids = [4, 5, 6, 7, 0]
+            active_lids = []
+            active_gids = []
         elif self._rank == 2:
-           global_ids = [8, 9, 10, 11]
-           expected_global_ids = [8, 9, 10, 11, 12]
-           active_lids = [0]
-           active_gids = [8]
+            global_ids = [8, 9, 10, 11]
+            expected_global_ids = [8, 9, 10, 11, 12]
+            active_lids = [0]
+            active_gids = [8]
         elif self._rank == 3:
-           global_ids = [12, 13, 14]
-           expected_global_ids = [13, 14]
-           active_lids = [0, 1, 2]
-           active_gids = [12, 13, 14]
+            global_ids = [12, 13, 14]
+            expected_global_ids = [13, 14]
+            active_lids = [0, 1, 2]
+            active_gids = [12, 13, 14]
         expected_ranks_of_sims = [1, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3]
 
         adaptivity_controller = GlobalAdaptivityCalculator(
             np.array(
-                [True, True, True, False, False, False, False, False, True, False, False, False, True, True, True]
+                [
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    True,
+                    False,
+                    False,
+                    False,
+                    True,
+                    True,
+                    True,
+                ]
             ),
             active_lids,
             active_gids,
@@ -490,7 +502,23 @@ class TestLBActive(TestCase):
 
         adaptivity_controller = GlobalAdaptivityCalculator(
             np.array(
-                [True, True, True, False, False, False, False, False, True, False, False, False, True, True, True]
+                [
+                    True,
+                    True,
+                    True,
+                    False,
+                    False,
+                    False,
+                    False,
+                    False,
+                    True,
+                    False,
+                    False,
+                    False,
+                    True,
+                    True,
+                    True,
+                ]
             ),
             active_lids,
             active_gids,

@@ -183,6 +183,7 @@ class MicroSimulationInterface(ABC):
         """
         pass
 
+
 class MicroSimulationLocal(MicroSimulationInterface):
     def __init__(self, gid, late_init, sim_cls):
         self._gid = gid
@@ -598,6 +599,7 @@ def load_backend_class(path_to_micro_file: str) -> type:
     type
         A class inheriting from MicroSimulationInterface.
     """
+
     def try_load(name):
         try:
             return getattr(ipl.import_module(path_to_micro_file, name), name)
