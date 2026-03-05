@@ -108,4 +108,4 @@ jobs:
         run: |
           . .venv/bin/activate
           cd tests/unit
-          mpiexec -n 4 --allow-run-as-root python3 -m unittest test_load_balancing.py
+          mpiexec -n 4 --oversubscribe --allow-run-as-root python3 -m unittest test_load_balancing.py
