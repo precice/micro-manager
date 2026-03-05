@@ -474,7 +474,6 @@ class TestLBActive(TestCase):
         config.turn_on_load_balancing_inactive = MagicMock(return_value=True)
         config.turn_on_load_balancing = MagicMock(return_value=True)
         config.get_load_balancing_partitioning = MagicMock(return_value="lpt")
-        global_number_of_sims = 5
         global_number_of_sims = 15
 
         # global_active_gids = [0, 1, 2, 8, 12, 13, 14]
