@@ -485,9 +485,10 @@ class MicroManagerCoupling(MicroManager):
             all_coords = self._comm.allgather(self._mesh_vertex_coords)
             all_ids = self._comm.allgather(self._mesh_vertex_ids)
 
-            self._mesh_vertex_coords, self._mesh_vertex_ids = (
-                domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
-            )
+            (
+                self._mesh_vertex_coords,
+                self._mesh_vertex_ids,
+            ) = domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
 
         if self._mesh_vertex_coords.size == 0:
             raise Exception("Macro mesh has no vertices.")
