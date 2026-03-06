@@ -102,7 +102,6 @@ def main():
     if not os.path.isabs(config_file_path):
         config_file_path = os.getcwd() + "/" + config_file_path
 
-    from .micro_manager import MicroManagerCoupling
 
     try:
         from .snapshot.snapshot import MicroManagerSnapshot
