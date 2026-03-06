@@ -49,16 +49,20 @@ def _check_dependencies():
     print("All dependencies are correctly installed.")
 
 
-from .config import Config
-from .micro_simulation import MicroSimulationInterface
-from .micro_manager import MicroManagerCoupling
+import sys
 
-try:
-    from .snapshot.snapshot import MicroManagerSnapshot
+# Delay heavy imports if only running dependency check
+if "--test-dependencies" not in sys.argv:
+    from .config import Config
+    from .micro_simulation import MicroSimulationInterface
+    from .micro_manager import MicroManagerCoupling
 
-    is_snapshot_possible = True
-except ImportError:
-    is_snapshot_possible = False
+    try:
+        from .snapshot.snapshot import MicroManagerSnapshot
+
+        is_snapshot_possible = True
+    except ImportError:
+        is_snapshot_possible = False
 
 
 def main():
@@ -97,6 +101,15 @@ def main():
     config_file_path = args.config_file
     if not os.path.isabs(config_file_path):
         config_file_path = os.getcwd() + "/" + config_file_path
+
+    from .micro_manager import MicroManagerCoupling
+
+    try:
+        from .snapshot.snapshot import MicroManagerSnapshot
+
+        is_snapshot_possible = True
+    except ImportError:
+        is_snapshot_possible = False
 
     if not args.snapshot:
         manager = MicroManagerCoupling(config_file_path, log_file=args.log_file)
