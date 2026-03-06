@@ -39,16 +39,16 @@ jobs:
         working-directory: micro-manager/tests/unit
         run: |
           . ../../.venv/bin/activate
-          python3 -m coverage run --data-file=../../.coverage --source=../../micro_manager -m unittest test_micro_manager
-          python3 -m coverage run --data-file=../../.coverage --source=../../micro_manager -a -m unittest test_micro_simulation_crash_handling
-          python3 -m coverage run --data-file=../../.coverage --source=../../micro_manager -a -m unittest test_adaptivity_serial
-          python3 -m coverage run --data-file=../../.coverage --source=../../micro_manager -a -m unittest test_domain_decomposition
-          python3 -m coverage run --data-file=../../.coverage --source=../../micro_manager -a -m unittest test_interpolation
-          python3 -m coverage run --data-file=../../.coverage --source=../../micro_manager -a -m unittest test_hdf5_functionality
-          python3 -m coverage run --data-file=../../.coverage --source=../../micro_manager -a -m unittest test_snapshot_computation
+          python3 -m coverage run --data-file=../../.coverage --source=micro_manager -m unittest test_micro_manager
+          python3 -m coverage run --data-file=../../.coverage --source=micro_manager -a -m unittest test_micro_simulation_crash_handling
+          python3 -m coverage run --data-file=../../.coverage --source=micro_manager -a -m unittest test_adaptivity_serial
+          python3 -m coverage run --data-file=../../.coverage --source=micro_manager -a -m unittest test_domain_decomposition
+          python3 -m coverage run --data-file=../../.coverage --source=micro_manager -a -m unittest test_interpolation
+          python3 -m coverage run --data-file=../../.coverage --source=micro_manager -a -m unittest test_hdf5_functionality
+          python3 -m coverage run --data-file=../../.coverage --source=micro_manager -a -m unittest test_snapshot_computation
 
       - name: Check coverage threshold
         working-directory: micro-manager
         run: |
           . .venv/bin/activate
-          python3 -m coverage report --format=total | python3 check_coverage.py
+          python3 -m coverage report --data-file=.coverage --format=total | python3 check_coverage.py
