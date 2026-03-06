@@ -1,29 +1,20 @@
 """
 Script to check if test coverage is above a predefined threshold.
-Run after coverage.py has generated a coverage report.
+Reads total coverage percentage from stdin (output of coverage report --format=total).
 """
 
-import subprocess
 import sys
 
 THRESHOLD = 70  # Minimum required coverage percentage
 
 
-def get_coverage():
-    result = subprocess.run(
-        ["python3", "-m", "coverage", "report", "--format=total"],
-        capture_output=True,
-        text=True,
-    )
-    if result.returncode != 0:
-        print("Error running coverage report:")
-        print(result.stderr)
-        sys.exit(1)
-    return int(result.stdout.strip())
-
-
 if __name__ == "__main__":
-    coverage = get_coverage()
+    try:
+        coverage = int(sys.stdin.read().strip())
+    except ValueError:
+        print("Error: could not parse coverage value from stdin.")
+        sys.exit(1)
+
     print("Total coverage: {}%".format(coverage))
     if coverage < THRESHOLD:
         print(
