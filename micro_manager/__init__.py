@@ -21,6 +21,7 @@ def _check_dependencies():
             if min_version:
                 installed_version = importlib.metadata.version(package)
                 from packaging.version import Version
+
                 if Version(installed_version) < Version(min_version):
                     version_errors.append(
                         "{} (installed: {}, required: >={})".format(
