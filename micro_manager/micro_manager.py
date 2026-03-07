@@ -816,8 +816,6 @@ class MicroManagerCoupling(MicroManager):
 
         self._participant.stop_last_profiling_section()
 
-        self._logger.log_info("Initialization of Micro Manager is complete.")
-
     # ***************
     # Private methods
     # ***************
