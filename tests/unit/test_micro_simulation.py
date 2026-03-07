@@ -14,6 +14,7 @@ from micro_manager.micro_simulation import (
 
 class MinimalSim(MicroSimulationInterface):
     """Minimal implementation of MicroSimulationInterface."""
+
     def __init__(self, gid):
         self._gid = gid
 
@@ -120,56 +121,95 @@ class TestCreateSimulationClass(unittest.TestCase):
 
     def test_missing_get_global_id_raises(self):
         class BadSim:
-            def solve(self, i, dt): pass
-            def get_state(self): pass
-            def set_state(self, s): pass
+            def solve(self, i, dt):
+                pass
+
+            def get_state(self):
+                pass
+
+            def set_state(self, s):
+                pass
+
         log = MagicMock()
         with self.assertRaises(ValueError):
             create_simulation_class(log, BadSim, "dummy_path", 1)
 
     def test_missing_solve_raises(self):
         class BadSim:
-            def get_global_id(self): pass
-            def get_state(self): pass
-            def set_state(self, s): pass
+            def get_global_id(self):
+                pass
+
+            def get_state(self):
+                pass
+
+            def set_state(self, s):
+                pass
+
         log = MagicMock()
         with self.assertRaises(ValueError):
             create_simulation_class(log, BadSim, "dummy_path", 1)
 
     def test_missing_get_state_raises(self):
         class BadSim:
-            def get_global_id(self): pass
-            def set_state(self, s): pass
-            def solve(self, i, dt): pass
+            def get_global_id(self):
+                pass
+
+            def set_state(self, s):
+                pass
+
+            def solve(self, i, dt):
+                pass
+
         log = MagicMock()
         with self.assertRaises(ValueError):
             create_simulation_class(log, BadSim, "dummy_path", 1)
 
     def test_missing_set_state_raises(self):
         class BadSim:
-            def get_global_id(self): pass
-            def get_state(self): pass
-            def solve(self, i, dt): pass
+            def get_global_id(self):
+                pass
+
+            def get_state(self):
+                pass
+
+            def solve(self, i, dt):
+                pass
+
         log = MagicMock()
         with self.assertRaises(ValueError):
             create_simulation_class(log, BadSim, "dummy_path", 1)
 
     def test_custom_sim_class_name(self):
         log = MagicMock()
-        sim_cls = create_simulation_class(log, MinimalSim, "dummy_path", 1, sim_class_name="MyTestSim")
+        sim_cls = create_simulation_class(
+            log, MinimalSim, "dummy_path", 1, sim_class_name="MyTestSim"
+        )
         self.assertEqual(sim_cls.name, "MyTestSim")
 
     def test_non_interface_class_wrapped(self):
         """Non-interface class should be wrapped and callable."""
+
         class LegacySim:
-            def __init__(self, gid): self._gid = gid
-            def solve(self, i, dt): return {}
-            def get_state(self): return None
-            def set_state(self, s): pass
-            def get_global_id(self): return self._gid
-            def set_global_id(self, gid): self._gid = gid
+            def __init__(self, gid):
+                self._gid = gid
+
+            def solve(self, i, dt):
+                return {}
+
+            def get_state(self):
+                return None
+
+            def set_state(self, s):
+                pass
+
+            def get_global_id(self):
+                return self._gid
+
+            def set_global_id(self, gid):
+                self._gid = gid
 
         import warnings
+
         log = MagicMock()
         with warnings.catch_warnings(record=True):
             warnings.simplefilter("always")
@@ -181,8 +221,12 @@ class TestMicroSimulationClassMethods(unittest.TestCase):
     def setUp(self):
         self.log = MagicMock()
         self.sim_cls = create_simulation_class(self.log, MinimalSim, "dummy_path", 1)
-        self.sim_cls_with_init = create_simulation_class(self.log, SimWithInitialize, "dummy_path", 1)
-        self.sim_cls_with_output = create_simulation_class(self.log, SimWithOutput, "dummy_path", 1)
+        self.sim_cls_with_init = create_simulation_class(
+            self.log, SimWithInitialize, "dummy_path", 1
+        )
+        self.sim_cls_with_output = create_simulation_class(
+            self.log, SimWithOutput, "dummy_path", 1
+        )
 
     def test_check_output_false(self):
         self.assertFalse(self.sim_cls.check_output())
@@ -200,6 +244,7 @@ class TestMicroSimulationClassMethods(unittest.TestCase):
         class SimInitNoArgs(MinimalSim):
             def initialize(self):
                 return None
+
         log = MagicMock()
         sim_cls = create_simulation_class(log, SimInitNoArgs, "dummy", 1)
         instance = SimInitNoArgs(0)
@@ -209,7 +254,9 @@ class TestMicroSimulationClassMethods(unittest.TestCase):
 
     def test_check_initialize_true_with_args(self):
         instance = SimWithInitialize(0)
-        has_init, has_args = self.sim_cls_with_init.check_initialize(instance, {"data": 1})
+        has_init, has_args = self.sim_cls_with_init.check_initialize(
+            instance, {"data": 1}
+        )
         self.assertTrue(has_init)
         self.assertTrue(has_args)
 
