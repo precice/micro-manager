@@ -642,6 +642,12 @@ class MicroManagerCoupling(MicroManager):
                         "There are no active simulations on this rank."
                     )
                     return
+                else:
+                    self._logger.log_info(
+                        "The following simulations are active on this rank: {}".format(
+                            active_sim_lids
+                        )
+                    )
 
                 for i in active_sim_lids:
                     self._micro_sims[i] = micro_problem_cls(
@@ -801,6 +807,8 @@ class MicroManagerCoupling(MicroManager):
             self._micro_sims_have_output = True
 
         self._participant.stop_last_profiling_section()
+
+        self._logger.log_info("Initialization of Micro Manager is complete.")
 
     # ***************
     # Private methods
