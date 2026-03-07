@@ -16,7 +16,7 @@ jobs:
     container: precice/precice:nightly
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
         with:
           path: micro-manager
 

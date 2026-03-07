@@ -3,6 +3,7 @@ Tests for micro_simulation.py covering MicroSimulationInterface,
 MicroSimulationLocal, MicroSimulationClass, and create_simulation_class.
 """
 import unittest
+import warnings
 from unittest.mock import MagicMock
 
 from micro_manager.micro_simulation import (
@@ -87,9 +88,13 @@ class TestMicroSimulationLocal(unittest.TestCase):
         local.set_global_id(99)
         self.assertEqual(local.get_global_id(), 99)
 
-    def test_late_init(self):
+    def test_late_init_sets_instance_gid_to_minus_one(self):
+        """When late_init=True, the wrapped instance should be constructed with gid=-1."""
         local = MicroSimulationLocal(3, True, MinimalSim)
+        # The outer local gid should remain 3
         self.assertEqual(local.get_global_id(), 3)
+        # The inner instance should have been constructed with -1
+        self.assertEqual(local._instance.get_global_id(), -1)
 
     def test_initialize(self):
         local = MicroSimulationLocal(0, False, SimWithInitialize)
@@ -108,9 +113,15 @@ class TestMicroSimulationLocal(unittest.TestCase):
         local = MicroSimulationLocal(0, False, SimWithOutput)
         self.assertTrue(local.requires_output())
 
-    def test_getattr_delegates(self):
-        local = MicroSimulationLocal(7, False, MinimalSim)
-        self.assertEqual(local._gid, 7)
+    def test_getattr_delegates_to_instance(self):
+        """__getattr__ should delegate unknown attributes to the wrapped instance."""
+
+        class SimWithExtra(MinimalSim):
+            extra_attr = "hello"
+
+        local = MicroSimulationLocal(7, False, SimWithExtra)
+        # extra_attr is not defined on MicroSimulationLocal — must come via __getattr__
+        self.assertEqual(local.extra_attr, "hello")
 
 
 class TestCreateSimulationClass(unittest.TestCase):
@@ -186,35 +197,12 @@ class TestCreateSimulationClass(unittest.TestCase):
         )
         self.assertEqual(sim_cls.name, "MyTestSim")
 
-    def test_non_interface_class_wrapped(self):
-        """Non-interface class should be wrapped and callable."""
-
-        class LegacySim:
-            def __init__(self, gid):
-                self._gid = gid
-
-            def solve(self, i, dt):
-                return {}
-
-            def get_state(self):
-                return None
-
-            def set_state(self, s):
-                pass
-
-            def get_global_id(self):
-                return self._gid
-
-            def set_global_id(self, gid):
-                self._gid = gid
-
-        import warnings
-
+    def test_interface_subclass_accepted_without_wrapping(self):
+        """A class that already inherits MicroSimulationInterface is accepted as-is."""
         log = MagicMock()
-        with warnings.catch_warnings(record=True):
-            warnings.simplefilter("always")
-            sim_cls = create_simulation_class(log, LegacySim, "legacy_path", 1)
-            self.assertIsNotNone(sim_cls)
+        sim_cls = create_simulation_class(log, MinimalSim, "dummy_path", 1)
+        # backend_cls should be exactly MinimalSim — no wrapping applied
+        self.assertIs(sim_cls.backend_cls, MinimalSim)
 
 
 class TestMicroSimulationClassMethods(unittest.TestCase):
