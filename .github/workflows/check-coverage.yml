@@ -46,6 +46,7 @@ jobs:
           python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_interpolation
           python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_hdf5_functionality
           python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_snapshot_computation
+          python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_micro_simulation
 
       - name: Run parallel unit tests with coverage
         working-directory: micro-manager/tests/unit
