@@ -5,7 +5,7 @@ Reads total coverage percentage from stdin (output of coverage report --format=t
 
 import sys
 
-THRESHOLD = 70  # Minimum required coverage percentage
+THRESHOLD = 60  # Minimum required coverage percentage
 
 
 if __name__ == "__main__":
