@@ -320,12 +320,16 @@ class TestLocalAdaptivity(TestCase):
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("error", RuntimeWarning)
             result_l2rel = adaptivity_l2rel._l2rel(data_with_zeros)
-        self.assertEqual(len(w), 0, "L2rel must not raise RuntimeWarning with zero data")
+        self.assertEqual(
+            len(w), 0, "L2rel must not raise RuntimeWarning with zero data"
+        )
 
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("error", RuntimeWarning)
             result_l1rel = adaptivity_l1rel._l1rel(data_with_zeros)
-        self.assertEqual(len(w), 0, "L1rel must not raise RuntimeWarning with zero data")
+        self.assertEqual(
+            len(w), 0, "L1rel must not raise RuntimeWarning with zero data"
+        )
 
         # When both are 0, relative diff should be 0 (since numerator is 0)
         self.assertEqual(result_l2rel[0, 1], 0.0)

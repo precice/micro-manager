@@ -1,6 +1,7 @@
 """
 Functionality for adaptive initialization and control of micro simulations
 """
+
 from math import exp
 from typing import Callable
 import importlib
