@@ -278,14 +278,12 @@ class AdaptivityCalculator:
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
         # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
-        relative = np.nan_to_num(
-            (
-                pointwise_diff
-                / np.maximum(
-                    np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
-                )
-            )
+        denom = np.maximum(
+            np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
         )
+        # Add small epsilon to avoid division by zero (invalid value warning) when both are 0
+        eps = np.finfo(np.float64).eps
+        relative = pointwise_diff / np.maximum(denom, eps)
         return np.linalg.norm(relative, ord=1, axis=-1)
 
     def _l2rel(self, data: np.ndarray) -> np.ndarray:
@@ -306,12 +304,10 @@ class AdaptivityCalculator:
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
         # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
-        relative = np.nan_to_num(
-            (
-                pointwise_diff
-                / np.maximum(
-                    np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
-                )
-            )
+        denom = np.maximum(
+            np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
         )
+        # Add small epsilon to avoid division by zero (invalid value warning) when both are 0
+        eps = np.finfo(np.float64).eps
+        relative = pointwise_diff / np.maximum(denom, eps)
         return np.linalg.norm(relative, ord=2, axis=-1)
