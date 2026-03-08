@@ -1,7 +1,7 @@
 import argparse
 import os
 
-from .config import Config
+from .config import Config, ConfigError
 from .micro_simulation import MicroSimulationInterface
 from .micro_manager import MicroManagerCoupling
 
