@@ -36,7 +36,6 @@ from .tasking.connection import spawn_local_workers
 from .micro_simulation import create_simulation_class, load_backend_class
 from .tools.logging_wrapper import Logger
 
-
 try:
     from .interpolation import Interpolation
 except ImportError:
@@ -487,6 +486,17 @@ class MicroManagerCoupling(MicroManager):
             self._mesh_vertex_ids,
             self._mesh_vertex_coords,
         ) = self._participant.get_mesh_vertex_ids_and_coordinates(self._macro_mesh_name)
+
+        if self._is_parallel:
+            # Gather all vertex coords and IDs from all ranks onto all ranks,
+            # filter out coords already claimed by lower-ranked ranks.
+            all_coords = self._comm.allgather(self._mesh_vertex_coords)
+            all_ids = self._comm.allgather(self._mesh_vertex_ids)
+
+            (
+                self._mesh_vertex_coords,
+                self._mesh_vertex_ids,
+            ) = domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
 
         if self._mesh_vertex_coords.size == 0:
             raise Exception("Macro mesh has no vertices.")
