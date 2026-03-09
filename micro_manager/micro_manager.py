@@ -748,9 +748,9 @@ class MicroManagerCoupling(MicroManager):
                     # Save initial data from first micro simulation as we anyway have it
                     for name in initial_micro_output.keys():
                         if name in self._data_for_adaptivity:
-                            self._data_for_adaptivity[name][
-                                first_id
-                            ] = initial_micro_output[name]
+                            self._data_for_adaptivity[name][first_id] = (
+                                initial_micro_output[name]
+                            )
                         else:
                             raise Exception(
                                 "The initialize() method needs to return data which is required for the adaptivity calculation."
@@ -763,26 +763,34 @@ class MicroManagerCoupling(MicroManager):
                                 initial_data[i]
                             )
                             for name in self._adaptivity_micro_data_names:
-                                self._data_for_adaptivity[name][
-                                    i
-                                ] = initial_micro_output[name]
+                                self._data_for_adaptivity[name][i] = (
+                                    initial_micro_output[name]
+                                )
                                 initial_micro_data[name][i] = initial_micro_output[name]
                             for name in self._adaptivity_local_data_names:
                                 if name in initial_micro_output:
-                                    self._data_for_adaptivity[name][i] = initial_micro_output[name]
-                                    initial_micro_data[name][i] = initial_micro_output[name]
+                                    self._data_for_adaptivity[name][i] = (
+                                        initial_micro_output[name]
+                                    )
+                                    initial_micro_data[name][i] = initial_micro_output[
+                                        name
+                                    ]
                     else:
                         for i in micro_sims_to_init:
                             initial_micro_output = self._micro_sims[i].initialize()
                             for name in self._adaptivity_micro_data_names:
-                                self._data_for_adaptivity[name][
-                                    i
-                                ] = initial_micro_output[name]
+                                self._data_for_adaptivity[name][i] = (
+                                    initial_micro_output[name]
+                                )
                                 initial_micro_data[name][i] = initial_micro_output[name]
                             for name in self._adaptivity_local_data_names:
                                 if name in initial_micro_output:
-                                    self._data_for_adaptivity[name][i] = initial_micro_output[name]
-                                    initial_micro_data[name][i] = initial_micro_output[name]
+                                    self._data_for_adaptivity[name][i] = (
+                                        initial_micro_output[name]
+                                    )
+                                    initial_micro_data[name][i] = initial_micro_output[
+                                        name
+                                    ]
 
                     # If lazy initialization is on, initial states of inactive simulations need to be determined
                     if self._lazy_init:
@@ -796,7 +804,9 @@ class MicroManagerCoupling(MicroManager):
                                 ][i]
                             for name in self._adaptivity_local_data_names:
                                 if name in initial_micro_data:
-                                    self._data_for_adaptivity[name][i] = initial_micro_data[name][i]
+                                    self._data_for_adaptivity[name][i] = (
+                                        initial_micro_data[name][i]
+                                    )
                         del initial_micro_data  # Once the initial data is fed into the adaptivity data, it is no longer required
 
                 else:
@@ -996,9 +1006,9 @@ class MicroManagerCoupling(MicroManager):
                     # Mark the micro sim as active for export
                     micro_sims_output[lid]["Active-State"] = 1
                     gid = self._global_ids_of_local_sims[lid]
-                    micro_sims_output[lid][
-                        "Active-Steps"
-                    ] = self._micro_sims_active_steps[gid]
+                    micro_sims_output[lid]["Active-Steps"] = (
+                        self._micro_sims_active_steps[gid]
+                    )
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
@@ -1052,9 +1062,9 @@ class MicroManagerCoupling(MicroManager):
         for inactive_lid in inactive_sim_lids:
             micro_sims_output[inactive_lid]["Active-State"] = 0
             gid = self._global_ids_of_local_sims[inactive_lid]
-            micro_sims_output[inactive_lid][
-                "Active-Steps"
-            ] = self._micro_sims_active_steps[gid]
+            micro_sims_output[inactive_lid]["Active-Steps"] = (
+                self._micro_sims_active_steps[gid]
+            )
 
         # Collect micro sim output for adaptivity calculation
         for i in range(self._local_number_of_sims):

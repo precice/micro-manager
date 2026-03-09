@@ -186,9 +186,7 @@ class TestLocalAdaptivityData(TestCase):
             {"Macro-Scalar-Data": 1, "Macro-Vector-Data": np.array([0, 1, 2])}
         ] * manager._local_number_of_sims
 
-        output = manager._solve_micro_simulations_with_adaptivity(
-            micro_sims_input, 0.1
-        )
+        output = manager._solve_micro_simulations_with_adaptivity(micro_sims_input, 0.1)
 
         # Local data must be collected in _data_for_adaptivity
         self.assertIn("Micro-Local-Data", manager._data_for_adaptivity)
