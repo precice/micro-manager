@@ -296,7 +296,6 @@ class TestLocalAdaptivity(TestCase):
             model_manager=ModelManager(),
         )
 
-        # Test L1rel with zero data
         configurator_l1 = MagicMock()
         configurator_l1.get_adaptivity_similarity_measure = MagicMock(
             return_value="L1rel"
