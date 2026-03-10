@@ -281,7 +281,6 @@ class TestLocalAdaptivity(TestCase):
         """
         import warnings
 
-        # Test L2rel with zero data
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L2rel")
         configurator.get_output_dir = MagicMock(return_value="output_dir")
