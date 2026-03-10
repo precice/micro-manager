@@ -276,7 +276,7 @@ class TestLocalAdaptivity(TestCase):
 
     def test_adaptivity_norms_with_zeros_no_warning(self):
         """
-        Regression test for issue #73: L1rel/L2rel must not raise division-by-zero
+        Test that L1rel/L2rel must not raise division-by-zero
         warning when data contains zeros.
         """
         import warnings
