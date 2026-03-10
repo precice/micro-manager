@@ -146,9 +146,7 @@ class Config:
         # Mandatory: micro_file_name
         micro_file_name_raw = _get_required(self._data, "micro_file_name")
         self._micro_file_name = (
-            micro_file_name_raw.replace("/", ".")
-            .replace("\\", ".")
-            .replace(".py", "")
+            micro_file_name_raw.replace("/", ".").replace("\\", ".").replace(".py", "")
         )
         self._logger.log_info_rank_zero(
             "Micro simulation file name: " + micro_file_name_raw
@@ -159,9 +157,7 @@ class Config:
         simulation_params = _get_required(self._data, "simulation_params", "root")
 
         # Optional: micro_stateless (default: False)
-        self._micro_stateless = _get_optional(
-            self._data, "micro_stateless", False
-        )
+        self._micro_stateless = _get_optional(self._data, "micro_stateless", False)
         if self._micro_stateless:
             self._logger.log_info_rank_zero(
                 "Only creating one full instance of MicroSimulation."
@@ -172,9 +168,7 @@ class Config:
             )
 
         # Optional: output_directory (default: None, logs to current directory)
-        self._output_dir = _get_optional(
-            self._data, "output_directory", None
-        )
+        self._output_dir = _get_optional(self._data, "output_directory", None)
         if self._output_dir is not None:
             self._logger.log_info_rank_zero(
                 "Logging and metrics output directory: " + self._output_dir
@@ -203,9 +197,7 @@ class Config:
             )
 
         # Optional: memory_usage_output_n (default: 1)
-        self._mem_usage_output_n = _get_optional(
-            self._data, "memory_usage_output_n", 1
-        )
+        self._mem_usage_output_n = _get_optional(self._data, "memory_usage_output_n", 1)
         self._logger.log_info_rank_zero(
             "Memory usage will be output every "
             + str(self._mem_usage_output_n)
@@ -218,9 +210,7 @@ class Config:
         )
         if self._write_data_names is not None:
             if not isinstance(self._write_data_names, list):
-                raise ConfigError(
-                    "coupling_params.write_data_names must be a list."
-                )
+                raise ConfigError("coupling_params.write_data_names must be a list.")
             self._logger.log_info_rank_zero(
                 "Micro Manager is writing the following data: "
                 + str(self._write_data_names)
@@ -236,9 +226,7 @@ class Config:
         )
         if self._read_data_names is not None:
             if not isinstance(self._read_data_names, list):
-                raise ConfigError(
-                    "coupling_params.read_data_names must be a list."
-                )
+                raise ConfigError("coupling_params.read_data_names must be a list.")
             self._logger.log_info_rank_zero(
                 "Micro Manager is reading the following data: "
                 + str(self._read_data_names)
@@ -268,9 +256,7 @@ class Config:
                 tasking_config, "num_workers", self._task_num_workers
             )
             if self._task_is_slurm and backend == "mpi":
-                raise ConfigError(
-                    "MPI backend not supported on SLURM systems."
-                )
+                raise ConfigError("MPI backend not supported on SLURM systems.")
             mpi_impl = _get_optional(tasking_config, "mpi_impl", self._task_mpi_impl)
             if mpi_impl not in ["open", "intel"]:
                 raise ConfigError(
@@ -300,9 +286,7 @@ class Config:
         precice_config_name = _get_required(
             coupling_params, "precice_config_file_name", "coupling_params"
         )
-        self._precice_config_file_name = os.path.join(
-            self._folder, precice_config_name
-        )
+        self._precice_config_file_name = os.path.join(self._folder, precice_config_name)
         self._logger.log_info_rank_zero(
             "preCICE configuration file name: " + self._precice_config_file_name
         )
@@ -339,9 +323,7 @@ class Config:
             )
 
         # Optional: adaptivity (default: False)
-        adaptivity_enabled = _get_optional(
-            simulation_params, "adaptivity", False
-        )
+        adaptivity_enabled = _get_optional(simulation_params, "adaptivity", False)
         adaptivity_settings = _get_optional(
             simulation_params, "adaptivity_settings", None
         )
@@ -383,9 +365,7 @@ class Config:
 
             self._logger.log_info_rank_zero("Adaptivity type: " + self._adaptivity_type)
 
-            if _get_optional(
-                adaptivity_settings, "lazy_initialization", False
-            ):
+            if _get_optional(adaptivity_settings, "lazy_initialization", False):
                 self._lazy_initialization = True
 
             self._logger.log_info_rank_zero(
@@ -485,7 +465,9 @@ class Config:
             adaptivity_every_implicit_iteration = _get_optional(
                 adaptivity_settings, "every_implicit_iteration", False
             )
-            self._adaptivity_every_implicit_iteration = adaptivity_every_implicit_iteration
+            self._adaptivity_every_implicit_iteration = (
+                adaptivity_every_implicit_iteration
+            )
             if self._adaptivity_every_implicit_iteration:
                 self._logger.log_info_rank_zero(
                     "Micro Manager will compute adaptivity in every implicit iteration, if implicit coupling is done."
@@ -562,9 +544,7 @@ class Config:
         )
         if model_adaptivity_enabled:
             self._m_adap = True
-            self._logger.log_info_rank_zero(
-                "Micro Manager will use Model Adaptivity."
-            )
+            self._logger.log_info_rank_zero("Micro Manager will use Model Adaptivity.")
             if not model_adaptivity_settings:
                 raise ConfigError(
                     "model_adaptivity is true but simulation_params.model_adaptivity_settings "
@@ -606,7 +586,9 @@ class Config:
             )
 
             if "micro_stateless" in model_adaptivity_settings:
-                self._m_adap_micro_stateless = model_adaptivity_settings["micro_stateless"]
+                self._m_adap_micro_stateless = model_adaptivity_settings[
+                    "micro_stateless"
+                ]
             else:
                 self._m_adap_micro_stateless = [False] * len(
                     self._m_adap_micro_file_names
@@ -623,9 +605,7 @@ class Config:
                     )
 
         # Optional: interpolate_crash (default: False)
-        if _get_optional(
-            simulation_params, "interpolate_crash", False
-        ):
+        if _get_optional(simulation_params, "interpolate_crash", False):
             self._interpolate_crash = True
             self._logger.log_info_rank_zero(
                 "Micro Manager will interpolate output of crashed micro simulations from its neighbors."
@@ -639,9 +619,7 @@ class Config:
         )
         if diagnostics_data_names is not None:
             if not isinstance(diagnostics_data_names, list):
-                raise ConfigError(
-                    "diagnostics.data_from_micro_sims must be a list."
-                )
+                raise ConfigError("diagnostics.data_from_micro_sims must be a list.")
             self._logger.log_info_rank_zero(
                 "Diagnostics data: " + str(diagnostics_data_names)
             )
@@ -651,9 +629,7 @@ class Config:
             )
 
         # Optional: micro_output_n (default: 1)
-        self._micro_output_n = _get_optional(
-            diagnostics, "micro_output_n", 1
-        )
+        self._micro_output_n = _get_optional(diagnostics, "micro_output_n", 1)
         self._logger.log_info_rank_zero(
             "Micro output will be called every "
             + str(self._micro_output_n)
@@ -678,25 +654,19 @@ class Config:
         parameter_file_name = _get_required(
             coupling_params, "parameter_file_name", "coupling_params"
         )
-        self._parameter_file_name = os.path.join(
-            self._folder, parameter_file_name
-        )
+        self._parameter_file_name = os.path.join(self._folder, parameter_file_name)
         self._logger.log_info_rank_zero(
             "Parameter file name: " + self._parameter_file_name
         )
 
         # Optional: snapshot_params section (default: empty dict)
-        snapshot_params = _get_optional(
-            self._data, "snapshot_params", {}
-        )
+        snapshot_params = _get_optional(self._data, "snapshot_params", {})
 
         # Optional: output_file_name (default: "snapshot_data")
         self._output_file_name = _get_optional(
             snapshot_params, "output_file_name", "snapshot_data"
         )
-        self._logger.log_info_rank_zero(
-            "Output file name: " + self._output_file_name
-        )
+        self._logger.log_info_rank_zero("Output file name: " + self._output_file_name)
 
         # Optional: post_processing_file_name (default: None)
         post_proc_raw = _get_optional(
@@ -704,9 +674,7 @@ class Config:
         )
         if post_proc_raw is not None:
             self._postprocessing_file_name = (
-                post_proc_raw.replace("/", ".")
-                .replace("\\", ".")
-                .replace(".py", "")
+                post_proc_raw.replace("/", ".").replace("\\", ".").replace(".py", "")
             )
             self._logger.log_info_rank_zero(
                 "Post-processing file name: " + self._postprocessing_file_name
@@ -725,9 +693,7 @@ class Config:
         )
         if diagnostics_data_names is not None:
             if not isinstance(diagnostics_data_names, list):
-                raise ConfigError(
-                    "diagnostics.data_from_micro_sims must be a list."
-                )
+                raise ConfigError("diagnostics.data_from_micro_sims must be a list.")
             self._logger.log_info_rank_zero(
                 "Diagnostics data: " + str(diagnostics_data_names)
             )
@@ -737,9 +703,7 @@ class Config:
             )
 
         # Optional: initialize_once (default: False)
-        self._initialize_once = _get_optional(
-            snapshot_params, "initialize_once", False
-        )
+        self._initialize_once = _get_optional(snapshot_params, "initialize_once", False)
         if self._initialize_once:
             self._logger.log_info_rank_zero(
                 "Micro Manager will initialize only one micro simulations object for snapshot computation."
