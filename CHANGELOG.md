@@ -3,6 +3,7 @@
 ## latest
 
 - Added load balancing based on micro simulation solve timings [#228](https://github.com/precice/micro-manager/pull/228)
+- Fixed invalid value in division warning in L1rel/L2rel adaptivity when data contains zeros [#234](https://github.com/precice/micro-manager/pull/234)
 - Fixed duplicate micro simulations for macro-points on rank boundaries by filtering coordinates already claimed by lower-ranked ranks [#230](https://github.com/precice/micro-manager/pull/230)
 - Exposed `MicroSimulationInterface` as a public abstract base class for user subclassing [#224](https://github.com/precice/micro-manager/pull/224)
 - Added option to use compute instances to reduce memory consumption [#226](https://github.com/precice/micro-manager/pull/226)
