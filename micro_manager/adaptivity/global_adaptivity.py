@@ -103,7 +103,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     "  Available: {} B\n"
                     "On some systems /dev/shm is limited to 50% of RAM. "
                     "Consider increasing /dev/shm size (e.g. `--shm-size` in Docker, or "
-                    "`tmpfs` remount), or use local adaptivity instead.".format(nbytes, shm_free)
+                    "`tmpfs` remount), or use local adaptivity instead.".format(
+                        nbytes, shm_free
+                    )
                 )
         else:
             nbytes = 0
