@@ -83,6 +83,7 @@ To turn on adaptivity, set `"adaptivity": true` in `simulation_params`. Then und
 | `refining_constant`               | Refining constant $$ C_r $$, set as $$ 0 =< C_r < 1 $$.                                                                                                                                                                                                                                             | 0.5           |
 | `every_implicit_iteration`        | If `true`, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.                                                                                                     | `false`       |
 | `similarity_measure`              | Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.                                                                                     | `L2rel`       |
+| `local_data`                      | Dictionary of names of micro simulation data which are used **only** for the adaptivity similarity distance calculation and are **not** sent to the macro simulation. For example `{"internal-state": "scalar"}`. This is useful for internal micro simulation state data that characterizes similarity but should not be communicated to the macro side. This parameter is *optional*. | `{}`          |
 | `lazy_initialization`             | Set to `true` to lazily create and initialize micro simulations. If selected, micro simulation objects are created only when the micro simulation is activated for the first time.                                                                                                                  | `false`       |
 | `load_balancing`                  | Set to `true` to dynamically balance simulations for parallel runs. See [load balancing settings](#load-balancing) below.                                                                                                                                                                           | `false`       |
 
@@ -100,7 +101,8 @@ Example of adaptivity configuration is
         "coarsening_constant": 0.3,
         "refining_constant": 0.4,
         "every_implicit_iteration": false,
-        "lazy_initialization": true
+        "lazy_initialization": true,
+        "local_data": {"internal-state": "scalar"}
     }
 }
 ```

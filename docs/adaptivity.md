@@ -67,6 +67,21 @@ The primary tuning parameters for adaptivity are the history parameter $$ \Lambd
 
 See the [adaptivity configuration](tooling-micro-manager-configuration.html#adaptivity) documentation on how to configure the parameters $$ C_c $$, $$ C_r $$, and more.
 
+## Local data for adaptivity
+
+In some scenarios, a micro simulation may have internal state data that is well-suited for characterizing similarity, but should not be sent to the macro simulation. For example, an internal phase indicator or a convergence metric. Such data can be passed to the Micro Manager via the `local_data` key in `adaptivity_settings`. The Micro Manager collects this data for the similarity distance calculation but never writes it to preCICE. The micro simulation simply includes the local data key in the dict returned by its `solve()` (and optionally `initialize()`) method:
+
+```python
+def solve(self, macro_data, dt):
+    # ... solve ...
+    return {
+        "macro-output-data": ...,   # sent to macro simulation
+        "internal-state": 42.0,     # used only for adaptivity, not sent to macro
+    }
+```
+
+See the [adaptivity configuration](tooling-micro-manager-configuration.html#adaptivity) for how to declare `local_data` in the configuration file.
+
 ## Adaptivity variants
 
 If the Micro Manager is run in parallel, micro simulations are distributed over MPI ranks. This opens the door different ways in which the adaptivity can be computed. There are two principle ways to go about it.
