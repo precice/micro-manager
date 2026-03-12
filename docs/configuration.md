@@ -156,13 +156,34 @@ The Micro Manager uses the output functionality of preCICE, hence these data set
 
 ## Load balancing
 
-Under `load_balancing_settings`, the following parameters can be set
+Load balancing can be activated by setting `load_balancing` to true.
+It balances based on either the elapsed time required to solve the prior iteration `type="time""` or the number of active simulations `type=active`.
+One Initial load balancing step is performed, prior to any computation (assuming equal workload for time based load balancing or the current active counts for `active` load balancing.).
+Subsequently, in the following iteration another load balancing step is performed based. (This is mainly for the time based balancing to use the just acquired timings.)
+Afterwards balancing is performed `every_n_time_windows`.
+Upon activation, further configuration must be provided in `load_balancing_settings`.
+The following parameters can be set
 
-| Parameter               | Description                                                                                                                                                                                                                                  | Default |
-|-------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------|
-| `every_n_time_windows`  | Frequency of balancing the simulations.                                                                                                                                                                                                      | `1`     |
-| `balancing_threshold`   | Integer threshold value.                                                                                                                                                                                                                     | `0`     |
-| `balance_inactive_sims` | If `true`, inactive simulations associated to redistributed active simulations are moved to the new ranks of the active simulations. See [balance inactive simulations](tooling-micro-manager-adaptivity.html#balance-inactive-simulations). | `false` |
+| Parameter               | Description                                      | Default  |
+|-------------------------|--------------------------------------------------|----------|
+| `every_n_time_windows`  | Frequency of balancing the simulations.          | `1`      |
+| `partitioning`          | Partitioning Algorithm. Options: ["lpt"].        | `"lpt"`  |
+| `type`                  | Load balancing type. Options: ["time", "active"] | `"time"` |
+| `threshold`             | Threshold parameter                              | `0`      |
+| `balance_inactive_sims` | Balance inactive simulations                     | `False`  |
+
+```json
+"simulation_params": {
+    "load_balancing": true,
+    "load_balancing_settings": {
+        "every_n_time_windows": 5,
+        "partitioning": "lpt",
+        "type": "active",
+        "threshold": 2,
+        "balance_inactive_sims": true
+    }
+}
+```
 
 ## Interpolate a crashed micro simulation
 
