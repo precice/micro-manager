@@ -36,6 +36,10 @@ class ModelWrapper(MicroSimulationInterface):
     def output(self):
         return self._backend.output()
 
+    def destroy(self):
+        # we do not want to delete our compute instance
+        pass
+
     @property
     def __class__(self):
         return self._backend.__class__
@@ -86,6 +90,105 @@ class ModelManager:
             self._backend_map[micro_sim_cls] = micro_sim_cls(
                 len(self._registered_classes) - 1
             )
+
+    def get_cls_by_name(self, name: str) -> MicroSimulationClass:
+        """
+        Returns the class determined by its name
+
+        Parameters
+        ----------
+        name: str
+            name of registered class
+
+        Returns
+        -------
+        sim_class: MicroSimulationClass
+            Class given by name
+        """
+        cls_names = [cls.name for cls in self._registered_classes]
+        idx = cls_names.index(name)
+        return self._registered_classes[idx]
+
+    def get_cls_by_idx(self, idx: int) -> MicroSimulationClass:
+        """
+        Returns the class determined by its index
+
+        Parameters
+        ----------
+        idx: int
+            index of registered class
+
+        Returns
+        -------
+        sim_class: MicroSimulationClass
+            Class given by index
+        """
+        return self._registered_classes[idx]
+
+    def is_stateless(self, name: str) -> bool:
+        """
+        Returns whether the class given by its name is stateless.
+
+        Parameters
+        ----------
+        name: str
+            name of registered class
+
+        Returns
+        -------
+        is_stateless: bool
+            true if class is stateless
+        """
+        cls = self.get_cls_by_name(name)
+        return self._stateless_map[cls]
+
+    def get_instance_by_name(
+        self, gid: int, name: str, *, late_init: bool = False
+    ) -> MicroSimulationInterface:
+        """
+        Creates an instance of the requested class determined by its name. If the class should be initialized later,
+        the request will be delegated to the micro simulation object (in case it supports it).
+
+        Parameters
+        ----------
+        gid: int
+            Global Simulation ID
+        name: str
+            Requested micro simulation class
+        late_init: bool
+            Should the simulation be initialized later?
+
+        Returns
+        -------
+        micro_sim : MicroSimulationInterface
+            Instance of the requested micro simulation class, either delegator or compute instance
+        """
+        return self.get_instance(gid, self.get_cls_by_name(name), late_init=late_init)
+
+    def get_instance_by_idx(
+        self, gid: int, idx: int, *, late_init: bool = False
+    ) -> MicroSimulationInterface:
+        """
+        Creates an instance of the requested class determined by its index. If the class should be initialized later,
+        the request will be delegated to the micro simulation object (in case it supports it).
+
+        Parameters
+        ----------
+        gid: int
+            Global Simulation ID
+        idx: int
+            Index of requested micro simulation class
+        late_init: bool
+            Should the simulation be initialized later?
+
+        Returns
+        -------
+        micro_sim : MicroSimulationInterface
+            Instance of the requested micro simulation class, either delegator or compute instance
+        """
+        return self.get_instance(
+            gid, self._registered_classes[idx], late_init=late_init
+        )
 
     def get_instance(
         self, gid: int, micro_sim_cls: MicroSimulationClass, *, late_init: bool = False
