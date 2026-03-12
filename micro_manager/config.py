@@ -479,23 +479,41 @@ class Config:
                 f"Load balancing will use {self._load_balancing_type} based balancing."
             )
 
-            try:
-                self._load_balancing_threshold = self._data["simulation_params"][
-                    "load_balancing_settings"
-                ]["threshold"]
-            except BaseException:
-                self._load_balancing_threshold = 0
-                self._logger.log_info_rank_zero("Load balancing will use 0 threshold.")
+            if self._load_balancing_type == "active":
+                try:
+                    self._load_balancing_threshold = self._data["simulation_params"][
+                        "load_balancing_settings"
+                    ]["threshold"]
+                except BaseException:
+                    self._load_balancing_threshold = 0
+                    self._logger.log_info_rank_zero(
+                        "Load balancing will use 0 threshold."
+                    )
 
-            try:
-                self._load_balancing_balance_inactive_sims = self._data[
-                    "simulation_params"
-                ]["load_balancing_settings"]["balance_inactive_sims"]
-            except BaseException:
-                self._load_balancing_balance_inactive_sims = False
-                self._logger.log_info_rank_zero(
-                    "Load balancing will not consider inactive simulations."
-                )
+                try:
+                    self._load_balancing_balance_inactive_sims = self._data[
+                        "simulation_params"
+                    ]["load_balancing_settings"]["balance_inactive_sims"]
+                except BaseException:
+                    self._load_balancing_balance_inactive_sims = False
+                    self._logger.log_info_rank_zero(
+                        "Load balancing will not consider inactive simulations."
+                    )
+            else:
+                if (
+                    "threshold"
+                    in self._data["simulation_params"]["load_balancing_settings"]
+                ):
+                    self._logger.log_info_rank_zero(
+                        'Load balancing is not using active simulation balancing. Field "threshold" will be ignored.'
+                    )
+                if (
+                    "balance_inactive_sims"
+                    in self._data["simulation_params"]["load_balancing_settings"]
+                ):
+                    self._logger.log_info_rank_zero(
+                        'Load balancing is not using active simulation balancing. Field "balance_inactive_sims" will be ignored.'
+                    )
 
         try:
             if self._data["simulation_params"]["model_adaptivity"]:
