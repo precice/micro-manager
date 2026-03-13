@@ -2,6 +2,7 @@
 
 ## latest
 
+- Added `--test-dependencies` CLI flag to check if all required dependencies are correctly installed, with clear error messages listing missing packages and how to fix them [#221](https://github.com/precice/micro-manager/pull/221)
 - Added load balancing based on micro simulation solve timings [#228](https://github.com/precice/micro-manager/pull/228)
 - Fixed invalid value in division warning in L1rel/L2rel adaptivity when data contains zeros [#234](https://github.com/precice/micro-manager/pull/234)
 - Fixed duplicate micro simulations for macro-points on rank boundaries by filtering coordinates already claimed by lower-ranked ranks [#230](https://github.com/precice/micro-manager/pull/230)

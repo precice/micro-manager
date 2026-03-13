@@ -6,6 +6,7 @@ def _check_dependencies():
     import importlib.metadata
 
     from packaging.requirements import Requirement
+    from packaging.version import Version
 
     _import_name_map = {"pyprecice": "precice"}
     required = {}
@@ -29,8 +30,6 @@ def _check_dependencies():
             __import__(import_name)
             if min_version:
                 installed_version = importlib.metadata.version(package)
-                from packaging.version import Version
-
                 if Version(installed_version) < Version(min_version):
                     version_errors.append(
                         "{} (installed: {}, required: >={})".format(
