@@ -4,10 +4,10 @@ on:
   push:
     branches:
       - develop
-      - p2
+      - main
   pull_request:
     branches:
-      - develop
+      - "*"
 
 jobs:
   test-pip-install:
@@ -16,7 +16,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           path: micro-manager
 

@@ -5,12 +5,24 @@ import os
 def _check_dependencies():
     import importlib.metadata
 
-    required = {
-        "pyprecice": ("precice", "3.2"),
-        "numpy": ("numpy", None),
-        "mpi4py": ("mpi4py", None),
-        "psutil": ("psutil", None),
-    }
+    import tomllib
+    from pathlib import Path as _Path
+    from packaging.requirements import Requirement
+
+    _toml_path = _Path(__file__).parent.parent / "pyproject.toml"
+    with open(_toml_path, "rb") as _f:
+        _pyproject = tomllib.load(_f)
+
+    _import_name_map = {"pyprecice": "precice"}
+    required = {}
+    for _dep in _pyproject["project"]["dependencies"]:
+        _req = Requirement(_dep)
+        _import_name = _import_name_map.get(_req.name, _req.name)
+        _min_version = None
+        for _spec in _req.specifier:
+            if _spec.operator == ">=":
+                _min_version = _spec.version
+        required[_req.name] = (_import_name, _min_version)
 
     missing = []
     version_errors = []
@@ -101,13 +113,6 @@ def main():
     config_file_path = args.config_file
     if not os.path.isabs(config_file_path):
         config_file_path = os.getcwd() + "/" + config_file_path
-
-    try:
-        from .snapshot.snapshot import MicroManagerSnapshot
-
-        is_snapshot_possible = True
-    except ImportError:
-        is_snapshot_possible = False
 
     if not args.snapshot:
         manager = MicroManagerCoupling(config_file_path, log_file=args.log_file)
