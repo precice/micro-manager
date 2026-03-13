@@ -11,6 +11,8 @@ def _check_dependencies():
     required = {}
     _pkg_requires = importlib.metadata.requires("micro-manager-precice") or []
     for _dep in _pkg_requires:
+        if "; extra ==" in _dep:
+            continue
         _req = Requirement(_dep)
         _import_name = _import_name_map.get(_req.name, _req.name)
         _min_version = None
