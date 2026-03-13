@@ -5,17 +5,12 @@ import os
 def _check_dependencies():
     import importlib.metadata
 
-    import tomllib
-    from pathlib import Path as _Path
     from packaging.requirements import Requirement
-
-    _toml_path = _Path(__file__).parent.parent / "pyproject.toml"
-    with open(_toml_path, "rb") as _f:
-        _pyproject = tomllib.load(_f)
 
     _import_name_map = {"pyprecice": "precice"}
     required = {}
-    for _dep in _pyproject["project"]["dependencies"]:
+    _pkg_requires = importlib.metadata.requires("micro-manager-precice") or []
+    for _dep in _pkg_requires:
         _req = Requirement(_dep)
         _import_name = _import_name_map.get(_req.name, _req.name)
         _min_version = None
