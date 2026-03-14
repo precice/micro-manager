@@ -125,7 +125,6 @@ class TestMicroSimulationLocal(unittest.TestCase):
         self.assertEqual(local.extra_attr, "hello")
 
 
-
 class TestMicroSimulationRemote(unittest.TestCase):
     def _make_remote(self, late_init=False):
         from micro_manager.micro_simulation import MicroSimulationRemote
@@ -242,7 +241,6 @@ class TestMicroSimulationRemote(unittest.TestCase):
         )
         sent_task = conn.send.call_args_list[0][0][1]
         self.assertEqual(sent_task[0], "ConstructLateTask")
-
 
 
 class TestCreateSimulationClass(unittest.TestCase):
@@ -372,6 +370,7 @@ class TestMicroSimulationClassMethods(unittest.TestCase):
     def test_call_creates_wrapper(self):
         wrapper = self.sim_cls(0)
         self.assertIsNotNone(wrapper)
+
 
 if __name__ == "__main__":
     unittest.main()
