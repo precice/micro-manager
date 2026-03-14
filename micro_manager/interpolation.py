@@ -46,7 +46,7 @@ class Interpolation:
         return neighbor_indices
 
     def interpolate(self, neighbors: np.ndarray, point: np.ndarray, values):
-        r"""
+        """
             Interpolate a value at a point using inverse distance weighting. (https://en.wikipedia.org/wiki/Inverse_distance_weighting)
             .. math::
                 f(x) = (\sum_{i=1}^{n} \frac{f_i}{\Vert x_i - x \Vert^2}) / (\sum_{j=1}^{n} \frac{1}{\Vert x_j - x \Vert^2})
