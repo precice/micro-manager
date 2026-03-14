@@ -55,7 +55,7 @@ jobs:
         run: |
           . ../../.venv/bin/activate
           mpirun -n 2 --allow-run-as-root -x PYTHONPATH=. python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_adaptivity_parallel
-          mpirun -n 2 --allow-run-as-root -x PYTHONPATH=. python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_global_adaptivity_lb
+          mpirun -n 2 --allow-run-as-root -x PYTHONPATH=. python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_load_balancing
 
       - name: Combine coverage data
         working-directory: micro-manager/tests/unit
