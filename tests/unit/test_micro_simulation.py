@@ -2,6 +2,7 @@
 Tests for micro_simulation.py covering MicroSimulationInterface,
 MicroSimulationLocal, MicroSimulationClass, and create_simulation_class.
 """
+
 import unittest
 import warnings
 from unittest.mock import MagicMock
@@ -253,20 +254,23 @@ class TestMicroSimulationClassMethods(unittest.TestCase):
         self.assertIsNotNone(wrapper)
 
 
-
 class TestMicroSimulationRemote(unittest.TestCase):
     def _make_remote(self, late_init=False):
         from micro_manager.micro_simulation import MicroSimulationRemote
+
         conn = MagicMock()
         conn.recv.return_value = None
-        return MicroSimulationRemote(
-            gid=0,
-            late_init=late_init,
-            num_ranks=1,
-            conn=conn,
-            cls_path="dummy_path",
-            sim_cls=MinimalSim,
-        ), conn
+        return (
+            MicroSimulationRemote(
+                gid=0,
+                late_init=late_init,
+                num_ranks=1,
+                conn=conn,
+                cls_path="dummy_path",
+                sim_cls=MinimalSim,
+            ),
+            conn,
+        )
 
     def test_get_set_global_id(self):
         remote, _ = self._make_remote()
@@ -311,6 +315,7 @@ class TestMicroSimulationRemote(unittest.TestCase):
 
     def test_requires_initialize_true_for_sim_with_initialize(self):
         from micro_manager.micro_simulation import MicroSimulationRemote
+
         conn = MagicMock()
         conn.recv.return_value = None
         remote = MicroSimulationRemote(
@@ -329,6 +334,7 @@ class TestMicroSimulationRemote(unittest.TestCase):
 
     def test_requires_output_true_for_sim_with_output(self):
         from micro_manager.micro_simulation import MicroSimulationRemote
+
         conn = MagicMock()
         conn.recv.return_value = None
         remote = MicroSimulationRemote(
@@ -351,6 +357,7 @@ class TestMicroSimulationRemote(unittest.TestCase):
     def test_late_init_uses_construct_late_task(self):
         from micro_manager.micro_simulation import MicroSimulationRemote
         from micro_manager.tasking.task import ConstructLateTask
+
         conn = MagicMock()
         conn.recv.return_value = None
         remote = MicroSimulationRemote(
