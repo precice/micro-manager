@@ -26,6 +26,17 @@ class Task:
         return cls.__name__, args, kwargs
 
 
+class DeleteTask(Task):
+    def __init__(self, gid):
+        super().__init__(DeleteTask.delete_gid, gid=gid)
+
+    @staticmethod
+    def delete_gid(gid, state_data):
+        if gid in state_data["sim_instances"]:
+            del state_data["sim_instances"][gid]
+        return None
+
+
 class ConstructTask(Task):
     """
     Construction Task: Given a gid and micro simulation class path, it will construct an instance and store it
@@ -50,8 +61,8 @@ class ConstructTask(Task):
             state_data["sim_classes"][cls_path] = state_data["load_function"](file_name)
         cls = state_data["sim_classes"][cls_path]
 
-        if gid in state_data["sim_classes"]:
-            del state_data["sim_classes"][gid]
+        if gid in state_data["sim_instances"]:
+            del state_data["sim_instances"][gid]
         state_data["sim_instances"][gid] = cls(gid)
         return None
 
@@ -79,8 +90,8 @@ class ConstructLateTask(Task):
             state_data["sim_classes"][cls_path] = state_data["load_function"](file_name)
         cls = state_data["sim_classes"][cls_path]
 
-        if gid in state_data["sim_classes"]:
-            del state_data["sim_classes"][gid]
+        if gid in state_data["sim_instances"]:
+            del state_data["sim_instances"][gid]
         state_data["sim_instances"][gid] = cls(-1)
         return None
 
@@ -194,6 +205,7 @@ class RegisterAllTask(Task):
     @staticmethod
     def register(state_data, load_function):
         task_dict = dict()
+        task_dict[DeleteTask.__name__] = DeleteTask
         task_dict[ConstructTask.__name__] = ConstructTask
         task_dict[ConstructLateTask.__name__] = ConstructLateTask
         task_dict[SolveTask.__name__] = SolveTask

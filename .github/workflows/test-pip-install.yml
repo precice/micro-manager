@@ -1,0 +1,51 @@
+name: Test pip installation and dependency check
+
+on:
+  push:
+    branches:
+      - develop
+      - main
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  test-pip-install:
+    runs-on: ubuntu-latest
+    container: precice/precice:nightly
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          path: micro-manager
+
+      - name: Install dependencies
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-dev python3-venv git pkg-config
+
+      - name: Create a virtual environment and install Micro Manager in it
+        working-directory: micro-manager
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install .
+
+      - name: Run dependency check with all dependencies present
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          micro-manager-precice --test-dependencies
+
+      - name: Run dependency check with pyprecice uninstalled
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          pip uninstall -y pyprecice
+          if micro-manager-precice --test-dependencies; then
+            echo "ERROR: dependency check should have failed but passed"
+            exit 1
+          else
+            echo "OK: dependency check correctly reported missing pyprecice"
+          fi
