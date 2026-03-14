@@ -37,6 +37,8 @@ jobs:
 
       - name: Run serial unit tests with coverage
         working-directory: micro-manager/tests/unit
+        env:
+          PYTHONPATH: .
         run: |
           . ../../.venv/bin/activate
           python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_micro_manager
@@ -50,6 +52,8 @@ jobs:
 
       - name: Run parallel unit tests with coverage
         working-directory: micro-manager/tests/unit
+        env:
+          PYTHONPATH: .
         run: |
           . ../../.venv/bin/activate
           mpirun -n 2 --allow-run-as-root python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_adaptivity_parallel
