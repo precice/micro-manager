@@ -1,5 +1,4 @@
 from .global_adaptivity import GlobalAdaptivityCalculator
-from .global_adaptivity_lb import GlobalAdaptivityLBCalculator
 from .local_adaptivity import LocalAdaptivityCalculator
 from .adaptivity import AdaptivityCalculator
 
@@ -15,7 +14,6 @@ def create_adaptivity_calculator(
     comm,
     micro_problem_cls,
     model_manager,
-    use_lb,
 ) -> AdaptivityCalculator:
     adaptivity_type = config.get_adaptivity_type()
 
@@ -31,11 +29,7 @@ def create_adaptivity_calculator(
         )
 
     if adaptivity_type == "global":
-        cls = GlobalAdaptivityCalculator
-        if use_lb:
-            cls = GlobalAdaptivityLBCalculator
-
-        return cls(
+        return GlobalAdaptivityCalculator(
             config,
             global_number_of_sims,
             global_ids_of_local_sims,
