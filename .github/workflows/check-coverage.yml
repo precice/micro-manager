@@ -1,0 +1,108 @@
+name: Check test coverage
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - "*"
+
+jobs:
+  coverage:
+    name: Run test coverage check
+    runs-on: ubuntu-latest
+    container: precice/precice:nightly
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          path: micro-manager
+
+      - name: Install dependencies
+        run: |
+          apt-get -qq update
+          apt-get -qq install python3-dev python3-venv git pkg-config
+          apt-get -qq install wget build-essential
+
+      - name: Load Cache OpenMPI 5
+        id: ompi-cache-load
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/openmpi
+          key: openmpi-v5-${{ runner.os }}-build
+
+      - name: Build OpenMPI 5
+        if: steps.ompi-cache-load.outputs.cache-hit != 'true'
+        run: |
+          wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.5.tar.gz
+          tar -xzf openmpi-5.0.5.tar.gz
+          cd openmpi-5.0.5
+          mkdir -p ~/openmpi
+          ./configure --prefix=$HOME/openmpi
+          make -j$(nproc)
+          make install
+
+      - name: Save OpenMPI 5 to cache
+        if: steps.ompi-cache-load.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ~/openmpi
+          key: openmpi-v5-${{ runner.os }}-build
+
+      - name: Configure OpenMPI
+        run: |
+          cp -r ~/openmpi/* /usr/local/
+          ldconfig
+          which mpiexec
+          mpiexec --version
+
+      - name: Create a virtual environment and install Micro Manager with coverage
+        timeout-minutes: 6
+        working-directory: micro-manager
+        run: |
+          python3 -m venv .venv
+          . .venv/bin/activate
+          pip install coverage
+          pip install .[sklearn,snapshot]
+          pip uninstall -y pyprecice
+
+      - name: Run serial unit tests with coverage
+        working-directory: micro-manager/tests/unit
+        env:
+          PYTHONPATH: .
+        run: |
+          . ../../.venv/bin/activate
+          python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_micro_manager
+          python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_micro_simulation_crash_handling
+          python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_adaptivity_serial
+          python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_domain_decomposition
+          python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_interpolation
+          python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_hdf5_functionality
+          python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_snapshot_computation
+          python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_micro_simulation
+
+      - name: Run tasking unit tests with coverage
+        working-directory: micro-manager/tests/unit
+        env:
+          PYTHONPATH: .
+          OMPI_ALLOW_RUN_AS_ROOT: "1"
+          OMPI_ALLOW_RUN_AS_ROOT_CONFIRM: "1"
+        run: |
+          . ../../.venv/bin/activate
+          python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_tasking
+
+      - name: Run parallel unit tests with coverage
+        working-directory: micro-manager/tests/unit
+        run: |
+          . ../../.venv/bin/activate
+          mpirun -n 2 --allow-run-as-root -x PYTHONPATH=. python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_adaptivity_parallel
+          mpirun -n 2 --allow-run-as-root -x PYTHONPATH=. python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_load_balancing
+
+      - name: Combine coverage data
+        working-directory: micro-manager/tests/unit
+        run: |
+          . ../../.venv/bin/activate
+          python3 -m coverage combine
+          python3 -m coverage report --format=total | python3 ../../check_coverage.py

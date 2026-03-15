@@ -48,3 +48,29 @@ class TestInterpolation(TestCase):
         self.assertListEqual(
             nearest_neighbor_index.tolist(), expected_nearest_neighbor_index
         )
+
+    def test_interpolation_exact_point(self):
+        """
+        Test that if interpolation point exactly matches a neighbor, that value is returned.
+        """
+        coords = [[0, 0, 0], [1, 0, 0], [2, 0, 0]]
+        point = [1, 0, 0]
+        values = [10, 20, 30]
+
+        interpolation = Interpolation(MagicMock())
+        result = interpolation.interpolate(coords, point, values)
+        self.assertEqual(result, 20)
+
+    def test_nearest_neighbor_k_larger_than_coords(self):
+        """
+        Test that k is reset when larger than number of available neighbors.
+        """
+        coords = [[0, 0, 0], [1, 0, 0]]
+        inter_point = [0.5, 0, 0]
+        k = 5  # larger than len(coords)
+
+        mock_logger = MagicMock()
+        interpolation = Interpolation(mock_logger)
+        indices = interpolation.get_nearest_neighbor_indices(coords, inter_point, k)
+        self.assertEqual(len(indices), 2)
+        mock_logger.log_info.assert_called_once()
