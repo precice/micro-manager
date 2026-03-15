@@ -14,6 +14,7 @@ from micro_manager.tools.misc import clamp_in_range
 from micro_manager.model_manager import ModelManager
 from micro_manager.tasking.connection import Connection
 
+from mpi4py import MPI
 import numpy as np
 import importlib
 
@@ -23,6 +24,7 @@ class ModelAdaptivity:
         self,
         model_manager: ModelManager,
         configurator: Config,
+        comm: MPI.Comm,
         rank: int,
         log_file: str,
         conn: Connection,
@@ -33,15 +35,24 @@ class ModelAdaptivity:
 
         Parameters
         ----------
+        model_manager: ModelManager
+            ModelManager instance
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
+        comm: MPI.Comm
+            MPI communicator
         rank : int
             Rank of the MPI communicator.
         log_file : str
             Path to the log file to write to.
+        conn: Connection
+            Connection to workers
+        num_ranks : int
+            Number of workers
         """
         self._logger = Logger(__name__, log_file, rank)
 
+        self._comm = comm
         self._model_manager = model_manager
         self._model_files = configurator.get_model_adaptivity_file_names()
         self._switching_func_name = (
@@ -139,7 +150,7 @@ class ModelAdaptivity:
         prev_output: Optional[list[dict]],
         sims: list,
         active_sim_ids: Optional[list] = None,
-    ) -> None:
+    ) -> list[int]:
         """
         Switches models within sims list. If active_sim_ids is None, all sims are considered as active.
 
@@ -157,6 +168,11 @@ class ModelAdaptivity:
             List of all simulation objects.
         active_sim_ids : [list, None]
             List of all active simulation ids.
+
+        Returns
+        -------
+        switched_lids : list[int]
+            List of lids of simulations that were switched.
         """
         size = len(sims)
         active_sims = self._create_active_mask(active_sim_ids, size)
@@ -165,7 +181,7 @@ class ModelAdaptivity:
             current_res, locations, t, inputs, prev_output, active_sims
         )
 
-        self._logger.log_info_rank_zero(f"New resolutions for t={t}: {target_res}")
+        self._logger.log_info(f"New resolutions for t={t}: {target_res}")
 
         for idx in range(size):
             if current_res[idx] == target_res[idx]:
@@ -199,7 +215,11 @@ class ModelAdaptivity:
                 sim_new_state = sim.attachments[key_new]
                 sim_new.set_state(sim_new_state)
 
+            # release resources of previous sim and set to new sim
+            sims[idx].destroy()
             sims[idx] = sim_new
+
+        return np.argwhere((current_res - target_res) != 0).tolist()
 
     def update_states(
         self,
@@ -292,7 +312,9 @@ class ModelAdaptivity:
             next_switch[idx] = self._switching_func(
                 resolutions[idx], locations[idx], t, inputs[idx], prev_out
             )
-        self._converged = np.all(next_switch == 0)
+        local_num_changes = np.sum(next_switch != 0)
+        global_num_changes = self._comm.allreduce(local_num_changes, op=MPI.SUM)
+        self._converged = global_num_changes == 0
 
     def get_num_resolutions(self) -> int:
         """
