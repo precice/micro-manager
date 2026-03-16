@@ -6,6 +6,7 @@ on each rank is done.
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
 import hashlib
+import shutil
 from copy import deepcopy
 import sys
 from typing import Dict
@@ -92,6 +93,22 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             nbytes = (
                 self._global_number_of_sims * self._global_number_of_sims * itemsize
             )
+            # Check if /dev/shm has enough space before attempting allocation.
+            # On some systems, /dev/shm is limited to 50% of RAM, which can cause
+            # a cryptic MPI internal error for large simulations.
+            _, _, shm_free = shutil.disk_usage("/dev/shm")
+            if nbytes > shm_free:
+                raise RuntimeError(
+                    "Not enough space in /dev/shm to allocate the similarity distance matrix "
+                    "for global adaptivity.\n"
+                    "  Required : {} B\n"
+                    "  Available: {} B\n"
+                    "On some systems /dev/shm is limited to 50% of RAM. "
+                    "Consider increasing /dev/shm size (e.g. `--shm-size` in Docker, or "
+                    "`tmpfs` remount), or use local adaptivity instead.".format(
+                        nbytes, shm_free
+                    )
+                )
         else:
             nbytes = 0
 
