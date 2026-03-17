@@ -12,13 +12,12 @@ Detailed documentation: https://precice.org/tooling-micro-manager-snapshot-confi
 import importlib
 import os
 import sys
-import time
 import subprocess
 import numpy as np
 
 from micro_manager.micro_manager import MicroManager
 from .dataset import ReadWriteHDF
-from micro_manager.micro_simulation import create_simulation_class
+from micro_manager.micro_simulation import create_simulation_class, load_backend_class
 from micro_manager.tools.logging_wrapper import Logger
 
 
@@ -60,8 +59,6 @@ class MicroManagerSnapshot(MicroManager):
 
         self._micro_dt = self._config.get_micro_dt()
 
-        self._is_micro_solve_time_required = self._config.write_micro_solve_time()
-
         # Path to the parameter file containing input parameters for micro simulations
         self._parameter_file = self._config.get_parameter_file_name()
 
@@ -87,16 +84,22 @@ class MicroManagerSnapshot(MicroManager):
         - Merge output in parallel run.
         """
 
+        micro_problem_cls = create_simulation_class(
+            self._logger,
+            self._micro_problem,
+            self._config.get_micro_file_name(),
+            1,
+            None,
+        )
+
         # Loop over all macro parameters
         for elems in range(self._local_number_of_sims):
             # initialize micro simulation
             if elems == 0:
-                self._micro_sims = create_simulation_class(self._micro_problem)(
-                    self._global_ids_of_local_sims[0]
-                )
+                self._micro_sims = micro_problem_cls(self._global_ids_of_local_sims[0])
             else:
                 if not self._initialize_once:
-                    self._micro_sims = create_simulation_class(self._micro_problem)(
+                    self._micro_sims = micro_problem_cls(
                         self._global_ids_of_local_sims[elems]
                     )
 
@@ -259,12 +262,7 @@ class MicroManagerSnapshot(MicroManager):
         for i in range(self._local_number_of_sims):
             self._global_ids_of_local_sims.append(sim_id)
             sim_id += 1
-        self._micro_problem = getattr(
-            importlib.import_module(
-                self._config.get_micro_file_name(), "MicroSimulation"
-            ),
-            "MicroSimulation",
-        )
+        self._micro_problem = load_backend_class(self._config.get_micro_file_name())
 
         self._micro_sims_have_output = False
         if hasattr(self._micro_problem, "output") and callable(
@@ -293,12 +291,7 @@ class MicroManagerSnapshot(MicroManager):
             simulations. The return type is None if the simulation has crashed.
         """
         try:
-            start_time = time.process_time()
             micro_sims_output = self._micro_sims.solve(micro_sims_input, self._micro_dt)
-            end_time = time.process_time()
-
-            if self._is_micro_solve_time_required:
-                micro_sims_output["solve_cpu_time"] = end_time - start_time
 
             return micro_sims_output
         # Handle simulation crash

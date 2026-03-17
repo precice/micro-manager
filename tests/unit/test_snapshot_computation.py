@@ -12,27 +12,36 @@ class MicroSimulation:
         self.very_important_value = 0
 
     def solve(self, macro_data, dt):
-        assert macro_data["macro-scalar-data"] == 1
-        assert macro_data["macro-vector-data"].tolist() == [0, 1, 2]
+        assert macro_data["Macro-Scalar-Data"] == 1
+        assert macro_data["Macro-Vector-Data"].tolist() == [0, 1, 2]
         return {
-            "micro-scalar-data": macro_data["macro-scalar-data"] + 1,
-            "micro-vector-data": macro_data["macro-vector-data"] + 1,
+            "Micro-Scalar-Data": macro_data["Macro-Scalar-Data"] + 1,
+            "Micro-Vector-Data": macro_data["Macro-Vector-Data"] + 1,
         }
+
+    def get_state(self):
+        return None
+
+    def set_state(self, state):
+        pass
+
+    def get_global_id(self):
+        pass
 
 
 class TestFunctionCalls(TestCase):
     def setUp(self):
-        self.fake_read_data_names = ["macro-scalar-data", "macro-vector-data"]
+        self.fake_read_data_names = ["Macro-Scalar-Data", "Macro-Vector-Data"]
         self.fake_read_data = {
-            "macro-scalar-data": 1,
-            "macro-vector-data": np.array([0, 1, 2]),
+            "Macro-Scalar-Data": 1,
+            "Macro-Vector-Data": np.array([0, 1, 2]),
         }
 
-        self.fake_write_data_names = ["micro-scalar-data", "micro-vector-data"]
+        self.fake_write_data_names = ["Micro-Scalar-Data", "Micro-Vector-Data"]
         self.fake_write_data = [
             {
-                "micro-scalar-data": 1,
-                "micro-vector-data": np.array([0, 1, 2]),
+                "Micro-Scalar-Data": 1,
+                "Micro-Vector-Data": np.array([0, 1, 2]),
             }
         ] * 4
 
@@ -85,14 +94,18 @@ class TestFunctionCalls(TestCase):
         snapshot_object._micro_problem = MicroSimulation
 
         snapshot_object._micro_sims = create_simulation_class(
-            snapshot_object._micro_problem
+            MagicMock(),
+            snapshot_object._micro_problem,
+            None,
+            1,
+            None,
         )(0)
 
         micro_sim_output = snapshot_object._solve_micro_simulation(self.fake_read_data)
-        self.assertEqual(micro_sim_output["micro-scalar-data"], 2)
+        self.assertEqual(micro_sim_output["Micro-Scalar-Data"], 2)
         self.assertListEqual(
-            micro_sim_output["micro-vector-data"].tolist(),
-            (self.fake_read_data["macro-vector-data"] + 1).tolist(),
+            micro_sim_output["Micro-Vector-Data"].tolist(),
+            (self.fake_read_data["Macro-Vector-Data"] + 1).tolist(),
         )
 
     def test_solve(self):

@@ -1,4 +1,4 @@
-name: Run macro-micro dummy
+name: Run Python and C++ dummy
 on:
   push:
     branches:
@@ -15,7 +15,7 @@ jobs:
     steps:
 
       - name: Checkout Repository
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           path: micro-manager
 

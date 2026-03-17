@@ -17,9 +17,18 @@ class MicroSimulation:
             raise Exception("Simulation experienced a crash")
 
         return {
-            "micro-vector-data": macro_data["macro-vector-data"],
-            "micro-scalar-data": macro_data["macro-scalar-data"],
+            "Micro-Vector-Data": macro_data["Macro-Vector-Data"],
+            "Micro-Scalar-Data": macro_data["Macro-Scalar-Data"],
         }
+
+    def get_state(self):
+        return None
+
+    def set_state(self, state):
+        pass
+
+    def get_global_id(self):
+        return self.sim_id
 
 
 class TestSimulationCrashHandling(TestCase):
@@ -33,7 +42,7 @@ class TestSimulationCrashHandling(TestCase):
         macro_data = []
         for i in [-2, -1, 1, 2]:
             macro_data.append(
-                {"macro-vector-data": np.array([i, i, i]), "macro-scalar-data": [i]}
+                {"Macro-Vector-Data": np.array([i, i, i]), "Macro-Scalar-Data": [i]}
             )
         expected_crash_vector_data = np.array([55 / 49, 55 / 49, 55 / 49])
         expected_crash_scalar_data = 55 / 49
@@ -56,19 +65,19 @@ class TestSimulationCrashHandling(TestCase):
 
         # Crashed simulation has interpolated value
         data_crashed = micro_sims_output[2]
-        self.assertEqual(data_crashed["micro-scalar-data"], expected_crash_scalar_data)
+        self.assertEqual(data_crashed["Micro-Scalar-Data"], expected_crash_scalar_data)
         self.assertListEqual(
-            data_crashed["micro-vector-data"].tolist(),
+            data_crashed["Micro-Vector-Data"].tolist(),
             expected_crash_vector_data.tolist(),
         )
         # Non-crashed simulations should remain constant
         data_normal = micro_sims_output[1]
         self.assertEqual(
-            data_normal["micro-scalar-data"], macro_data[1]["macro-scalar-data"]
+            data_normal["Micro-Scalar-Data"], macro_data[1]["Macro-Scalar-Data"]
         )
         self.assertListEqual(
-            data_normal["micro-vector-data"].tolist(),
-            macro_data[1]["macro-vector-data"].tolist(),
+            data_normal["Micro-Vector-Data"].tolist(),
+            macro_data[1]["Macro-Vector-Data"].tolist(),
         )
 
     def test_crash_handling_with_adaptivity(self):
@@ -81,7 +90,7 @@ class TestSimulationCrashHandling(TestCase):
         macro_data = []
         for i in [-2, -1, 1, 2, 10]:
             macro_data.append(
-                {"macro-vector-data": np.array([i, i, i]), "macro-scalar-data": [i]}
+                {"Macro-Vector-Data": np.array([i, i, i]), "Macro-Scalar-Data": [i]}
             )
         expected_crash_vector_data = np.array([55 / 49, 55 / 49, 55 / 49])
         expected_crash_scalar_data = 55 / 49
@@ -89,6 +98,7 @@ class TestSimulationCrashHandling(TestCase):
         manager = micro_manager.MicroManagerCoupling("micro-manager-config_crash.json")
         manager.initialize()
 
+        manager._global_ids_of_local_sims = [0, 1, 2, 3, 4]
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
         manager._local_number_of_sims = 5
         manager._micro_sims_active_steps = np.zeros(5, dtype=np.int32)
@@ -112,19 +122,19 @@ class TestSimulationCrashHandling(TestCase):
 
         # Crashed simulation has interpolated value
         data_crashed = micro_sims_output[2]
-        self.assertEqual(data_crashed["micro-scalar-data"], expected_crash_scalar_data)
+        self.assertEqual(data_crashed["Micro-Scalar-Data"], expected_crash_scalar_data)
         self.assertListEqual(
-            data_crashed["micro-vector-data"].tolist(),
+            data_crashed["Micro-Vector-Data"].tolist(),
             expected_crash_vector_data.tolist(),
         )
 
         # Inactive simulation that is associated with crashed simulation has same value
         data_associated = micro_sims_output[4]
         self.assertEqual(
-            data_associated["micro-scalar-data"], expected_crash_scalar_data
+            data_associated["Micro-Scalar-Data"], expected_crash_scalar_data
         )
         self.assertListEqual(
-            data_associated["micro-vector-data"].tolist(),
+            data_associated["Micro-Vector-Data"].tolist(),
             expected_crash_vector_data.tolist(),
         )
 

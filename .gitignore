@@ -6,6 +6,7 @@ __pycache__
 build
 micro_manager_precice.egg-info/
 micro_manager.egg-info/
+*.so
 
 # Packaging artifacts
 dist
@@ -15,3 +16,9 @@ dist
 
 # Tests output
 *.log
+
+# preCICE files
+precice-profiling/
+precice-run/
+*events.json
+.coverage*

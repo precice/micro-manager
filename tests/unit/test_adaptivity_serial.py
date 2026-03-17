@@ -25,6 +25,14 @@ class MicroSimulation:
     def get_state(self):
         pass
 
+    def solve(self, micro_input, dt):
+        pass
+
+
+class ModelManager:
+    def get_instance(self, gid, micro_problem_cls):
+        return micro_problem_cls(gid)
+
 
 class TestLocalAdaptivity(TestCase):
     def setUp(self):
@@ -91,21 +99,26 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims
+            configurator,
+            nsims=self._number_of_sims,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
+            base_logger=MagicMock(),
+            rank=0,
         )
         adaptivity_controller._hist_param = 0.5
         adaptivity_controller._adaptivity_data_names = [
-            "micro-scalar-data",
-            "micro-vector-data",
-            "macro-scalar-data",
-            "macro-vector-data",
+            "Micro-Scalar-Data",
+            "Micro-Vector-Data",
+            "Macro-Scalar-Data",
+            "Macro-Vector-Data",
         ]
 
         adaptivity_data = dict()
-        adaptivity_data["micro-scalar-data"] = self._micro_scalar_data
-        adaptivity_data["micro-vector-data"] = self._micro_vector_data
-        adaptivity_data["macro-scalar-data"] = self._macro_scalar_data
-        adaptivity_data["macro-vector-data"] = self._macro_vector_data
+        adaptivity_data["Micro-Scalar-Data"] = self._micro_scalar_data
+        adaptivity_data["Micro-Vector-Data"] = self._micro_vector_data
+        adaptivity_data["Macro-Scalar-Data"] = self._macro_scalar_data
+        adaptivity_data["Macro-Vector-Data"] = self._macro_vector_data
 
         adaptivity_controller._similarity_dists = self._similarity_dists
 
@@ -118,9 +131,6 @@ class TestLocalAdaptivity(TestCase):
             + self._dt * self._data_diff
         )
 
-        print("Expected similarity distances:\n", expected_similarity_dists)
-        print("Actual similarity distances:\n", adaptivity_controller._similarity_dists)
-
         self.assertTrue(
             np.array_equal(
                 expected_similarity_dists, adaptivity_controller._similarity_dists
@@ -129,7 +139,7 @@ class TestLocalAdaptivity(TestCase):
 
     def test_update_active_sims(self):
         """
-        Test functionality of updating active simulations in class AdaptivityCalculator.
+        Test functionality of updating active simulations in class LocalAdaptivityCalculator.
         """
         configurator = MagicMock()
         configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
@@ -138,14 +148,20 @@ class TestLocalAdaptivity(TestCase):
             return_value="test_adaptivity_serial"
         )
 
-        adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims
+        adaptivity_controller = LocalAdaptivityCalculator(
+            configurator,
+            self._number_of_sims,
+            base_logger=MagicMock(),
+            rank=0,
+            comm=MagicMock(),
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
-            "macro-scalar-data",
-            "macro-vector-data",
+            "Macro-Scalar-Data",
+            "Macro-Vector-Data",
         ]
 
         adaptivity_controller._similarity_dists = self._similarity_dists
@@ -171,7 +187,12 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims
+            configurator,
+            nsims=self._number_of_sims,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
 
         fake_data = np.array([[1], [2], [3]])
@@ -253,6 +274,65 @@ class TestLocalAdaptivity(TestCase):
             )
         )
 
+    def test_adaptivity_norms_with_zeros_no_warning(self):
+        """
+        Test that L1rel/L2rel must not raise division-by-zero
+        warning when data contains zeros.
+        """
+        import warnings
+
+        configurator = MagicMock()
+        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L2rel")
+        configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_serial"
+        )
+        adaptivity_l2rel = AdaptivityCalculator(
+            configurator,
+            nsims=3,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
+        )
+
+        configurator_l1 = MagicMock()
+        configurator_l1.get_adaptivity_similarity_measure = MagicMock(
+            return_value="L1rel"
+        )
+        configurator_l1.get_output_dir = MagicMock(return_value="output_dir")
+        configurator_l1.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_serial"
+        )
+        adaptivity_l1rel = AdaptivityCalculator(
+            configurator_l1,
+            nsims=3,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
+        )
+
+        # Data with zeros - previously triggered RuntimeWarning: invalid value in true_divide
+        data_with_zeros = np.array([[0.0], [0.0], [1.0]])
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("error", RuntimeWarning)
+            result_l2rel = adaptivity_l2rel._l2rel(data_with_zeros)
+        self.assertEqual(
+            len(w), 0, "L2rel must not raise RuntimeWarning with zero data"
+        )
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("error", RuntimeWarning)
+            result_l1rel = adaptivity_l1rel._l1rel(data_with_zeros)
+        self.assertEqual(
+            len(w), 0, "L1rel must not raise RuntimeWarning with zero data"
+        )
+
+        # When both are 0, relative diff should be 0 (since numerator is 0)
+        self.assertEqual(result_l2rel[0, 1], 0.0)
+        self.assertEqual(result_l1rel[0, 1], 0.0)
+
     def test_associate_active_to_inactive(self):
         """
         Test functionality to associate inactive sims to active ones, in the class AdaptivityCalculator.
@@ -265,13 +345,18 @@ class TestLocalAdaptivity(TestCase):
         )
 
         adaptivity_controller = AdaptivityCalculator(
-            configurator, rank=0, nsims=self._number_of_sims
+            configurator,
+            nsims=self._number_of_sims,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
-            "macro-scalar-data",
-            "macro-vector-data",
+            "Macro-Scalar-Data",
+            "Macro-Vector-Data",
         ]
 
         adaptivity_controller._similarity_dists = self._similarity_dists
@@ -305,40 +390,24 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
             self._number_of_sims,
-            MagicMock(),
-            0,
-            comm_world=MPI.COMM_WORLD,
+            base_logger=MagicMock(),
+            rank=0,
+            comm=MPI.COMM_WORLD,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
         adaptivity_controller._adaptivity_data_names = [
-            "macro-scalar-data",
-            "macro-vector-data",
+            "Macro-Scalar-Data",
+            "Macro-Vector-Data",
         ]
 
         # Third and fifth micro sim are active, rest are deactivate
         expected_is_sim_active = np.array([True, False, False, True, False])
         expected_sim_is_associated_to = np.array([-2, 0, 0, -2, 3])
 
-        similarity_dists = np.zeros((self._number_of_sims, self._number_of_sims))
-        for i in range(self._number_of_sims):
-            for j in range(self._number_of_sims):
-                similarity_dist = abs(
-                    self._micro_scalar_data[i] - self._micro_scalar_data[j]
-                )
-                similarity_dist += abs(
-                    self._macro_scalar_data[i] - self._macro_scalar_data[j]
-                )
-                for d in range(self._dim):
-                    similarity_dist += abs(
-                        self._micro_vector_data[i, d] - self._micro_vector_data[j, d]
-                    )
-                    similarity_dist += abs(
-                        self._macro_vector_data[i, d] - self._macro_vector_data[j, d]
-                    )
-                similarity_dists[i, j] = self._dt * similarity_dist
-
-        adaptivity_controller._similarity_dists = similarity_dists
+        adaptivity_controller._similarity_dists = self._similarity_dists
         adaptivity_controller._is_sim_active = np.array(
             [True, False, False, False, False]
         )

@@ -52,13 +52,19 @@ class Participant:
         return np.array([0, 1, 2, 3]), np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
 
     def write_data(self, mesh_name, data_name, vertex_ids, data):
-        if data_name == "micro-scalar-data":
+        if data_name == "Micro-Scalar-Data":
             self.read_write_scalar_buffer = data
-        elif data_name == "micro-vector-data":
+        elif data_name == "Micro-Vector-Data":
             self.read_write_vector_buffer = data
 
     def read_data(self, mesh_name, data_name, vertex_ids, relative_read_time):
-        if data_name == "macro-scalar-data":
+        if data_name == "Macro-Scalar-Data":
             return self.read_write_scalar_buffer
-        elif data_name == "macro-vector-data":
+        elif data_name == "Macro-Vector-Data":
             return self.read_write_vector_buffer
+
+    def start_profiling_section(self, section_name):
+        pass
+
+    def stop_last_profiling_section(self):
+        pass

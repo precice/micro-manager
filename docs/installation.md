@@ -2,7 +2,7 @@
 title: Get the Micro Manager
 permalink: tooling-micro-manager-installation.html
 keywords: tooling, macro-micro, two-scale
-summary: Install the Micro Manager by running `pip install --user micro-manager-precice`.
+summary: Install the Micro Manager by running `pip install micro-manager-precice`.
 ---
 
 ## Get the latest Micro Manager release
@@ -15,7 +15,7 @@ The Micro Manager package on PyPI is [micro-manager-precice](https://pypi.org/pr
 pip install micro-manager-precice
 ```
 
-To enable [crash handling by interpolation](tooling-micro-manager-running.html/#what-happens-when-a-micro-simulation-crashes), the optional dependency sklearn is required. To install with sklearn, run
+To enable [crash handling by interpolation](tooling-micro-manager-running.html#what-happens-when-a-micro-simulation-crashes), the optional dependency sklearn is required. To install with sklearn, run
 
 ```bash
 pip install micro-manager-precice[sklearn]

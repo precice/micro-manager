@@ -1,18 +1,28 @@
 """
 Functionality for adaptive initialization and control of micro simulations
 """
-import sys
+
 from math import exp
 from typing import Callable
-from warnings import warn
 import importlib
 from micro_manager.tools.logging_wrapper import Logger
+from micro_manager.config import Config
+from micro_manager.micro_simulation import MicroSimulationClass
+from micro_manager.model_manager import ModelManager
 
 import numpy as np
 
 
 class AdaptivityCalculator:
-    def __init__(self, configurator, rank, nsims) -> None:
+    def __init__(
+        self,
+        configurator: Config,
+        nsims: int,
+        micro_problem_cls: MicroSimulationClass,
+        model_manager: ModelManager,
+        base_logger: Logger,
+        rank: int,
+    ) -> None:
         """
         Class constructor.
 
@@ -20,10 +30,16 @@ class AdaptivityCalculator:
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
-        rank : int
-            Rank of the MPI communicator.
         nsims : int
             Number of micro simulations.
+        micro_problem_cls : callable
+            Class of micro problem.
+        model_manager : object
+            Handles instantiation of micro simulation.
+        base_logger : object of class Logger
+            Logger object to log messages.
+        rank : int
+            Rank of the MPI communicator.
         """
         self._refine_const = configurator.get_adaptivity_refining_const()
         self._coarse_const = configurator.get_adaptivity_coarsening_const()
@@ -32,17 +48,14 @@ class AdaptivityCalculator:
         self._adaptivity_type = configurator.get_adaptivity_type()
         self._adaptivity_output_type = configurator.get_adaptivity_output_type()
 
-        self._micro_problem = getattr(
-            importlib.import_module(
-                configurator.get_micro_file_name(), "MicroSimulation"
-            ),
-            "MicroSimulation",
-        )
+        self._micro_problem_cls = micro_problem_cls
+        self._model_manager = model_manager
 
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
 
         self._rank = rank
+        self._base_logger = base_logger
 
         self._max_similarity_dist = 0.0
 
@@ -81,7 +94,7 @@ class AdaptivityCalculator:
             )
 
             self._global_metrics_logger.log_info(
-                "n,avg active,avg inactive,max active,max inactive"
+                "n|n active|n inactive|avg active|avg inactive|max active|rank of max active|max inactive|rank of max inactive"
             )
 
         if (
@@ -94,6 +107,8 @@ class AdaptivityCalculator:
                 rank,
                 csv_logger=True,
             )
+
+            self._metrics_logger.log_info("n|n active|n inactive|assoc ranks")
 
     def _update_similarity_dists(self, dt: float, data: dict) -> None:
         """
@@ -119,28 +134,6 @@ class AdaptivityCalculator:
 
             self._similarity_dists += dt * self._similarity_measure(data_vals)
 
-    def _update_active_sims(self) -> None:
-        """
-        Update set of active micro simulations. Active micro simulations are compared to each other
-        and if found similar, one of them is deactivated.
-        """
-        if self._max_similarity_dist == 0.0:
-            warn(
-                "All similarity distances are zero, probably because all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
-            )
-            self._coarse_tol = sys.float_info.min
-        else:
-            self._coarse_tol = (
-                self._coarse_const * self._refine_const * self._max_similarity_dist
-            )
-
-        # Update the set of active micro sims
-        for i in range(self._is_sim_active.size):
-            if self._is_sim_active[i]:  # if sim is active
-                if self._check_for_deactivation(i, self._is_sim_active):
-                    self._is_sim_active[i] = False
-                    self._just_deactivated.append(i)
-
     def _associate_inactive_to_active(self) -> None:
         """
         Associate inactive micro simulations to most similar active micro simulation.
@@ -164,9 +157,7 @@ class AdaptivityCalculator:
 
             self._sim_is_associated_to[inactive_id] = associated_active_id
 
-    def _check_for_activation(
-        self, inactive_id: int, is_sim_active: np.ndarray
-    ) -> bool:
+    def _check_for_activation(self, inactive_id: int, active_ids: np.ndarray) -> bool:
         """
         Check if an inactive simulation needs to be activated.
 
@@ -174,24 +165,19 @@ class AdaptivityCalculator:
         ----------
         inactive_id : int
             ID of inactive simulation which is checked for activation.
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation.
-
+        active_ids : numpy array
+            1D array having IDs of active micro simulations.
         Return
         ------
         tag : bool
             True if the inactive simulation needs to be activated, False otherwise.
         """
-        active_sim_ids = np.where(is_sim_active)[0]
-
-        dists = self._similarity_dists[inactive_id, active_sim_ids]
+        dists = self._similarity_dists[inactive_id, active_ids]
 
         # If inactive sim is not similar to any active sim, activate it
         return min(dists) > self._ref_tol
 
-    def _check_for_deactivation(
-        self, active_id: int, is_sim_active: np.ndarray
-    ) -> bool:
+    def _check_for_deactivation(self, active_id: int, active_ids: list) -> bool:
         """
         Check if an active simulation needs to be deactivated.
 
@@ -199,17 +185,15 @@ class AdaptivityCalculator:
         ----------
         active_id : int
             ID of active simulation which is checked for deactivation.
-        is_sim_active : numpy array
-            1D array having state (active or inactive) of each micro simulation.
+        active_ids : list
+            List having IDs of active micro simulations.
 
         Return
         ------
         tag : bool
             True if the active simulation needs to be deactivated, False otherwise.
         """
-        active_sim_ids = np.where(is_sim_active)[0]
-
-        for active_id_2 in active_sim_ids:
+        for active_id_2 in active_ids:
             if active_id != active_id_2:  # don't compare active sim to itself
                 # If active sim is similar to another active sim, deactivate it
                 if self._similarity_dists[active_id, active_id_2] < self._coarse_tol:
@@ -295,14 +279,12 @@ class AdaptivityCalculator:
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
         # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
-        relative = np.nan_to_num(
-            (
-                pointwise_diff
-                / np.maximum(
-                    np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
-                )
-            )
+        denom = np.maximum(
+            np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
         )
+        # Add small epsilon to avoid division by zero (invalid value warning) when both are 0
+        eps = np.finfo(np.float64).eps
+        relative = pointwise_diff / np.maximum(denom, eps)
         return np.linalg.norm(relative, ord=1, axis=-1)
 
     def _l2rel(self, data: np.ndarray) -> np.ndarray:
@@ -323,12 +305,10 @@ class AdaptivityCalculator:
         pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
         # divide by data to get relative difference
         # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
-        relative = np.nan_to_num(
-            (
-                pointwise_diff
-                / np.maximum(
-                    np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
-                )
-            )
+        denom = np.maximum(
+            np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
         )
+        # Add small epsilon to avoid division by zero (invalid value warning) when both are 0
+        eps = np.finfo(np.float64).eps
+        relative = pointwise_diff / np.maximum(denom, eps)
         return np.linalg.norm(relative, ord=2, axis=-1)

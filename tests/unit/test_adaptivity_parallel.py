@@ -4,6 +4,8 @@ from unittest.mock import MagicMock
 import numpy as np
 from mpi4py import MPI
 
+from micro_manager.tools.p2p import get_ranks_of_sims
+from micro_manager.micro_simulation import create_simulation_class
 from micro_manager.adaptivity.global_adaptivity import GlobalAdaptivityCalculator
 
 
@@ -21,12 +23,20 @@ class MicroSimulation:
     def get_state(self):
         return self._state.copy()
 
+    def solve(self, micro_input, dt):
+        pass
+
+
+class ModelManager:
+    def get_instance(self, gid, micro_problem_cls):
+        return micro_problem_cls(gid)
+
 
 class TestGlobalAdaptivity(TestCase):
     def setUp(self):
-        comm_world = MPI.COMM_WORLD
-        self._rank = comm_world.Get_rank()
-        self._size = comm_world.Get_size()
+        self._comm = MPI.COMM_WORLD
+        self._rank = self._comm.Get_rank()
+        self._size = self._comm.Get_size()
 
         self._configurator = MagicMock()
         self._configurator.get_output_dir = MagicMock(return_value="output_dir")
@@ -51,13 +61,24 @@ class TestGlobalAdaptivity(TestCase):
             return_value="L1"
         )
 
+        sim_cls = create_simulation_class(
+            MagicMock(),
+            MicroSimulation,
+            __file__,
+            1,
+            None,
+        )
+
         adaptivity_controller = GlobalAdaptivityCalculator(
             self._configurator,
             5,
             global_ids,
             participant=MagicMock(),
+            base_logger=MagicMock(),
             rank=self._rank,
-            comm_world=MPI.COMM_WORLD,
+            comm=self._comm,
+            micro_problem_cls=sim_cls,
+            model_manager=ModelManager(),
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -76,7 +97,7 @@ class TestGlobalAdaptivity(TestCase):
 
         dummy_micro_sims = []
         for i in global_ids:
-            dummy_micro_sims.append(MicroSimulation(i))
+            dummy_micro_sims.append(sim_cls(i))
 
         adaptivity_controller._update_inactive_sims(dummy_micro_sims)
 
@@ -108,10 +129,13 @@ class TestGlobalAdaptivity(TestCase):
             }
         elif self._rank == 1:
             global_ids = [3, 4]
-            data_for_adaptivity = {"data1": [1.0, 43.9], "data2": [13.0, 1355.57]}
+            data_for_adaptivity = {
+                "data1": [1.0, 43.9],
+                "data2": [13.0, 1355.57],
+            }
 
-        expected_is_sim_active = np.array([False, False, False, True, True])
-        expected_sim_is_associated_to = [4, 3, 3, -2, -2]
+        expected_is_sim_active = np.array([False, False, True, False, True])
+        expected_sim_is_associated_to = [4, 2, -2, 2, -2]
 
         self._configurator.get_adaptivity_hist_param = MagicMock(return_value=0.1)
         self._configurator.get_adaptivity_refining_const = MagicMock(return_value=0.5)
@@ -120,34 +144,31 @@ class TestGlobalAdaptivity(TestCase):
             return_value="L2rel"
         )
 
+        sim_cls = create_simulation_class(
+            MagicMock(),
+            MicroSimulation,
+            __file__,
+            1,
+            None,
+        )
+
         adaptivity_controller = GlobalAdaptivityCalculator(
             self._configurator,
             5,
             global_ids,
             participant=MagicMock(),
+            base_logger=MagicMock(),
             rank=self._rank,
-            comm_world=MPI.COMM_WORLD,
+            comm=self._comm,
+            micro_problem_cls=sim_cls,
+            model_manager=ModelManager(),
         )
 
         adaptivity_controller._adaptivity_data_names = ["data1", "data2"]
 
-        class MicroSimulation:
-            def __init__(self, global_id) -> None:
-                self._global_id = global_id
-                self._state = [global_id] * 3
-
-            def get_global_id(self):
-                return self._global_id
-
-            def set_state(self, state):
-                self._state = state
-
-            def get_state(self):
-                return self._state.copy()
-
         dummy_micro_sims = []
         for i in global_ids:
-            dummy_micro_sims.append(MicroSimulation(i))
+            dummy_micro_sims.append(sim_cls(i))
 
         adaptivity_controller.compute_adaptivity(
             0.1,
@@ -187,13 +208,24 @@ class TestGlobalAdaptivity(TestCase):
             return_value="L1"
         )
 
+        sim_cls = create_simulation_class(
+            MagicMock(),
+            MicroSimulation,
+            __file__,
+            1,
+            None,
+        )
+
         adaptivity_controller = GlobalAdaptivityCalculator(
             self._configurator,
             5,
             global_ids,
             participant=MagicMock(),
+            base_logger=MagicMock(),
             rank=self._rank,
-            comm_world=MPI.COMM_WORLD,
+            comm=self._comm,
+            micro_problem_cls=sim_cls,
+            model_manager=ModelManager(),
         )
 
         adaptivity_controller._is_sim_active = np.array(
@@ -224,15 +256,26 @@ class TestGlobalAdaptivity(TestCase):
             global_ids = [3, 4]
             expected_ranks_of_sims = [0, 0, 0, 1, 1]
 
+        sim_cls = create_simulation_class(
+            MagicMock(),
+            MicroSimulation,
+            __file__,
+            1,
+            None,
+        )
+
         adaptivity_controller = GlobalAdaptivityCalculator(
             self._configurator,
             5,
             global_ids,
             participant=MagicMock(),
+            base_logger=MagicMock(),
             rank=self._rank,
-            comm_world=MPI.COMM_WORLD,
+            comm=self._comm,
+            micro_problem_cls=sim_cls,
+            model_manager=ModelManager(),
         )
 
-        actual_ranks_of_sims = adaptivity_controller._get_ranks_of_sims()
+        actual_ranks_of_sims = get_ranks_of_sims(global_ids, self._rank, self._comm, 5)
 
         self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
