@@ -11,6 +11,7 @@ import importlib as ipl
 from .tasking.task import (
     ConstructTask,
     ConstructLateTask,
+    DeleteTask,
     InitializeTask,
     OutputTask,
     SolveTask,
@@ -173,6 +174,15 @@ class MicroSimulationInterface(ABC):
         """
         return type(self).output is not MicroSimulationInterface.output
 
+    def destroy(self) -> None:
+        """
+        Relinquishes allocated resources. This will result in an object with invalid state.
+        Do not use after this. Object should be scheduled for deletion.
+        Calling destroy gives a controlled mechanism to release allocation,
+        contrary to GC.
+        """
+        pass
+
 
 class MicroSimulationLocal(MicroSimulationInterface):
     def __init__(self, gid, late_init, sim_cls):
@@ -208,6 +218,9 @@ class MicroSimulationLocal(MicroSimulationInterface):
 
     def requires_output(self) -> bool:
         return self._instance.requires_output()
+
+    def destroy(self):
+        self._instance = None
 
 
 class MicroSimulationRemote(MicroSimulationInterface):
@@ -298,6 +311,14 @@ class MicroSimulationRemote(MicroSimulationInterface):
     def requires_output(self) -> bool:
         return self._sim_cls.output is not MicroSimulationInterface.output
 
+    def destroy(self):
+        for worker_id in range(self._num_ranks):
+            task = DeleteTask.send_args(self._gid)
+            self._conn.send(worker_id, task)
+
+        for worker_id in range(self._num_ranks):
+            self._conn.recv(worker_id)
+
 
 class MicroSimulationWrapper(MicroSimulationInterface):
     """
@@ -344,6 +365,9 @@ class MicroSimulationWrapper(MicroSimulationInterface):
 
     def requires_output(self) -> bool:
         return self._impl.requires_output()
+
+    def destroy(self):
+        return self._impl.destroy()
 
     def __getattr__(self, name):
         return getattr(self._impl, name)
@@ -575,19 +599,40 @@ def load_backend_class(path_to_micro_file: str) -> type:
     type
         A class inheriting from MicroSimulationInterface.
     """
+
+    def try_load(name):
+        try:
+            return getattr(ipl.import_module(path_to_micro_file, name), name)
+        except ImportError as ie:
+            return None
+        except AttributeError as ae:
+            return None
+
+    def check_cls(cls):
+        try:
+            inherits = issubclass(cls, MicroSimulationInterface)
+        except TypeError:
+            # pybind11 extension types may not support issubclass — wrap them
+            inherits = False
+
+        if not inherits:
+            cls = _wrap_non_interface_class(cls, path_to_micro_file)
+        return cls
+
     CLS_NAME = "MicroSimulation"
-    cls = getattr(ipl.import_module(path_to_micro_file, CLS_NAME), CLS_NAME)
+    # attempt to load with base name
+    result = try_load(CLS_NAME)
+    if result is not None:
+        return check_cls(result)
 
-    try:
-        inherits = issubclass(cls, MicroSimulationInterface)
-    except TypeError:
-        # pybind11 extension types may not support issubclass — wrap them
-        inherits = False
+    # attempt to load with appended indices
+    for i in range(10):
+        result = try_load(f"{CLS_NAME}{i}")
+        if result is not None:
+            return check_cls(result)
 
-    if not inherits:
-        cls = _wrap_non_interface_class(cls, path_to_micro_file)
-
-    return cls
+    # failed to load any class
+    raise RuntimeError(f"Could not load micro simulation from {path_to_micro_file}")
 
 
 def create_simulation_class(

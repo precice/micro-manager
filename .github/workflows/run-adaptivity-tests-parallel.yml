@@ -59,14 +59,20 @@ jobs:
         with:
           path: micro-manager
 
-      - name: Install sudo for MPI
-        working-directory: micro-manager
-        run: |
-          apt-get -qq update
-          apt-get -qq install sudo
+      - name: Load Cache OpenMPI 5
+        id: ompi-cache-load
+        uses: actions/cache/restore@v5
+        with:
+          path: ~/openmpi
+          key: openmpi-v5-${{ runner.os }}-build
+          # If this fails, cache gets built in run-unit-tests
 
-      - name: Use mpi4py
-        uses: mpi4py/setup-mpi@v1
+      - name: Configure OpenMPI
+        run: |
+          cp -r ~/openmpi/* /usr/local/
+          ldconfig
+          which mpiexec
+          mpiexec --version
 
       - name: Install Dependencies
         working-directory: micro-manager
@@ -94,12 +100,12 @@ jobs:
         run: |
           . .venv/bin/activate
           cd tests/unit
-          mpiexec -n 2 --allow-run-as-root python3 -m unittest test_global_adaptivity_lb.py
+          mpiexec -n 2 --allow-run-as-root python3 -m unittest test_load_balancing.py
 
-      - name: Run load balancing tests with 4 ranks
+      - name: Run load balancing unit tests with 4 ranks
         timeout-minutes: 3
         working-directory: micro-manager
         run: |
           . .venv/bin/activate
           cd tests/unit
-          mpiexec -n 4 --allow-run-as-root --oversubscribe python3 -m unittest test_global_adaptivity_lb.py
+          mpiexec -n 4 --oversubscribe --allow-run-as-root python3 -m unittest test_load_balancing.py
