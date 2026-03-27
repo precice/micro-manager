@@ -646,6 +646,7 @@ class MicroManagerCoupling(MicroManager):
                         "There are no active simulations on this rank."
                     )
                     micro_sims_to_init = []
+                    are_there_sims_to_init = False
                 else:
                     for i in active_sim_lids:
                         self._micro_sims[i] = micro_problem_cls(
@@ -656,12 +657,13 @@ class MicroManagerCoupling(MicroManager):
                     micro_sims_to_init = (
                         active_sim_lids  # Only active simulations will be initialized
                     )
+                    are_there_sims_to_init = True
 
         # True if the initialize() method of the micro simulation requires initial data
         sim_requires_init_data = False
 
         if (
-            micro_sims_to_init
+            are_there_sims_to_init
         ):  # Only check for initialize method if there are simulations to initialize
             # Check if provided micro simulation has an initialize() method
             if hasattr(micro_problem_cls, "initialize") and callable(
