@@ -612,6 +612,8 @@ class MicroManagerCoupling(MicroManager):
 
         self._micro_sims_init = False  # DECLARATION
 
+        are_there_sims_to_init = False
+
         # Read initial data from preCICE, if it is available
         initial_data = self._read_data_from_precice(dt=0)
 
