@@ -8,8 +8,6 @@
     <img src="https://github.com/precice/micro-manager/actions/workflows/release.yml/badge.svg" alt="Upload Python Package">
 </a>
 
-**This branch is only meant for using the Micro Manager on SuperMUC-NG Phase 1.**
-
 A tool to create and manage a large number of (micro) simulations and couple them to a (macro) simulation using the coupling library [preCICE](https://precice.org/).
 
 The main documentation is rendered on the [preCICE website](https://precice.org/tooling-micro-manager-overview.html).
