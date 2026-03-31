@@ -33,6 +33,7 @@ from .domain_decomposition import DomainDecomposer
 from .tasking.connection import spawn_local_workers
 from .micro_simulation import create_simulation_class, load_backend_class
 from .tools.logging_wrapper import Logger
+from .tools.vtu_export import write_vtu, write_pvtu
 from .load_balancing import create_load_balancer
 
 try:
@@ -72,6 +73,48 @@ class MicroManagerCoupling(MicroManager):
             subprocess.run(["mkdir", "-p", self._output_dir])  # Create output directory
         else:
             self._output_dir = os.path.abspath(os.getcwd()) + "/"
+
+        self._export_vtu = False
+        self._export_vtu_dir = "output_vtu"
+        self._export_vtu_n = 1
+
+        self._is_load_balancing = (
+            self._config.turn_on_load_balancing() and self._is_parallel
+        )
+
+        precice_config_file = self._config.get_precice_config_file_name()
+
+        import xml.etree.ElementTree as ET
+        try:
+            tree = ET.parse(precice_config_file)
+            root = tree.getroot()
+            tag_found = False
+            for participant in root.findall('participant'):
+                if participant.get('name') == 'Micro-Manager':
+                    for child in list(participant):
+                        if child.tag.endswith('export:vtu'):
+                            self._export_vtu = True
+                            if child.get('directory'):
+                                self._export_vtu_dir = child.get('directory')
+                            if child.get('every-n-time-windows'):
+                                self._export_vtu_n = int(child.get('every-n-time-windows'))
+                            participant.remove(child)
+                            tag_found = True
+            
+            if tag_found and self._is_load_balancing:
+                modified_xml = precice_config_file + f".lb-modified-rank{self._rank}.xml"
+                tree.write(modified_xml, xml_declaration=True, encoding="UTF-8")
+                precice_config_file = modified_xml
+                self._logger.log_info_rank_zero("Intercepted preCICE export:vtu for custom load-balancing aware VTU export.")
+            elif tag_found and not self._is_load_balancing:
+                self._export_vtu = False
+        except Exception as e:
+            self._logger.log_warning_rank_zero(f"Failed to parse precice config for VTU interception: {e}")
+
+        if self._export_vtu:
+            if not os.path.isabs(self._export_vtu_dir):
+                self._export_vtu_dir = os.path.join(self._output_dir, self._export_vtu_dir)
+            os.makedirs(self._export_vtu_dir, exist_ok=True)
 
         # Data names of data to output to the snapshot database
         self._write_data_names = self._config.get_write_data_names()
@@ -138,7 +181,7 @@ class MicroManagerCoupling(MicroManager):
         # Define the preCICE Participant
         self._participant = precice.Participant(
             "Micro-Manager",
-            self._config.get_precice_config_file_name(),
+            precice_config_file,
             self._rank,
             self._size,
         )
@@ -153,9 +196,6 @@ class MicroManagerCoupling(MicroManager):
         if self._is_model_adaptivity_on:
             self.state_loader = lambda sim: sim.attachments
             self.state_setter = lambda sim, state: sim.attachments.update(state)
-        self._is_load_balancing = (
-            self._config.turn_on_load_balancing() and self._is_parallel
-        )
         self._load_balancing_n = self._config.get_load_balancing_n()
         self.load_balancing = None
 
@@ -335,6 +375,9 @@ class MicroManagerCoupling(MicroManager):
                             if sim:
                                 sim.output()
 
+                if self._export_vtu and (self._n % self._export_vtu_n == 0):
+                    self._export_vtu_data(micro_sims_input, micro_sims_output)
+
                 if (
                     self._is_adaptivity_on
                     and self._adaptivity_output_type
@@ -419,6 +462,70 @@ class MicroManagerCoupling(MicroManager):
         if self._conn is not None:
             self._conn.close()
         self._participant.finalize()
+
+    def _export_vtu_data(self, micro_sims_input: list, micro_sims_output: list) -> None:
+        """
+        Exports the current micro simulation data locally owned by this rank to VTU files.
+        """
+        data_local = {}
+        coords_local = np.empty((0, len(self._macro_bounds) // 2))
+
+        if not self._is_rank_empty:
+            coords_local = self._mesh_vertex_coords[self._global_ids_of_local_sims]
+            
+            all_fields = list(self._read_data_names) + list(self._write_data_names)
+            all_fields = list(dict.fromkeys(all_fields))
+
+            for field in all_fields:
+                field_data = []
+                for i in range(self._local_number_of_sims):
+                    if micro_sims_input and i < len(micro_sims_input) and field in micro_sims_input[i]:
+                        field_data.append(micro_sims_input[i][field])
+                    elif micro_sims_output and i < len(micro_sims_output) and field in micro_sims_output[i]:
+                        field_data.append(micro_sims_output[i][field])
+                    else:
+                        field_data.append(0.0)
+
+                if len(field_data) > 0:
+                    val = np.asarray(field_data[0])
+                    shape = val.shape
+                    arr = np.zeros((self._local_number_of_sims,) + shape, dtype=np.float64)
+                    for i, v in enumerate(field_data):
+                        arr[i] = v
+                    data_local[field] = arr
+
+        filename = os.path.join(
+            self._export_vtu_dir,
+            f"Micro-Manager_Macro-Mesh_{self._n}_rank{self._rank}.vtu"
+        )
+        write_vtu(filename, coords_local, data_local)
+
+        if self._is_parallel:
+            pvtu_filename = os.path.join(
+                self._export_vtu_dir,
+                f"Micro-Manager_Macro-Mesh_{self._n}.pvtu"
+            )
+            local_keys = {}
+            for k, v in data_local.items():
+                val_np = np.asarray(v)
+                comp = 1 if val_np.ndim == 1 else val_np.shape[1]
+                if comp == 2:
+                    comp = 3
+                local_keys[k] = comp
+
+            all_keys = self._comm.gather(local_keys, root=0)
+
+            if self._rank == 0:
+                global_keys = {}
+                for r_keys in all_keys:
+                    if r_keys:
+                        global_keys.update(r_keys)
+
+                source_files = [
+                    f"Micro-Manager_Macro-Mesh_{self._n}_rank{r}.vtu"
+                    for r in range(self._size)
+                ]
+                write_pvtu(pvtu_filename, source_files, global_keys)
 
     def initialize(self) -> None:
         """
