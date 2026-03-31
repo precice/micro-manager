@@ -645,6 +645,8 @@ class MicroManagerCoupling(MicroManager):
 
         self._micro_sims_init = False  # DECLARATION
 
+        are_there_sims_to_init = False
+
         # Read initial data from preCICE, if it is available
         initial_data = self._read_data_from_precice(dt=0)
 
@@ -655,6 +657,11 @@ class MicroManagerCoupling(MicroManager):
 
         if not initial_data:
             is_initial_data_available = False
+
+            if self._lazy_init:
+                raise Exception(
+                    "Initial macro data is required for lazy initialization."
+                )
         else:
             is_initial_data_available = True
             # For lazy initialization, compute adaptivity with the initial macro data
@@ -673,12 +680,19 @@ class MicroManagerCoupling(MicroManager):
                     self._logger.log_info(
                         "There are no active simulations on this rank."
                     )
-                    return
+                    micro_sims_to_init = []
+                    are_there_sims_to_init = False
+                else:
+                    for i in active_sim_lids:
+                        self._micro_sims[i] = micro_problem_cls(
+                            self._global_ids_of_local_sims[i]
+                        )
 
                 for i in active_sim_lids:
                     self._micro_sims[i] = self._model_manager.get_instance(
                         self._global_ids_of_local_sims[i], micro_problem_cls
                     )
+                    are_there_sims_to_init = True
 
                 first_id = active_sim_lids[0]  # First active simulation ID
                 micro_sims_to_init = (
@@ -707,7 +721,8 @@ class MicroManagerCoupling(MicroManager):
                 "The initialize() method of the Micro simulation requires initial data, but no initial macro data has been provided."
             )
 
-        # Get initial data from micro simulations if initialize() method exists
+        initial_micro_data = None
+
         if self._micro_sims_init:
             # Call initialize() method of the micro simulation to check if it returns any initial data
             if sim_requires_init_data:
@@ -717,7 +732,6 @@ class MicroManagerCoupling(MicroManager):
             else:
                 initial_micro_output = self._micro_sims[first_id].initialize()
 
-            # Check if the detected initialize() method returns any data
             if initial_micro_output is None:
                 self._logger.log_warning_rank_zero(
                     "The initialize() call of the Micro simulation has not returned any initial data."
@@ -770,19 +784,6 @@ class MicroManagerCoupling(MicroManager):
                                     i
                                 ] = initial_micro_output[name]
                                 initial_micro_data[name][i] = initial_micro_output[name]
-
-                    # If lazy initialization is on, initial states of inactive simulations need to be determined
-                    if self._lazy_init:
-                        self._adaptivity_controller.get_full_field_micro_output(
-                            initial_micro_data
-                        )
-                        for i in range(self._local_number_of_sims):
-                            for name in self._adaptivity_micro_data_names:
-                                self._data_for_adaptivity[name][i] = initial_micro_data[
-                                    name
-                                ][i]
-                        del initial_micro_data  # Once the initial data is fed into the adaptivity data, it is no longer required
-
                 else:
                     self._logger.log_warning_rank_zero(
                         "The initialize() method of the Micro simulation returns initial data, but adaptivity is turned off. The returned data will be ignored. The initialize method will nevertheless still be called."
@@ -810,6 +811,38 @@ class MicroManagerCoupling(MicroManager):
             self._comm,
             self._rank,
         )
+
+        # If lazy initialization is on, initial states of inactive simulations need to be determined
+        if self._lazy_init:
+            # Prepare data structure for collective communication
+            if initial_micro_data:
+                initial_micro_data_list = [
+                    dict(zip(initial_micro_data, t))
+                    for t in zip(*initial_micro_data.values())
+                ]
+            else:
+                # Ranks without active simulations provide empty dicts
+                initial_micro_data_list = [
+                    dict() for _ in range(self._local_number_of_sims)
+                ]
+
+            initial_micro_data_list = (
+                self._adaptivity_controller.get_full_field_micro_output(
+                    initial_micro_data_list
+                )
+            )
+
+            for i in range(self._local_number_of_sims):
+                for name in self._adaptivity_micro_data_names:
+                    self._data_for_adaptivity[name][i] = initial_micro_data_list[i][
+                        name
+                    ]
+
+        self._micro_sims_have_output = False
+        if hasattr(micro_problem_cls, "output") and callable(
+            getattr(micro_problem_cls, "output")
+        ):
+            self._micro_sims_have_output = True
 
         self._participant.stop_last_profiling_section()
 
