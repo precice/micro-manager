@@ -5,7 +5,6 @@ on each rank is done.
 
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
-import hashlib
 from copy import deepcopy
 import sys
 from typing import Dict
@@ -18,7 +17,7 @@ from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.model_manager import ModelManager
 
-from micro_manager.tools.p2p import create_tag, p2p_comm, get_ranks_of_sims
+from micro_manager.tools.p2p import p2p_comm, get_ranks_of_sims
 
 
 class GlobalAdaptivityCalculator(AdaptivityCalculator):

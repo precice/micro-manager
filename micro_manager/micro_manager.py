@@ -12,10 +12,8 @@ and the initialize and solve methods are called.
 Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
 """
 
-import importlib
 import os
 import sys
-import inspect
 from typing import Callable
 import numpy as np
 from psutil import Process
@@ -28,8 +26,6 @@ import precice
 from .model_manager import ModelManager
 from .micro_manager_base import MicroManager
 
-from .adaptivity.global_adaptivity import GlobalAdaptivityCalculator
-from .adaptivity.local_adaptivity import LocalAdaptivityCalculator
 from .adaptivity.model_adaptivity import ModelAdaptivity
 from .adaptivity.adaptivity_selection import create_adaptivity_calculator
 

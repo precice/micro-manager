@@ -4,7 +4,6 @@ Functionality for adaptive initialization and control of micro simulations
 
 from math import exp
 from typing import Callable
-import importlib
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
