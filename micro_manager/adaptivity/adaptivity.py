@@ -199,13 +199,20 @@ class AdaptivityCalculator:
         tag : bool
             True if the active simulation needs to be deactivated, False otherwise.
         """
-        for active_id_2 in active_ids:
-            if active_id != active_id_2:  # don't compare active sim to itself
-                flat_idx = self._map2dto1d([active_id, active_id_2])
-                # If active sim is similar to another active sim, deactivate it
-                if self._similarity_dists[flat_idx] < self._coarse_tol:
-                    return True
-        return False
+        active_ids = np.array(active_ids, dtype=np.int32)
+
+        if active_ids.shape[0] == 1 and active_ids[0] == active_id:
+            return False
+
+        mask = active_ids != active_id
+        active_ids_to_check = active_ids[mask]
+        coords = np.zeros((active_ids_to_check.shape[0], 2), dtype=np.int32)
+        coords[:, 0] = active_id
+        coords[:, 1] = active_ids_to_check[:]
+        flat_idx = self._map2dto1d(coords)
+        dists = self._similarity_dists[flat_idx]
+
+        return np.any(dists < self._coarse_tol)
 
     def _get_similarity_measure(
         self, similarity_measure: str
@@ -284,11 +291,15 @@ class AdaptivityCalculator:
         """
         eps = np.finfo(np.float64).eps
         for i in range(1, self._nsims):
-            p_diff = np.abs(data[i] - data[i+1:self._nsims])
-            denom = np.maximum(np.abs(data[i])[None, :], np.abs(data[i+1:self._nsims]))
+            p_diff = np.abs(data[i] - data[i + 1 : self._nsims])
+            denom = np.maximum(
+                np.abs(data[i])[None, :], np.abs(data[i + 1 : self._nsims])
+            )
             rel_diff = p_diff / np.maximum(denom, eps)
-            base_idx = self._map2dto1d([i, i+1])
-            self._similarity_dists[base_idx:base_idx+p_diff.shape[0]] += np.linalg.norm(rel_diff, ord=1) * dt
+            base_idx = self._map2dto1d([i, i + 1])
+            self._similarity_dists[base_idx : base_idx + p_diff.shape[0]] += (
+                np.linalg.norm(rel_diff, ord=1) * dt
+            )
 
     def _l2rel(self, data: np.ndarray, dt: float) -> None:
         """
@@ -329,9 +340,11 @@ class AdaptivityCalculator:
         if type(flat_idx) == int:
             flat_idx = [flat_idx]
         flat_idx = np.array(flat_idx)
-        
+
         i = flat_idx // (self._nsims - 1)
-        j = (flat_idx % (self._nsims - 1)) + 1 # shift by one to transfrom back from n-1 mat to n mat
+        j = (
+            flat_idx % (self._nsims - 1)
+        ) + 1  # shift by one to transfrom back from n-1 mat to n mat
         return np.vstack((i, j), dtype=np.int32).T
 
     def _map2dto1d(self, coords: list) -> int:
@@ -352,5 +365,5 @@ class AdaptivityCalculator:
         # assert i < j invariant
         coords = np.sort(coords, axis=-1)
         i, j = coords[:, 0], coords[:, 1]
-        
+
         return i * (self._nsims - 1) + (j - 1)
