@@ -51,9 +51,14 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         )
         self._comm = comm
 
-        # similarity_dists: 2D array having similarity distances between each micro simulation pair
-        # This matrix is modified in place via the function update_similarity_dists
-        self._similarity_dists = np.zeros((num_sims, num_sims))
+        n_dists = int(num_sims * (num_sims - 1) / 2)
+        self._base_logger.log_info(
+            "Number of similarity distances to be calculated: {}".format(n_dists)
+        )
+
+        # similarity_dists: 1D array storing strictly lower triangular elements of similarity distances
+        # This vector is modified in place via the function update_similarity_dists
+        self._similarity_dists = np.zeros((n_dists,))
 
     def compute_adaptivity(
         self,

@@ -85,12 +85,15 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         # Size of data type
         itemsize = MPI.FLOAT.Get_size()
 
+        # Number of similarity distances to be stored (strictly lower triangular)
+        n_dists = int(
+            self._global_number_of_sims * (self._global_number_of_sims - 1) / 2
+        )
+
         if (
             self._MPI_local_rank == 0
         ):  # Only the first rank in the node allocates the shared memory
-            nbytes = (
-                self._global_number_of_sims * self._global_number_of_sims * itemsize
-            )
+            nbytes = n_dists * itemsize
         else:
             nbytes = 0
 
@@ -110,7 +113,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._similarity_dists: np.ndarray = np.ndarray(
             buffer=array_buffer,
             dtype="f",
-            shape=(self._global_number_of_sims, self._global_number_of_sims),
+            shape=(n_dists,),
         )
 
         if self._MPI_local_rank == 0:

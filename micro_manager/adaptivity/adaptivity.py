@@ -58,15 +58,17 @@ class AdaptivityCalculator:
 
         self._max_similarity_dist = 0.0
 
+        self._nsims = nsims
+
         # is_sim_active: 1D array having state (active or inactive) of each micro simulation
         # Start adaptivity calculation with all sims active
         # This array is modified in place via the function update_active_sims and update_inactive_sims
-        self._is_sim_active = np.array([True] * nsims, dtype=np.bool_)
+        self._is_sim_active = np.array([True] * self._nsims, dtype=np.bool_)
 
         # sim_is_associated_to: 1D array with values of associated simulations of inactive simulations. Active simulations have None
         # Active sims do not have an associated sim
         # This array is modified in place via the function associate_inactive_to_active
-        self._sim_is_associated_to = np.full((nsims), -2, dtype=np.intc)
+        self._sim_is_associated_to = np.full((self._nsims), -2, dtype=np.intc)
 
         self._just_deactivated: list[int] = []
 
@@ -131,7 +133,9 @@ class AdaptivityCalculator:
                 # The axis is later reduced with a norm.
                 data_vals = np.expand_dims(data_vals, axis=1)
 
-            self._similarity_dists += dt * self._similarity_measure(data_vals)
+            self._similarity_measure(data_vals)
+
+        self._similarity_dists *= dt
 
     def _associate_inactive_to_active(self) -> None:
         """
@@ -149,10 +153,11 @@ class AdaptivityCalculator:
             # Begin with a large distance to trigger the search for the most similar active sim
             dist_min = dist_min_start_value
             for active_id in active_ids:
+                flat_idx = self._map2dto1d([inactive_id, active_id])
                 # Find most similar active sim for every inactive sim
-                if self._similarity_dists[inactive_id, active_id] < dist_min:
+                if self._similarity_dists[flat_idx] < dist_min:
                     associated_active_id = active_id
-                    dist_min = self._similarity_dists[inactive_id, active_id]
+                    dist_min = self._similarity_dists[flat_idx]
 
             self._sim_is_associated_to[inactive_id] = associated_active_id
 
@@ -171,7 +176,10 @@ class AdaptivityCalculator:
         tag : bool
             True if the inactive simulation needs to be activated, False otherwise.
         """
-        dists = self._similarity_dists[inactive_id, active_ids]
+        flat_ids = [
+            self._map2dto1d([inactive_id, active_id]) for active_id in active_ids
+        ]
+        dists = self._similarity_dists[flat_ids]
 
         # If inactive sim is not similar to any active sim, activate it
         return min(dists) > self._ref_tol
@@ -194,14 +202,15 @@ class AdaptivityCalculator:
         """
         for active_id_2 in active_ids:
             if active_id != active_id_2:  # don't compare active sim to itself
+                flat_idx = self._map2dto1d([active_id, active_id_2])
                 # If active sim is similar to another active sim, deactivate it
-                if self._similarity_dists[active_id, active_id_2] < self._coarse_tol:
+                if self._similarity_dists[flat_idx] < self._coarse_tol:
                     return True
         return False
 
     def _get_similarity_measure(
         self, similarity_measure: str
-    ) -> Callable[[np.ndarray], np.ndarray]:
+    ) -> Callable[[np.ndarray], None]:
         """
         Get similarity measure to be used for similarity calculation
 
@@ -228,7 +237,7 @@ class AdaptivityCalculator:
                 'Similarity measure not supported. Currently supported similarity measures are "L1", "L2", "L1rel", "L2rel".'
             )
 
-    def _l1(self, data: np.ndarray) -> np.ndarray:
+    def _l1(self, data: np.ndarray) -> None:
         """
         Calculate L1 norm of data
 
@@ -236,15 +245,14 @@ class AdaptivityCalculator:
         ----------
         data : numpy array
             Data to be used in similarity distance calculation
-
-        Returns
-        -------
-        similarity_dists : numpy array
-            Updated 2D array having similarity distances between each micro simulation pair
         """
-        return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
+        for i in range(1, self._nsims):
+            for j in range(i):
+                p_diff = np.abs(data[i] - data[j])
+                flat_idx = self._map2dto1d([i, j])
+                self._similarity_dists[flat_idx] += np.linalg.norm(p_diff, ord=1)
 
-    def _l2(self, data: np.ndarray) -> np.ndarray:
+    def _l2(self, data: np.ndarray) -> None:
         """
         Calculate L2 norm of data
 
@@ -252,15 +260,14 @@ class AdaptivityCalculator:
         ----------
         data : numpy array
             Data to be used in similarity distance calculation
-
-        Returns
-        -------
-        similarity_dists : numpy array
-            Updated 2D array having similarity distances between each micro simulation pair
         """
-        return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=2, axis=-1)
+        for i in range(1, self._nsims):
+            for j in range(i):
+                p_diff = np.abs(data[i] - data[j])
+                flat_idx = self._map2dto1d([i, j])
+                self._similarity_dists[flat_idx] += np.linalg.norm(p_diff, ord=2)
 
-    def _l1rel(self, data: np.ndarray) -> np.ndarray:
+    def _l1rel(self, data: np.ndarray) -> None:
         """
         Calculate L1 norm of relative difference of data.
         The relative difference is calculated by dividing the difference of two data points by the maximum of the absolute value of the two data points.
@@ -269,24 +276,17 @@ class AdaptivityCalculator:
         ----------
         data : numpy array
             Data to be used in similarity distance calculation
-
-        Returns
-        -------
-        similarity_dists : numpy array
-            Updated 2D array having similarity distances between each micro simulation pair
         """
-        pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
-        # divide by data to get relative difference
-        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
-        denom = np.maximum(
-            np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
-        )
-        # Add small epsilon to avoid division by zero (invalid value warning) when both are 0
         eps = np.finfo(np.float64).eps
-        relative = pointwise_diff / np.maximum(denom, eps)
-        return np.linalg.norm(relative, ord=1, axis=-1)
+        for i in range(1, self._nsims):
+            for j in range(i):
+                p_diff = np.abs(data[i] - data[j])
+                denom = np.maximum(np.abs(data[i]), np.abs(data[j]))
+                rel_diff = p_diff / np.maximum(denom, eps)
+                flat_idx = self._map2dto1d([i, j])
+                self._similarity_dists[flat_idx] += np.linalg.norm(rel_diff, ord=1)
 
-    def _l2rel(self, data: np.ndarray) -> np.ndarray:
+    def _l2rel(self, data: np.ndarray) -> None:
         """
         Calculate L2 norm of relative difference of data.
         The relative difference is calculated by dividing the difference of two data points by the maximum of the absolute value of the two data points.
@@ -295,19 +295,57 @@ class AdaptivityCalculator:
         ----------
         data : numpy array
             Data to be used in similarity distance calculation
+        """
+        eps = np.finfo(np.float64).eps
+        for i in range(1, self._nsims):
+            for j in range(i):
+                p_diff = np.abs(data[i] - data[j])
+                denom = np.maximum(np.abs(data[i]), np.abs(data[j]))
+                rel_diff = p_diff / np.maximum(denom, eps)
+                flat_idx = self._map2dto1d([i, j])
+                self._similarity_dists[flat_idx] += np.linalg.norm(rel_diff, ord=2)
+
+    def _map1dto2d(self, flat_idx: int) -> tuple:
+        """
+        Map a 1D index to 2D coordinates in strictly lower triangular part.
+
+        Parameters
+        ----------
+        flat_idx : int
+            1D index to be mapped
 
         Returns
         -------
-        similarity_dists : numpy array
-            Updated 2D array having similarity distances between each micro simulation pair
+        coord : tuple
+            2D coordinates (i, j) corresponding to the 1D index, where i > j
         """
-        pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
-        # divide by data to get relative difference
-        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
-        denom = np.maximum(
-            np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
-        )
-        # Add small epsilon to avoid division by zero (invalid value warning) when both are 0
-        eps = np.finfo(np.float64).eps
-        relative = pointwise_diff / np.maximum(denom, eps)
-        return np.linalg.norm(relative, ord=2, axis=-1)
+        # Find row i: solve i(i-1)/2 <= flat_idx < i(i+1)/2
+        i = 1
+        while i * (i + 1) // 2 <= flat_idx:
+            i += 1
+        j = flat_idx - i * (i - 1) // 2
+        return (i, j)
+
+    def _map2dto1d(self, coords: list) -> int:
+        """
+        Map 2D coordinates to a 1D index in strictly lower triangular storage.
+
+        Parameters
+        ----------
+        coords : list
+            2D coordinates [i, j] to be mapped, where i > j
+
+        Returns
+        -------
+        flat_idx : int
+            1D index corresponding to the 2D coordinates in strictly lower triangular part
+        """
+        i, j = coords[0], coords[1]
+        if i <= j:
+            # For symmetric matrix access, swap if needed
+            i, j = j, i
+        if i <= j:
+            raise ValueError(
+                f"Invalid indices for lower triangular: ({i}, {j}). Need i > j."
+            )
+        return i * (i - 1) // 2 + j
