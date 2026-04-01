@@ -645,8 +645,6 @@ class MicroManagerCoupling(MicroManager):
 
         self._micro_sims_init = False  # DECLARATION
 
-        are_there_sims_to_init = False
-
         # Read initial data from preCICE, if it is available
         initial_data = self._read_data_from_precice(dt=0)
 
@@ -681,7 +679,6 @@ class MicroManagerCoupling(MicroManager):
                         "There are no active simulations on this rank."
                     )
                     micro_sims_to_init = []
-                    are_there_sims_to_init = False
                 else:
                     for i in active_sim_lids:
                         self._micro_sims[i] = micro_problem_cls(
@@ -692,7 +689,6 @@ class MicroManagerCoupling(MicroManager):
                     self._micro_sims[i] = self._model_manager.get_instance(
                         self._global_ids_of_local_sims[i], micro_problem_cls
                     )
-                    are_there_sims_to_init = True
 
                 first_id = active_sim_lids[0]  # First active simulation ID
                 micro_sims_to_init = (
