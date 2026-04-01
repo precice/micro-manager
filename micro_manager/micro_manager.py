@@ -834,12 +834,6 @@ class MicroManagerCoupling(MicroManager):
                         name
                     ]
 
-        self._micro_sims_have_output = False
-        if hasattr(micro_problem_cls, "output") and callable(
-            getattr(micro_problem_cls, "output")
-        ):
-            self._micro_sims_have_output = True
-
         self._participant.stop_last_profiling_section()
 
     # ***************
