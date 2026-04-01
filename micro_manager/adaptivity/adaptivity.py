@@ -174,9 +174,10 @@ class AdaptivityCalculator:
         tag : bool
             True if the inactive simulation needs to be activated, False otherwise.
         """
-        flat_ids = [
-            self._map2dto1d([inactive_id, active_id]) for active_id in active_ids
-        ]
+        coords = np.zeros((len(active_ids), 2))
+        coords[:, 0] = inactive_id
+        coords[:, 1] = active_ids[:]
+        flat_ids = self._map2dto1d(coords)
         dists = self._similarity_dists[flat_ids]
 
         # If inactive sim is not similar to any active sim, activate it
@@ -283,12 +284,11 @@ class AdaptivityCalculator:
         """
         eps = np.finfo(np.float64).eps
         for i in range(1, self._nsims):
-            for j in range(i):
-                p_diff = np.abs(data[i] - data[j])
-                denom = np.maximum(np.abs(data[i]), np.abs(data[j]))
-                rel_diff = p_diff / np.maximum(denom, eps)
-                flat_idx = self._map2dto1d([i, j])
-                self._similarity_dists[flat_idx] += np.linalg.norm(rel_diff, ord=1) * dt
+            p_diff = np.abs(data[i] - data[i+1:self._nsims])
+            denom = np.maximum(np.abs(data[i])[None, :], np.abs(data[i+1:self._nsims]))
+            rel_diff = p_diff / np.maximum(denom, eps)
+            base_idx = self._map2dto1d([i, i+1])
+            self._similarity_dists[base_idx:base_idx+p_diff.shape[0]] += np.linalg.norm(rel_diff, ord=1) * dt
 
     def _l2rel(self, data: np.ndarray, dt: float) -> None:
         """
@@ -326,11 +326,13 @@ class AdaptivityCalculator:
             2D coordinates (i, j) corresponding to the 1D index, where i > j
         """
         # Find row i: solve i(i-1)/2 <= flat_idx < i(i+1)/2
-        i = 1
-        while i * (i + 1) // 2 <= flat_idx:
-            i += 1
-        j = flat_idx - i * (i - 1) // 2
-        return (i, j)
+        if type(flat_idx) == int:
+            flat_idx = [flat_idx]
+        flat_idx = np.array(flat_idx)
+        
+        i = flat_idx // (self._nsims - 1)
+        j = (flat_idx % (self._nsims - 1)) + 1 # shift by one to transfrom back from n-1 mat to n mat
+        return np.vstack((i, j), dtype=np.int32).T
 
     def _map2dto1d(self, coords: list) -> int:
         """
@@ -346,12 +348,9 @@ class AdaptivityCalculator:
         flat_idx : int
             1D index corresponding to the 2D coordinates in strictly lower triangular part
         """
-        i, j = coords[0], coords[1]
-        if i <= j:
-            # For symmetric matrix access, swap if needed
-            i, j = j, i
-        if i <= j:
-            raise ValueError(
-                f"Invalid indices for lower triangular: ({i}, {j}). Need i > j."
-            )
-        return i * (i - 1) // 2 + j
+        coords = np.array(coords, dtype=np.int32).reshape(-1, 2)
+        # assert i < j invariant
+        coords = np.sort(coords, axis=-1)
+        i, j = coords[:, 0], coords[:, 1]
+        
+        return i * (self._nsims - 1) + (j - 1)
