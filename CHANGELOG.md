@@ -2,6 +2,7 @@
 
 ## latest
 
+- Fixed lazy initialization for ranks without (active) micro simulations [#238](https://github.com/precice/micro-manager/pull/238)
 - Added coverage testing and simulation interface tests [#225](https://github.com/precice/micro-manager/pull/225)
 - Added `--test-dependencies` CLI flag to check if all required dependencies are correctly installed, with clear error messages listing missing packages and how to fix them [#221](https://github.com/precice/micro-manager/pull/221)
 - Added load balancing based on micro simulation solve timings [#228](https://github.com/precice/micro-manager/pull/228)

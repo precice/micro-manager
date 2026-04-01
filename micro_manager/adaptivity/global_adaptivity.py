@@ -360,7 +360,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         Pairs of active simulations (A, B) are compared and if found to be similar, B is deactivated.
         """
         if self._max_similarity_dist == 0.0:
-            self._base_logger.log_warning(
+            self._base_logger.log_warning_rank_zero(
                 "All similarity distances are zero, which means all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
             )
             self._coarse_tol = sys.float_info.min
