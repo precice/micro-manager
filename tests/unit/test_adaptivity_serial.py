@@ -88,37 +88,6 @@ class TestLocalAdaptivity(TestCase):
         # Convert 2D matrix to 1D strictly lower triangular vector
         self._similarity_dists = self._convert_2d_to_1d(self._dt * self._data_diff)
 
-    def _convert_2d_to_1d(self, matrix_2d: np.ndarray) -> np.ndarray:
-        """
-        Convert a 2D symmetric matrix to 1D strictly lower triangular vector.
-        """
-        n = matrix_2d.shape[0]
-        vec_size = n * (n - 1) // 2
-        vector_1d = np.zeros(vec_size)
-
-        idx = 0
-        for i in range(1, n):
-            for j in range(i):
-                vector_1d[idx] = matrix_2d[i, j]
-                idx += 1
-
-        return vector_1d
-
-    def _convert_1d_to_2d(self, vector_1d: np.ndarray, n: int) -> np.ndarray:
-        """
-        Convert a 1D strictly lower triangular vector back to 2D symmetric matrix.
-        """
-        matrix_2d = np.zeros((n, n))
-
-        idx = 0
-        for i in range(1, n):
-            for j in range(i):
-                matrix_2d[i, j] = vector_1d[idx]
-                matrix_2d[j, i] = vector_1d[idx]
-                idx += 1
-
-        return matrix_2d
-
     def test_update_similarity_dists(self):
         """
         Test functionality of calculating the similarity distance matrix in class AdaptivityCalculator.
@@ -234,7 +203,7 @@ class TestLocalAdaptivity(TestCase):
 
         fake_data = np.array([[1], [2], [3]])
         adaptivity_l1._similarity_dists = np.zeros(nsims_3 * (nsims_3 - 1) // 2)
-        adaptivity_l1._l1(fake_data)
+        adaptivity_l1._l1(fake_data, dt=1.0)
         # Expected strictly lower triangular: (1,0)=1, (2,0)=2, (2,1)=1
         expected_l1_3 = np.array([1.0, 2.0, 1.0])
         self.assertTrue(np.allclose(adaptivity_l1._similarity_dists, expected_l1_3))
@@ -249,7 +218,7 @@ class TestLocalAdaptivity(TestCase):
         )
         configurator.get_adaptivity_similarity_measure.return_value = "L2"
         adaptivity_l2._similarity_dists = np.zeros(nsims_3 * (nsims_3 - 1) // 2)
-        adaptivity_l2._l2(fake_data)
+        adaptivity_l2._l2(fake_data, dt=1.0)
         # L2 norm of scalars is same as L1 for 1D data
         expected_l2_3 = np.array([1.0, 2.0, 1.0])
         self.assertTrue(np.allclose(adaptivity_l2._similarity_dists, expected_l2_3))
@@ -264,7 +233,7 @@ class TestLocalAdaptivity(TestCase):
         )
         configurator.get_adaptivity_similarity_measure.return_value = "L1rel"
         adaptivity_l1rel._similarity_dists = np.zeros(nsims_3 * (nsims_3 - 1) // 2)
-        adaptivity_l1rel._l1rel(fake_data)
+        adaptivity_l1rel._l1rel(fake_data, dt=1.0)
         # Expected: (1,0)=|2-1|/max(2,1)=1/2, (2,0)=|3-1|/max(3,1)=2/3, (2,1)=|3-2|/max(3,2)=1/3
         expected_l1rel_3 = np.array([0.5, 2.0 / 3.0, 1.0 / 3.0])
         self.assertTrue(
@@ -281,7 +250,7 @@ class TestLocalAdaptivity(TestCase):
         )
         configurator.get_adaptivity_similarity_measure.return_value = "L2rel"
         adaptivity_l2rel._similarity_dists = np.zeros(nsims_3 * (nsims_3 - 1) // 2)
-        adaptivity_l2rel._l2rel(fake_data)
+        adaptivity_l2rel._l2rel(fake_data, dt=1.0)
         # L2rel of scalars is same as L1rel for 1D data
         expected_l2rel_3 = np.array([0.5, 2.0 / 3.0, 1.0 / 3.0])
         self.assertTrue(
@@ -302,7 +271,7 @@ class TestLocalAdaptivity(TestCase):
 
         fake_2d_data = np.array([[1, 2], [3, 4]])
         adaptivity_l1_2d._similarity_dists = np.zeros(nsims_2 * (nsims_2 - 1) // 2)
-        adaptivity_l1_2d._l1(fake_2d_data)
+        adaptivity_l1_2d._l1(fake_2d_data, dt=1.0)
         # Expected: (1,0)=|3-1|+|4-2|=2+2=4
         expected_l1_2d = np.array([4.0])
         self.assertTrue(np.allclose(adaptivity_l1_2d._similarity_dists, expected_l1_2d))
@@ -317,7 +286,7 @@ class TestLocalAdaptivity(TestCase):
             model_manager=ModelManager(),
         )
         adaptivity_l2_2d._similarity_dists = np.zeros(nsims_2 * (nsims_2 - 1) // 2)
-        adaptivity_l2_2d._l2(fake_2d_data)
+        adaptivity_l2_2d._l2(fake_2d_data, dt=1.0)
         # Expected: (1,0)=sqrt((3-1)^2+(4-2)^2)=sqrt(8)=2*sqrt(2)
         expected_l2_2d = np.array([np.sqrt(8.0)])
         self.assertTrue(np.allclose(adaptivity_l2_2d._similarity_dists, expected_l2_2d))
@@ -332,7 +301,7 @@ class TestLocalAdaptivity(TestCase):
             model_manager=ModelManager(),
         )
         adaptivity_l1rel_2d._similarity_dists = np.zeros(nsims_2 * (nsims_2 - 1) // 2)
-        adaptivity_l1rel_2d._l1rel(fake_2d_data)
+        adaptivity_l1rel_2d._l1rel(fake_2d_data, dt=1.0)
         # Expected: (1,0)=|3-1|/max(1,3)+|4-2|/max(2,4)=2/3+2/4=2/3+1/2
         expected_l1rel_2d = np.array([2.0 / 3.0 + 1.0 / 2.0])
         self.assertTrue(
@@ -349,7 +318,7 @@ class TestLocalAdaptivity(TestCase):
             model_manager=ModelManager(),
         )
         adaptivity_l2rel_2d._similarity_dists = np.zeros(nsims_2 * (nsims_2 - 1) // 2)
-        adaptivity_l2rel_2d._l2rel(fake_2d_data)
+        adaptivity_l2rel_2d._l2rel(fake_2d_data, dt=1.0)
         # Expected: (1,0)=sqrt((3-1)^2/max(1,3)^2+(4-2)^2/max(2,4)^2)=sqrt(4/9+4/16)
         expected_l2rel_2d = np.array([np.sqrt((2.0 / 3.0) ** 2 + (2.0 / 4.0) ** 2)])
         self.assertTrue(
@@ -405,7 +374,7 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_l2rel._similarity_dists = np.zeros(zero_vec_size)
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("error", RuntimeWarning)
-            adaptivity_l2rel._l2rel(data_with_zeros)
+            adaptivity_l2rel._l2rel(data_with_zeros, dt=1.0)
         self.assertEqual(
             len(w), 0, "L2rel must not raise RuntimeWarning with zero data"
         )
@@ -417,7 +386,7 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_l1rel._similarity_dists = np.zeros(zero_vec_size)
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("error", RuntimeWarning)
-            adaptivity_l1rel._l1rel(data_with_zeros)
+            adaptivity_l1rel._l1rel(data_with_zeros, dt=1.0)
         self.assertEqual(
             len(w), 0, "L1rel must not raise RuntimeWarning with zero data"
         )
@@ -525,3 +494,34 @@ class TestLocalAdaptivity(TestCase):
                 adaptivity_controller._sim_is_associated_to,
             )
         )
+
+    def _convert_2d_to_1d(self, matrix_2d: np.ndarray) -> np.ndarray:
+        """
+        Convert a 2D symmetric matrix to 1D strictly lower triangular vector.
+        """
+        n = matrix_2d.shape[0]
+        vec_size = n * (n - 1) // 2
+        vector_1d = np.zeros(vec_size)
+
+        idx = 0
+        for i in range(1, n):
+            for j in range(i):
+                vector_1d[idx] = matrix_2d[i, j]
+                idx += 1
+
+        return vector_1d
+
+    def _convert_1d_to_2d(self, vector_1d: np.ndarray, n: int) -> np.ndarray:
+        """
+        Convert a 1D strictly lower triangular vector back to 2D symmetric matrix.
+        """
+        matrix_2d = np.zeros((n, n))
+
+        idx = 0
+        for i in range(1, n):
+            for j in range(i):
+                matrix_2d[i, j] = vector_1d[idx]
+                matrix_2d[j, i] = vector_1d[idx]
+                idx += 1
+
+        return matrix_2d

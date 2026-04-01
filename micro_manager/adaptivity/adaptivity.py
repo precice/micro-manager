@@ -133,9 +133,7 @@ class AdaptivityCalculator:
                 # The axis is later reduced with a norm.
                 data_vals = np.expand_dims(data_vals, axis=1)
 
-            self._similarity_measure(data_vals)
-
-        self._similarity_dists *= dt
+            self._similarity_measure(data_vals, dt)
 
     def _associate_inactive_to_active(self) -> None:
         """
@@ -210,7 +208,7 @@ class AdaptivityCalculator:
 
     def _get_similarity_measure(
         self, similarity_measure: str
-    ) -> Callable[[np.ndarray], None]:
+    ) -> Callable[[np.ndarray, float], None]:
         """
         Get similarity measure to be used for similarity calculation
 
@@ -237,7 +235,7 @@ class AdaptivityCalculator:
                 'Similarity measure not supported. Currently supported similarity measures are "L1", "L2", "L1rel", "L2rel".'
             )
 
-    def _l1(self, data: np.ndarray) -> None:
+    def _l1(self, data: np.ndarray, dt: float) -> None:
         """
         Calculate L1 norm of data
 
@@ -245,14 +243,16 @@ class AdaptivityCalculator:
         ----------
         data : numpy array
             Data to be used in similarity distance calculation
+        dt : float
+            Time step to scale the similarity distances
         """
         for i in range(1, self._nsims):
             for j in range(i):
                 p_diff = np.abs(data[i] - data[j])
                 flat_idx = self._map2dto1d([i, j])
-                self._similarity_dists[flat_idx] += np.linalg.norm(p_diff, ord=1)
+                self._similarity_dists[flat_idx] += np.linalg.norm(p_diff, ord=1) * dt
 
-    def _l2(self, data: np.ndarray) -> None:
+    def _l2(self, data: np.ndarray, dt: float) -> None:
         """
         Calculate L2 norm of data
 
@@ -260,14 +260,16 @@ class AdaptivityCalculator:
         ----------
         data : numpy array
             Data to be used in similarity distance calculation
+        dt : float
+            Time step to scale the similarity distances
         """
         for i in range(1, self._nsims):
             for j in range(i):
                 p_diff = np.abs(data[i] - data[j])
                 flat_idx = self._map2dto1d([i, j])
-                self._similarity_dists[flat_idx] += np.linalg.norm(p_diff, ord=2)
+                self._similarity_dists[flat_idx] += np.linalg.norm(p_diff, ord=2) * dt
 
-    def _l1rel(self, data: np.ndarray) -> None:
+    def _l1rel(self, data: np.ndarray, dt: float) -> None:
         """
         Calculate L1 norm of relative difference of data.
         The relative difference is calculated by dividing the difference of two data points by the maximum of the absolute value of the two data points.
@@ -276,6 +278,8 @@ class AdaptivityCalculator:
         ----------
         data : numpy array
             Data to be used in similarity distance calculation
+        dt : float
+            Time step to scale the similarity distances
         """
         eps = np.finfo(np.float64).eps
         for i in range(1, self._nsims):
@@ -284,9 +288,9 @@ class AdaptivityCalculator:
                 denom = np.maximum(np.abs(data[i]), np.abs(data[j]))
                 rel_diff = p_diff / np.maximum(denom, eps)
                 flat_idx = self._map2dto1d([i, j])
-                self._similarity_dists[flat_idx] += np.linalg.norm(rel_diff, ord=1)
+                self._similarity_dists[flat_idx] += np.linalg.norm(rel_diff, ord=1) * dt
 
-    def _l2rel(self, data: np.ndarray) -> None:
+    def _l2rel(self, data: np.ndarray, dt: float) -> None:
         """
         Calculate L2 norm of relative difference of data.
         The relative difference is calculated by dividing the difference of two data points by the maximum of the absolute value of the two data points.
@@ -295,6 +299,8 @@ class AdaptivityCalculator:
         ----------
         data : numpy array
             Data to be used in similarity distance calculation
+        dt : float
+            Time step to scale the similarity distances
         """
         eps = np.finfo(np.float64).eps
         for i in range(1, self._nsims):
@@ -303,7 +309,7 @@ class AdaptivityCalculator:
                 denom = np.maximum(np.abs(data[i]), np.abs(data[j]))
                 rel_diff = p_diff / np.maximum(denom, eps)
                 flat_idx = self._map2dto1d([i, j])
-                self._similarity_dists[flat_idx] += np.linalg.norm(rel_diff, ord=2)
+                self._similarity_dists[flat_idx] += np.linalg.norm(rel_diff, ord=2) * dt
 
     def _map1dto2d(self, flat_idx: int) -> tuple:
         """
