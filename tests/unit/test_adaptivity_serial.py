@@ -85,7 +85,39 @@ class TestLocalAdaptivity(TestCase):
                     )
                 self._data_diff[i, j] = dist
 
-        self._similarity_dists = self._dt * self._data_diff
+        # Convert 2D matrix to 1D strictly lower triangular vector
+        self._similarity_dists = self._convert_2d_to_1d(self._dt * self._data_diff)
+
+    def _convert_2d_to_1d(self, matrix_2d: np.ndarray) -> np.ndarray:
+        """
+        Convert a 2D symmetric matrix to 1D strictly lower triangular vector.
+        """
+        n = matrix_2d.shape[0]
+        vec_size = n * (n - 1) // 2
+        vector_1d = np.zeros(vec_size)
+
+        idx = 0
+        for i in range(1, n):
+            for j in range(i):
+                vector_1d[idx] = matrix_2d[i, j]
+                idx += 1
+
+        return vector_1d
+
+    def _convert_1d_to_2d(self, vector_1d: np.ndarray, n: int) -> np.ndarray:
+        """
+        Convert a 1D strictly lower triangular vector back to 2D symmetric matrix.
+        """
+        matrix_2d = np.zeros((n, n))
+
+        idx = 0
+        for i in range(1, n):
+            for j in range(i):
+                matrix_2d[i, j] = vector_1d[idx]
+                matrix_2d[j, i] = vector_1d[idx]
+                idx += 1
+
+        return matrix_2d
 
     def test_update_similarity_dists(self):
         """
@@ -126,13 +158,16 @@ class TestLocalAdaptivity(TestCase):
 
         adaptivity_controller._update_similarity_dists(self._dt, adaptivity_data)
 
-        expected_similarity_dists = (
-            exp(-adaptivity_controller._hist_param * self._dt) * old_similarity_dists
+        # Convert expected 2D result back to 1D for comparison
+        expected_2d = (
+            exp(-adaptivity_controller._hist_param * self._dt)
+            * self._convert_1d_to_2d(old_similarity_dists, self._number_of_sims)
             + self._dt * self._data_diff
         )
+        expected_similarity_dists = self._convert_2d_to_1d(expected_2d)
 
         self.assertTrue(
-            np.array_equal(
+            np.allclose(
                 expected_similarity_dists, adaptivity_controller._similarity_dists
             )
         )
@@ -186,9 +221,11 @@ class TestLocalAdaptivity(TestCase):
             return_value="test_adaptivity_serial"
         )
 
-        adaptivity_controller = AdaptivityCalculator(
+        # Test with 3-element data
+        nsims_3 = 3
+        adaptivity_l1 = AdaptivityCalculator(
             configurator,
-            nsims=self._number_of_sims,
+            nsims=nsims_3,
             base_logger=MagicMock(),
             rank=0,
             micro_problem_cls=MicroSimulation,
@@ -196,82 +233,127 @@ class TestLocalAdaptivity(TestCase):
         )
 
         fake_data = np.array([[1], [2], [3]])
-        self.assertTrue(
-            np.allclose(
-                adaptivity_controller._l1(fake_data),
-                np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]]),
-            )
+        adaptivity_l1._similarity_dists = np.zeros(nsims_3 * (nsims_3 - 1) // 2)
+        adaptivity_l1._l1(fake_data)
+        # Expected strictly lower triangular: (1,0)=1, (2,0)=2, (2,1)=1
+        expected_l1_3 = np.array([1.0, 2.0, 1.0])
+        self.assertTrue(np.allclose(adaptivity_l1._similarity_dists, expected_l1_3))
+
+        adaptivity_l2 = AdaptivityCalculator(
+            configurator,
+            nsims=nsims_3,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
-        # norm taken over last axis -> same as before
-        self.assertTrue(
-            np.allclose(
-                adaptivity_controller._l2(fake_data),
-                np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]]),
-            )
+        configurator.get_adaptivity_similarity_measure.return_value = "L2"
+        adaptivity_l2._similarity_dists = np.zeros(nsims_3 * (nsims_3 - 1) // 2)
+        adaptivity_l2._l2(fake_data)
+        # L2 norm of scalars is same as L1 for 1D data
+        expected_l2_3 = np.array([1.0, 2.0, 1.0])
+        self.assertTrue(np.allclose(adaptivity_l2._similarity_dists, expected_l2_3))
+
+        adaptivity_l1rel = AdaptivityCalculator(
+            configurator,
+            nsims=nsims_3,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
+        configurator.get_adaptivity_similarity_measure.return_value = "L1rel"
+        adaptivity_l1rel._similarity_dists = np.zeros(nsims_3 * (nsims_3 - 1) // 2)
+        adaptivity_l1rel._l1rel(fake_data)
+        # Expected: (1,0)=|2-1|/max(2,1)=1/2, (2,0)=|3-1|/max(3,1)=2/3, (2,1)=|3-2|/max(3,2)=1/3
+        expected_l1rel_3 = np.array([0.5, 2.0 / 3.0, 1.0 / 3.0])
         self.assertTrue(
-            np.allclose(
-                adaptivity_controller._l1rel(fake_data),
-                np.array([[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]]),
-            )
+            np.allclose(adaptivity_l1rel._similarity_dists, expected_l1rel_3)
         )
+
+        adaptivity_l2rel = AdaptivityCalculator(
+            configurator,
+            nsims=nsims_3,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
+        )
+        configurator.get_adaptivity_similarity_measure.return_value = "L2rel"
+        adaptivity_l2rel._similarity_dists = np.zeros(nsims_3 * (nsims_3 - 1) // 2)
+        adaptivity_l2rel._l2rel(fake_data)
+        # L2rel of scalars is same as L1rel for 1D data
+        expected_l2rel_3 = np.array([0.5, 2.0 / 3.0, 1.0 / 3.0])
         self.assertTrue(
-            np.allclose(
-                adaptivity_controller._l2rel(fake_data),
-                np.array([[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]]),
-            )
+            np.allclose(adaptivity_l2rel._similarity_dists, expected_l2rel_3)
+        )
+
+        # Test with 2-element 2D data
+        nsims_2 = 2
+        configurator.get_adaptivity_similarity_measure.return_value = "L1"
+        adaptivity_l1_2d = AdaptivityCalculator(
+            configurator,
+            nsims=nsims_2,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
 
         fake_2d_data = np.array([[1, 2], [3, 4]])
-        self.assertTrue(
-            np.allclose(
-                adaptivity_controller._l1(fake_2d_data), np.array([[0, 4], [4, 0]])
-            )
+        adaptivity_l1_2d._similarity_dists = np.zeros(nsims_2 * (nsims_2 - 1) // 2)
+        adaptivity_l1_2d._l1(fake_2d_data)
+        # Expected: (1,0)=|3-1|+|4-2|=2+2=4
+        expected_l1_2d = np.array([4.0])
+        self.assertTrue(np.allclose(adaptivity_l1_2d._similarity_dists, expected_l1_2d))
+
+        configurator.get_adaptivity_similarity_measure.return_value = "L2"
+        adaptivity_l2_2d = AdaptivityCalculator(
+            configurator,
+            nsims=nsims_2,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
-        self.assertTrue(
-            np.allclose(
-                adaptivity_controller._l2(fake_2d_data),
-                np.array(
-                    [
-                        [0, np.sqrt((1 - 3) ** 2 + (2 - 4) ** 2)],
-                        [np.sqrt((1 - 3) ** 2 + (2 - 4) ** 2), 0],
-                    ]
-                ),
-            )
+        adaptivity_l2_2d._similarity_dists = np.zeros(nsims_2 * (nsims_2 - 1) // 2)
+        adaptivity_l2_2d._l2(fake_2d_data)
+        # Expected: (1,0)=sqrt((3-1)^2+(4-2)^2)=sqrt(8)=2*sqrt(2)
+        expected_l2_2d = np.array([np.sqrt(8.0)])
+        self.assertTrue(np.allclose(adaptivity_l2_2d._similarity_dists, expected_l2_2d))
+
+        configurator.get_adaptivity_similarity_measure.return_value = "L1rel"
+        adaptivity_l1rel_2d = AdaptivityCalculator(
+            configurator,
+            nsims=nsims_2,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
+        adaptivity_l1rel_2d._similarity_dists = np.zeros(nsims_2 * (nsims_2 - 1) // 2)
+        adaptivity_l1rel_2d._l1rel(fake_2d_data)
+        # Expected: (1,0)=|3-1|/max(1,3)+|4-2|/max(2,4)=2/3+2/4=2/3+1/2
+        expected_l1rel_2d = np.array([2.0 / 3.0 + 1.0 / 2.0])
         self.assertTrue(
-            np.allclose(
-                adaptivity_controller._l1rel(fake_2d_data),
-                np.array(
-                    [
-                        [0, abs((1 - 3) / max(1, 3) + (2 - 4) / max(2, 4))],
-                        [abs((1 - 3) / max(1, 3) + (2 - 4) / max(2, 4)), 0],
-                    ]
-                ),
-            )
+            np.allclose(adaptivity_l1rel_2d._similarity_dists, expected_l1rel_2d)
         )
+
+        configurator.get_adaptivity_similarity_measure.return_value = "L2rel"
+        adaptivity_l2rel_2d = AdaptivityCalculator(
+            configurator,
+            nsims=nsims_2,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
+        )
+        adaptivity_l2rel_2d._similarity_dists = np.zeros(nsims_2 * (nsims_2 - 1) // 2)
+        adaptivity_l2rel_2d._l2rel(fake_2d_data)
+        # Expected: (1,0)=sqrt((3-1)^2/max(1,3)^2+(4-2)^2/max(2,4)^2)=sqrt(4/9+4/16)
+        expected_l2rel_2d = np.array([np.sqrt((2.0 / 3.0) ** 2 + (2.0 / 4.0) ** 2)])
         self.assertTrue(
-            np.allclose(
-                adaptivity_controller._l2rel(fake_2d_data),
-                np.array(
-                    [
-                        [
-                            0,
-                            np.sqrt(
-                                (1 - 3) ** 2 / max(1, 3) ** 2
-                                + (2 - 4) ** 2 / max(2, 4) ** 2
-                            ),
-                        ],
-                        [
-                            np.sqrt(
-                                (1 - 3) ** 2 / max(1, 3) ** 2
-                                + (2 - 4) ** 2 / max(2, 4) ** 2
-                            ),
-                            0,
-                        ],
-                    ]
-                ),
-            )
+            np.allclose(adaptivity_l2rel_2d._similarity_dists, expected_l2rel_2d)
         )
 
     def test_adaptivity_norms_with_zeros_no_warning(self):
@@ -315,23 +397,33 @@ class TestLocalAdaptivity(TestCase):
 
         # Data with zeros - previously triggered RuntimeWarning: invalid value in true_divide
         data_with_zeros = np.array([[0.0], [0.0], [1.0]])
+        # Initialize vectors for testing
+        nsims_zero_test = 3
+        zero_vec_size = nsims_zero_test * (nsims_zero_test - 1) // 2
+
+        # Test L2rel with zero data
+        adaptivity_l2rel._similarity_dists = np.zeros(zero_vec_size)
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("error", RuntimeWarning)
-            result_l2rel = adaptivity_l2rel._l2rel(data_with_zeros)
+            adaptivity_l2rel._l2rel(data_with_zeros)
         self.assertEqual(
             len(w), 0, "L2rel must not raise RuntimeWarning with zero data"
         )
+        # When both are 0, relative diff should be 0 (since numerator is 0)
+        # (0,0) pair is at index 0
+        self.assertEqual(adaptivity_l2rel._similarity_dists[0], 0.0)
 
+        # Test L1rel with zero data
+        adaptivity_l1rel._similarity_dists = np.zeros(zero_vec_size)
         with warnings.catch_warnings(record=True) as w:
             warnings.simplefilter("error", RuntimeWarning)
-            result_l1rel = adaptivity_l1rel._l1rel(data_with_zeros)
+            adaptivity_l1rel._l1rel(data_with_zeros)
         self.assertEqual(
             len(w), 0, "L1rel must not raise RuntimeWarning with zero data"
         )
-
         # When both are 0, relative diff should be 0 (since numerator is 0)
-        self.assertEqual(result_l2rel[0, 1], 0.0)
-        self.assertEqual(result_l1rel[0, 1], 0.0)
+        # (0,0) pair is at index 0
+        self.assertEqual(adaptivity_l1rel._similarity_dists[0], 0.0)
 
     def test_associate_active_to_inactive(self):
         """
@@ -360,7 +452,9 @@ class TestLocalAdaptivity(TestCase):
         ]
 
         adaptivity_controller._similarity_dists = self._similarity_dists
-        adaptivity_controller._max_similarity_dist = np.amax(self._similarity_dists)
+        adaptivity_controller._max_similarity_dist = (
+            np.amax(self._similarity_dists) if len(self._similarity_dists) > 0 else 0.0
+        )
 
         adaptivity_controller._is_sim_active = np.array(
             [True, False, False, True, False]
@@ -408,6 +502,9 @@ class TestLocalAdaptivity(TestCase):
         expected_sim_is_associated_to = np.array([-2, 0, 0, -2, 3])
 
         adaptivity_controller._similarity_dists = self._similarity_dists
+        adaptivity_controller._max_similarity_dist = (
+            np.amax(self._similarity_dists) if len(self._similarity_dists) > 0 else 0.0
+        )
         adaptivity_controller._is_sim_active = np.array(
             [True, False, False, False, False]
         )
