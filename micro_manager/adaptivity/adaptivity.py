@@ -343,12 +343,14 @@ class AdaptivityCalculator:
         if type(flat_idx) == int:
             flat_idx = [flat_idx]
         flat_idx = np.array(flat_idx)
+        t_num = self._calc_tri_num(self._nsims - 1)
+        i = self._nsims - 2 - np.floor(np.sqrt(-8 * flat_idx + 8 * t_num - 7) / 2 - 0.5)
+        j = flat_idx + i + 1 - t_num + self._calc_tri_num(self._nsims - i - 1)
+        return np.vstack((i.astype(np.int32), j.astype(np.int32)), dtype=np.int32).T
 
-        i = flat_idx // (self._nsims - 1)
-        j = (
-            flat_idx % (self._nsims - 1)
-        ) + 1  # shift by one to transform back from n-1 mat to n mat
-        return np.vstack((i, j), dtype=np.int32).T
+    @staticmethod
+    def _calc_tri_num(n: int):
+        return n * (n + 1) / 2
 
     def _map2dto1d(self, coords: list) -> int:
         """
@@ -368,5 +370,8 @@ class AdaptivityCalculator:
         # assert i < j invariant
         coords = np.sort(coords, axis=-1)
         i, j = coords[:, 0], coords[:, 1]
-
-        return i * (self._nsims - 1) + (j - 1)
+        # num entries till row i
+        base = self._similarity_dists.shape[0] - self._calc_tri_num(self._nsims - 1 - i)
+        # row offset
+        offset = j - 1 - i
+        return (base + offset).astype(np.int32)
