@@ -315,12 +315,15 @@ class AdaptivityCalculator:
         """
         eps = np.finfo(np.float64).eps
         for i in range(1, self._nsims):
-            for j in range(i):
-                p_diff = np.abs(data[i] - data[j])
-                denom = np.maximum(np.abs(data[i]), np.abs(data[j]))
-                rel_diff = p_diff / np.maximum(denom, eps)
-                flat_idx = self._map2dto1d([i, j])
-                self._similarity_dists[flat_idx] += np.linalg.norm(rel_diff, ord=2) * dt
+            p_diff = np.abs(data[i] - data[i + 1 : self._nsims])
+            denom = np.maximum(
+                np.abs(data[i])[None, :], np.abs(data[i + 1 : self._nsims])
+            )
+            rel_diff = p_diff / np.maximum(denom, eps)
+            base_idx = self._map2dto1d([i, i + 1])
+            self._similarity_dists[base_idx : base_idx + p_diff.shape[0]] += (
+                np.linalg.norm(rel_diff, ord=2) * dt
+            )
 
     def _map1dto2d(self, flat_idx: int) -> tuple:
         """
@@ -344,7 +347,7 @@ class AdaptivityCalculator:
         i = flat_idx // (self._nsims - 1)
         j = (
             flat_idx % (self._nsims - 1)
-        ) + 1  # shift by one to transfrom back from n-1 mat to n mat
+        ) + 1  # shift by one to transform back from n-1 mat to n mat
         return np.vstack((i, j), dtype=np.int32).T
 
     def _map2dto1d(self, coords: list) -> int:
