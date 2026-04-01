@@ -497,15 +497,15 @@ class TestLocalAdaptivity(TestCase):
 
     def _convert_2d_to_1d(self, matrix_2d: np.ndarray) -> np.ndarray:
         """
-        Convert a 2D symmetric matrix to 1D strictly lower triangular vector.
+        Convert a 2D symmetric matrix to 1D strictly upper triangular vector.
         """
         n = matrix_2d.shape[0]
         vec_size = n * (n - 1) // 2
         vector_1d = np.zeros(vec_size)
 
         idx = 0
-        for i in range(1, n):
-            for j in range(i):
+        for i in range(n - 1):
+            for j in range(i + 1, n):
                 vector_1d[idx] = matrix_2d[i, j]
                 idx += 1
 
@@ -513,13 +513,13 @@ class TestLocalAdaptivity(TestCase):
 
     def _convert_1d_to_2d(self, vector_1d: np.ndarray, n: int) -> np.ndarray:
         """
-        Convert a 1D strictly lower triangular vector back to 2D symmetric matrix.
+        Convert a 1D strictly upper triangular vector back to 2D symmetric matrix.
         """
         matrix_2d = np.zeros((n, n))
 
         idx = 0
-        for i in range(1, n):
-            for j in range(i):
+        for i in range(n - 1):
+            for j in range(i + 1, n):
                 matrix_2d[i, j] = vector_1d[idx]
                 matrix_2d[j, i] = vector_1d[idx]
                 idx += 1

@@ -52,9 +52,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._comm = comm
 
         n_dists = int(num_sims * (num_sims - 1) / 2)
-        self._base_logger.log_info(
-            "Number of similarity distances to be calculated: {}".format(n_dists)
-        )
 
         # similarity_dists: 1D array storing strictly lower triangular elements of similarity distances
         # This vector is modified in place via the function update_similarity_dists

@@ -254,11 +254,14 @@ class AdaptivityCalculator:
         dt : float
             Time step to scale the similarity distances
         """
-        for i in range(1, self._nsims):
-            for j in range(i):
-                p_diff = np.abs(data[i] - data[j])
-                flat_idx = self._map2dto1d([i, j])
-                self._similarity_dists[flat_idx] += np.linalg.norm(p_diff, ord=1) * dt
+        idx = 0
+        for i in range(self._nsims - 1):
+            # Vectorized computation for all j > i
+            diffs = np.abs(data[i] - data[i + 1 :])
+            norms = np.linalg.norm(diffs, ord=1, axis=-1 if diffs.ndim > 1 else ())
+            n_pairs = self._nsims - i - 1
+            self._similarity_dists[idx : idx + n_pairs] += norms * dt
+            idx += n_pairs
 
     def _l2(self, data: np.ndarray, dt: float) -> None:
         """
@@ -271,11 +274,14 @@ class AdaptivityCalculator:
         dt : float
             Time step to scale the similarity distances
         """
-        for i in range(1, self._nsims):
-            for j in range(i):
-                p_diff = np.abs(data[i] - data[j])
-                flat_idx = self._map2dto1d([i, j])
-                self._similarity_dists[flat_idx] += np.linalg.norm(p_diff, ord=2) * dt
+        idx = 0
+        for i in range(self._nsims - 1):
+            # Vectorized computation for all j > i
+            diffs = np.abs(data[i] - data[i + 1 :])
+            norms = np.linalg.norm(diffs, ord=2, axis=-1 if diffs.ndim > 1 else ())
+            n_pairs = self._nsims - i - 1
+            self._similarity_dists[idx : idx + n_pairs] += norms * dt
+            idx += n_pairs
 
     def _l1rel(self, data: np.ndarray, dt: float) -> None:
         """
@@ -290,16 +296,18 @@ class AdaptivityCalculator:
             Time step to scale the similarity distances
         """
         eps = np.finfo(np.float64).eps
-        for i in range(1, self._nsims):
-            p_diff = np.abs(data[i] - data[i + 1 : self._nsims])
-            denom = np.maximum(
-                np.abs(data[i])[None, :], np.abs(data[i + 1 : self._nsims])
+        idx = 0
+        for i in range(self._nsims - 1):
+            # Vectorized computation for all j > i
+            diffs = np.abs(data[i] - data[i + 1 :])
+            denoms = np.maximum(np.abs(data[i]), np.abs(data[i + 1 :]))
+            rel_diffs = diffs / np.maximum(denoms, eps)
+            norms = np.linalg.norm(
+                rel_diffs, ord=1, axis=-1 if rel_diffs.ndim > 1 else ()
             )
-            rel_diff = p_diff / np.maximum(denom, eps)
-            base_idx = self._map2dto1d([i, i + 1])
-            self._similarity_dists[base_idx : base_idx + p_diff.shape[0]] += (
-                np.linalg.norm(rel_diff, ord=1) * dt
-            )
+            n_pairs = self._nsims - i - 1
+            self._similarity_dists[idx : idx + n_pairs] += norms * dt
+            idx += n_pairs
 
     def _l2rel(self, data: np.ndarray, dt: float) -> None:
         """
@@ -314,20 +322,22 @@ class AdaptivityCalculator:
             Time step to scale the similarity distances
         """
         eps = np.finfo(np.float64).eps
-        for i in range(1, self._nsims):
-            p_diff = np.abs(data[i] - data[i + 1 : self._nsims])
-            denom = np.maximum(
-                np.abs(data[i])[None, :], np.abs(data[i + 1 : self._nsims])
+        idx = 0
+        for i in range(self._nsims - 1):
+            # Vectorized computation for all j > i
+            diffs = np.abs(data[i] - data[i + 1 :])
+            denoms = np.maximum(np.abs(data[i]), np.abs(data[i + 1 :]))
+            rel_diffs = diffs / np.maximum(denoms, eps)
+            norms = np.linalg.norm(
+                rel_diffs, ord=2, axis=-1 if rel_diffs.ndim > 1 else ()
             )
-            rel_diff = p_diff / np.maximum(denom, eps)
-            base_idx = self._map2dto1d([i, i + 1])
-            self._similarity_dists[base_idx : base_idx + p_diff.shape[0]] += (
-                np.linalg.norm(rel_diff, ord=2) * dt
-            )
+            n_pairs = self._nsims - i - 1
+            self._similarity_dists[idx : idx + n_pairs] += norms * dt
+            idx += n_pairs
 
-    def _map1dto2d(self, flat_idx: int) -> tuple:
+    def _map1dto2d(self, flat_idx: int) -> np.ndarray:
         """
-        Map a 1D index to 2D coordinates in strictly lower triangular part.
+        Map a 1D index to 2D coordinates in strictly upper triangular part.
 
         Parameters
         ----------
@@ -336,42 +346,47 @@ class AdaptivityCalculator:
 
         Returns
         -------
-        coord : tuple
-            2D coordinates (i, j) corresponding to the 1D index, where i > j
+        coord : numpy array
+            2D coordinates (i, j) corresponding to the 1D index, where i < j
         """
-        # Find row i: solve i(i-1)/2 <= flat_idx < i(i+1)/2
         if type(flat_idx) == int:
             flat_idx = [flat_idx]
         flat_idx = np.array(flat_idx)
-        t_num = self._calc_tri_num(self._nsims - 1)
-        i = self._nsims - 2 - np.floor(np.sqrt(-8 * flat_idx + 8 * t_num - 7) / 2 - 0.5)
-        j = flat_idx + i + 1 - t_num + self._calc_tri_num(self._nsims - i - 1)
-        return np.vstack((i.astype(np.int32), j.astype(np.int32)), dtype=np.int32).T
 
-    @staticmethod
-    def _calc_tri_num(n: int):
-        return n * (n + 1) / 2
+        # For upper triangular: flat_idx = i * (2*n - i - 1) // 2 + (j - i - 1)
+        # Solve for i: i*(2*n - i - 1)/2 <= flat_idx
+        # Rearranging: -i^2 + (2*n - 1)*i <= 2*flat_idx
+        # i^2 - (2*n - 1)*i + 2*flat_idx >= 0
+        # Using quadratic formula: i = ((2*n - 1) - sqrt((2*n - 1)^2 - 8*flat_idx)) / 2
+        discriminant = (2 * self._nsims - 1) ** 2 - 8 * flat_idx
+        i = np.floor(((2 * self._nsims - 1) - np.sqrt(discriminant)) / 2).astype(
+            np.int32
+        )
 
-    def _map2dto1d(self, coords: list) -> int:
+        # Calculate j from: flat_idx = i * (2*n - i - 1) // 2 + (j - i - 1)
+        base_idx = i * (2 * self._nsims - i - 1) // 2
+        j = flat_idx - base_idx + i + 1
+
+        return np.vstack((i.astype(np.int32), j.astype(np.int32))).T
+
+    def _map2dto1d(self, coords: np.ndarray) -> int:
         """
-        Map 2D coordinates to a 1D index in strictly lower triangular storage.
+        Map 2D coordinates to a 1D index in strictly upper triangular storage.
 
         Parameters
         ----------
-        coords : list
-            2D coordinates [i, j] to be mapped, where i > j
+        coords : numpy array
+            2D coordinates [i, j] to be mapped, where i < j
 
         Returns
         -------
         flat_idx : int
-            1D index corresponding to the 2D coordinates in strictly lower triangular part
+            1D index corresponding to the 2D coordinates in strictly upper triangular part
         """
         coords = np.array(coords, dtype=np.int32).reshape(-1, 2)
-        # assert i < j invariant
+        # Ensure i < j for upper triangular
         coords = np.sort(coords, axis=-1)
         i, j = coords[:, 0], coords[:, 1]
-        # num entries till row i
-        base = self._similarity_dists.shape[0] - self._calc_tri_num(self._nsims - 1 - i)
-        # row offset
-        offset = j - 1 - i
-        return (base + offset).astype(np.int32)
+        # flat_idx = i * (2*n - i - 1) // 2 + (j - i - 1)
+        flat_idx = i * (2 * self._nsims - i - 1) // 2 + (j - i - 1)
+        return flat_idx.astype(np.int32)
