@@ -275,16 +275,14 @@ class AdaptivityCalculator:
         similarity_dists : numpy array
             Updated 2D array having similarity distances between each micro simulation pair
         """
-        pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
-        # divide by data to get relative difference
-        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
-        denom = np.maximum(
-            np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
-        )
-        # Add small epsilon to avoid division by zero (invalid value warning) when both are 0
         eps = np.finfo(np.float64).eps
-        relative = pointwise_diff / np.maximum(denom, eps)
-        return np.linalg.norm(relative, ord=1, axis=-1)
+        data_abs = np.absolute(data)
+        denom = np.maximum(data_abs[np.newaxis, :], data_abs[:, np.newaxis])
+        return np.linalg.norm(
+            (data[np.newaxis, :] - data[:, np.newaxis]) / np.maximum(denom, eps),
+            ord=1,
+            axis=-1,
+        )
 
     def _l2rel(self, data: np.ndarray) -> np.ndarray:
         """
@@ -301,13 +299,11 @@ class AdaptivityCalculator:
         similarity_dists : numpy array
             Updated 2D array having similarity distances between each micro simulation pair
         """
-        pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
-        # divide by data to get relative difference
-        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
-        denom = np.maximum(
-            np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
-        )
-        # Add small epsilon to avoid division by zero (invalid value warning) when both are 0
         eps = np.finfo(np.float64).eps
-        relative = pointwise_diff / np.maximum(denom, eps)
-        return np.linalg.norm(relative, ord=2, axis=-1)
+        data_abs = np.absolute(data)
+        denom = np.maximum(data_abs[np.newaxis, :], data_abs[:, np.newaxis])
+        return np.linalg.norm(
+            (data[np.newaxis, :] - data[:, np.newaxis]) / np.maximum(denom, eps),
+            ord=2,
+            axis=-1,
+        )
