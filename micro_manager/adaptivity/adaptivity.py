@@ -124,7 +124,7 @@ class AdaptivityCalculator:
         self._similarity_dists *= exp(-self._hist_param * dt)
 
         for name in data.keys():
-            data_vals = np.array(data[name])
+            data_vals = np.asarray(data[name])
             if data_vals.ndim == 1:
                 # If the adaptivity data is a scalar for each simulation,
                 # expand the dimension to make it a 2D array to unify the calculation.
