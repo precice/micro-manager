@@ -809,15 +809,15 @@ class MicroManagerCoupling(MicroManager):
         # If lazy initialization is on, initial states of inactive simulations need to be determined
         if self._lazy_init:
             # Prepare data structure for collective communication
-            if not initial_micro_data:
-                # Ranks without active simulations provide empty dicts
-                initial_micro_data_list: list[dict] = [
-                    dict() for _ in range(self._local_number_of_sims)
-                ]
-            else:
+            if micro_sims_to_init:
                 initial_micro_data_list: list[dict] = [
                     dict(zip(initial_micro_data, t))
                     for t in zip(*initial_micro_data.values())
+                ]
+            else:
+                # Ranks without active simulations provide empty dicts
+                initial_micro_data_list: list[dict] = [
+                    dict() for _ in range(self._local_number_of_sims)
                 ]
 
             initial_micro_data_list = (
