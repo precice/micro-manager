@@ -813,7 +813,7 @@ class MicroManagerCoupling(MicroManager):
         # If lazy initialization is on, initial states of inactive simulations need to be determined
         if self._lazy_init:
             # Prepare data structure for collective communication
-            if micro_sims_to_init:
+            if are_there_sims_to_init:
                 initial_micro_data_list: list[dict] = [
                     dict(zip(initial_micro_data, t))
                     for t in zip(*initial_micro_data.values())
