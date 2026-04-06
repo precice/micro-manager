@@ -717,7 +717,7 @@ class MicroManagerCoupling(MicroManager):
                 "The initialize() method of the Micro simulation requires initial data, but no initial macro data has been provided."
             )
 
-        initial_micro_data = None
+        initial_micro_data: dict[str, list] = dict()
 
         if self._micro_sims_init:
             # Call initialize() method of the micro simulation to check if it returns any initial data
@@ -743,8 +743,6 @@ class MicroManagerCoupling(MicroManager):
                         self._micro_sims[i].initialize()
             else:  # Case where the initialize() method returns data
                 if self._is_adaptivity_on:
-                    initial_micro_data: dict[str, list] = dict()
-
                     for name in initial_micro_output.keys():
                         initial_micro_data[name] = [0] * self._local_number_of_sims
                         # Save initial data from first micro simulation as we anyway have it
@@ -811,15 +809,15 @@ class MicroManagerCoupling(MicroManager):
         # If lazy initialization is on, initial states of inactive simulations need to be determined
         if self._lazy_init:
             # Prepare data structure for collective communication
-            if initial_micro_data:
-                initial_micro_data_list = [
-                    dict(zip(initial_micro_data, t))
-                    for t in zip(*initial_micro_data.values())
+            if not initial_micro_data:
+                # Ranks without active simulations provide empty dicts
+                initial_micro_data_list: list[dict] = [
+                    dict() for _ in range(self._local_number_of_sims)
                 ]
             else:
-                # Ranks without active simulations provide empty dicts
-                initial_micro_data_list = [
-                    dict() for _ in range(self._local_number_of_sims)
+                initial_micro_data_list: list[dict] = [
+                    dict(zip(initial_micro_data, t))
+                    for t in zip(*initial_micro_data.values())
                 ]
 
             initial_micro_data_list = (
