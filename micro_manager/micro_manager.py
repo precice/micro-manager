@@ -652,6 +652,7 @@ class MicroManagerCoupling(MicroManager):
         micro_sims_to_init = range(
             1, self._local_number_of_sims
         )  # All sims if lazy init is off, otherwise all active simulations
+        are_there_sims_to_init = True
 
         if not initial_data:
             is_initial_data_available = False
@@ -662,6 +663,7 @@ class MicroManagerCoupling(MicroManager):
                 )
         else:
             is_initial_data_available = True
+
             # For lazy initialization, compute adaptivity with the initial macro data
             if self._lazy_init:
                 for i in range(self._local_number_of_sims):
@@ -679,6 +681,7 @@ class MicroManagerCoupling(MicroManager):
                         "There are no active simulations on this rank."
                     )
                     micro_sims_to_init = []
+                    are_there_sims_to_init = False
                 else:
                     for i in active_sim_lids:
                         self._micro_sims[i] = micro_problem_cls(
@@ -694,6 +697,7 @@ class MicroManagerCoupling(MicroManager):
                     micro_sims_to_init = (
                         active_sim_lids  # Only active simulations will be initialized
                     )
+                    are_there_sims_to_init = True
 
         # Boolean which states if the initialize() method of the micro simulation requires initial data
         test_instance = self._model_manager.get_instance(
@@ -719,7 +723,7 @@ class MicroManagerCoupling(MicroManager):
 
         initial_micro_data: dict[str, list] = dict()
 
-        if self._micro_sims_init:
+        if are_there_sims_to_init:
             # Call initialize() method of the micro simulation to check if it returns any initial data
             if sim_requires_init_data:
                 initial_micro_output = self._micro_sims[first_id].initialize(
