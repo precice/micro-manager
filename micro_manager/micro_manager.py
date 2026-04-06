@@ -685,15 +685,15 @@ class MicroManagerCoupling(MicroManager):
                             self._global_ids_of_local_sims[i]
                         )
 
-                for i in active_sim_lids:
-                    self._micro_sims[i] = self._model_manager.get_instance(
-                        self._global_ids_of_local_sims[i], micro_problem_cls
-                    )
+                    for i in active_sim_lids:
+                        self._micro_sims[i] = self._model_manager.get_instance(
+                            self._global_ids_of_local_sims[i], micro_problem_cls
+                        )
 
-                first_id = active_sim_lids[0]  # First active simulation ID
-                micro_sims_to_init = (
-                    active_sim_lids  # Only active simulations will be initialized
-                )
+                    first_id = active_sim_lids[0]  # First active simulation ID
+                    micro_sims_to_init = (
+                        active_sim_lids  # Only active simulations will be initialized
+                    )
 
         # Boolean which states if the initialize() method of the micro simulation requires initial data
         test_instance = self._model_manager.get_instance(
