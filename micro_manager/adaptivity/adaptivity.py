@@ -276,10 +276,11 @@ class AdaptivityCalculator:
             Updated 2D array having similarity distances between each micro simulation pair
         """
         eps = np.finfo(np.float64).eps
-        data_abs = np.absolute(data)
-        denom = np.maximum(data_abs[np.newaxis, :], data_abs[:, np.newaxis])
+        data_bc = data[np.newaxis, :]
+        data_abs = np.absolute(data_bc)
+        denom = np.maximum(data_abs, np.swapaxis(data_abs, 0, 1))
         return np.linalg.norm(
-            (data[np.newaxis, :] - data[:, np.newaxis]) / np.maximum(denom, eps),
+            (data_bc - np.swapaxis(data_bc, 0, 1) / np.maximum(denom, eps),
             ord=1,
             axis=-1,
         )
