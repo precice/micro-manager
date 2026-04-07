@@ -58,6 +58,43 @@ class AdaptivityCalculator:
 
         self._max_similarity_dist = 0.0
 
+        self._interpolation = None
+        self._mappings = []
+        self._mapping_configs = []
+        mappings = configurator.get_adaptivity_mapping_configs()
+        for mapping in mappings:
+            src_fields = mapping['src_fields']
+            dst_fields = mapping['dst_fields']
+            n_neighbors = mapping['n_neighbors']
+
+            self._mappings.append((src_fields, dst_fields))
+            config = {}
+            if 'use_pu' in mapping['rbf_config']:
+                config['use_pu'] = mapping['rbf_config']['use_pu']
+            if 'pu_overlap' in mapping['rbf_config']:
+                config['pu_overlap'] = mapping['rbf_config']['pu_overlap']
+            config['pu_cluster_size'] = n_neighbors
+            if 'basis' in mapping['rbf_config']:
+                if 'type' in mapping['rbf_config']['basis']:
+                    config['basis'] = mapping['rbf_config']['basis']['type']
+                if config['basis'] == 'gauss' and 'eps' in mapping['rbf_config']['basis']:
+                    config['gauss_eps'] = mapping['rbf_config']['basis']['eps']
+
+            dom_config = {}
+            dom_config['n_neighbors'] = n_neighbors
+            if 'max_filling' in mapping['domain_config']:
+                dom_config['max_filling'] = mapping['domain_config']['max_filling']
+            if 'coarsening_factor' in mapping['domain_config']:
+                dom_config['coarsening_factor'] = mapping['domain_config']['coarsening_factor']
+            if 'projection' in mapping['domain_config']:
+                if 'type' in mapping['domain_config']['projection']:
+                    dom_config['projection_type'] = mapping['domain_config']['projection']['type']
+                if 'target_dims' in mapping['domain_config']['projection']:
+                    dom_config['projection_std_dims'] = mapping['domain_config']['projection']['target_dims']
+
+            config['domain_config'] = dom_config
+            self._mapping_configs.append(config)
+
         # is_sim_active: 1D array having state (active or inactive) of each micro simulation
         # Start adaptivity calculation with all sims active
         # This array is modified in place via the function update_active_sims and update_inactive_sims
@@ -198,6 +235,66 @@ class AdaptivityCalculator:
                 if self._similarity_dists[active_id, active_id_2] <= self._coarse_tol:
                     return True
         return False
+
+    def _interpolate_output(self, micro_input, micro_sims_output):
+        # now all outputs are init to representative
+
+        # We need RBF interp here
+        # will treat function f1 ... fN described in the config
+        # fi: X -> Y, X and Y must be subsets of the coupled fields
+
+        # mapping list[tuple[list[str], list[str]]] = list[mapping=tuple[src args, dst args]]
+        # will aggregate args
+        # every output may only be used once as interpolation target
+        targets = []
+        for _, target_args in self._mappings:
+            targets.extend(target_args)
+        assert len(targets) == len(set(targets))
+
+        # precompute arg sizes
+        active_lids = self.get_active_sim_local_ids()
+        inactive_lids = self.get_inactive_sim_local_ids()
+        arg_sizes = {}
+        for name, value in micro_input[active_lids[0]].items():
+            arg_sizes[name] = 1 if type(value) != np.ndarray and type(value) != list else len(value)
+        for name, value in micro_sims_output[active_lids[0]].items():
+            arg_sizes[name] = 1 if type(value) != np.ndarray and type(value) != list else len(value)
+
+        # compute interpolation
+        n_points = len(active_lids)
+        n_points_inactive = len(inactive_lids)
+        for m_idx, fun in enumerate(self._mappings):
+            src_args, dst_args = fun
+            src_size = np.array([arg_sizes[name] for name in src_args]).sum()
+            dst_size = np.array([arg_sizes[name] for name in dst_args]).sum()
+            input_data = np.zeros((n_points, src_size))
+            output_data = np.zeros((n_points, dst_size))
+            for idx, lid in enumerate(active_lids):
+                offset = 0
+                for src_arg in src_args:
+                    input_data[idx, offset:offset + arg_sizes[src_arg]] = micro_input[lid][src_arg]
+                    offset += arg_sizes[src_arg]
+                offset = 0
+                for dst_arg in dst_args:
+                    output_data[idx, offset:offset + arg_sizes[dst_arg]] = micro_sims_output[lid][dst_arg]
+                    offset += arg_sizes[dst_arg]
+            input_data_inactive = np.zeros((n_points_inactive, src_size))
+            for idx, lid in enumerate(inactive_lids):
+                offset = 0
+                for src_arg in src_args:
+                    input_data_inactive[idx, offset:offset + arg_sizes[src_arg]] = micro_input[lid][src_arg]
+                    offset += arg_sizes[src_arg]
+
+            # use interpolant
+            self._interpolation.configure(self._mappings[m_idx])
+            self._interpolation.set_local_data(input_data, input_data_inactive, output_data)
+            output_data_inactive = self._interpolation.interpolate()
+
+            for idx, lid in enumerate(inactive_lids):
+                offset = 0
+                for dst_arg in dst_args:
+                    micro_sims_output[lid][dst_arg] = output_data_inactive[idx, offset:offset + arg_sizes[dst_arg]]
+                    offset += arg_sizes[dst_arg]
 
     def _get_similarity_measure(
         self, similarity_measure: str

@@ -15,6 +15,7 @@ from micro_manager.config import Config
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.model_manager import ModelManager
+from micro_manager.interpolation import RBF_PU
 
 from micro_manager.tools.p2p import p2p_comm, get_ranks_of_sims
 
@@ -68,6 +69,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._global_ids = global_ids
         self._comm = comm
 
+        self._interpolation = RBF_PU(configurator, base_logger, comm, self._rank, self._comm.Get_size())
         rank_of_sim = get_ranks_of_sims(global_ids, rank, comm, global_number_of_sims)
 
         self._is_sim_on_this_rank = [False] * global_number_of_sims  # DECLARATION
@@ -240,7 +242,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return np.array(inactive_sim_ids)
 
-    def get_full_field_micro_output(self, micro_output: list) -> list:
+    def get_full_field_micro_output(self, micro_input: list, micro_output: list) -> list:
         """
         Get the full field micro output from active simulations to inactive simulations.
 
@@ -260,6 +262,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         micro_sims_output = deepcopy(micro_output)
         self._communicate_micro_output(micro_sims_output)
+        self._interpolate_output(micro_input, micro_sims_output)
 
         self._precice_participant.stop_last_profiling_section()
 

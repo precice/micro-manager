@@ -50,6 +50,7 @@ class Config:
         self._adaptivity = False
         self._adaptivity_type = ""
         self._data_for_adaptivity = dict()
+        self._adaptivity_mappings = []
         self._adaptivity_n = 1
         self._adaptivity_history_param = 0.5
         self._adaptivity_coarsening_constant = 0.5
@@ -328,6 +329,9 @@ class Config:
 
             self._logger.log_info_rank_zero("Adaptivity type: " + self._adaptivity_type)
 
+            if self._adaptivity_type == "global":
+                self._adaptivity_mappings = self._data["simulation_params"]["adaptivity_settings"]["mappings"]
+
             if self._data["simulation_params"]["adaptivity_settings"].get(
                 "lazy_initialization"
             ):
@@ -566,6 +570,7 @@ class Config:
             )
 
         if self._m_adap:
+            self._write_data_names.append("model_resolution")
             self._m_adap_micro_file_names = [
                 name.replace("/", ".").replace("\\", ".").replace(".py", "")
                 for name in self._data["simulation_params"][
@@ -848,6 +853,17 @@ class Config:
             Either "local" or "global" depending on the type of adaptivity computation
         """
         return self._adaptivity_type
+
+    def get_adaptivity_mapping_configs(self):
+        """
+        Get the mapping configurations for the adaptivity interpolation scheme.
+
+        Returns
+        -------
+        adaptivity_mapping_configs : list
+            List of adaptivity mapping configurations.
+        """
+        return self._adaptivity_mappings
 
     def get_data_for_adaptivity(self):
         """

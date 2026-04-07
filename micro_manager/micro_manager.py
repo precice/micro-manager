@@ -212,8 +212,11 @@ class MicroManagerCoupling(MicroManager):
                     # Write a checkpoint if a simulation is just activated.
                     # This checkpoint will be asynchronous to the checkpoints written at the start of the time window.
                     if self._is_model_adaptivity_on:
+                        active_sim_lids = (
+                            self._adaptivity_controller.get_active_sim_local_ids()
+                        )
                         self._model_adaptivity_controller.update_states(
-                            self._micro_sims, active_sim_gids
+                            self._micro_sims, active_sim_lids
                         )
                     for i in range(self._local_number_of_sims):
                         if sim_states_cp[i] is None and self._micro_sims[i]:
@@ -244,13 +247,13 @@ class MicroManagerCoupling(MicroManager):
             # Write a checkpoint
             if self._participant.requires_writing_checkpoint() or performed_lb:
                 if self._is_model_adaptivity_on:
-                    active_sim_gids = None
+                    active_sim_lids = None
                     if self._is_adaptivity_on:
-                        active_sim_gids = (
+                        active_sim_lids = (
                             self._adaptivity_controller.get_active_sim_local_ids()
                         )
                     self._model_adaptivity_controller.update_states(
-                        self._micro_sims, active_sim_gids
+                        self._micro_sims, active_sim_lids
                     )
                 for i in range(self._local_number_of_sims):
                     sim_states_cp[i] = (
@@ -308,13 +311,13 @@ class MicroManagerCoupling(MicroManager):
                         self.state_setter(self._micro_sims[i], sim_states_cp[i])
 
                 if self._is_model_adaptivity_on:
-                    active_sim_gids = None
+                    active_sim_lids = None
                     if self._is_adaptivity_on:
-                        active_sim_gids = (
+                        active_sim_lids = (
                             self._adaptivity_controller.get_active_sim_local_ids()
                         )
                     self._model_adaptivity_controller.write_back_states(
-                        self._micro_sims, active_sim_gids
+                        self._micro_sims, active_sim_lids
                     )
 
                 first_iteration = False
@@ -821,7 +824,7 @@ class MicroManagerCoupling(MicroManager):
 
             initial_micro_data_list = (
                 self._adaptivity_controller.get_full_field_micro_output(
-                    initial_micro_data_list
+                    initial_data, initial_micro_data_list
                 )
             )
 
@@ -1092,7 +1095,7 @@ class MicroManagerCoupling(MicroManager):
                 )
 
         micro_sims_output = self._adaptivity_controller.get_full_field_micro_output(
-            micro_sims_output
+            micro_sims_input, micro_sims_output
         )
 
         inactive_sim_lids = self._adaptivity_controller.get_inactive_sim_local_ids()
@@ -1149,6 +1152,9 @@ class MicroManagerCoupling(MicroManager):
             )
 
         self._model_adaptivity_controller.finalise_solve()
+
+        for lid, sim in enumerate(self._micro_sims):
+            output[lid]["model_resolution"] = self._model_adaptivity_controller.get_sim_class_resolution(sim)
         return output
 
     def _get_solve_variant(self) -> Callable[[list, float], list]:
