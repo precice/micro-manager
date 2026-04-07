@@ -278,9 +278,9 @@ class AdaptivityCalculator:
         eps = np.finfo(np.float64).eps
         data_bc = data[np.newaxis, :]
         data_abs = np.absolute(data_bc)
-        denom = np.maximum(data_abs, np.swapaxis(data_abs, 0, 1))
+        denom = np.maximum(data_abs, np.swapaxes(data_abs, 0, 1))
         return np.linalg.norm(
-            (data_bc - np.swapaxis(data_bc, 0, 1) / np.maximum(denom, eps),
+            (data_bc - np.swapaxes(data_bc, 0, 1)) / np.maximum(denom, eps),
             ord=1,
             axis=-1,
         )
