@@ -813,7 +813,7 @@ class MicroManagerCoupling(MicroManager):
 
         # If lazy initialization is on, initial states of inactive simulations need to be determined
         if self._lazy_init:
-            # If there is initial (macro or micro) data, and if this rank has sims to init, then the initial micro data needs to be gathered
+            # If there is initial micro data, and if this rank has sims to init, then the data is to be gathered
             if initial_micro_data and are_there_sims_to_init:
                 initial_micro_data_list: list[dict] = [
                     dict(zip(initial_micro_data, t))
