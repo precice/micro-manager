@@ -50,7 +50,13 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             configurator, num_sims, micro_problem_cls, model_manager, base_logger, rank
         )
         self._comm = comm
-        self._interpolation = RBF_PU(configurator, base_logger, MPI.COMM_SELF, MPI.COMM_SELF.Get_rank(), MPI.COMM_SELF.Get_size())
+        self._interpolation = RBF_PU(
+            configurator,
+            base_logger,
+            MPI.COMM_SELF,
+            MPI.COMM_SELF.Get_rank(),
+            MPI.COMM_SELF.Get_size(),
+        )
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
@@ -148,7 +154,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         inactive_sim_ids = self.get_inactive_sim_local_ids()
         return inactive_sim_ids
 
-    def get_full_field_micro_output(self, micro_input: list, micro_output: list) -> list:
+    def get_full_field_micro_output(
+        self, micro_input: list, micro_output: list
+    ) -> list:
         """
         Get the full field micro output from active simulations to inactive simulations.
 

@@ -330,7 +330,9 @@ class Config:
             self._logger.log_info_rank_zero("Adaptivity type: " + self._adaptivity_type)
 
             if self._adaptivity_type == "global":
-                self._adaptivity_mappings = self._data["simulation_params"]["adaptivity_settings"]["mappings"]
+                self._adaptivity_mappings = self._data["simulation_params"][
+                    "adaptivity_settings"
+                ]["mappings"]
 
             if self._data["simulation_params"]["adaptivity_settings"].get(
                 "lazy_initialization"

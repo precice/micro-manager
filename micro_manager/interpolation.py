@@ -96,6 +96,7 @@ class Interpolation:
 
         return interpol_val / summed_weights
 
+
 class NDtree:
     class Mode(Enum):
         DISCRETIZE = 0
@@ -127,7 +128,7 @@ class NDtree:
             is_bound : np.ndarray
                 Boolean indicating whether the node is on the boundary.
             """
-            self._mode : NDtree.Mode = mode
+            self._mode: NDtree.Mode = mode
             self.low = low
             self.high = high
             self.max_depth = max_depth
@@ -168,16 +169,24 @@ class NDtree:
             return self.data_reserve_count
 
         def find_min_depth_for_n_neighbors(self, n: int, depth: int, p):
-            if self.data_reserve_count < n: return None
-            if self.children is None: return None
-            if not self.is_within(p): return None
+            if self.data_reserve_count < n:
+                return None
+            if self.children is None:
+                return None
+            if not self.is_within(p):
+                return None
 
-            tmp = [node.find_min_depth_for_n_neighbors(n, depth+1, p) for node in self.children]
+            tmp = [
+                node.find_min_depth_for_n_neighbors(n, depth + 1, p)
+                for node in self.children
+            ]
             depths = []
             for d in tmp:
-                if d is None: continue
+                if d is None:
+                    continue
                 depths.append(d)
-            if len(depths) == 0: return depth
+            if len(depths) == 0:
+                return depth
 
             min_depth = min(depths)
             return min_depth
@@ -198,7 +207,12 @@ class NDtree:
                 delta_bin_half = ((bin_high - bin_low) / 2).astype(bin_low.dtype)
                 bin_low_i = bin_low + mask * delta_bin_half
                 bin_high_i = bin_high - inv_mask * delta_bin_half
-                buffer.extend(self.children[i].get_filled_coords(bin_low_i.astype(bin_low.dtype), bin_high_i.astype(bin_low.dtype)))
+                buffer.extend(
+                    self.children[i].get_filled_coords(
+                        bin_low_i.astype(bin_low.dtype),
+                        bin_high_i.astype(bin_low.dtype),
+                    )
+                )
             return buffer
 
         def split(self):
@@ -271,13 +285,10 @@ class NDtree:
             raise RuntimeError("Failed to locate cell of point")
 
         def is_within(self, point):
-            return (
-                np.alltrue(point >= self.low) and
-                np.alltrue(
-                    np.logical_or(
-                        np.logical_and(self.is_bound, np.isclose(point, self.high, 1e-10)),
-                        point < self.high
-                    )
+            return np.alltrue(point >= self.low) and np.alltrue(
+                np.logical_or(
+                    np.logical_and(self.is_bound, np.isclose(point, self.high, 1e-10)),
+                    point < self.high,
                 )
             )
 
@@ -310,7 +321,9 @@ class NDtree:
             self.split()
             offset = 1
             for i in range(self.num_max_split):
-                self.children[i].deserialize(serialized[offset:offset+serialized[offset]])
+                self.children[i].deserialize(
+                    serialized[offset : offset + serialized[offset]]
+                )
                 offset += serialized[offset]
 
         def merge(self, other):
@@ -341,14 +354,23 @@ class NDtree:
                 return
 
         def _idx2mask(self, idx):
-            return ((idx & np.array([1 << i for i in range(self.dim)], dtype=np.int32)) != 0).astype(np.int32)
+            return (
+                (idx & np.array([1 << i for i in range(self.dim)], dtype=np.int32)) != 0
+            ).astype(np.int32)
 
         def _idx2coord(self, delta, low, idx):
             mask = self._idx2mask(idx).astype(dtype=delta.dtype)
             return (low + delta * mask).astype(mask.dtype)
 
     def __init__(self, mode, low, high, max_depth, max_filling):
-        self.root = NDtree.Node(mode, low, high, max_depth, max_filling, np.ones(low.shape[0], dtype=np.int32))
+        self.root = NDtree.Node(
+            mode,
+            low,
+            high,
+            max_depth,
+            max_filling,
+            np.ones(low.shape[0], dtype=np.int32),
+        )
 
     def get_filled_coords(self, height=None):
         if height is None:
@@ -368,7 +390,7 @@ class NDtree:
         if height > 32:
             dtype = np.int64
         coords = np.zeros((len(points), self.root.dim), dtype=dtype)
-        c_min = np.zeros(self.root.dim, dtype=dtype),
+        c_min = (np.zeros(self.root.dim, dtype=dtype),)
         c_max = np.power(2 * np.ones(self.root.dim, dtype=dtype), height)
         for i, point in enumerate(points):
             coords[i, :] = self.root.get_coord_of(point, c_min, c_max)
@@ -408,6 +430,7 @@ class NDtree:
     def clear(self):
         return self.root.clear()
 
+
 class HilbertDirect:
     def __init__(self, dim, bits):
         self.dim = dim
@@ -433,11 +456,11 @@ class HilbertDirect:
                 pos = pos - 1
 
         # gray decode
-        N = 2 << (self.bits-1)
-        tmp = X[self.dim-1] >> 1
-        i = self.dim-1
+        N = 2 << (self.bits - 1)
+        tmp = X[self.dim - 1] >> 1
+        i = self.dim - 1
         while i > 0:
-            X[i] = X[i] ^ X[i-1]
+            X[i] = X[i] ^ X[i - 1]
             i = i - 1
         X[0] = X[0] ^ tmp
 
@@ -462,12 +485,12 @@ class HilbertDirect:
         if self.bits == 0:
             return 0
         X = deepcopy(coord)
-        M = 1 << (self.bits-1)
+        M = 1 << (self.bits - 1)
 
         # inverse undo
         Q = M
         while Q > 1:
-            P = Q-1
+            P = Q - 1
             for i in range(self.dim):
                 if X[i] & Q:
                     X[0] = X[0] ^ P
@@ -479,12 +502,12 @@ class HilbertDirect:
 
         # gray encode
         for i in range(1, self.dim):
-            X[i] = X[i] ^ X[i-1]
+            X[i] = X[i] ^ X[i - 1]
         tmp = 0
         Q = M
         while Q > 1:
-            if X[self.dim-1] & Q:
-                tmp = tmp ^ Q-1
+            if X[self.dim - 1] & Q:
+                tmp = tmp ^ Q - 1
             Q = Q >> 1
         for i in range(self.dim):
             X[i] = X[i] ^ tmp
@@ -499,6 +522,7 @@ class HilbertDirect:
 
         return result
 
+
 class Projector(ABC):
     @abstractmethod
     def __call__(self, data):
@@ -507,6 +531,7 @@ class Projector(ABC):
     @abstractmethod
     def initialize(self, data):
         pass
+
 
 class STDProjector(Projector):
     def __init__(self, target_dims: int, comm: MPI.Comm):
@@ -517,16 +542,20 @@ class STDProjector(Projector):
     def initialize(self, data):
         assert data.ndim > 1
         std = np.zeros(data.shape[-1])
-        if data.shape[0] > 0: std = np.std(data, axis=0)
+        if data.shape[0] > 0:
+            std = np.std(data, axis=0)
         stds = np.array(self.comm.allgather(std))
         stds = np.mean(stds, axis=0)
-        self.target_dims[:] = np.sort(np.argsort(stds)[::-1][0:self.num_target_dims]).astype(np.int32)
+        self.target_dims[:] = np.sort(
+            np.argsort(stds)[::-1][0 : self.num_target_dims]
+        ).astype(np.int32)
 
     def __call__(self, data):
         d = data
         if data.ndim == 1:
             d = d[np.newaxis, :]
         return d[:, self.target_dims]
+
 
 class IdentityProjector(Projector):
     def __call__(self, data):
@@ -535,11 +564,13 @@ class IdentityProjector(Projector):
     def initialize(self, data):
         pass
 
+
 class InterleavedDomain:
     """
     Handles n-dimensional data in an overlapping domain.
     Will de- and re-compose the distributed data to allow for domain local operations.
     """
+
     def __init__(self, config, comm: MPI.Comm):
         self._config = config
         self._comm = comm
@@ -567,16 +598,28 @@ class InterleavedDomain:
         self._query_rank_mapping = None
 
     def configure(self, domain_config):
-        self._max_filling = 8 if 'max_filling' not in domain_config else domain_config['max_filling']
-        self._coarsening_factor = 2 if 'coarsening_factor' not in domain_config else domain_config['coarsening_factor']
-        self._n_neighbors = 50 if 'n_neighbors' not in domain_config else domain_config['n_neighbors']
-        if 'projection_type' not in domain_config:
+        self._max_filling = (
+            8 if "max_filling" not in domain_config else domain_config["max_filling"]
+        )
+        self._coarsening_factor = (
+            2
+            if "coarsening_factor" not in domain_config
+            else domain_config["coarsening_factor"]
+        )
+        self._n_neighbors = (
+            50 if "n_neighbors" not in domain_config else domain_config["n_neighbors"]
+        )
+        if "projection_type" not in domain_config:
             self._projector = IdentityProjector()
             return
 
-        match domain_config['projection_type']:
+        match domain_config["projection_type"]:
             case "std":
-                target_dims = 1 if 'projection_std_dims' not in domain_config else domain_config['projection_std_dims']
+                target_dims = (
+                    1
+                    if "projection_std_dims" not in domain_config
+                    else domain_config["projection_std_dims"]
+                )
                 self._projector = STDProjector(target_dims, self._comm)
             case "identity":
                 self._projector = IdentityProjector()
@@ -603,7 +646,7 @@ class InterleavedDomain:
             return f_query
 
         # transfer data back to original rank
-        send_map = {r:[] for r in range(self._size)}
+        send_map = {r: [] for r in range(self._size)}
         for i in range(x_query.shape[0]):
             dst_rank = self._query_rank_mapping[tuple(x_query[i, :].tolist())]
             data = []
@@ -611,7 +654,9 @@ class InterleavedDomain:
             data.extend(f_query[i, :].tolist())
             send_map[dst_rank].append(data)
         local_data = self._communicate(x_query.shape[-1] + f_query.shape[-1], send_map)
-        local_data = np.array(local_data).reshape(-1, x_query.shape[-1] + f_query.shape[-1])
+        local_data = np.array(local_data).reshape(
+            -1, x_query.shape[-1] + f_query.shape[-1]
+        )
 
         # sort data to match order of initial query input
         idx_map = {}
@@ -620,23 +665,27 @@ class InterleavedDomain:
 
         result = np.zeros((self._x_query_local.shape[0], f_query.shape[-1]))
         for d_idx in range(local_data.shape[0]):
-            idx = idx_map[tuple(local_data[d_idx, 0:x_query.shape[-1]].tolist())]
-            result[idx, :] = local_data[d_idx, x_query.shape[-1]:]
+            idx = idx_map[tuple(local_data[d_idx, 0 : x_query.shape[-1]].tolist())]
+            result[idx, :] = local_data[d_idx, x_query.shape[-1] :]
         return result
 
     def _normalize_x(self):
         x_loc_min = np.ones(self._x_local.shape[-1]) * np.inf
-        if self._x_local.shape[0] > 0: x_loc_min = np.min(self._x_local, axis=0)
+        if self._x_local.shape[0] > 0:
+            x_loc_min = np.min(self._x_local, axis=0)
         xq_loc_min = np.ones(self._x_query_local.shape[-1]) * np.inf
-        if self._x_query_local.shape[0] > 0: xq_loc_min = np.min(self._x_query_local, axis=0)
+        if self._x_query_local.shape[0] > 0:
+            xq_loc_min = np.min(self._x_query_local, axis=0)
         local_min = np.minimum(x_loc_min, xq_loc_min)
         glob_min = np.min(np.array(self._comm.allgather(local_min)), axis=0)
         self._bound_low = glob_min
 
         x_loc_max = -np.ones(self._x_local.shape[-1]) * np.inf
-        if self._x_local.shape[0] > 0: x_loc_max = np.max(self._x_local, axis=0)
+        if self._x_local.shape[0] > 0:
+            x_loc_max = np.max(self._x_local, axis=0)
         xq_loc_max = -np.ones(self._x_query_local.shape[-1]) * np.inf
-        if self._x_query_local.shape[0] > 0: xq_loc_max = np.max(self._x_query_local, axis=0)
+        if self._x_query_local.shape[0] > 0:
+            xq_loc_max = np.max(self._x_query_local, axis=0)
         local_max = np.maximum(x_loc_max, xq_loc_max)
         glob_max = np.max(np.array(self._comm.allgather(local_max)), axis=0)
         self._bound_high = glob_max
@@ -647,9 +696,20 @@ class InterleavedDomain:
         self._normalization = delta / 2.0
         self._shift = shift
         self._x_local = (self._x_local - shift) / self._normalization[None, :]
-        self._x_query_local = (self._x_query_local - shift) / self._normalization[None, :]
+        self._x_query_local = (self._x_query_local - shift) / self._normalization[
+            None, :
+        ]
+
         def eval_cond():
-            return not all([np.alltrue(self._x_local > -1.0), np.alltrue(self._x_local < 1.0), np.alltrue(self._x_query_local > -1.0), np.alltrue(self._x_query_local < 1.0)])
+            return not all(
+                [
+                    np.alltrue(self._x_local > -1.0),
+                    np.alltrue(self._x_local < 1.0),
+                    np.alltrue(self._x_query_local > -1.0),
+                    np.alltrue(self._x_query_local < 1.0),
+                ]
+            )
+
         glob_cond = self._comm.allgather(eval_cond())
         while any(glob_cond):
             # undo prev norm
@@ -677,7 +737,11 @@ class InterleavedDomain:
             depth_tree.insert(self._proj_x_local[n, :])
         for m in range(self._proj_x_query_local.shape[0]):
             depth_tree.insert(self._proj_x_query_local[m, :])
-        max_depth = np.maximum(self._comm.allreduce(depth_tree.get_height(), op=MPI.MAX) // self._coarsening_factor, self._coarsening_factor)
+        max_depth = np.maximum(
+            self._comm.allreduce(depth_tree.get_height(), op=MPI.MAX)
+            // self._coarsening_factor,
+            self._coarsening_factor,
+        )
         del depth_tree
         self._max_depth = max_depth
 
@@ -685,7 +749,9 @@ class InterleavedDomain:
         tree = NDtree(NDtree.Mode.DISCRETIZE, low, high, max_depth, self._max_filling)
         for n in range(self._proj_x_local.shape[0]):
             tree.insert(self._proj_x_local[n, :])
-        query_tree = NDtree(NDtree.Mode.DISCRETIZE, low, high, max_depth, self._max_filling)
+        query_tree = NDtree(
+            NDtree.Mode.DISCRETIZE, low, high, max_depth, self._max_filling
+        )
         for m in range(self._proj_x_query_local.shape[0]):
             query_tree.insert(self._proj_x_query_local[m, :])
 
@@ -693,9 +759,13 @@ class InterleavedDomain:
         def bcast_tree(t) -> NDtree:
             serial = t.serialize()
             serial_global = self._comm.allgather(serial)
-            res = NDtree(NDtree.Mode.DISCRETIZE, low, high, max_depth, self._max_filling)
+            res = NDtree(
+                NDtree.Mode.DISCRETIZE, low, high, max_depth, self._max_filling
+            )
             for s in serial_global:
-                other_tree = NDtree(NDtree.Mode.DISCRETIZE, low, high, max_depth, self._max_filling)
+                other_tree = NDtree(
+                    NDtree.Mode.DISCRETIZE, low, high, max_depth, self._max_filling
+                )
                 other_tree.deserialize(s)
                 res.merge(other_tree)
             return res
@@ -705,7 +775,9 @@ class InterleavedDomain:
 
     def _create_partitions(self):
         self._tree.propagate_up_reserve_counts()
-        r_m_depth = self._tree.find_min_depth_for_n_neighbors(self._n_neighbors, self._proj_x_query_local)
+        r_m_depth = self._tree.find_min_depth_for_n_neighbors(
+            self._n_neighbors, self._proj_x_query_local
+        )
         r_m_depth = self._comm.allreduce(r_m_depth, op=MPI.MAX)
         r_m_cells = np.power(2, r_m_depth)
         grid_resolution = self._tree.get_height()
@@ -713,7 +785,7 @@ class InterleavedDomain:
 
         # index query points
         query_coords = self._query_tree.get_filled_coords(grid_resolution)
-        query_mapping = {tuple(c.tolist()):hMap.coord2index(c) for c in query_coords}
+        query_mapping = {tuple(c.tolist()): hMap.coord2index(c) for c in query_coords}
         query_mapping_inv = {}
         for coord, idx in query_mapping.items():
             query_mapping_inv[idx] = coord
@@ -721,7 +793,7 @@ class InterleavedDomain:
 
         # partition based on query points
         target_point_per_rank = len(sorted_1d_query_indices) // self._size
-        partitions = {r:[-1, -1] for r in range(self._size)}
+        partitions = {r: [-1, -1] for r in range(self._size)}
         last_val = sorted_1d_query_indices[0]
         start_idx = 0
         part_begin = 0
@@ -743,7 +815,7 @@ class InterleavedDomain:
 
             # partition has minimum size, find nearest end of current cell
             end_idx = i
-            for j in range(i+1, len(sorted_1d_query_indices)):
+            for j in range(i + 1, len(sorted_1d_query_indices)):
                 if sorted_1d_query_indices[j] != last_val:
                     end_idx = j - 1
                     break
@@ -760,35 +832,47 @@ class InterleavedDomain:
 
             part_idx = part_idx + 1
         # last part was not used
-        if part_idx in partitions and partitions[part_idx][0] == 0 and partitions[part_idx][1] == 0:
+        if (
+            part_idx in partitions
+            and partitions[part_idx][0] == 0
+            and partitions[part_idx][1] == 0
+        ):
             partitions[part_idx][0] = part_begin
             partitions[part_idx][1] = len(sorted_1d_query_indices) - 1
 
         # assign surrounding src domain to rank local query points
-        src_domains = {r:[None, None] for r in range(self._size)}
+        src_domains = {r: [None, None] for r in range(self._size)}
         for rank, p_range in partitions.items():
             if -1 == p_range[0] == p_range[1]:
                 continue
 
             # gather coords, find bounding box
-            local_indices = sorted_1d_query_indices[p_range[0]:p_range[1]+1]
+            local_indices = sorted_1d_query_indices[p_range[0] : p_range[1] + 1]
             local_coords = np.array([query_mapping_inv[idx] for idx in local_indices])
             bbox_low = np.min(local_coords, axis=0)
             bbox_high = np.max(local_coords, axis=0)
             # np.where for valid bbox ranges
             low_mask = (bbox_low >= 2 * r_m_cells).astype(np.int32)
-            bbox_low = low_mask * (bbox_low - 2 * r_m_cells) + (1 - low_mask) * np.zeros_like(bbox_low)
+            bbox_low = low_mask * (bbox_low - 2 * r_m_cells) + (
+                1 - low_mask
+            ) * np.zeros_like(bbox_low)
 
             max_coord = np.power(2, grid_resolution) - 1
             high_mask = (bbox_high < (max_coord - 2 * r_m_cells)).astype(np.int32)
-            bbox_high = high_mask * (bbox_high + 2 * r_m_cells) + (1 - high_mask) * (np.ones_like(bbox_high) * max_coord)
+            bbox_high = high_mask * (bbox_high + 2 * r_m_cells) + (1 - high_mask) * (
+                np.ones_like(bbox_high) * max_coord
+            )
             src_domains[rank][0] = bbox_low
             src_domains[rank][1] = bbox_high
 
         # figure out which query points need to be sent where
-        owned_query_coords = self._query_tree.get_coords_of(self._proj_x_query_local, grid_resolution)
-        owned_query_indices = [query_mapping[tuple(coord.tolist())] for coord in owned_query_coords]
-        send_map = {r:[] for r in range(self._size)}
+        owned_query_coords = self._query_tree.get_coords_of(
+            self._proj_x_query_local, grid_resolution
+        )
+        owned_query_indices = [
+            query_mapping[tuple(coord.tolist())] for coord in owned_query_coords
+        ]
+        send_map = {r: [] for r in range(self._size)}
         for i in range(len(owned_query_indices)):
             # find owning partition
             found = False
@@ -797,8 +881,8 @@ class InterleavedDomain:
                     continue
 
                 if (
-                    sorted_1d_query_indices[rank_range[0]] > owned_query_indices[i] or
-                    sorted_1d_query_indices[rank_range[1]] < owned_query_indices[i]
+                    sorted_1d_query_indices[rank_range[0]] > owned_query_indices[i]
+                    or sorted_1d_query_indices[rank_range[1]] < owned_query_indices[i]
                 ):
                     continue
 
@@ -811,7 +895,9 @@ class InterleavedDomain:
                 raise RuntimeError("Corresponding rank not found for query point")
 
         # transfer query points
-        x_query_part, inv_map = self._communicate(self._x_query_local.shape[-1], send_map, return_inverse=True)
+        x_query_part, inv_map = self._communicate(
+            self._x_query_local.shape[-1], send_map, return_inverse=True
+        )
         x_query = np.array(x_query_part).reshape(-1, self._x_query_local.shape[-1])
         # invert query send map for later (to transfer back)
         self._query_rank_mapping = {}
@@ -821,19 +907,22 @@ class InterleavedDomain:
                 self._query_rank_mapping[tuple(data_[p_idx, :].tolist())] = rank
 
         # figure out which source points need to be sent where
-        send_map = {r:[] for r in range(self._size)}
+        send_map = {r: [] for r in range(self._size)}
         source_coords = self._tree.get_filled_coords(grid_resolution)
         source_mapping = {tuple(c.tolist()): hMap.coord2index(c) for c in source_coords}
-        owned_source_coords = self._tree.get_coords_of(self._proj_x_local, grid_resolution)
-        owned_source_indices = [source_mapping[tuple(coord.tolist())] for coord in owned_source_coords]
+        owned_source_coords = self._tree.get_coords_of(
+            self._proj_x_local, grid_resolution
+        )
+        owned_source_indices = [
+            source_mapping[tuple(coord.tolist())] for coord in owned_source_coords
+        ]
         for i in range(len(owned_source_indices)):
             for rank, rank_domain in src_domains.items():
                 if rank_domain[0] is None or rank_domain[1] is None:
                     continue
 
-                if (
-                    np.alltrue(rank_domain[0] <= source_coords[i]) and
-                    np.alltrue(source_coords[i] <= rank_domain[1])
+                if np.alltrue(rank_domain[0] <= source_coords[i]) and np.alltrue(
+                    source_coords[i] <= rank_domain[1]
                 ):
                     data = []
                     data.extend(self._x_local[i, :].tolist())
@@ -841,16 +930,20 @@ class InterleavedDomain:
                     send_map[rank].append(data)
 
         # transfer source points
-        xf_part = self._communicate(self._x_local.shape[-1] + self._f_local.shape[-1], send_map)
-        xf_part = np.array(xf_part).reshape(-1, self._x_local.shape[-1] + self._f_local.shape[-1])
-        x = xf_part[:, 0:self._x_local.shape[-1]]
-        f = xf_part[:, self._x_local.shape[-1]:]
+        xf_part = self._communicate(
+            self._x_local.shape[-1] + self._f_local.shape[-1], send_map
+        )
+        xf_part = np.array(xf_part).reshape(
+            -1, self._x_local.shape[-1] + self._f_local.shape[-1]
+        )
+        x = xf_part[:, 0 : self._x_local.shape[-1]]
+        f = xf_part[:, self._x_local.shape[-1] :]
 
         return x, x_query, f
 
     def _communicate(self, entry_size, send_map, return_inverse=False):
         send_counts = [len(send_map[r]) for r in range(self._size)]
-        send_counts[self._rank] = 0 # ignore local count
+        send_counts[self._rank] = 0  # ignore local count
         glob_send_counts = self._comm.allgather(send_counts)
 
         send_reqs = []
@@ -860,7 +953,9 @@ class InterleavedDomain:
             if len(data) == 0:
                 continue
             for d_idx, entry in enumerate(data):
-                req = self._comm.isend(entry, dest=recv_rank, tag=create_tag(d_idx, self._rank, recv_rank))
+                req = self._comm.isend(
+                    entry, dest=recv_rank, tag=create_tag(d_idx, self._rank, recv_rank)
+                )
                 send_reqs.append(req)
 
         recv_reqs = []
@@ -870,14 +965,16 @@ class InterleavedDomain:
             if glob_send_counts[send_rank][self._rank] == 0:
                 continue
             for d_idx in range(glob_send_counts[send_rank][self._rank]):
-                req = self._comm.irecv(None, source=send_rank, tag=create_tag(d_idx, send_rank, self._rank))
+                req = self._comm.irecv(
+                    None, source=send_rank, tag=create_tag(d_idx, send_rank, self._rank)
+                )
                 recv_reqs.append(tuple([send_rank, req]))
 
         MPI.Request.Waitall(send_reqs)
 
         result = []
         result.extend(send_map[self._rank])
-        inv_map = {r:[] for r in range(self._size)}
+        inv_map = {r: [] for r in range(self._size)}
         inv_map[self._rank].extend(send_map[self._rank])
 
         for source_rank, req in recv_reqs:
@@ -890,6 +987,7 @@ class InterleavedDomain:
             return result, inv_map
         else:
             return result
+
 
 class RBF_PU:
     """
@@ -917,24 +1015,42 @@ class RBF_PU:
         self._f = None
 
     def configure(self, interp_config):
-        self._domain.configure({} if 'domain_config' not in interp_config else interp_config['domain_config'])
-        self._use_pu = False if 'use_pu' not in interp_config else interp_config['use_pu']
+        self._domain.configure(
+            {}
+            if "domain_config" not in interp_config
+            else interp_config["domain_config"]
+        )
+        self._use_pu = (
+            False if "use_pu" not in interp_config else interp_config["use_pu"]
+        )
         if self._use_pu:
-            self._pu_overlap = 0.1 if 'pu_overlap' not in interp_config else interp_config['pu_overlap']
-            self._pu_cluster_size = 50 if 'pu_cluster_size' not in interp_config else interp_config['pu_cluster_size']
-        if 'basis' not in interp_config:
+            self._pu_overlap = (
+                0.1
+                if "pu_overlap" not in interp_config
+                else interp_config["pu_overlap"]
+            )
+            self._pu_cluster_size = (
+                50
+                if "pu_cluster_size" not in interp_config
+                else interp_config["pu_cluster_size"]
+            )
+        if "basis" not in interp_config:
             return
-        match interp_config['basis']:
-            case 'c0':
+        match interp_config["basis"]:
+            case "c0":
                 self._phi = RBF_PU.basis_c0
-            case 'c2':
+            case "c2":
                 self._phi = RBF_PU.basis_c2
-            case 'c4':
+            case "c4":
                 self._phi = RBF_PU.basis_c4
-            case 'c6':
+            case "c6":
                 self._phi = RBF_PU.basis_c6
-            case 'gauss':
-                eps = 1.0 if 'gauss_eps' not in interp_config else interp_config['gauss_eps']
+            case "gauss":
+                eps = (
+                    1.0
+                    if "gauss_eps" not in interp_config
+                    else interp_config["gauss_eps"]
+                )
                 self._phi = partial(RBF_PU.basis_gauss, eps=eps)
 
     def set_local_data(self, x, x_, f):
@@ -979,15 +1095,17 @@ class RBF_PU:
             mask = np.zeros_like(d4)
             mask[d] = 1
 
-            centers[2*d + 0, :] = center - mask * d4
-            centers[2*d + 1, :] = center + mask * d4
+            centers[2 * d + 0, :] = center - mask * d4
+            centers[2 * d + 1, :] = center + mask * d4
 
         return centers, local_min, local_max
 
     def compute_rbf_pu_interpolant(self, x, f):
         # compute r_m
         c_centers, local_min, local_max = self._compute_cluster_centers(x)
-        index_tree = NDtree(NDtree.Mode.INDEX, local_min, local_max, *self._domain.get_depth_filling())
+        index_tree = NDtree(
+            NDtree.Mode.INDEX, local_min, local_max, *self._domain.get_depth_filling()
+        )
         # TODO later
         # determine clusters
         # ignore empty clusters
@@ -1048,12 +1166,17 @@ class RBF_PU:
 
     @staticmethod
     def basis_c4(r):
-        return np.maximum(0.0, np.power(1.0 - r, 6)) * (35.0 * np.power(r, 2) + 18.0 * r + 3.0) / 3.0
+        return (
+            np.maximum(0.0, np.power(1.0 - r, 6))
+            * (35.0 * np.power(r, 2) + 18.0 * r + 3.0)
+            / 3.0
+        )
 
     @staticmethod
     def basis_c6(r):
         return np.maximum(0.0, np.power(1.0 - r, 8)) * (
-                32.0 * np.power(r, 3) + 25.0 * np.power(r, 2) + 8.0 * r + 1.0)
+            32.0 * np.power(r, 3) + 25.0 * np.power(r, 2) + 8.0 * r + 1.0
+        )
 
     @staticmethod
     def basis_gauss(r, eps):
