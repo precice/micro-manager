@@ -2,13 +2,15 @@ from abc import ABC, abstractmethod
 from copy import deepcopy
 from enum import Enum
 from functools import partial
-from typing import Optional
+from typing import Optional, Tuple, Union
 import sys
 
 from mpi4py import MPI
 import numpy as np
 from sklearn.neighbors import NearestNeighbors
 
+from micro_manager import Config
+from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.p2p import create_tag
 
 # handle compat issue between np version 1 and 2
@@ -98,6 +100,11 @@ class Interpolation:
 
 
 class NDtree:
+    """
+    This is a spatial data structure to store N-dimensional data points. Can be used either for discretization or
+    spatial indexing purposes. Is based on an octtree but ported to N dimensions.
+    """
+
     class Mode(Enum):
         DISCRETIZE = 0
         INDEX = 1
@@ -117,14 +124,16 @@ class NDtree:
 
             Parameters
             ----------
+            mode : NDtree.Mode
+                The mode of operation.
             low : np.ndarray
                 Lower bound of the node.
             high : np.ndarray
                 Upper bound of the node.
             max_depth : int
                 Remaining maximum depth of the node.
-            rtol : float
-                Maximum Error of points to node center
+            max_filling : int
+                Maximum number of points within the node, until split.
             is_bound : np.ndarray
                 Boolean indicating whether the node is on the boundary.
             """
@@ -150,7 +159,10 @@ class NDtree:
         def filling(self) -> int:
             return len(self.data)
 
-        def clear(self):
+        def clear(self) -> None:
+            """
+            Clears all data, but preserves node structure.
+            """
             self.data.clear()
             self.data_reserve_count = 0
 
@@ -159,7 +171,17 @@ class NDtree:
             for node in self.children:
                 node.clear()
 
-        def propagate_up_reserve_counts(self):
+        def propagate_up_reserve_counts(self) -> int:
+            """
+            Counts the reserve counts of child nodes and returns sum.
+            Used during discretization mode when all data points are in leaf nodes at max depth
+            to approximate the required depth to find N neighbours.
+
+            Returns
+            -------
+            reserve_count : int
+                sum of child node reserve counts.
+            """
             if self.children is None:
                 return self.data_reserve_count
 
@@ -168,7 +190,27 @@ class NDtree:
 
             return self.data_reserve_count
 
-        def find_min_depth_for_n_neighbors(self, n: int, depth: int, p):
+        def find_min_depth_for_n_neighbors(
+            self, n: int, depth: int, p: np.ndarray
+        ) -> Optional[int]:
+            """
+            Finds the minimum depth required to find N nearest neighbors for the given point.
+            Assumes propagate_up_reserve_counts was called.
+
+            Parameters
+            ----------
+            n : int
+                Number of nearest neighbors.
+            depth : int
+                Recursion depth. Start recursion with 0.
+            p : np.ndarray
+                Query point.
+
+            Returns
+            -------
+            min_depth : Optional[int]
+                None depth cannot be found, else depth.
+            """
             if self.data_reserve_count < n:
                 return None
             if self.children is None:
@@ -191,7 +233,24 @@ class NDtree:
             min_depth = min(depths)
             return min_depth
 
-        def get_filled_coords(self, bin_low, bin_high):
+        def get_filled_coords(
+            self, bin_low: np.ndarray, bin_high: np.ndarray
+        ) -> list[np.ndarray]:
+            """
+            Finds coordinates of all cells that have non-zero reserve counts. Assumes discretization mode is used.
+
+            Parameters
+            ----------
+            bin_low : np.ndarray
+                Lower bound of possible bins.
+            bin_high : np.ndarray
+                Upper bound of possible bins.
+
+            Returns
+            -------
+            coords : list[np.ndarray]
+                Coordinates of all cells that have non-zero reserve counts.
+            """
             assert self._mode == NDtree.Mode.DISCRETIZE
 
             if self.children is None:
@@ -216,6 +275,9 @@ class NDtree:
             return buffer
 
         def split(self):
+            """
+            Splits node if possible and transfers data points to child nodes.
+            """
             if self.children is not None:
                 return
             if self.max_depth == 0:
@@ -238,7 +300,15 @@ class NDtree:
                 self._insert_find_child_node(p)
             self.data.clear()
 
-        def insert(self, p):
+        def insert(self, p: np.ndarray):
+            """
+            Inserts data point into this node if possible, else into child node.
+
+            Parameters
+            ----------
+            p : np.ndarray
+                Data point to be inserted.
+            """
             if self._mode == NDtree.Mode.INDEX:
                 # first insert to sub nodes if available
                 if self.children is not None:
@@ -267,7 +337,26 @@ class NDtree:
                 else:
                     self._insert_find_child_node(p)
 
-        def get_coord_of(self, point, bin_low, bin_high):
+        def get_coord_of(
+            self, point: np.ndarray, bin_low: np.ndarray, bin_high: np.ndarray
+        ) -> np.ndarray:
+            """
+            Finds the cell coordinate of given point. Assumes discretization mode is used.
+
+            Parameters
+            ----------
+            point : np.ndarray
+                Query point.
+            bin_low : np.ndarray
+                Lower bound of possible bins.
+            bin_high : np.ndarray
+                Upper bound of possible bins.
+
+            Returns
+            -------
+            coord : np.ndarray
+                Coordinate of given point.
+            """
             assert self._mode == NDtree.Mode.DISCRETIZE
 
             if self.children is None:
@@ -284,7 +373,20 @@ class NDtree:
 
             raise RuntimeError("Failed to locate cell of point")
 
-        def is_within(self, point):
+        def is_within(self, point: np.ndarray) -> bool:
+            """
+            Checks whether given point is within the bounds of this node.
+
+            Parameters
+            ----------
+            point : np.ndarray
+                Query point.
+
+            Returns
+            -------
+            is_within : bool
+                True if point is within bounds of this node.
+            """
             return np.alltrue(point >= self.low) and np.alltrue(
                 np.logical_or(
                     np.logical_and(self.is_bound, np.isclose(point, self.high, 1e-10)),
@@ -292,14 +394,30 @@ class NDtree:
                 )
             )
 
-        def get_height(self):
+        def get_height(self) -> int:
+            """
+            Returns height of this node.
+
+            Returns
+            -------
+            height : int
+                Height of this node.
+            """
             if self.children is None:
                 return 0
 
             heights = [node.get_height() for node in self.children]
             return max(heights) + 1
 
-        def serialize(self):
+        def serialize(self) -> list[int]:
+            """
+            Serializes the tree in a run-length encoded format. First entry determines amount of owned entries.
+
+            Returns
+            -------
+            serialized_data : list[int]
+                Serialized tree.
+            """
             if self.children is None:
                 return [2, len(self.data)]
 
@@ -310,7 +428,15 @@ class NDtree:
                 result.extend(c_result)
             return result
 
-        def deserialize(self, serialized):
+        def deserialize(self, serialized: list[int]) -> None:
+            """
+            Deserializes tree from serialized data.
+
+            Parameters
+            ----------
+            serialized : list[int]
+                Serialized tree.
+            """
             if self.children is not None or len(self.data) > 0:
                 raise RuntimeError("Deserialize called on non empty tree.")
 
@@ -326,7 +452,15 @@ class NDtree:
                 )
                 offset += serialized[offset]
 
-        def merge(self, other):
+        def merge(self, other: "NDtree.Node") -> None:
+            """
+            Merges the other node structure and reserve counts into this node.
+
+            Parameters
+            ----------
+            other : NDtree.Node
+                Other node structure.
+            """
             is_split = self.children is not None
             is_split_other = other.children is not None
 
@@ -346,23 +480,88 @@ class NDtree:
                 for i in range(self.num_max_split):
                     self.children[i].merge(other.children[i])
 
-        def _insert_find_child_node(self, p):
+        def _insert_find_child_node(self, p: np.ndarray) -> None:
+            """
+            Inserts the point into the correct child node.
+
+            Parameters
+            ----------
+            p : np.ndarray
+                Point to insert.
+            """
             for i in range(self.num_max_split):
                 if not self.children[i].is_within(p):
                     continue
                 self.children[i].insert(p)
                 return
 
-        def _idx2mask(self, idx):
+        def _idx2mask(self, idx: int) -> np.ndarray:
+            """
+            Converts the given index into its corresponding binary mask.
+
+            Parameters
+            ----------
+            idx : int
+                Index to convert.
+
+            Returns
+            -------
+            mask : np.ndarray
+                Binary mask. If bit i of idx is 1, then entry i of mask if 1.
+            """
             return (
                 (idx & np.array([1 << i for i in range(self.dim)], dtype=np.int32)) != 0
             ).astype(np.int32)
 
-        def _idx2coord(self, delta, low, idx):
+        def _idx2coord(
+            self, delta: np.ndarray, low: np.ndarray, idx: int
+        ) -> np.ndarray:
+            """
+            Computes the new lower bound for the child node with the given index.
+
+            Parameters
+            ----------
+            delta : np.ndarray
+                New cell size
+            low : np.ndarray
+                Old lower bound.
+            idx : np.ndarray
+                Index of child node.
+
+            Returns
+            -------
+            coord : np.ndarray
+                New cell lower bound.
+            """
             mask = self._idx2mask(idx).astype(dtype=delta.dtype)
             return (low + delta * mask).astype(mask.dtype)
 
-    def __init__(self, mode, low, high, max_depth, max_filling):
+    def __init__(
+        self,
+        mode: "NDtree.Mode",
+        low: np.ndarray,
+        high: np.ndarray,
+        max_depth: int,
+        max_filling: int,
+    ):
+        """
+        Constructs a NDtree with the given parameters.
+        In discretize mode, all data points are inserted into nodes at max_depth.
+        In index mode, max_filling is used for insertion. When the threshold is met, nodes are split.
+
+        Parameters
+        ----------
+        mode : NDtree.Mode
+            Mode of operation.
+        low : np.ndarray
+            Lower bound of space.
+        high : np.ndarray
+            Upper bound of space.
+        max_depth : int
+            Maximum depth of the tree.
+        max_filling : int
+            Maximum filling of the tree.
+        """
         self.root = NDtree.Node(
             mode,
             low,
@@ -372,7 +571,20 @@ class NDtree:
             np.ones(low.shape[0], dtype=np.int32),
         )
 
-    def get_filled_coords(self, height=None):
+    def get_filled_coords(self, height: Optional[int] = None) -> list[np.ndarray]:
+        """
+        Finds coordinates of all cells that have non-zero reserve counts. Assumes discretization mode is used.
+
+        Parameters
+        ----------
+        height : Optional[int]
+            Height of the tree. If None, will be computed.
+
+        Returns
+        -------
+        coords : list[np.ndarray]
+            Coordinates of all cells that have non-zero reserve counts.
+        """
         if height is None:
             height = self.root.get_height()
         dtype = np.int32
@@ -383,7 +595,24 @@ class NDtree:
             np.power(2 * np.ones(self.root.dim, dtype=dtype), height),
         )
 
-    def get_coords_of(self, points, height=None):
+    def get_coords_of(
+        self, points: np.ndarray, height: Optional[int] = None
+    ) -> np.ndarray:
+        """
+        Finds the cell coordinate of all given point. Assumes discretization mode is used.
+
+        Parameters
+        ----------
+        points : np.ndarray
+            Points to find coordinates of.
+        height : Optional[int]
+            Height of the tree. If None, will be computed.
+
+        Returns
+        -------
+        coords : np.ndarray
+            Coordinates of all points.
+        """
         if height is None:
             height = self.root.get_height()
         dtype = np.int32
@@ -396,7 +625,22 @@ class NDtree:
             coords[i, :] = self.root.get_coord_of(point, c_min, c_max)
         return coords
 
-    def find_min_depth_for_n_neighbors(self, n, points):
+    def find_min_depth_for_n_neighbors(self, n: int, points: np.ndarray) -> int:
+        """
+        Finds the minimum depth of all given points to encounter n neighbors.
+
+        Parameters
+        ----------
+        n : int
+            Number of neighbors.
+        points : np.ndarray
+            Query points.
+
+        Returns
+        -------
+        depth : int
+            Minimum depth of all given points to encounter n neighbors.
+        """
         if points.shape[0] == 0:
             return 0
         depths = np.ones(len(points)) * self.get_height()
@@ -406,33 +650,113 @@ class NDtree:
                 depths[idx] = d
         return np.min(depths)
 
-    def propagate_up_reserve_counts(self):
+    def propagate_up_reserve_counts(self) -> int:
+        """
+        Counts the reserve counts of child nodes and returns sum.
+        Used during discretization mode when all data points are in leaf nodes at max depth to approximate the required depth to find N neighbours.
+
+        Returns
+        -------
+        reserve_counts : int
+            sum of child node reserve counts
+        """
         return self.root.propagate_up_reserve_counts()
 
     def split(self):
+        """
+        Splits node if possible and transfers data points to child nodes.
+        """
         return self.root.split()
 
-    def insert(self, p):
+    def insert(self, p: np.ndarray) -> None:
+        """
+        Inserts data point into this node if possible, else into child node.
+
+        Parameters
+        ----------
+        p : np.ndarray
+            Data point to be inserted.
+        """
         return self.root.insert(p)
 
-    def serialize(self):
+    def serialize(self) -> list[int]:
+        """
+        Serializes the tree in a run-length encoded format. First entry determines amount of owned entries.
+
+        Returns
+        -------
+        serialized_data : list[int]
+            Serialized tree.
+        """
         return self.root.serialize()
 
-    def deserialize(self, serialized):
+    def deserialize(self, serialized: list[int]) -> None:
+        """
+        Deserializes tree from serialized data.
+
+        Parameters
+        ----------
+        serialized : list[int]
+            Serialized tree.
+        """
         return self.root.deserialize(serialized)
 
-    def merge(self, other):
+    def merge(self, other: "NDtree") -> None:
+        """
+        Merges the other node structure and reserve counts into this node.
+
+        Parameters
+        ----------
+        other : NDtree
+            Other node structure.
+        """
         return self.root.merge(other.root)
 
-    def get_height(self):
+    def get_height(self) -> int:
+        """
+        Returns height of this node.
+
+        Returns
+        -------
+        height : int
+            Height of this node.
+        """
         return self.root.get_height()
 
-    def clear(self):
+    def clear(self) -> None:
+        """
+        Clears all data, but preserves tree structure.
+        """
         return self.root.clear()
 
 
 class HilbertDirect:
-    def __init__(self, dim, bits):
+    """
+    Provides a bijective mapping between an N-dimensional space and 1D space based on the algorithm provided in:
+    Programming the Hilbert curve by John Skilling (from the AIP Conf. Proc. 707, 381 (2004))
+
+    Example: 5 bits for each of n=3 coordinates.
+        15-bit Hilbert integer = A B C D E F G H I J K L M N O is stored
+        as its Transpose                        ^
+        X[0] = A D G J M                    X[2]|  7
+        X[1] = B E H K N        <------->       | /X[1]
+        X[2] = C F I L O                   axes |/
+               high low                         0------> X[0]
+    """
+
+    def __init__(self, dim: int, bits: int):
+        """
+        Constructs mapping between N-dimensional space and 1D space.
+        Used n bits to encode coords along one dimension.
+        Therefore, 2**n - 1 is the max coord along one dimension.
+
+        Parameters
+        ----------
+        dim : int
+            Number of dimensions.
+        bits : int
+            Number of bits used per dimension.
+        """
         self.dim = dim
         self.bits = bits
         self.dtype = None
@@ -442,7 +766,20 @@ class HilbertDirect:
         else:
             self.dtype = np.int64
 
-    def index2coord(self, idx):
+    def index2coord(self, idx: int) -> np.ndarray:
+        """
+        Converts index to coordinate.
+
+        Parameters
+        ----------
+        idx : int
+            Index to convert.
+
+        Returns
+        -------
+        coords : np.ndarray
+            Coordinates of index.
+        """
         X = np.zeros(self.dim, dtype=self.dtype)
         if self.bits == 0:
             return X
@@ -481,7 +818,20 @@ class HilbertDirect:
 
         return X
 
-    def coord2index(self, coord):
+    def coord2index(self, coord: np.ndarray) -> int:
+        """
+        Converts coordinate to index.
+
+        Parameters
+        ----------
+        coord : np.ndarray
+            Coordinate to convert.
+
+        Returns
+        -------
+        index : int
+            Index of coordinate.
+        """
         if self.bits == 0:
             return 0
         X = deepcopy(coord)
@@ -524,22 +874,70 @@ class HilbertDirect:
 
 
 class Projector(ABC):
+    """
+    Interface to project high-dimensional data into low-dimensional space.
+    """
+
     @abstractmethod
-    def __call__(self, data):
+    def __call__(self, data: np.ndarray) -> np.ndarray:
+        """
+        Performs projection on high-dimensional data.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            High-dimensional data.
+
+        Returns
+        -------
+        proj_data : np.ndarray
+            Projected data.
+        """
         pass
 
     @abstractmethod
-    def initialize(self, data):
+    def initialize(self, data: np.ndarray) -> None:
+        """
+        Initializes projection parameters based on data.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            High-dimensional data.
+        """
         pass
 
 
 class STDProjector(Projector):
+    """
+    Projects high-dimensional data into low-dimensional space using the fields with the highest standard deviation.
+    """
+
     def __init__(self, target_dims: int, comm: MPI.Comm):
+        """
+        Constructs STD projection.
+
+        Parameters
+        ----------
+        target_dims : int
+            Number of target dimensions.
+        comm : MPI.Comm
+            MPI communicator.
+        """
         self.num_target_dims = target_dims
         self.target_dims = np.zeros(target_dims, dtype=np.int32)
         self.comm = comm
 
-    def initialize(self, data):
+    def initialize(self, data: np.ndarray) -> None:
+        """
+        Initializes projection parameters based on data.
+        Computes target dimensions using provided data.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            High-dimensional data.
+        """
         assert data.ndim > 1
         std = np.zeros(data.shape[-1])
         if data.shape[0] > 0:
@@ -550,7 +948,20 @@ class STDProjector(Projector):
             np.argsort(stds)[::-1][0 : self.num_target_dims]
         ).astype(np.int32)
 
-    def __call__(self, data):
+    def __call__(self, data: np.ndarray) -> np.ndarray:
+        """
+        Performs projection on high-dimensional data.
+
+        Parameters
+        ----------
+        data : np.ndarray
+            High-dimensional data.
+
+        Returns
+        -------
+        proj_data : np.ndarray
+            Projected data.
+        """
         d = data
         if data.ndim == 1:
             d = d[np.newaxis, :]
@@ -558,10 +969,31 @@ class STDProjector(Projector):
 
 
 class IdentityProjector(Projector):
-    def __call__(self, data):
+    def __call__(self, data: np.ndarray) -> np.ndarray:
+        """
+        Performs projection on high-dimensional data. (does nothing)
+
+        Parameters
+        ----------
+        data : np.ndarray
+            High-dimensional data.
+
+        Returns
+        -------
+        proj_data : np.ndarray
+            Projected data.
+        """
         return data
 
-    def initialize(self, data):
+    def initialize(self, data: np.ndarray) -> None:
+        """
+        Initializes projection parameters based on data. (does nothing)
+
+        Parameters
+        ----------
+        data : np.ndarray
+            High-dimensional data.
+        """
         pass
 
 
@@ -571,7 +1003,17 @@ class InterleavedDomain:
     Will de- and re-compose the distributed data to allow for domain local operations.
     """
 
-    def __init__(self, config, comm: MPI.Comm):
+    def __init__(self, config: Config, comm: MPI.Comm):
+        """
+        Constructs InterleavedDomain object.
+
+        Parameters
+        ----------
+        config : Config
+            Configuration object.
+        comm : MPI.Comm
+            MPI communicator.
+        """
         self._config = config
         self._comm = comm
         self._size = comm.Get_size()
@@ -597,7 +1039,15 @@ class InterleavedDomain:
 
         self._query_rank_mapping = None
 
-    def configure(self, domain_config):
+    def configure(self, domain_config: dict) -> None:
+        """
+        Configures InterleavedDomain object to the provided settings.
+
+        Parameters
+        ----------
+        domain_config : dict
+            Target configuration.
+        """
         self._max_filling = (
             8 if "max_filling" not in domain_config else domain_config["max_filling"]
         )
@@ -624,12 +1074,39 @@ class InterleavedDomain:
             case "identity":
                 self._projector = IdentityProjector()
 
-    def set_local_data(self, x, x_, f):
+    def set_local_data(self, x: np.ndarray, x_: np.ndarray, f: np.ndarray) -> None:
+        """
+        Sets local data for interleaved domain.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Support points.
+        x_ : np.ndarray
+            Query points.
+        f : np.ndarray
+            Support point function values.
+        """
         self._x_local = x
         self._x_query_local = x_
         self._f_local = f
 
-    def decompose(self):
+    def decompose(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Decomposes the domain, by conceptually merging all support and query points across all rank
+        and splitting the query points, s.t. each rank will have approx the same amount of query points.
+        Support points alongside their function values are distributed to the respective ranks, that query points
+        are surrounded by sufficient support points.
+
+        Returns
+        -------
+        x : np.ndarray
+            Assigned support points.
+        x_ : np.ndarray
+            Assigned query points.
+        f : np.ndarray
+            Assigned support point function values.
+        """
         # if not parallel, no work to be done
         if self._size == 1:
             return self._x_local, self._x_query_local, self._f_local
@@ -637,10 +1114,35 @@ class InterleavedDomain:
         self._generate_trees()
         return self._create_partitions()
 
-    def get_depth_filling(self):
+    def get_depth_filling(self) -> Tuple[int, int]:
+        """
+        Gets the tree properties.
+
+        Returns
+        -------
+        max_depth : int
+            Maximum depth of the tree.
+        max_filling : int
+            Maximum filling of the tree.
+        """
         return self._max_depth, self._max_filling
 
-    def reassemble(self, x_query, f_query):
+    def reassemble(self, x_query: np.ndarray, f_query: np.ndarray) -> np.ndarray:
+        """
+        Reassembles the query point function values to match the configuration prior of decomposition.
+
+        Parameters
+        ----------
+        x_query : np.ndarray
+            Query points.
+        f_query : np.ndarray
+            Query point function values.
+
+        Returns
+        -------
+        reassembled : np.ndarray
+            Reassembled query point function values.
+        """
         # if not parallel, no work to be done
         if self._size == 1:
             return f_query
@@ -653,7 +1155,7 @@ class InterleavedDomain:
             data.extend(x_query[i, :].tolist())
             data.extend(f_query[i, :].tolist())
             send_map[dst_rank].append(data)
-        local_data = self._communicate(x_query.shape[-1] + f_query.shape[-1], send_map)
+        local_data = self._communicate(send_map)
         local_data = np.array(local_data).reshape(
             -1, x_query.shape[-1] + f_query.shape[-1]
         )
@@ -669,7 +1171,10 @@ class InterleavedDomain:
             result[idx, :] = local_data[d_idx, x_query.shape[-1] :]
         return result
 
-    def _normalize_x(self):
+    def _normalize_x(self) -> None:
+        """
+        Normalizes support and query points to fit within -1 and 1.
+        """
         x_loc_min = np.ones(self._x_local.shape[-1]) * np.inf
         if self._x_local.shape[0] > 0:
             x_loc_min = np.min(self._x_local, axis=0)
@@ -725,7 +1230,11 @@ class InterleavedDomain:
         self._proj_x_local = self._projector(self._x_local)
         self._proj_x_query_local = self._projector(self._x_query_local)
 
-    def _generate_trees(self):
+    def _generate_trees(self) -> None:
+        """
+        Generates domain decomposition trees, shares them across all ranks and constructs
+        a globally valid tree used for partitioning.
+        """
         self._normalize_x()
 
         proj_dim = self._proj_x_local.shape[1]
@@ -773,7 +1282,20 @@ class InterleavedDomain:
         self._tree = bcast_tree(tree)
         self._query_tree = bcast_tree(query_tree)
 
-    def _create_partitions(self):
+    def _create_partitions(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Creates partitions based on a equidistant splitting of the
+        hilbert space indices of the domain decomposition trees.
+
+        Returns
+        -------
+        x : np.ndarray
+            Support points around new query points
+        x_ : np.ndarray
+            New query points
+        f : np.ndarray
+            Support point function values.
+        """
         self._tree.propagate_up_reserve_counts()
         r_m_depth = self._tree.find_min_depth_for_n_neighbors(
             self._n_neighbors, self._proj_x_query_local
@@ -895,9 +1417,7 @@ class InterleavedDomain:
                 raise RuntimeError("Corresponding rank not found for query point")
 
         # transfer query points
-        x_query_part, inv_map = self._communicate(
-            self._x_query_local.shape[-1], send_map, return_inverse=True
-        )
+        x_query_part, inv_map = self._communicate(send_map, return_inverse=True)
         x_query = np.array(x_query_part).reshape(-1, self._x_query_local.shape[-1])
         # invert query send map for later (to transfer back)
         self._query_rank_mapping = {}
@@ -930,9 +1450,7 @@ class InterleavedDomain:
                     send_map[rank].append(data)
 
         # transfer source points
-        xf_part = self._communicate(
-            self._x_local.shape[-1] + self._f_local.shape[-1], send_map
-        )
+        xf_part = self._communicate(send_map)
         xf_part = np.array(xf_part).reshape(
             -1, self._x_local.shape[-1] + self._f_local.shape[-1]
         )
@@ -941,7 +1459,25 @@ class InterleavedDomain:
 
         return x, x_query, f
 
-    def _communicate(self, entry_size, send_map, return_inverse=False):
+    def _communicate(
+        self, send_map: dict[int, list], return_inverse: bool = False
+    ) -> Union[list, Tuple[list, dict[int, list]]]:
+        """
+        Transfers data between ranks a p2p communication according to the provided send_map.
+
+        Parameters
+        ----------
+        send_map : dict[int, list]
+            Mapping from destination rank to list of data to be transferred.
+        return_inverse : bool
+            Return inverse transfer or not.
+
+        Returns
+        -------
+        comm_result : Union[list, Tuple[list, dict[int, list]]]
+            If return_inverse is True, returns a list of all received data as well as a mapping from which rank
+            which data was sent. Otherwise, returns only the received data list.
+        """
         send_counts = [len(send_map[r]) for r in range(self._size)]
         send_counts[self._rank] = 0  # ignore local count
         glob_send_counts = self._comm.allgather(send_counts)
@@ -996,7 +1532,26 @@ class RBF_PU:
     The approach here does not require a support radius as data is normalized.
     """
 
-    def __init__(self, config, logger, comm: MPI.Comm, rank, size):
+    def __init__(
+        self, config: Config, logger: Logger, comm: MPI.Comm, rank: int, size: int
+    ):
+        """
+        Constructs the RBF_PU interpolator.
+        For rank local interpolation provide MPI.COMM_SELF as comm with according rank and size.
+
+        Parameters
+        ----------
+        config : Config
+            Configuration object.
+        logger : Logger
+            Logger object.
+        comm : MPI.Comm
+            MPI communicator.
+        rank : int
+            Rank within the provided MPI communicator.
+        size : int
+            Size within the provided MPI communicator.
+        """
         self._config = config
         self._logger = logger
         self._comm = comm
@@ -1014,7 +1569,15 @@ class RBF_PU:
         self._x_query = None
         self._f = None
 
-    def configure(self, interp_config):
+    def configure(self, interp_config: dict) -> None:
+        """
+        Configures the interpolator to the provided parameters.
+
+        Parameters
+        ----------
+        interp_config : dict
+            Interpolator configuration.
+        """
         self._domain.configure(
             {}
             if "domain_config" not in interp_config
@@ -1053,10 +1616,30 @@ class RBF_PU:
                 )
                 self._phi = partial(RBF_PU.basis_gauss, eps=eps)
 
-    def set_local_data(self, x, x_, f):
+    def set_local_data(self, x: np.ndarray, x_: np.ndarray, f: np.ndarray) -> None:
+        """
+        Sets local data for interleaved domain.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Support points.
+        x_ : np.ndarray
+            Query points.
+        f : np.ndarray
+            Support point function values.
+        """
         self._domain.set_local_data(x, x_, f)
 
-    def interpolate(self):
+    def interpolate(self) -> np.ndarray:
+        """
+        Interpolates the function values at the set query points.
+
+        Returns
+        -------
+        interp_result : np.ndarray
+            Interpolated function values.
+        """
         self._x, self._x_query, self._f = self._domain.decompose()
 
         interp = self.compute_interpolant(self._x, self._f)
@@ -1083,7 +1666,27 @@ class RBF_PU:
         else:
             return self.evaluate_rbf_interpolant
 
-    def _compute_cluster_centers(self, x):
+    def _compute_cluster_centers(
+        self, x: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Creates cluster centers based on the provided support points.
+        2 cluster centers per dimension and one in the middle.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Support points.
+
+        Returns
+        -------
+        cluster_centers : np.ndarray
+            Cluster centers.
+        local_min : np.ndarray
+            Minimum of local points.
+        local_max : np.ndarray
+            Maximum of local points.
+        """
         assert self._use_pu
         local_min, local_max = np.min(x, axis=0), np.max(x, axis=0)
         d4 = (local_max - local_min) / 4
@@ -1112,7 +1715,30 @@ class RBF_PU:
         # compute local RBF interpolant for remaining clusters
         pass
 
-    def compute_rbf_interpolant(self, x, f):
+    def compute_rbf_interpolant(
+        self, x: np.ndarray, f: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """
+        Constructs an interpolant based on the provided support points and function values.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Support points.
+        f : np.ndarray
+            Support point function values.
+
+        Returns
+        -------
+        interp_weights_high: np.ndarray
+            Interpolant weights, higher order.
+        interp_weights_low: np.ndarray
+            Interpolant weights, lower order.
+        x : np.ndarray
+            Support points.
+        f : np.ndarray
+            Support point function values.
+        """
         n_points = x.shape[0]
         src_size = x.shape[-1]
         dst_size = f.shape[-1]
@@ -1140,7 +1766,28 @@ class RBF_PU:
         # sum contributions
         pass
 
-    def evaluate_rbf_interpolant(self, interp, xq):
+    def evaluate_rbf_interpolant(
+        self,
+        interp: Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray],
+        xq: np.ndarray,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Interpolates the function values at the set query points.
+
+        Parameters
+        ----------
+        interp : Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]
+            Interpolation model as computed by compute_rbf_interpolant
+        xq : np.ndarray
+            Query points.
+
+        Returns
+        -------
+        xq : np.ndarray
+            Query points.
+        fq : np.ndarray
+            Query point function values.
+        """
         w, b, x, f = interp
 
         r = np.linalg.norm(xq[None, :, :] - x[:, None, :], ord=2, axis=-1)

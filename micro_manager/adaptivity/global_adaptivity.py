@@ -252,6 +252,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         Parameters
         ----------
+        micro_input : list
+            List of dicts containing the input data for each simulation.
         micro_output : list
             List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
 
