@@ -99,8 +99,6 @@ class DomainDecomposer:
         The non-uniform distribution is based on a geometric progression, where the size of the local mesh bounds increases
         by a factor of 2 in each rank.
 
-        Note: This method is experimental and hence not available via a configuration option yet.
-
         Parameters
         ----------
         macro_bounds : list
