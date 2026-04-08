@@ -7,7 +7,22 @@ import sys
 
 from mpi4py import MPI
 import numpy as np
-from sklearn.neighbors import NearestNeighbors
+
+try:
+    from sklearn.neighbors import NearestNeighbors
+except ImportError:
+
+    class Dummy:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def __call__(self, *args, **kwargs):
+            return self
+
+        def __getattr__(self, item):
+            return self
+
+    NearestNeighbors = Dummy
 
 from micro_manager import Config
 from micro_manager.tools.logging_wrapper import Logger
@@ -53,6 +68,8 @@ class Interpolation:
                 )
             )
             k = len(coords)
+        if NearestNeighbors.__name__ != "NearestNeighbors":
+            raise RuntimeError("scipy was not imported.")
         neighbors = NearestNeighbors(n_neighbors=k).fit(coords)
 
         neighbor_indices = neighbors.kneighbors(
