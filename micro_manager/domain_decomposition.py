@@ -20,7 +20,9 @@ class DomainDecomposer:
         self._rank = rank
         self._size = size
 
-    def get_local_mesh_bounds(self, macro_bounds: list, ranks_per_axis: list) -> list:
+    def get_uniform_local_mesh_bounds(
+        self, macro_bounds: list, ranks_per_axis: list
+    ) -> list:
         """
         Decompose the macro domain equally among all ranks, if the Micro Manager is run in parallel.
 
@@ -82,6 +84,88 @@ class DomainDecomposer:
             elif rank_in_axis[d] == 0:
                 mesh_bounds.append(macro_bounds[d * 2])
                 mesh_bounds.append(macro_bounds[d * 2] + dx[d])
+
+            # Adjust the maximum bound to be exactly the domain size
+            if rank_in_axis[d] + 1 == ranks_per_axis[d]:
+                mesh_bounds[d * 2 + 1] = macro_bounds[d * 2 + 1]
+
+        return mesh_bounds
+
+    def get_nonuniform_local_mesh_bounds(
+        self, macro_bounds: list, ranks_per_axis: list
+    ) -> list:
+        """
+        Decompose the macro domain among all ranks with an non-uniform distribution, if the Micro Manager is run in parallel.
+        The non-uniform distribution is based on a geometric progression, where the size of the local mesh bounds increases
+        by a factor of 2 in each rank.
+
+        Note: This method is experimental and hence not available via a configuration option yet.
+
+        Parameters
+        ----------
+        macro_bounds : list
+            List containing upper and lower bounds of the macro domain.
+            Format in 2D is [x_min, x_max, y_min, y_max]
+            Format in 3D is [x_min, x_max, y_min, y_max, z_min, z_max]
+        ranks_per_axis : list
+            List containing axis wise ranks for a parallel run
+            Format in 2D is [ranks_x, ranks_y]
+            Format in 3D is [ranks_x, ranks_y, ranks_z]
+
+        Returns
+        -------
+        mesh_bounds : list
+            List containing the upper and lower bounds of the domain pertaining to this rank.
+            Format is same as input parameter macro_bounds.
+        """
+        if np.prod(ranks_per_axis) != self._size:
+            raise ValueError(
+                "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
+            )
+
+        dims = len(ranks_per_axis)
+
+        if dims == 3:
+            for z in range(ranks_per_axis[2]):
+                for y in range(ranks_per_axis[1]):
+                    for x in range(ranks_per_axis[0]):
+                        n = (
+                            x
+                            + y * ranks_per_axis[0]
+                            + z * ranks_per_axis[0] * ranks_per_axis[1]
+                        )
+                        if n == self._rank:
+                            rank_in_axis = [x, y, z]
+        elif dims == 2:
+            for y in range(ranks_per_axis[1]):
+                for x in range(ranks_per_axis[0]):
+                    n = x + y * ranks_per_axis[0]
+                    if n == self._rank:
+                        rank_in_axis = [x, y]
+        else:
+            raise ValueError("Domain decomposition only supports 2D and 3D cases.")
+
+        dx: list = []
+        for d in range(dims):
+            dx.append(np.zeros(ranks_per_axis[d]))
+            for rank in range(ranks_per_axis[d]):
+                if rank == 0:
+                    dx[d][rank] = abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / (
+                        2 ** (ranks_per_axis[d]) - 1
+                    )
+                else:
+                    dx[d][rank] = 2 * dx[d][rank - 1]
+
+        mesh_bounds = []
+        for d in range(dims):
+            rank = rank_in_axis[d]
+            if rank > 0:
+                min_bound = macro_bounds[d * 2] + sum(dx[d][:rank])
+                mesh_bounds.append(min_bound)
+                mesh_bounds.append(min_bound + dx[d][rank])
+            elif rank == 0:
+                mesh_bounds.append(macro_bounds[d * 2])
+                mesh_bounds.append(macro_bounds[d * 2] + dx[d][rank])
 
             # Adjust the maximum bound to be exactly the domain size
             if rank_in_axis[d] + 1 == ranks_per_axis[d]:

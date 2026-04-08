@@ -1,4 +1,5 @@
 from unittest import TestCase
+import unittest
 import numpy as np
 from micro_manager.domain_decomposition import DomainDecomposer
 
@@ -30,7 +31,7 @@ class TestDomainDecomposition(TestCase):
         ranks_per_axis = [2, 2]
         domain_decomposer = DomainDecomposer(rank, size)
         domain_decomposer._dims = 2
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds(
+        mesh_bounds = domain_decomposer.get_uniform_local_mesh_bounds(
             self._macro_bounds_2d, ranks_per_axis
         )
 
@@ -45,7 +46,7 @@ class TestDomainDecomposition(TestCase):
         ranks_per_axis = [2, 2, 1]
         domain_decomposer = DomainDecomposer(rank, size)
         domain_decomposer._dims = 3
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds(
+        mesh_bounds = domain_decomposer.get_uniform_local_mesh_bounds(
             self._macro_bounds_3d, ranks_per_axis
         )
 
@@ -60,7 +61,7 @@ class TestDomainDecomposition(TestCase):
         ranks_per_axis = [1, 2, 5]
         domain_decomposer = DomainDecomposer(rank, size)
         domain_decomposer._dims = 3
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds(
+        mesh_bounds = domain_decomposer.get_uniform_local_mesh_bounds(
             self._macro_bounds_3d, ranks_per_axis
         )
 
@@ -75,7 +76,7 @@ class TestDomainDecomposition(TestCase):
         ranks_per_axis = [4, 1, 8]
         domain_decomposer = DomainDecomposer(rank, size)
         domain_decomposer._dims = 3
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds(
+        mesh_bounds = domain_decomposer.get_uniform_local_mesh_bounds(
             self._macro_bounds_3d, ranks_per_axis
         )
 
@@ -90,11 +91,71 @@ class TestDomainDecomposition(TestCase):
         ranks_per_axis = [8, 2, 1]
         domain_decomposer = DomainDecomposer(rank, size)
         domain_decomposer._dims = 3
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds(
+        mesh_bounds = domain_decomposer.get_uniform_local_mesh_bounds(
             self._macro_bounds_3d, ranks_per_axis
         )
 
         self.assertTrue(np.allclose(mesh_bounds, [0.75, 1, -2, 0, -2, 8]))
+
+
+class TestNonUniformDomainDecomposition(TestCase):
+    def setUp(self) -> None:
+        self._macro_bounds_3d = [
+            -1,
+            1,
+            -2,
+            2,
+            -2,
+            8,
+        ]
+        self._macro_bounds_2d = [
+            0,
+            1,
+            0,
+            2,
+        ]
+
+    def test_nonuniform_rank2_out_of_4_2d(self):
+        """
+        Check non-uniform bounds for rank 2 in a setting of axis-wise ranks: [2, 2].
+        Along each axis, the local width doubles from one rank to the next.
+        """
+        rank = 2
+        size = 4
+        ranks_per_axis = [2, 2]
+        domain_decomposer = DomainDecomposer(rank, size)
+        mesh_bounds = domain_decomposer.get_nonuniform_local_mesh_bounds(
+            self._macro_bounds_2d, ranks_per_axis
+        )
+
+        self.assertTrue(np.allclose(mesh_bounds, [0.0, 1.0 / 3.0, 2.0 / 3.0, 2.0]))
+
+    def test_nonuniform_rank1_out_of_4_3d(self):
+        """
+        Check non-uniform bounds for rank 1 in a setting of axis-wise ranks: [2, 2, 1].
+        """
+        rank = 1
+        size = 4
+        ranks_per_axis = [2, 2, 1]
+        domain_decomposer = DomainDecomposer(rank, size)
+        mesh_bounds = domain_decomposer.get_nonuniform_local_mesh_bounds(
+            self._macro_bounds_3d, ranks_per_axis
+        )
+
+        self.assertTrue(
+            np.allclose(mesh_bounds, [-1.0 / 3.0, 1.0, -2.0, -2.0 / 3.0, -2.0, 8.0])
+        )
+
+    def test_nonuniform_invalid_processor_count_raises(self):
+        """
+        A mismatch between `ranks_per_axis` and communicator size should raise a ValueError.
+        """
+        domain_decomposer = DomainDecomposer(rank=0, size=4)
+
+        with self.assertRaises(ValueError):
+            domain_decomposer.get_nonuniform_local_mesh_bounds(
+                self._macro_bounds_2d, [3, 2]
+            )
 
 
 class TestDuplicateCoordFiltering(TestCase):
