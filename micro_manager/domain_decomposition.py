@@ -149,7 +149,7 @@ class DomainDecomposer:
             for rank in range(ranks_per_axis[d]):
                 if rank == 0:
                     dx[d][rank] = abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / (
-                        2 ** (ranks_per_axis[d]) - 1
+                        2 ** ranks_per_axis[d] - 1
                     )
                 else:
                     dx[d][rank] = 2 * dx[d][rank - 1]
