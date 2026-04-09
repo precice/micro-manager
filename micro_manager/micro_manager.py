@@ -457,7 +457,7 @@ class MicroManagerCoupling(MicroManager):
                 coupling_mesh_bounds = domain_decomposer.get_uniform_local_mesh_bounds(
                     self._macro_bounds, self._ranks_per_axis
                 )
-            elif self._decomposition_type == "non-uniform":
+            elif self._decomposition_type == "nonuniform":
                 coupling_mesh_bounds = (
                     domain_decomposer.get_nonuniform_local_mesh_bounds(
                         self._macro_bounds, self._ranks_per_axis

@@ -265,9 +265,9 @@ class Config:
                 self._decomposition_type = self._data["simulation_params"][
                     "decomposition_type"
                 ]
-                if self._decomposition_type not in ["uniform", "non-uniform"]:
+                if self._decomposition_type not in ["uniform", "nonuniform"]:
                     raise Exception(
-                        "Decomposition type can be either 'uniform' or 'non-uniform'."
+                        "Decomposition type can be either 'uniform' or 'nonuniform'."
                     )
             self._logger.log_info_rank_zero(
                 "Domain decomposition type: " + self._decomposition_type

@@ -97,7 +97,7 @@ class DomainDecomposer:
         """
         Decompose the macro domain among all ranks with an non-uniform distribution, if the Micro Manager is run in parallel.
         The non-uniform distribution is based on a geometric progression, where the size of the local mesh bounds increases
-        by a factor of 2 in each rank.
+        by a factor of 2 in each rank. This is just one of many possible non-uniform domain decompositions.
 
         Parameters
         ----------
