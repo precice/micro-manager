@@ -2,6 +2,7 @@
 
 ## latest
 
+- Fixed comparison of zero values of type float32 and float64 in simulation deactivation [#244](https://github.com/precice/micro-manager/pull/244)
 - Optimized norm calculations and further fixed lazy initialization [#241](https://github.com/precice/micro-manager/pull/241)
 - Fixed lazy initialization for ranks without (active) micro simulations [#238](https://github.com/precice/micro-manager/pull/238)
 - Added coverage testing and simulation interface tests [#225](https://github.com/precice/micro-manager/pull/225)
