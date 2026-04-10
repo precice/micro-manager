@@ -6,7 +6,6 @@ on each rank is done.
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
 from copy import deepcopy
-import sys
 from typing import Dict
 import numpy as np
 from mpi4py import MPI
@@ -359,15 +358,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         Update set of active micro simulations.
         Pairs of active simulations (A, B) are compared and if found to be similar, B is deactivated.
         """
-        if self._max_similarity_dist == 0.0:
-            self._base_logger.log_warning_rank_zero(
-                "All similarity distances are zero, which means all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
-            )
-            self._coarse_tol = sys.float_info.min
-        else:
-            self._coarse_tol = (
-                self._coarse_const * self._refine_const * self._max_similarity_dist
-            )
+        self._coarse_tol = (
+            self._coarse_const * self._refine_const * self._max_similarity_dist
+        )
 
         active_gids_this_rank = self.get_active_sim_global_ids()
         # Gather global ids of active sims from all ranks
