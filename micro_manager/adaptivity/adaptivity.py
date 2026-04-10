@@ -195,7 +195,7 @@ class AdaptivityCalculator:
         for active_id_2 in active_ids:
             if active_id != active_id_2:  # don't compare active sim to itself
                 # If active sim is similar to another active sim, deactivate it
-                if self._similarity_dists[active_id, active_id_2] < self._coarse_tol:
+                if self._similarity_dists[active_id, active_id_2] <= self._coarse_tol:
                     return True
         return False
 
