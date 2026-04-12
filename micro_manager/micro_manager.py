@@ -83,13 +83,6 @@ class MicroManagerCoupling(MicroManager):
 
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
-        self._macro_bounds = self._config.get_macro_domain_bounds()
-
-        self._decomposition_type = self._config.get_decomposition_type()
-
-        if self._is_parallel:  # Simulation is run in parallel
-            self._ranks_per_axis = self._config.get_ranks_per_axis()
-
         # Parameter for interpolation in case of a simulation crash
         self._interpolate_crashed_sims = self._config.interpolate_crashed_micro_sim()
         if self._interpolate_crashed_sims:
@@ -436,15 +429,15 @@ class MicroManagerCoupling(MicroManager):
         )
 
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
-        if not len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(
-            self._macro_mesh_name
-        ):
+        if not len(
+            self._config.get_macro_domain_bounds()
+        ) / 2 == self._participant.get_mesh_dimensions(self._macro_mesh_name):
             raise Exception("Provided macro mesh bounds are of incorrect dimension")
 
         if self._is_parallel:
-            if not len(self._ranks_per_axis) == self._participant.get_mesh_dimensions(
-                self._macro_mesh_name
-            ):
+            if not len(
+                self._config.get_ranks_per_axis()
+            ) == self._participant.get_mesh_dimensions(self._macro_mesh_name):
                 raise Exception(
                     "Provided ranks combination is of incorrect dimension"
                     " and does not match the dimensions of the macro mesh."
@@ -453,18 +446,9 @@ class MicroManagerCoupling(MicroManager):
             domain_decomposer = DomainDecomposer(self._config, self._rank, self._size)
 
         if self._is_parallel and not self._is_load_balancing:
-            if self._decomposition_type == "uniform":
-                coupling_mesh_bounds = domain_decomposer.get_uniform_local_mesh_bounds(
-                    self._macro_bounds, self._ranks_per_axis
-                )
-            elif self._decomposition_type == "nonuniform":
-                coupling_mesh_bounds = (
-                    domain_decomposer.get_nonuniform_local_mesh_bounds(
-                        self._macro_bounds, self._ranks_per_axis
-                    )
-                )
+            coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds()
         else:  # When serial or load balancing, the whole macro domain is assigned to one/each rank
-            coupling_mesh_bounds = self._macro_bounds
+            coupling_mesh_bounds = self._config.get_macro_domain_bounds()
 
         self._participant.set_mesh_access_region(
             self._macro_mesh_name, coupling_mesh_bounds
@@ -512,7 +496,7 @@ class MicroManagerCoupling(MicroManager):
                 self._local_number_of_sims,
                 local_macro_coords,
             ) = domain_decomposer.get_local_sims_and_macro_coords(
-                self._macro_bounds, self._ranks_per_axis, self._mesh_vertex_coords
+                self._mesh_vertex_coords
             )
         else:
             self._local_number_of_sims, _ = self._mesh_vertex_coords.shape

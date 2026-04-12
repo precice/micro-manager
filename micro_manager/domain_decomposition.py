@@ -4,6 +4,7 @@ Class DomainDecomposer provides the method decompose_macro_domain which returns 
 
 import numpy as np
 from micro_manager.config import Config
+from typing import Callable
 
 
 class DomainDecomposer:
@@ -23,7 +24,19 @@ class DomainDecomposer:
         self._rank = rank
         self._size = size
 
+        self._ranks_per_axis = (
+            configurator.get_ranks_per_axis()
+        )  # Check if ranks per axis is provided in the configuration file for parallel runs
+
+        self._dims = len(self._ranks_per_axis)
+
         self._is_minimum_access_region_size_specified = False
+
+        self._decomposition_type = configurator.get_decomposition_type()
+
+        self._macro_bounds = configurator.get_macro_domain_bounds()
+
+        self._get_local_mesh_bounds = self._get_local_mesh_bounds_variant()
 
         self._minimum_access_region_size: list = (
             configurator.get_minimum_access_region_size()
@@ -31,22 +44,9 @@ class DomainDecomposer:
         if self._minimum_access_region_size:  # if list is not empty
             self._is_minimum_access_region_size_specified = True
 
-    def get_uniform_local_mesh_bounds(
-        self, macro_bounds: list, ranks_per_axis: list
-    ) -> list:
+    def get_local_mesh_bounds(self) -> list:
         """
-        Decompose the macro domain equally among all ranks, if the Micro Manager is run in parallel.
-
-        Parameters
-        ----------
-        macro_bounds : list
-            List containing upper and lower bounds of the macro domain.
-            Format in 2D is [x_min, x_max, y_min, y_max]
-            Format in 3D is [x_min, x_max, y_min, y_max, z_min, z_max]
-        ranks_per_axis : list
-            List containing axis wise ranks for a parallel run
-            Format in 2D is [ranks_x, ranks_y]
-            Format in 3D is [ranks_x, ranks_y, ranks_z]
+        Get the local mesh bounds for this rank based on the domain decomposition type specified in the configuration file.
 
         Returns
         -------
@@ -54,72 +54,72 @@ class DomainDecomposer:
             List containing the upper and lower bounds of the domain pertaining to this rank.
             Format is same as input parameter macro_bounds.
         """
-        if np.prod(ranks_per_axis) != self._size:
+        return self._get_local_mesh_bounds()
+
+    def _get_uniform_local_mesh_bounds(self) -> list:
+        """
+        Decompose the macro domain equally among all ranks, if the Micro Manager is run in parallel.
+
+        Returns
+        -------
+        mesh_bounds : list
+            List containing the upper and lower bounds of the domain pertaining to this rank.
+            Format is same as input parameter macro_bounds.
+        """
+        if np.prod(self._ranks_per_axis) != self._size:
             raise ValueError(
                 "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
             )
 
-        dims = len(ranks_per_axis)
-
-        if dims == 3:
-            for z in range(ranks_per_axis[2]):
-                for y in range(ranks_per_axis[1]):
-                    for x in range(ranks_per_axis[0]):
+        if self._dims == 3:
+            for z in range(self._ranks_per_axis[2]):
+                for y in range(self._ranks_per_axis[1]):
+                    for x in range(self._ranks_per_axis[0]):
                         n = (
                             x
-                            + y * ranks_per_axis[0]
-                            + z * ranks_per_axis[0] * ranks_per_axis[1]
+                            + y * self._ranks_per_axis[0]
+                            + z * self._ranks_per_axis[0] * self._ranks_per_axis[1]
                         )
                         if n == self._rank:
                             rank_in_axis = [x, y, z]
-        elif dims == 2:
-            for y in range(ranks_per_axis[1]):
-                for x in range(ranks_per_axis[0]):
-                    n = x + y * ranks_per_axis[0]
+        elif self._dims == 2:
+            for y in range(self._ranks_per_axis[1]):
+                for x in range(self._ranks_per_axis[0]):
+                    n = x + y * self._ranks_per_axis[0]
                     if n == self._rank:
                         rank_in_axis = [x, y]
         else:
             raise ValueError("Domain decomposition only supports 2D and 3D cases.")
 
         dx = []
-        for d in range(dims):
+        for d in range(self._dims):
             dx.append(
-                abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / ranks_per_axis[d]
+                abs(self._macro_bounds[d * 2 + 1] - self._macro_bounds[d * 2])
+                / self._ranks_per_axis[d]
             )
 
         mesh_bounds = []
-        for d in range(dims):
+        for d in range(self._dims):
             if rank_in_axis[d] > 0:
-                mesh_bounds.append(macro_bounds[d * 2] + rank_in_axis[d] * dx[d])
-                mesh_bounds.append(macro_bounds[d * 2] + (rank_in_axis[d] + 1) * dx[d])
+                mesh_bounds.append(self._macro_bounds[d * 2] + rank_in_axis[d] * dx[d])
+                mesh_bounds.append(
+                    self._macro_bounds[d * 2] + (rank_in_axis[d] + 1) * dx[d]
+                )
             elif rank_in_axis[d] == 0:
-                mesh_bounds.append(macro_bounds[d * 2])
-                mesh_bounds.append(macro_bounds[d * 2] + dx[d])
+                mesh_bounds.append(self._macro_bounds[d * 2])
+                mesh_bounds.append(self._macro_bounds[d * 2] + dx[d])
 
             # Adjust the maximum bound to be exactly the domain size
-            if rank_in_axis[d] + 1 == ranks_per_axis[d]:
-                mesh_bounds[d * 2 + 1] = macro_bounds[d * 2 + 1]
+            if rank_in_axis[d] + 1 == self._ranks_per_axis[d]:
+                mesh_bounds[d * 2 + 1] = self._macro_bounds[d * 2 + 1]
 
         return mesh_bounds
 
-    def get_nonuniform_local_mesh_bounds(
-        self, macro_bounds: list, ranks_per_axis: list
-    ) -> list:
+    def _get_nonuniform_local_mesh_bounds(self) -> list:
         """
         Decompose the macro domain among all ranks with an non-uniform distribution, if the Micro Manager is run in parallel.
         The non-uniform distribution is based on a geometric progression, where the size of the local mesh bounds increases
         by a factor of 2 in each rank. This is just one of many possible non-uniform domain decompositions.
-
-        Parameters
-        ----------
-        macro_bounds : list
-            List containing upper and lower bounds of the macro domain.
-            Format in 2D is [x_min, x_max, y_min, y_max]
-            Format in 3D is [x_min, x_max, y_min, y_max, z_min, z_max]
-        ranks_per_axis : list
-            List containing axis wise ranks for a parallel run
-            Format in 2D is [ranks_x, ranks_y]
-            Format in 3D is [ranks_x, ranks_y, ranks_z]
 
         Returns
         -------
@@ -127,41 +127,39 @@ class DomainDecomposer:
             List containing the upper and lower bounds of the domain pertaining to this rank.
             Format is same as input parameter macro_bounds.
         """
-        if np.prod(ranks_per_axis) != self._size:
+        if np.prod(self._ranks_per_axis) != self._size:
             raise ValueError(
                 "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
             )
 
-        dims = len(ranks_per_axis)
-
-        if dims == 3:
-            for z in range(ranks_per_axis[2]):
-                for y in range(ranks_per_axis[1]):
-                    for x in range(ranks_per_axis[0]):
+        if self._dims == 3:
+            for z in range(self._ranks_per_axis[2]):
+                for y in range(self._ranks_per_axis[1]):
+                    for x in range(self._ranks_per_axis[0]):
                         n = (
                             x
-                            + y * ranks_per_axis[0]
-                            + z * ranks_per_axis[0] * ranks_per_axis[1]
+                            + y * self._ranks_per_axis[0]
+                            + z * self._ranks_per_axis[0] * self._ranks_per_axis[1]
                         )
                         if n == self._rank:
                             rank_in_axis = [x, y, z]
-        elif dims == 2:
-            for y in range(ranks_per_axis[1]):
-                for x in range(ranks_per_axis[0]):
-                    n = x + y * ranks_per_axis[0]
+        elif self._dims == 2:
+            for y in range(self._ranks_per_axis[1]):
+                for x in range(self._ranks_per_axis[0]):
+                    n = x + y * self._ranks_per_axis[0]
                     if n == self._rank:
                         rank_in_axis = [x, y]
         else:
             raise ValueError("Domain decomposition only supports 2D and 3D cases.")
 
         dx: list = []
-        for d in range(dims):
-            dx.append(np.zeros(ranks_per_axis[d]))
-            for rank in range(ranks_per_axis[d]):
+        for d in range(self._dims):
+            dx.append(np.zeros(self._ranks_per_axis[d]))
+            for rank in range(self._ranks_per_axis[d]):
                 if rank == 0:
-                    base_dx = abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / (
-                        2 ** ranks_per_axis[d] - 1
-                    )
+                    base_dx = abs(
+                        self._macro_bounds[d * 2 + 1] - self._macro_bounds[d * 2]
+                    ) / (2 ** self._ranks_per_axis[d] - 1)
                     if self._is_minimum_access_region_size_specified:
                         if base_dx < self._minimum_access_region_size[d]:
                             base_dx = self._minimum_access_region_size[d]
@@ -171,56 +169,65 @@ class DomainDecomposer:
                     dx[d][rank] = 2 * dx[d][rank - 1]
 
         mesh_bounds = []
-        for d in range(dims):
+        for d in range(self._dims):
             rank = rank_in_axis[d]
             if rank > 0:
-                min_bound = macro_bounds[d * 2] + sum(dx[d][:rank])
+                min_bound = self._macro_bounds[d * 2] + sum(dx[d][:rank])
                 mesh_bounds.append(min_bound)
                 mesh_bounds.append(min_bound + dx[d][rank])
             elif rank == 0:
-                mesh_bounds.append(macro_bounds[d * 2])
-                mesh_bounds.append(macro_bounds[d * 2] + dx[d][rank])
+                mesh_bounds.append(self._macro_bounds[d * 2])
+                mesh_bounds.append(self._macro_bounds[d * 2] + dx[d][rank])
 
             # Adjust the maximum bound to be exactly the domain size
-            if rank_in_axis[d] + 1 == ranks_per_axis[d]:
-                mesh_bounds[d * 2 + 1] = macro_bounds[d * 2 + 1]
+            if rank_in_axis[d] + 1 == self._ranks_per_axis[d]:
+                mesh_bounds[d * 2 + 1] = self._macro_bounds[d * 2 + 1]
 
         return mesh_bounds
 
+    def _get_local_mesh_bounds_variant(self) -> Callable:
+        """
+        Get uniform or nonuniform variant of calculating local mesh bounds
+
+        Returns
+        -------
+        get_local_mesh_bounds_variant : function
+            Function to calculate local mesh bounds based on the decomposition type specified in the configuration file.
+        """
+        if self._decomposition_type == "uniform":
+            return self._get_uniform_local_mesh_bounds
+        elif self._decomposition_type == "nonuniform":
+            return self._get_nonuniform_local_mesh_bounds
+        else:
+            raise ValueError(
+                "Decomposition type can be either 'uniform' or 'nonuniform'."
+            )
+
     def get_local_sims_and_macro_coords(
-        self, macro_bounds: list, ranks_per_axis: list, macro_coords: np.ndarray
+        self, macro_coords: np.ndarray
     ) -> tuple[int, list[np.ndarray]]:
         """
         Decompose the micro simulations among all ranks based on their positions in the macro domain.
-
         Parameters
         ----------
-        macro_bounds : list
-            List containing upper and lower bounds of the macro domain.
-            Format in 2D is [x_min, x_max, y_min, y_max]
-            Format in 3D is [x_min, x_max, y_min, y_max, z_min, z_max]
-        ranks_per_axis : list
-            List containing axis wise ranks for a parallel run
-            Format in 2D is [ranks_x, ranks_y]
-            Format in 3D is [ranks_x, ranks_y, ranks_z]
         macro_coords : numpy.ndarray
-            The coordinates associated to the IDs and corresponding data values (dim * size)
+            Array containing the coordinates of the macro points corresponding to the micro simulations.
 
         Returns
         -------
         micro_sims_on_rank : int
-            Number of micro simulations assigned to this rank.
-        macro_coords_on_this_rank : list
-            List of macro coordinates assigned to this rank.
+            Number of micro simulations pertaining to this rank.
+        macro_coords_on_this_rank : list of numpy.ndarray
+            List of coordinates of the macro points pertaining to this rank.
         """
-        local_mesh_bounds = self.get_local_mesh_bounds(macro_bounds, ranks_per_axis)
+        local_mesh_bounds = self.get_local_mesh_bounds()
 
         macro_coords_on_this_rank = []
 
         micro_sims_on_rank = 0
         for position in macro_coords:
             inside = True
-            for d in range(len(ranks_per_axis)):
+            for d in range(self._dims):
                 if not (
                     position[d] >= local_mesh_bounds[d * 2]
                     and position[d] <= local_mesh_bounds[d * 2 + 1]
