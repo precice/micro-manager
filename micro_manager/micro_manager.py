@@ -88,8 +88,6 @@ class MicroManagerCoupling(MicroManager):
         if self._is_parallel:  # Simulation is run in parallel
             self._ranks_per_axis = self._config.get_ranks_per_axis()
 
-        self._decomposition_type = self._config.get_decomposition_type()
-
         # Parameter for interpolation in case of a simulation crash
         self._interpolate_crashed_sims = self._config.interpolate_crashed_micro_sim()
         if self._interpolate_crashed_sims:
@@ -453,16 +451,9 @@ class MicroManagerCoupling(MicroManager):
             domain_decomposer = DomainDecomposer(self._rank, self._size)
 
         if self._is_parallel and not self._is_load_balancing:
-            if self._decomposition_type == "uniform":
-                coupling_mesh_bounds = domain_decomposer.get_uniform_local_mesh_bounds(
-                    self._macro_bounds, self._ranks_per_axis
-                )
-            elif self._decomposition_type == "nonuniform":
-                coupling_mesh_bounds = (
-                    domain_decomposer.get_nonuniform_local_mesh_bounds(
-                        self._macro_bounds, self._ranks_per_axis
-                    )
-                )
+            coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds(
+                self._macro_bounds, self._ranks_per_axis
+            )
         else:  # When serial or load balancing, the whole macro domain is assigned to one/each rank
             coupling_mesh_bounds = self._macro_bounds
 
@@ -497,7 +488,15 @@ class MicroManagerCoupling(MicroManager):
             ) = domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
 
         if self._mesh_vertex_coords.size == 0:
-            raise Exception("Macro mesh has no vertices.")
+            if self._is_parallel:
+                self._is_rank_empty = True
+                self._logger.log_warning(
+                    "The access region of this rank has no macro-scale vertices. This rank will not have any micro simulations. To avoid this, change the domain decomposition"
+                )
+            else:
+                raise Exception(
+                    "The macro mesh has no vertices in the specified access region."
+                )
 
         if self._is_load_balancing and self._is_parallel:
             (
@@ -508,17 +507,6 @@ class MicroManagerCoupling(MicroManager):
             )
         else:
             self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
-
-        if self._local_number_of_sims == 0:
-            if self._is_parallel:
-                self._logger.log_info(
-                    "Rank {} has no micro simulations and hence will not do any computation.".format(
-                        self._rank
-                    )
-                )
-                self._is_rank_empty = True
-            else:
-                raise Exception("Micro Manager has no micro simulations.")
 
         nms_all_ranks = np.zeros(self._size, dtype=np.int64)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
