@@ -450,7 +450,7 @@ class MicroManagerCoupling(MicroManager):
                     " and does not match the dimensions of the macro mesh."
                 )
 
-            domain_decomposer = DomainDecomposer(self._rank, self._size)
+            domain_decomposer = DomainDecomposer(self._config, self._rank, self._size)
 
         if self._is_parallel and not self._is_load_balancing:
             if self._decomposition_type == "uniform":

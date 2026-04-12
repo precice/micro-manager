@@ -37,6 +37,7 @@ class Config:
         self._macro_domain_bounds = None
         self._ranks_per_axis = None
         self._decomposition_type = "uniform"
+        self._minimum_access_region_size: list = []
 
         self._micro_output_n = 1
         self._diagnostics_data_names = None
@@ -269,6 +270,19 @@ class Config:
                     raise Exception(
                         "Decomposition type can be either 'uniform' or 'nonuniform'."
                     )
+                if (
+                    self._data["simulation_params"]["decomposition_type"]
+                    == "nonuniform"
+                ):
+                    if self._data["simulation_params"]["minimum_access_region_size"]:
+                        self._minimum_access_region_size = self._data[
+                            "simulation_params"
+                        ]["minimum_access_region_size"]
+                    else:
+                        self._logger.log_info_rank_zero(
+                            "Minimum access region size is not specified. Calculating it as 1 / (2^ranks_per_axis - 1) of the macro domain size in each axis."
+                        )
+
             self._logger.log_info_rank_zero(
                 "Domain decomposition type: " + self._decomposition_type
             )
@@ -766,6 +780,17 @@ class Config:
             Type of domain decomposition, can be either "uniform" or "non-uniform".
         """
         return self._decomposition_type
+
+    def get_minimum_access_region_size(self):
+        """
+        Get the minimum access region size for non-uniform domain decomposition.
+
+        Returns
+        -------
+        minimum_access_region_size : list
+            List containing the minimum access region size in each axis for non-uniform domain decomposition.
+        """
+        return self._minimum_access_region_size
 
     def get_micro_file_name(self):
         """

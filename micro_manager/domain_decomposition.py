@@ -3,15 +3,18 @@ Class DomainDecomposer provides the method decompose_macro_domain which returns 
 """
 
 import numpy as np
+from micro_manager.config import Config
 
 
 class DomainDecomposer:
-    def __init__(self, rank, size) -> None:
+    def __init__(self, configurator: Config, rank: int, size: int) -> None:
         """
         Class constructor.
 
         Parameters
         ----------
+        configurator : object of class Config
+            Object which has getter functions to get parameters defined in the configuration file.
         rank : int
             MPI rank.
         size : int
@@ -19,6 +22,14 @@ class DomainDecomposer:
         """
         self._rank = rank
         self._size = size
+
+        self._is_minimum_access_region_size_specified = False
+
+        self._minimum_access_region_size: list = (
+            configurator.get_minimum_access_region_size()
+        )
+        if self._minimum_access_region_size:  # if list is not empty
+            self._is_minimum_access_region_size_specified = True
 
     def get_uniform_local_mesh_bounds(
         self, macro_bounds: list, ranks_per_axis: list
@@ -148,9 +159,14 @@ class DomainDecomposer:
             dx.append(np.zeros(ranks_per_axis[d]))
             for rank in range(ranks_per_axis[d]):
                 if rank == 0:
-                    dx[d][rank] = abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / (
+                    base_dx = abs(macro_bounds[d * 2 + 1] - macro_bounds[d * 2]) / (
                         2 ** ranks_per_axis[d] - 1
                     )
+                    if self._is_minimum_access_region_size_specified:
+                        if base_dx < self._minimum_access_region_size[d]:
+                            base_dx = self._minimum_access_region_size[d]
+
+                    dx[d][rank] = base_dx
                 else:
                     dx[d][rank] = 2 * dx[d][rank - 1]
 
