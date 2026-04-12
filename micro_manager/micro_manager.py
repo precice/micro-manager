@@ -85,6 +85,8 @@ class MicroManagerCoupling(MicroManager):
 
         self._macro_bounds = self._config.get_macro_domain_bounds()
 
+        self._decomposition_type = self._config.get_decomposition_type()
+
         if self._is_parallel:  # Simulation is run in parallel
             self._ranks_per_axis = self._config.get_ranks_per_axis()
 
@@ -451,9 +453,16 @@ class MicroManagerCoupling(MicroManager):
             domain_decomposer = DomainDecomposer(self._rank, self._size)
 
         if self._is_parallel and not self._is_load_balancing:
-            coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds(
-                self._macro_bounds, self._ranks_per_axis
-            )
+            if self._decomposition_type == "uniform":
+                coupling_mesh_bounds = domain_decomposer.get_uniform_local_mesh_bounds(
+                    self._macro_bounds, self._ranks_per_axis
+                )
+            elif self._decomposition_type == "nonuniform":
+                coupling_mesh_bounds = (
+                    domain_decomposer.get_nonuniform_local_mesh_bounds(
+                        self._macro_bounds, self._ranks_per_axis
+                    )
+                )
         else:  # When serial or load balancing, the whole macro domain is assigned to one/each rank
             coupling_mesh_bounds = self._macro_bounds
 
