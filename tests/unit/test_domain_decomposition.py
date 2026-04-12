@@ -129,6 +129,7 @@ class TestNonUniformDomainDecomposition(TestCase):
             self._macro_bounds_2d
         )
         self._configuration_mock.get_ranks_per_axis.return_value = [2, 2]
+        self._configuration_mock.get_minimum_access_region_size.return_value = []
 
         domain_decomposer = DomainDecomposer(self._configuration_mock, rank=2, size=4)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
@@ -144,6 +145,7 @@ class TestNonUniformDomainDecomposition(TestCase):
             self._macro_bounds_3d
         )
         self._configuration_mock.get_ranks_per_axis.return_value = [2, 2, 1]
+        self._configuration_mock.get_minimum_access_region_size.return_value = []
 
         domain_decomposer = DomainDecomposer(self._configuration_mock, rank=1, size=4)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
@@ -156,12 +158,12 @@ class TestNonUniformDomainDecomposition(TestCase):
         """
         A mismatch between `ranks_per_axis` and communicator size should raise a ValueError.
         """
+        self._configuration_mock.get_decomposition_type.return_value = "nonuniform"
+
         domain_decomposer = DomainDecomposer(self._configuration_mock, rank=0, size=4)
 
         with self.assertRaises(ValueError):
-            domain_decomposer.get_nonuniform_local_mesh_bounds(
-                self._macro_bounds_2d, [3, 2]
-            )
+            domain_decomposer.get_local_mesh_bounds()
 
 
 class TestDuplicateCoordFiltering(TestCase):
@@ -183,14 +185,16 @@ class TestDuplicateCoordFiltering(TestCase):
         ]
         all_ids = [[0, 1], [2, 3]]
 
+        self._configuration_mock.get_decomposition_type.return_value = "uniform"
+
         coords, ids = DomainDecomposer(
             self._configuration_mock, rank=0, size=2
         ).filter_duplicate_coords(all_coords, all_ids)
         self.assertEqual(len(coords), 2)
 
-        coords, ids = DomainDecomposer(1, 2).filter_duplicate_coords(
-            all_coords, all_ids
-        )
+        coords, ids = DomainDecomposer(
+            self._configuration_mock, rank=1, size=2
+        ).filter_duplicate_coords(all_coords, all_ids)
         self.assertEqual(len(coords), 2)
 
     def test_duplicate_on_boundary_rank0_keeps(self):
@@ -204,6 +208,8 @@ class TestDuplicateCoordFiltering(TestCase):
             np.array([shared, [1.0, 0.0]]),
         ]
         all_ids = [[0, 1], [1, 2]]
+
+        self._configuration_mock.get_decomposition_type.return_value = "uniform"
 
         # Rank 0 should keep both its coords
         coords0, ids0 = DomainDecomposer(
@@ -230,6 +236,8 @@ class TestDuplicateCoordFiltering(TestCase):
             np.array([shared, [2.0, 0.0]]),
         ]
         all_ids = [[0, 1], [0, 2], [0, 3]]
+
+        self._configuration_mock.get_decomposition_type.return_value = "uniform"
 
         coords0, _ = DomainDecomposer(
             self._configuration_mock, rank=0, size=3
