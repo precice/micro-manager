@@ -153,20 +153,26 @@ class DomainDecomposer:
             raise ValueError("Domain decomposition only supports 2D and 3D cases.")
 
         dx: list = []
+        multiplier = 2  # factor by which the local mesh bounds increase in each rank. 2 means geometric progression.
         for d in range(self._dims):
             dx.append(np.zeros(self._ranks_per_axis[d]))
             for rank in range(self._ranks_per_axis[d]):
                 if rank == 0:
-                    base_dx = abs(
+                    macro_bounds_diff = abs(
                         self._macro_bounds[d * 2 + 1] - self._macro_bounds[d * 2]
-                    ) / (2 ** self._ranks_per_axis[d] - 1)
-                    if self._is_minimum_access_region_size_specified:
-                        if base_dx < self._minimum_access_region_size[d]:
-                            base_dx = self._minimum_access_region_size[d]
+                    )
+                    dx0 = macro_bounds_diff / (multiplier ** (self._ranks_per_axis[d]))
 
-                    dx[d][rank] = base_dx
+                    if self._is_minimum_access_region_size_specified:
+                        if dx0 < self._minimum_access_region_size[d]:
+                            dx0 = self._minimum_access_region_size[d]
+                            multiplier = (macro_bounds_diff / dx0) ** (
+                                1 / (self._ranks_per_axis[d])
+                            )
+
+                    dx[d][rank] = dx0
                 else:
-                    dx[d][rank] = 2 * dx[d][rank - 1]
+                    dx[d][rank] = multiplier * dx[d][rank - 1]
 
         mesh_bounds = []
         for d in range(self._dims):
