@@ -3,6 +3,7 @@ Class DomainDecomposer provides the method decompose_macro_domain which returns 
 """
 
 import numpy as np
+from scipy.optimize import brentq
 from micro_manager.config import Config
 from typing import Callable
 
@@ -152,40 +153,53 @@ class DomainDecomposer:
         else:
             raise ValueError("Domain decomposition only supports 2D and 3D cases.")
 
-        dx: list = []
+        mesh_bounds = []
         multiplier = 2  # factor by which the local mesh bounds increase in each rank. 2 means geometric progression.
         for d in range(self._dims):
-            dx.append(np.zeros(self._ranks_per_axis[d]))
+            macro_bounds_diff = abs(
+                self._macro_bounds[d * 2 + 1] - self._macro_bounds[d * 2]
+            )
+
+            dx0 = (
+                macro_bounds_diff
+                * (multiplier - 1)
+                / (multiplier ** self._ranks_per_axis[d] - 1)
+            )
+
+            if self._is_minimum_access_region_size_specified:
+                if dx0 < self._minimum_access_region_size[d]:
+                    dx0 = self._minimum_access_region_size[d]
+                    n_ranks = self._ranks_per_axis[d]
+
+                    def _geom_sum_residual(r):
+                        return dx0 * (r**n_ranks - 1) / (r - 1) - macro_bounds_diff
+
+                    # Find upper bracket where residual is positive
+                    r_upper = 2.0
+                    while _geom_sum_residual(r_upper) <= 0:
+                        r_upper *= 2.0
+
+                    multiplier = brentq(_geom_sum_residual, 1.0 + 1e-12, r_upper)
+
+            dx = np.zeros(self._ranks_per_axis[d])
+
             for rank in range(self._ranks_per_axis[d]):
                 if rank == 0:
-                    macro_bounds_diff = abs(
-                        self._macro_bounds[d * 2 + 1] - self._macro_bounds[d * 2]
-                    )
-                    dx0 = macro_bounds_diff / (multiplier ** (self._ranks_per_axis[d]))
-
-                    if self._is_minimum_access_region_size_specified:
-                        if dx0 < self._minimum_access_region_size[d]:
-                            dx0 = self._minimum_access_region_size[d]
-                            multiplier = (macro_bounds_diff / dx0) ** (
-                                1 / (self._ranks_per_axis[d])
-                            )
-
-                    dx[d][rank] = dx0
+                    dx[rank] = dx0
                 else:
-                    dx[d][rank] = multiplier * dx[d][rank - 1]
+                    dx[rank] = multiplier * dx[rank - 1]
 
-        mesh_bounds = []
-        for d in range(self._dims):
             rank = rank_in_axis[d]
-            if rank > 0:
-                min_bound = self._macro_bounds[d * 2] + sum(dx[d][:rank])
-                mesh_bounds.append(min_bound)
-                mesh_bounds.append(min_bound + dx[d][rank])
-            elif rank == 0:
+            if rank == 0:
                 mesh_bounds.append(self._macro_bounds[d * 2])
-                mesh_bounds.append(self._macro_bounds[d * 2] + dx[d][rank])
+                mesh_bounds.append(self._macro_bounds[d * 2] + dx[rank])
 
-            # Adjust the maximum bound to be exactly the domain size
+            if rank > 0:
+                min_bound = self._macro_bounds[d * 2] + sum(dx[: rank - 1])
+                mesh_bounds.append(min_bound)
+                mesh_bounds.append(min_bound + dx[rank])
+
+            # Adjust the maximum bound of the access region of ranks on the boundary to be exactly the upper bound of the macro domain
             if rank_in_axis[d] + 1 == self._ranks_per_axis[d]:
                 mesh_bounds[d * 2 + 1] = self._macro_bounds[d * 2 + 1]
 
