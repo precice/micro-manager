@@ -488,16 +488,6 @@ class Config:
             )
 
             try:
-                self._load_balancing_partitioning = self._data["simulation_params"][
-                    "load_balancing_settings"
-                ]["partitioning"]
-            except BaseException:
-                self._logger.log_info_rank_zero(
-                    "Micro Manager will not load balance. Must provide partitioning type."
-                )
-                self._load_balancing = False
-
-            try:
                 self._load_balancing_type = self._data["simulation_params"][
                     "load_balancing_settings"
                 ]["type"]
@@ -542,6 +532,17 @@ class Config:
                     self._logger.log_info_rank_zero(
                         'Load balancing is not using active simulation balancing. Field "balance_inactive_sims" will be ignored.'
                     )
+
+            if self._load_balancing_type == "time":
+                try:
+                    self._load_balancing_partitioning = self._data["simulation_params"][
+                        "load_balancing_settings"
+                    ]["partitioning"]
+                except BaseException:
+                    self._logger.log_info_rank_zero(
+                        "Partitioning type must be provided for time based load balancing. Defaulting to 'lpt'."
+                    )
+                    self._load_balancing_partitioning = "lpt"
 
         try:
             if self._data["simulation_params"]["model_adaptivity"]:
