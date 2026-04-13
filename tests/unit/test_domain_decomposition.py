@@ -155,17 +155,19 @@ class TestNonUniformDomainDecomposition(TestCase):
         )
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
-        print(mesh_bounds)
+        self.assertTrue(
+            np.allclose(mesh_bounds, [0.756153, 1.0, 0.0, 0.019664], atol=1e-5)
+        )
 
-        self.assertTrue(np.allclose(mesh_bounds, [0.756153, 1.0, 0.0, 0.019664]))
+        # In a 16 x 8 grid, rank 112 is in the lower right corner.
+        domain_decomposer = DomainDecomposer(
+            self._configuration_mock, rank=112, size=128
+        )
+        mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
-        # In a 16 x 8 grid, rank 1 is in the lower right corner.
-        # domain_decomposer = DomainDecomposer(self._configuration_mock, rank=17, size=128)
-        # mesh_bounds = domain_decomposer.get_local_mesh_bounds()
-
-        # self.assertTrue(
-        #     np.allclose(mesh_bounds, [0.0, 1.0 / 256.0, 15.0 / 16.0, 0.5])
-        # )
+        self.assertTrue(
+            np.allclose(mesh_bounds, [0.0, 1.0 / 256.0, 0.364631, 0.5], atol=1e-5)
+        )
 
     def test_nonuniform_rank1_out_of_4_3d(self):
         """
