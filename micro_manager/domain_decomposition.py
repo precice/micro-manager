@@ -179,6 +179,10 @@ class DomainDecomposer:
                     while _geom_sum_residual(r_upper) <= 0:
                         r_upper *= 2.0
 
+                    # When the minimum access region size is specified,
+                    # the multiplier is numerically calculated such that the sum of
+                    # the geometric progression of the local mesh bounds equals
+                    # the macro domain size in that axis.
                     multiplier = brentq(_geom_sum_residual, 1.0 + 1e-12, r_upper)
 
             dx = np.zeros(self._ranks_per_axis[d])
@@ -195,7 +199,7 @@ class DomainDecomposer:
                 mesh_bounds.append(self._macro_bounds[d * 2] + dx[rank])
 
             if rank > 0:
-                min_bound = self._macro_bounds[d * 2] + sum(dx[: rank - 1])
+                min_bound = self._macro_bounds[d * 2] + sum(dx[:rank])
                 mesh_bounds.append(min_bound)
                 mesh_bounds.append(min_bound + dx[rank])
 

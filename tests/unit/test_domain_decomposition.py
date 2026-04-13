@@ -1,4 +1,4 @@
-from unittest import TestCase
+from unittest import TestCase, skip
 from unittest.mock import MagicMock
 import numpy as np
 from micro_manager.domain_decomposition import DomainDecomposer
@@ -135,6 +135,37 @@ class TestNonUniformDomainDecomposition(TestCase):
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [0.0, 1.0 / 3.0, 2.0 / 3.0, 2.0]))
+
+    def test_nonuniform_rank15_out_of_128_2d(self):
+        """
+        Check non-uniform bounds for rank 15 in a setting of axis-wise ranks: [16, 8].
+        Along each axis, the local width doubles from one rank to the next.
+        """
+        self._configuration_mock.get_decomposition_type.return_value = "nonuniform"
+        self._configuration_mock.get_macro_domain_bounds.return_value = [0, 1, 0, 0.5]
+        self._configuration_mock.get_ranks_per_axis.return_value = [16, 8]
+        self._configuration_mock.get_minimum_access_region_size.return_value = [
+            1.0 / 256.0,
+            1.0 / 128.0,
+        ]
+
+        # In a 16 x 8 grid, rank 15 is in the lower right corner.
+        domain_decomposer = DomainDecomposer(
+            self._configuration_mock, rank=15, size=128
+        )
+        mesh_bounds = domain_decomposer.get_local_mesh_bounds()
+
+        print(mesh_bounds)
+
+        self.assertTrue(np.allclose(mesh_bounds, [0.756153, 1.0, 0.0, 0.019664]))
+
+        # In a 16 x 8 grid, rank 1 is in the lower right corner.
+        # domain_decomposer = DomainDecomposer(self._configuration_mock, rank=17, size=128)
+        # mesh_bounds = domain_decomposer.get_local_mesh_bounds()
+
+        # self.assertTrue(
+        #     np.allclose(mesh_bounds, [0.0, 1.0 / 256.0, 15.0 / 16.0, 0.5])
+        # )
 
     def test_nonuniform_rank1_out_of_4_3d(self):
         """
