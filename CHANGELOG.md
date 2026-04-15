@@ -2,6 +2,7 @@
 
 ## latest
 
+- Refactored `DomainDecomposer` class and added a new variant of non-uniform decomposition [#243](https://github.com/precice/micro-manager/pull/243)
 - Fixed load balancing configuration `partitioning` parameter setting [#245](https://github.com/precice/micro-manager/pull/245)
 - Fixed comparison of zero values of type float32 and float64 in simulation deactivation [#244](https://github.com/precice/micro-manager/pull/244)
 - Optimized norm calculations and further fixed lazy initialization [#241](https://github.com/precice/micro-manager/pull/241)
