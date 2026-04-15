@@ -59,6 +59,12 @@ py::list MicroSimulation::get_state() const
     return state_python;
 }
 
+// This function needs to return the global id received during construction
+int MicroSimulation::get_global_id() const
+{
+    return _sim_id;
+}
+
 PYBIND11_MODULE(micro_dummy, m) {
     // optional docstring
     m.doc() = "pybind11 micro dummy plugin";
@@ -68,6 +74,7 @@ PYBIND11_MODULE(micro_dummy, m) {
         .def("solve", &MicroSimulation::solve)
         .def("get_state", &MicroSimulation::get_state)
         .def("set_state", &MicroSimulation::set_state)
+        .def("get_global_id", &MicroSimulation::get_global_id)
         // Pickling support does not work currently, as there is no way to pass the simulation ID to the new instance ms.
         .def(py::pickle( // https://pybind11.readthedocs.io/en/latest/advanced/classes.html#pickling-support
             [](const MicroSimulation &ms) { // __getstate__

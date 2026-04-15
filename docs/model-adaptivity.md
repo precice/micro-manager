@@ -115,6 +115,11 @@ class MicroSimulation: # Name is fixed
         It will be called with frequency set by configuration option `simulation_params: micro_output_n`
         This function is *optional*.
         """
+
+    def get_global_id(self):
+        """
+        Return the assigned global id.
+        """
 ```
 
 For this the default MicroSimulation still serves as the model interface, while the `(set)|(get)_state()` methods
@@ -124,40 +129,43 @@ is likely to be the full order model, while subsequent ones are ROMs.
 
 ```python
 def switching_function(
-    resolutions: np.ndarray,
-    locations: np.ndarray,
+    resolution: int,
+    location: np.ndarray,
     t: float,
-    inputs: list[dict],
+    input: dict,
     prev_output: dict,
-    active: np.ndarray,
-) -> np.ndarray:
+) -> int:
     """
     Switching interface function, use as reference
 
     Parameters
     ----------
-    resolutions : np.array - shape(N,)
-        Array with resolution information as get_sim_class_resolution would return for a sim obj.
-    locations : np.array - shape(N,D)
-        Array with gaussian points for all sims. D is the mesh dimension.
+    resolution : int
+        Current resolution as get_sim_class_resolution would return for the respective sim obj.
+    location : np.array - shape(D,)
+        Array with gaussian points.
     t : float
         Current time in simulation.
-    inputs : list[dict]
-        List of input objects.
-    prev_output : [None, dict-like]
+    input : dict
+        Input object.
+    prev_output : [None, dict]
         Contains the outputs of the previous model evaluation.
-    active : np.array - shape(N,)
-        Bool array indicating whether the model is active or not.
 
+    Returns
+    -------
+    switch_direction: int
+        0 if resolution should not change
+        -1 if resolution should increase
+        1 if resolution should decrease
     """
-    return np.zeros_like(resolutions)
+    return 0
 ```
 
-The switching of models is governed by the `switching_function`.
-The output is expected to be a np.ndarray of shape (N,) and is interpreted in the following manner:
+The switching of models is governed by the `switching_function`, which is evaluated for each micro simulation.
+The output is expected to be an integer and is interpreted in the following manner:
 
-Value | Action
---- | ---
-0 | No resolution change
--1 | Increase model fidelity by one (go back one in list)
-1 | Decrease model fidelity by one (go one ahead in list)
+| Value | Action                                                |
+|-------|-------------------------------------------------------|
+| 0     | No resolution change                                  |
+| -1    | Increase model fidelity by one (go back one in list)  |
+| 1     | Decrease model fidelity by one (go one ahead in list) |

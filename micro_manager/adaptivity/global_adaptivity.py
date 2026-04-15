@@ -5,27 +5,32 @@ on each rank is done.
 
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
-import hashlib
 from copy import deepcopy
-import sys
 from typing import Dict
 import numpy as np
 from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
+from micro_manager.config import Config
+from micro_manager.tools.logging_wrapper import Logger
+from micro_manager.micro_simulation import MicroSimulationClass
+from micro_manager.model_manager import ModelManager
+
+from micro_manager.tools.p2p import p2p_comm, get_ranks_of_sims
 
 
 class GlobalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(
         self,
-        configurator,
+        configurator: Config,
         global_number_of_sims: int,
         global_ids: list,
         participant,
-        base_logger,
+        base_logger: Logger,
         rank: int,
-        comm,
-        micro_problem_cls,
+        comm: MPI.Comm,
+        micro_problem_cls: MicroSimulationClass,
+        model_manager: ModelManager,
     ) -> None:
         """
         Class constructor.
@@ -48,15 +53,22 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Communicator for MPI.
         micro_problem_cls : callable
             Class of micro problem.
+        model_manager : object of class ModelManager
+            Handles instantiation of the micro simulation.
         """
         super().__init__(
-            configurator, global_number_of_sims, micro_problem_cls, base_logger, rank
+            configurator,
+            global_number_of_sims,
+            micro_problem_cls,
+            model_manager,
+            base_logger,
+            rank,
         )
         self._global_number_of_sims = global_number_of_sims
         self._global_ids = global_ids
         self._comm = comm
 
-        rank_of_sim = self._get_ranks_of_sims()
+        rank_of_sim = get_ranks_of_sims(global_ids, rank, comm, global_number_of_sims)
 
         self._is_sim_on_this_rank = [False] * global_number_of_sims  # DECLARATION
         for gid in range(global_number_of_sims):
@@ -253,6 +265,12 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return micro_sims_output
 
+    def set_is_on_rank(self, gid, val):
+        """
+        Marks whether the simulation gid is as on local rank or not.
+        """
+        self._is_sim_on_this_rank[gid] = val
+
     def log_metrics(self, n: int) -> None:
         """
         Log the following metrics:
@@ -289,7 +307,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             self._adaptivity_output_type == "all"
             or self._adaptivity_output_type == "local"
         ):
-            ranks_of_sims = self._get_ranks_of_sims()
+            ranks_of_sims = get_ranks_of_sims(
+                self._global_ids, self._rank, self._comm, self._global_number_of_sims
+            )
 
             assoc_ranks = []  # Ranks to which inactive sims on this rank are associated
             for gid in self._global_ids:
@@ -338,15 +358,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         Update set of active micro simulations.
         Pairs of active simulations (A, B) are compared and if found to be similar, B is deactivated.
         """
-        if self._max_similarity_dist == 0.0:
-            self._base_logger.log_warning(
-                "All similarity distances are zero, which means all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
-            )
-            self._coarse_tol = sys.float_info.min
-        else:
-            self._coarse_tol = (
-                self._coarse_const * self._refine_const * self._max_similarity_dist
-            )
+        self._coarse_tol = (
+            self._coarse_const * self._refine_const * self._max_similarity_dist
+        )
 
         active_gids_this_rank = self.get_active_sim_global_ids()
         # Gather global ids of active sims from all ranks
@@ -406,7 +420,15 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         assoc_active_gids = list(active_to_inactive_map.keys())
 
-        recv_reqs = self._p2p_comm(assoc_active_gids, micro_output)
+        recv_reqs = p2p_comm(
+            self._global_ids,
+            self._rank,
+            self._comm,
+            self._global_number_of_sims,
+            self._is_sim_on_this_rank,
+            assoc_active_gids,
+            micro_output,
+        )
 
         # Add received output of active sims to inactive sims on this rank
         for count, req in enumerate(recv_reqs):
@@ -459,7 +481,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         # Only handle activation of simulations on this rank
         for gid in to_be_activated_gids:
             to_be_activated_lid = self._global_ids.index(gid)
-            micro_sims[to_be_activated_lid] = self._micro_problem_cls(gid)
+            micro_sims[to_be_activated_lid] = self._model_manager.get_instance(
+                gid, self._micro_problem_cls
+            )
             assoc_active_gid = self._sim_is_associated_to[gid]
 
             if self._is_sim_on_this_rank[
@@ -481,13 +505,19 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         sim_states_and_global_ids = []
         for lid, sim in enumerate(micro_sims):
-            if sim == 0:
+            if sim == 0 or sim is None:
                 sim_states_and_global_ids.append((None, self._global_ids[lid]))
             else:
                 sim_states_and_global_ids.append((sim.get_state(), sim.get_global_id()))
 
-        recv_reqs = self._p2p_comm(
-            list(to_be_activated_map.keys()), sim_states_and_global_ids
+        recv_reqs = p2p_comm(
+            self._global_ids,
+            self._rank,
+            self._comm,
+            self._global_number_of_sims,
+            self._is_sim_on_this_rank,
+            list(to_be_activated_map.keys()),
+            sim_states_and_global_ids,
         )
 
         # Use received micro sims to activate the required simulations
@@ -496,134 +526,23 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             local_ids = to_be_activated_map[gid]
             for lid in local_ids:
                 # Create the micro simulation object and set its state
-                micro_sims[lid] = self._micro_problem_cls(self._global_ids[lid])
+                micro_sims[lid] = self._model_manager.get_instance(
+                    self._global_ids[lid], self._micro_problem_cls
+                )
                 micro_sims[lid].set_state(state)
 
         # Delete the micro simulation object if it is inactive
         for gid in self._global_ids:
             if not self._is_sim_active[gid]:
                 lid = self._global_ids.index(gid)
-                micro_sims[lid] = 0
+                # Release resources now, especially for remote simulation instance.
+                # If left to garbage collector this might lead to a race condition.
+                # Releasing with call to sim.destroy(), afterwards reference in sim
+                # sim list can be removed.
+                if type(micro_sims[lid]).__name__ == "MicroSimulationWrapper":
+                    micro_sims[lid].destroy()
+                micro_sims[lid] = None
 
         self._precice_participant.stop_last_profiling_section()
 
         self._sim_is_associated_to = np.copy(_sim_is_associated_to_updated)
-
-    def _create_tag(self, sim_id: int, src_rank: int, dest_rank: int) -> int:
-        """
-        For a given simulations ID, source rank, and destination rank, a unique tag is created.
-
-        Parameters
-        ----------
-        sim_id : int
-            Global ID of a simulation.
-        src_rank : int
-            Rank on which the simulation lives
-        dest_rank : int
-            Rank to which data of a simulation is to be sent to.
-
-        Returns
-        -------
-        tag : int
-            Unique tag.
-        """
-        send_hashtag = hashlib.sha256()
-        send_hashtag.update(
-            (str(src_rank) + str(sim_id) + str(dest_rank)).encode("utf-8")
-        )
-        tag = int(send_hashtag.hexdigest()[:6], base=16)
-        return tag
-
-    def _p2p_comm(self, assoc_active_ids: list, data: list) -> list:
-        """
-        Handle process to process communication for a given set of associated active IDs and data.
-
-        Parameters
-        ----------
-        assoc_active_ids : list
-            Global IDs of active simulations which are not on this rank and are associated to
-            the inactive simulations on this rank.
-        data : list
-            Complete data from which parts are to be sent and received.
-
-        Returns
-        -------
-        recv_reqs : list
-            List of MPI requests of receive operations.
-        """
-        rank_of_sim = self._get_ranks_of_sims()
-
-        send_map_local: Dict[
-            int, int
-        ] = dict()  # keys are global IDs, values are rank to send to
-        send_map: Dict[
-            int, list
-        ] = (
-            dict()
-        )  # keys are global IDs of sims to send, values are ranks to send the sims to
-        recv_map: Dict[
-            int, int
-        ] = dict()  # keys are global IDs to receive, values are ranks to receive from
-
-        for i in assoc_active_ids:
-            # Add simulation and its rank to receive map
-            recv_map[i] = rank_of_sim[i]
-            # Add simulation and this rank to local sending map
-            send_map_local[i] = self._rank
-
-        # Gather information about which sims to send where, from the sending perspective
-        send_map_list = self._comm.allgather(send_map_local)
-
-        for d in send_map_list:
-            for i, rank in d.items():
-                if self._is_sim_on_this_rank[i]:
-                    if i in send_map:
-                        send_map[i].append(rank)
-                    else:
-                        send_map[i] = [rank]
-
-        # Asynchronous send operations
-        send_reqs = []
-        for gid, send_ranks in send_map.items():
-            lid = self._global_ids.index(gid)
-            for send_rank in send_ranks:
-                tag = self._create_tag(gid, self._rank, send_rank)
-                req = self._comm.isend(data[lid], dest=send_rank, tag=tag)
-                send_reqs.append(req)
-
-        # Asynchronous receive operations
-        recv_reqs = []
-        for gid, recv_rank in recv_map.items():
-            tag = self._create_tag(gid, recv_rank, self._rank)
-            bufsize = (
-                1 << 30
-            )  # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
-            req = self._comm.irecv(bufsize, source=recv_rank, tag=tag)
-            recv_reqs.append(req)
-
-        # Wait for all non-blocking communication to complete
-        MPI.Request.Waitall(send_reqs)
-
-        return recv_reqs
-
-    def _get_ranks_of_sims(self) -> np.ndarray:
-        """
-        Get the ranks of all simulations.
-
-        Returns
-        -------
-        ranks_of_sims : np.ndarray
-            Array of ranks on which simulations exist.
-        """
-        gids_to_rank = dict()
-        for gid in self._global_ids:
-            gids_to_rank[gid] = self._rank
-
-        ranks_maps_as_list = self._comm.allgather(gids_to_rank)
-
-        ranks_of_sims = np.zeros(self._global_number_of_sims, dtype=np.intc)
-        for ranks_map in ranks_maps_as_list:
-            for gid, rank in ranks_map.items():
-                ranks_of_sims[gid] = rank
-
-        return ranks_of_sims

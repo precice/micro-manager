@@ -25,6 +25,7 @@ class Config:
         self._config_file_name = config_file_name
         self._logger = None
         self._micro_file_name = None
+        self._micro_stateless = False
 
         self._precice_config_file_name = None
         self._macro_mesh_name = None
@@ -32,8 +33,12 @@ class Config:
         self._write_data_names = None
         self._micro_dt = None
 
+        # Domain decomposition information
         self._macro_domain_bounds = None
         self._ranks_per_axis = None
+        self._decomposition_type = "uniform"
+        self._minimum_access_region_size: list = []
+
         self._micro_output_n = 1
         self._diagnostics_data_names = None
 
@@ -54,10 +59,12 @@ class Config:
         self._adaptivity_output_type = ""
         self._adaptivity_output_n = 1
 
-        self._adaptivity_is_load_balancing = False
+        self._load_balancing = False
+        self._load_balancing_type = "time"
         self._load_balancing_n = 1
+        self._load_balancing_partitioning = "lpt"
         self._load_balancing_threshold = 0
-        self._balance_inactive_sims = False
+        self._load_balancing_balance_inactive_sims = False
 
         # Snapshot information
         self._parameter_file_name = None
@@ -72,7 +79,15 @@ class Config:
         # Model Adaptivity information
         self._m_adap = False
         self._m_adap_micro_file_names = None
+        self._m_adap_micro_stateless = None
         self._m_adap_switching_function = None
+
+        # Tasking
+        self._task_is_slurm = False
+        self._task_backend = "socket"
+        self._task_num_workers = 1
+        self._task_mpi_impl = "open"
+        self._task_pinning_hostfile = "./hosts.micro"
 
     def set_logger(self, logger):
         """
@@ -113,6 +128,17 @@ class Config:
             .replace("\\", ".")
             .replace(".py", "")
         )
+
+        try:
+            self._micro_stateless = self._data["micro_stateless"]
+            self._logger.log_info_rank_zero(
+                "Only creating one full instance of MicroSimulation."
+            )
+        except:
+            self._micro_stateless = False
+            self._logger.log_info_rank_zero(
+                "Creating an instance of MicroSimulation for each mesh vertex."
+            )
 
         self._logger.log_info_rank_zero(
             "Micro simulation file name: " + self._data["micro_file_name"]
@@ -182,6 +208,29 @@ class Config:
 
         self._micro_dt = self._data["simulation_params"]["micro_dt"]
 
+        try:
+            if self._data["tasking"]:
+                backend = self._data["tasking"]["backend"]
+                if backend not in ["mpi", "socket"]:
+                    raise Exception("Backend must be either 'mpi' or 'socket'.")
+                self._task_backend = backend
+                if "is_slurm" in self._data["tasking"]:
+                    self._task_is_slurm = self._data["tasking"]["is_slurm"]
+                if "num_workers" in self._data["tasking"]:
+                    self._task_num_workers = self._data["tasking"]["num_workers"]
+                if self._task_is_slurm and backend == "mpi":
+                    raise Exception("MPI backend not supported on SLURM systems.")
+                if "mpi_impl" in self._data["tasking"]:
+                    self._task_mpi_impl = self._data["tasking"]["mpi_impl"]
+                    if self._task_mpi_impl not in ["open", "intel"]:
+                        raise Exception("mpi_impl must be either 'open' or 'intel'.")
+                if "hostfile" in self._data["tasking"]:
+                    self._task_pinning_hostfile = self._data["tasking"]["hostfile"]
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "No or incorrect tasking information provided. Micro manager will not create workers and instead solve micro simulations locally."
+            )
+
     def read_json_micro_manager(self):
         """
         Reads Micro Manager relevant information from JSON configuration file
@@ -212,6 +261,30 @@ class Config:
                 raise Exception("Ranks per axis entry is not a list")
             self._logger.log_info_rank_zero(
                 "Axis-wise domain decomposition: " + str(self._ranks_per_axis)
+            )
+            if self._data["simulation_params"]["decomposition_type"]:
+                self._decomposition_type = self._data["simulation_params"][
+                    "decomposition_type"
+                ]
+                if self._decomposition_type not in ["uniform", "nonuniform"]:
+                    raise Exception(
+                        "Decomposition type can be either 'uniform' or 'nonuniform'."
+                    )
+                if (
+                    self._data["simulation_params"]["decomposition_type"]
+                    == "nonuniform"
+                ):
+                    if self._data["simulation_params"]["minimum_access_region_size"]:
+                        self._minimum_access_region_size = self._data[
+                            "simulation_params"
+                        ]["minimum_access_region_size"]
+                    else:
+                        self._logger.log_info_rank_zero(
+                            "Minimum access region size is not specified. Calculating it as 1 / (2^ranks_per_axis - 1) of the macro domain size in each axis."
+                        )
+
+            self._logger.log_info_rank_zero(
+                "Domain decomposition type: " + self._decomposition_type
             )
         except BaseException:
             self._logger.log_info_rank_zero(
@@ -389,24 +462,22 @@ class Config:
             self._write_data_names.append("Active-Steps")
 
         try:
-            self._adaptivity_is_load_balancing = self._data["simulation_params"][
-                "load_balancing"
-            ]
-            if self._adaptivity_is_load_balancing:
+            self._load_balancing = self._data["simulation_params"]["load_balancing"]
+            if self._load_balancing:
                 self._logger.log_info_rank_zero(
-                    "Micro Manager will dynamically balance micro simulations based on the adaptivity computation."
+                    "Micro Manager will dynamically balance micro simulations."
                 )
                 self._write_data_names.append("rank_of_sim")
-                if not self._adaptivity_type == "global":
+                if self._adaptivity and not self._adaptivity_type == "global":
                     raise Exception(
                         "Load balancing can be done only with global adaptivity."
                     )
         except BaseException:
             self._logger.log_info_rank_zero(
-                "Micro Manager will not dynamically balance micro simulations based on the adaptivity computation."
+                "Micro Manager will not dynamically balance micro simulations."
             )
 
-        if self._adaptivity_is_load_balancing:
+        if self._load_balancing:
             self._load_balancing_n = self._data["simulation_params"][
                 "load_balancing_settings"
             ]["every_n_time_windows"]
@@ -417,29 +488,61 @@ class Config:
             )
 
             try:
-                self._load_balancing_threshold = self._data["simulation_params"][
+                self._load_balancing_type = self._data["simulation_params"][
                     "load_balancing_settings"
-                ]["balancing_threshold"]
-                self._logger.log_info_rank_zero(
-                    "Load balancing threshold: " + str(self._load_balancing_threshold)
-                )
+                ]["type"]
             except BaseException:
-                self._logger.log_info_rank_zero(
-                    "No load balancing threshold provided. The threshold will be set to 0."
-                )
+                self._load_balancing_type = "time"
+            self._logger.log_info_rank_zero(
+                f"Load balancing will use {self._load_balancing_type} based balancing."
+            )
 
-            try:
-                self._balance_inactive_sims = self._data["simulation_params"][
-                    "load_balancing_settings"
-                ]["balance_inactive_sims"]
-                if self._balance_inactive_sims:
+            if self._load_balancing_type == "active":
+                try:
+                    self._load_balancing_threshold = self._data["simulation_params"][
+                        "load_balancing_settings"
+                    ]["threshold"]
+                except BaseException:
+                    self._load_balancing_threshold = 0
                     self._logger.log_info_rank_zero(
-                        "Micro Manager will redistribute inactive simulations in the load balancing."
+                        "Load balancing will use 0 threshold."
                     )
-            except BaseException:
-                self._logger.log_info_rank_zero(
-                    "Micro Manager will not redistribute inactive simulations in the load balancing. Only active simulations will be redistributed. Note that this may significantly increase the communication cost of the adaptivity."
-                )
+
+                try:
+                    self._load_balancing_balance_inactive_sims = self._data[
+                        "simulation_params"
+                    ]["load_balancing_settings"]["balance_inactive_sims"]
+                except BaseException:
+                    self._load_balancing_balance_inactive_sims = False
+                    self._logger.log_info_rank_zero(
+                        "Load balancing will not consider inactive simulations."
+                    )
+            else:
+                if (
+                    "threshold"
+                    in self._data["simulation_params"]["load_balancing_settings"]
+                ):
+                    self._logger.log_info_rank_zero(
+                        'Load balancing is not using active simulation balancing. Field "threshold" will be ignored.'
+                    )
+                if (
+                    "balance_inactive_sims"
+                    in self._data["simulation_params"]["load_balancing_settings"]
+                ):
+                    self._logger.log_info_rank_zero(
+                        'Load balancing is not using active simulation balancing. Field "balance_inactive_sims" will be ignored.'
+                    )
+
+            if self._load_balancing_type == "time":
+                try:
+                    self._load_balancing_partitioning = self._data["simulation_params"][
+                        "load_balancing_settings"
+                    ]["partitioning"]
+                except BaseException:
+                    self._logger.log_info_rank_zero(
+                        "Partitioning type must be provided for time based load balancing. Defaulting to 'lpt'."
+                    )
+                    self._load_balancing_partitioning = "lpt"
 
         try:
             if self._data["simulation_params"]["model_adaptivity"]:
@@ -480,6 +583,28 @@ class Config:
             self._m_adap_switching_function = self._data["simulation_params"][
                 "model_adaptivity_settings"
             ]["switching_function"]
+
+            if (
+                "micro_stateless"
+                in self._data["simulation_params"]["model_adaptivity_settings"]
+            ):
+                self._m_adap_micro_stateless = self._data["simulation_params"][
+                    "model_adaptivity_settings"
+                ]["micro_stateless"]
+            else:
+                self._m_adap_micro_stateless = [False] * len(
+                    self._m_adap_micro_file_names
+                )
+
+            for i in range(len(self._m_adap_micro_file_names)):
+                if self._m_adap_micro_stateless[i]:
+                    self._logger.log_info_rank_zero(
+                        f"Only creating one full instance of Micro Model {i}."
+                    )
+                else:
+                    self._logger.log_info_rank_zero(
+                        f"Creating full instance of Micro Model {i} per mesh vertex."
+                    )
 
         if "interpolate_crash" in self._data["simulation_params"]:
             if self._data["simulation_params"]["interpolate_crash"]:
@@ -646,6 +771,28 @@ class Config:
         """
         return self._ranks_per_axis
 
+    def get_decomposition_type(self):
+        """
+        Get the type of domain decomposition.
+
+        Returns
+        -------
+        decomposition_type : str
+            Type of domain decomposition, can be either "uniform" or "non-uniform".
+        """
+        return self._decomposition_type
+
+    def get_minimum_access_region_size(self):
+        """
+        Get the minimum access region size for non-uniform domain decomposition.
+
+        Returns
+        -------
+        minimum_access_region_size : list
+            List containing the minimum access region size in each axis for non-uniform domain decomposition.
+        """
+        return self._minimum_access_region_size
+
     def get_micro_file_name(self):
         """
         Get the path to the Python script of the micro-simulation.
@@ -656,6 +803,17 @@ class Config:
             String carrying the path to the Python script of the micro-simulation.
         """
         return self._micro_file_name
+
+    def turn_on_micro_stateless(self):
+        """
+        Boolean stating whether micro model is stateless or not.
+
+        Returns
+        -------
+        stateless : bool
+            True if micro model is stateless, False otherwise.
+        """
+        return self._micro_stateless
 
     def get_micro_output_n(self):
         """
@@ -795,16 +953,16 @@ class Config:
         """
         return self._adaptivity_every_implicit_iteration
 
-    def is_adaptivity_with_load_balancing(self):
+    def turn_on_load_balancing(self):
         """
-        Check if adaptivity computation needs to be done with load balancing.
+        Check if load balancing should be performed.
 
         Returns
         -------
-        adaptivity_is_load_balancing : bool
-            True if adaptivity computation needs to be done with load balancing, False otherwise.
+        load_balancing : bool
+            True if load balancing needs to be done, False otherwise.
         """
-        return self._adaptivity_is_load_balancing
+        return self._load_balancing
 
     def get_load_balancing_n(self):
         """
@@ -817,9 +975,20 @@ class Config:
         """
         return self._load_balancing_n
 
+    def get_load_balancing_type(self):
+        """
+        Get load balancing type.
+
+        Returns
+        -------
+        type : str
+            Load balancing type.
+        """
+        return self._load_balancing_type
+
     def get_load_balancing_threshold(self):
         """
-        Get the load balancing threshold to control how balanced the micro simulations need to be.
+        Get load balancing threshold.
 
         Returns
         -------
@@ -828,16 +997,27 @@ class Config:
         """
         return self._load_balancing_threshold
 
-    def balance_inactive_sims(self):
+    def turn_on_load_balancing_inactive(self):
         """
-        Check if inactive simulations are to be redistributed in the load balancing.
+        Check if load balancing should be performed on inactive micro simulations.
 
         Returns
         -------
-        balance_inactive_sims : bool
-            True if inactive simulations are to be redistributed in the load balancing, False otherwise.
+        balancing_inactive : bool
+            True if load balancing should consider inactive simulations, False otherwise.
         """
-        return self._balance_inactive_sims
+        return self._load_balancing_balance_inactive_sims
+
+    def get_load_balancing_partitioning(self):
+        """
+        Get the load balancing partitioning type
+
+        Returns
+        -------
+        load_balancing_partitioning : str
+            Load balancing partitioning type
+        """
+        return self._load_balancing_partitioning
 
     def initialize_sims_lazily(self):
         """
@@ -974,6 +1154,17 @@ class Config:
         """
         return self._m_adap_micro_file_names
 
+    def get_model_adaptivity_micro_stateless(self):
+        """
+        List of boolean stating whether the respective micro model is stateless or not.
+
+        Returns
+        -------
+        stateless : list
+            True if micro model is stateless, False otherwise.
+        """
+        return self._m_adap_micro_stateless
+
     def get_model_adaptivity_switching_function(self):
         """
         Get path to switching function file
@@ -984,3 +1175,58 @@ class Config:
             String containing the path to the switching function file
         """
         return self._m_adap_switching_function
+
+    def get_tasking_num_workers(self):
+        """
+        Get number of workers
+
+        Returns
+        -------
+        num_workers : int
+            Number of workers
+        """
+        return self._task_num_workers
+
+    def get_tasking_backend(self):
+        """
+        Get backend type
+
+        Returns
+        -------
+        backend : str
+            either socket or mpi
+        """
+        return self._task_backend
+
+    def get_tasking_use_slurm(self):
+        """
+        Get flag whether slurm is used
+
+        Returns
+        -------
+        use_slurm : bool
+            use slurm or not
+        """
+        return self._task_is_slurm
+
+    def get_tasking_hostfile(self):
+        """
+        Get hostfile path for workers
+
+        Returns
+        -------
+        hostfile : str
+            Hostfile path for workers
+        """
+        return self._task_pinning_hostfile
+
+    def get_mpi_impl(self):
+        """
+        Get mpi implementation type
+
+        Returns
+        -------
+        mpi_impl : str
+            mpi implementation type
+        """
+        return self._task_mpi_impl

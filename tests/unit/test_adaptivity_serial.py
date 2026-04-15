@@ -25,6 +25,14 @@ class MicroSimulation:
     def get_state(self):
         pass
 
+    def solve(self, micro_input, dt):
+        pass
+
+
+class ModelManager:
+    def get_instance(self, gid, micro_problem_cls):
+        return micro_problem_cls(gid)
+
 
 class TestLocalAdaptivity(TestCase):
     def setUp(self):
@@ -94,6 +102,7 @@ class TestLocalAdaptivity(TestCase):
             configurator,
             nsims=self._number_of_sims,
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
             base_logger=MagicMock(),
             rank=0,
         )
@@ -146,6 +155,7 @@ class TestLocalAdaptivity(TestCase):
             rank=0,
             comm=MagicMock(),
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -182,6 +192,7 @@ class TestLocalAdaptivity(TestCase):
             base_logger=MagicMock(),
             rank=0,
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
 
         fake_data = np.array([[1], [2], [3]])
@@ -263,6 +274,65 @@ class TestLocalAdaptivity(TestCase):
             )
         )
 
+    def test_adaptivity_norms_with_zeros_no_warning(self):
+        """
+        Test that L1rel/L2rel must not raise division-by-zero
+        warning when data contains zeros.
+        """
+        import warnings
+
+        configurator = MagicMock()
+        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L2rel")
+        configurator.get_output_dir = MagicMock(return_value="output_dir")
+        configurator.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_serial"
+        )
+        adaptivity_l2rel = AdaptivityCalculator(
+            configurator,
+            nsims=3,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
+        )
+
+        configurator_l1 = MagicMock()
+        configurator_l1.get_adaptivity_similarity_measure = MagicMock(
+            return_value="L1rel"
+        )
+        configurator_l1.get_output_dir = MagicMock(return_value="output_dir")
+        configurator_l1.get_micro_file_name = MagicMock(
+            return_value="test_adaptivity_serial"
+        )
+        adaptivity_l1rel = AdaptivityCalculator(
+            configurator_l1,
+            nsims=3,
+            base_logger=MagicMock(),
+            rank=0,
+            micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
+        )
+
+        # Data with zeros - previously triggered RuntimeWarning: invalid value in true_divide
+        data_with_zeros = np.array([[0.0], [0.0], [1.0]])
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("error", RuntimeWarning)
+            result_l2rel = adaptivity_l2rel._l2rel(data_with_zeros)
+        self.assertEqual(
+            len(w), 0, "L2rel must not raise RuntimeWarning with zero data"
+        )
+
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("error", RuntimeWarning)
+            result_l1rel = adaptivity_l1rel._l1rel(data_with_zeros)
+        self.assertEqual(
+            len(w), 0, "L1rel must not raise RuntimeWarning with zero data"
+        )
+
+        # When both are 0, relative diff should be 0 (since numerator is 0)
+        self.assertEqual(result_l2rel[0, 1], 0.0)
+        self.assertEqual(result_l1rel[0, 1], 0.0)
+
     def test_associate_active_to_inactive(self):
         """
         Test functionality to associate inactive sims to active ones, in the class AdaptivityCalculator.
@@ -280,6 +350,7 @@ class TestLocalAdaptivity(TestCase):
             base_logger=MagicMock(),
             rank=0,
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const
@@ -323,6 +394,7 @@ class TestLocalAdaptivity(TestCase):
             rank=0,
             comm=MPI.COMM_WORLD,
             micro_problem_cls=MicroSimulation,
+            model_manager=ModelManager(),
         )
         adaptivity_controller._refine_const = self._refine_const
         adaptivity_controller._coarse_const = self._coarse_const

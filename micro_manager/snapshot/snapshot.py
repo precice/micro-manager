@@ -17,7 +17,7 @@ import numpy as np
 
 from micro_manager.micro_manager import MicroManager
 from .dataset import ReadWriteHDF
-from micro_manager.micro_simulation import create_simulation_class
+from micro_manager.micro_simulation import create_simulation_class, load_backend_class
 from micro_manager.tools.logging_wrapper import Logger
 
 
@@ -84,7 +84,13 @@ class MicroManagerSnapshot(MicroManager):
         - Merge output in parallel run.
         """
 
-        micro_problem_cls = create_simulation_class(self._micro_problem)
+        micro_problem_cls = create_simulation_class(
+            self._logger,
+            self._micro_problem,
+            self._config.get_micro_file_name(),
+            1,
+            None,
+        )
 
         # Loop over all macro parameters
         for elems in range(self._local_number_of_sims):
@@ -256,12 +262,7 @@ class MicroManagerSnapshot(MicroManager):
         for i in range(self._local_number_of_sims):
             self._global_ids_of_local_sims.append(sim_id)
             sim_id += 1
-        self._micro_problem = getattr(
-            importlib.import_module(
-                self._config.get_micro_file_name(), "MicroSimulation"
-            ),
-            "MicroSimulation",
-        )
+        self._micro_problem = load_backend_class(self._config.get_micro_file_name())
 
         self._micro_sims_have_output = False
         if hasattr(self._micro_problem, "output") and callable(

@@ -1,5 +1,22 @@
 # Micro Manager changelog
 
+## v0.9.0
+
+- Refactored `DomainDecomposer` class and added a new variant of non-uniform decomposition [#243](https://github.com/precice/micro-manager/pull/243)
+- Fixed load balancing configuration `partitioning` parameter setting [#245](https://github.com/precice/micro-manager/pull/245)
+- Fixed comparison of zero values of type float32 and float64 in simulation deactivation [#244](https://github.com/precice/micro-manager/pull/244)
+- Optimized norm calculations and further fixed lazy initialization [#241](https://github.com/precice/micro-manager/pull/241)
+- Fixed lazy initialization for ranks without (active) micro simulations [#238](https://github.com/precice/micro-manager/pull/238)
+- Added coverage testing and simulation interface tests [#225](https://github.com/precice/micro-manager/pull/225)
+- Added `--test-dependencies` CLI flag to check if all required dependencies are correctly installed, with clear error messages listing missing packages and how to fix them [#221](https://github.com/precice/micro-manager/pull/221)
+- Added load balancing based on micro simulation solve timings [#228](https://github.com/precice/micro-manager/pull/228)
+- Fixed invalid value in division warning in L1rel/L2rel adaptivity when data contains zeros [#234](https://github.com/precice/micro-manager/pull/234)
+- Fixed duplicate micro simulations for macro-points on rank boundaries by filtering coordinates already claimed by lower-ranked ranks [#230](https://github.com/precice/micro-manager/pull/230)
+- Exposed `MicroSimulationInterface` as a public abstract base class for user subclassing [#224](https://github.com/precice/micro-manager/pull/224)
+- Added option to use compute instances to reduce memory consumption [#226](https://github.com/precice/micro-manager/pull/226)
+- Added support to run micro simulations in separate processes with workers [#219](https://github.com/precice/micro-manager/pull/219)
+- Added abstraction layers to micro simulations to support more features [#218](https://github.com/precice/micro-manager/pull/218)
+
 ## v0.8.0
 
 - Conformed to naming standard in precice/tutorials [#215](https://github.com/precice/micro-manager/pull/215)

@@ -1,17 +1,26 @@
 """
 Functionality for adaptive initialization and control of micro simulations
 """
+
 from math import exp
 from typing import Callable
-import importlib
 from micro_manager.tools.logging_wrapper import Logger
+from micro_manager.config import Config
+from micro_manager.micro_simulation import MicroSimulationClass
+from micro_manager.model_manager import ModelManager
 
 import numpy as np
 
 
 class AdaptivityCalculator:
     def __init__(
-        self, configurator, nsims, micro_problem_cls, base_logger, rank
+        self,
+        configurator: Config,
+        nsims: int,
+        micro_problem_cls: MicroSimulationClass,
+        model_manager: ModelManager,
+        base_logger: Logger,
+        rank: int,
     ) -> None:
         """
         Class constructor.
@@ -24,6 +33,8 @@ class AdaptivityCalculator:
             Number of micro simulations.
         micro_problem_cls : callable
             Class of micro problem.
+        model_manager : object
+            Handles instantiation of micro simulation.
         base_logger : object of class Logger
             Logger object to log messages.
         rank : int
@@ -37,6 +48,7 @@ class AdaptivityCalculator:
         self._adaptivity_output_type = configurator.get_adaptivity_output_type()
 
         self._micro_problem_cls = micro_problem_cls
+        self._model_manager = model_manager
 
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
@@ -112,7 +124,7 @@ class AdaptivityCalculator:
         self._similarity_dists *= exp(-self._hist_param * dt)
 
         for name in data.keys():
-            data_vals = np.array(data[name])
+            data_vals = np.asarray(data[name])
             if data_vals.ndim == 1:
                 # If the adaptivity data is a scalar for each simulation,
                 # expand the dimension to make it a 2D array to unify the calculation.
@@ -183,7 +195,7 @@ class AdaptivityCalculator:
         for active_id_2 in active_ids:
             if active_id != active_id_2:  # don't compare active sim to itself
                 # If active sim is similar to another active sim, deactivate it
-                if self._similarity_dists[active_id, active_id_2] < self._coarse_tol:
+                if self._similarity_dists[active_id, active_id_2] <= self._coarse_tol:
                     return True
         return False
 
@@ -263,18 +275,15 @@ class AdaptivityCalculator:
         similarity_dists : numpy array
             Updated 2D array having similarity distances between each micro simulation pair
         """
-        pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
-        # divide by data to get relative difference
-        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
-        relative = np.nan_to_num(
-            (
-                pointwise_diff
-                / np.maximum(
-                    np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
-                )
-            )
+        eps = np.finfo(np.float64).eps
+        data_bc = data[np.newaxis, :]
+        data_abs = np.absolute(data_bc)
+        denom = np.maximum(data_abs, np.swapaxes(data_abs, 0, 1))
+        return np.linalg.norm(
+            (data_bc - np.swapaxes(data_bc, 0, 1)) / np.maximum(denom, eps),
+            ord=1,
+            axis=-1,
         )
-        return np.linalg.norm(relative, ord=1, axis=-1)
 
     def _l2rel(self, data: np.ndarray) -> np.ndarray:
         """
@@ -291,15 +300,12 @@ class AdaptivityCalculator:
         similarity_dists : numpy array
             Updated 2D array having similarity distances between each micro simulation pair
         """
-        pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
-        # divide by data to get relative difference
-        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
-        relative = np.nan_to_num(
-            (
-                pointwise_diff
-                / np.maximum(
-                    np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
-                )
-            )
+        eps = np.finfo(np.float64).eps
+        data_bc = data[np.newaxis, :]
+        data_abs = np.absolute(data_bc)
+        denom = np.maximum(data_abs, np.swapaxes(data_abs, 0, 1))
+        return np.linalg.norm(
+            (data_bc - np.swapaxes(data_bc, 0, 1)) / np.maximum(denom, eps),
+            ord=2,
+            axis=-1,
         )
-        return np.linalg.norm(relative, ord=2, axis=-1)
