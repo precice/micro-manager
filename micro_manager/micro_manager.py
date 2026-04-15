@@ -83,11 +83,6 @@ class MicroManagerCoupling(MicroManager):
 
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
-        self._macro_bounds = self._config.get_macro_domain_bounds()
-
-        if self._is_parallel:  # Simulation is run in parallel
-            self._ranks_per_axis = self._config.get_ranks_per_axis()
-
         # Parameter for interpolation in case of a simulation crash
         self._interpolate_crashed_sims = self._config.interpolate_crashed_micro_sim()
         if self._interpolate_crashed_sims:
@@ -434,28 +429,26 @@ class MicroManagerCoupling(MicroManager):
         )
 
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
-        if not len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(
-            self._macro_mesh_name
-        ):
+        if not len(
+            self._config.get_macro_domain_bounds()
+        ) / 2 == self._participant.get_mesh_dimensions(self._macro_mesh_name):
             raise Exception("Provided macro mesh bounds are of incorrect dimension")
 
         if self._is_parallel:
-            if not len(self._ranks_per_axis) == self._participant.get_mesh_dimensions(
-                self._macro_mesh_name
-            ):
+            if not len(
+                self._config.get_ranks_per_axis()
+            ) == self._participant.get_mesh_dimensions(self._macro_mesh_name):
                 raise Exception(
                     "Provided ranks combination is of incorrect dimension"
                     " and does not match the dimensions of the macro mesh."
                 )
 
-            domain_decomposer = DomainDecomposer(self._rank, self._size)
+            domain_decomposer = DomainDecomposer(self._config, self._rank, self._size)
 
         if self._is_parallel and not self._is_load_balancing:
-            coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds(
-                self._macro_bounds, self._ranks_per_axis
-            )
+            coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds()
         else:  # When serial or load balancing, the whole macro domain is assigned to one/each rank
-            coupling_mesh_bounds = self._macro_bounds
+            coupling_mesh_bounds = self._config.get_macro_domain_bounds()
 
         self._participant.set_mesh_access_region(
             self._macro_mesh_name, coupling_mesh_bounds
@@ -488,28 +481,29 @@ class MicroManagerCoupling(MicroManager):
             ) = domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
 
         if self._mesh_vertex_coords.size == 0:
-            raise Exception("Macro mesh has no vertices.")
+            if self._is_parallel:
+                self._is_rank_empty = True
+                self._logger.log_warning(
+                    "The access region of this rank has no macro-scale vertices. This rank will not have any micro simulations. To avoid this, change the domain decomposition"
+                )
+                if self._lazy_init:
+                    raise Exception(
+                        "The macro mesh has no vertices in the specified access region, but lazy initialization is turned on. Lazy initialization cannot be used if there are no vertices in the access region, as there would be no data to compute the adaptivity and determine which simulations to initialize."
+                    )
+            else:
+                raise Exception(
+                    "The macro mesh has no vertices in the specified access region."
+                )
 
         if self._is_load_balancing and self._is_parallel:
             (
                 self._local_number_of_sims,
                 local_macro_coords,
             ) = domain_decomposer.get_local_sims_and_macro_coords(
-                self._macro_bounds, self._ranks_per_axis, self._mesh_vertex_coords
+                self._mesh_vertex_coords
             )
         else:
             self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
-
-        if self._local_number_of_sims == 0:
-            if self._is_parallel:
-                self._logger.log_info(
-                    "Rank {} has no micro simulations and hence will not do any computation.".format(
-                        self._rank
-                    )
-                )
-                self._is_rank_empty = True
-            else:
-                raise Exception("Micro Manager has no micro simulations.")
 
         nms_all_ranks = np.zeros(self._size, dtype=np.int64)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
