@@ -486,6 +486,10 @@ class MicroManagerCoupling(MicroManager):
                 self._logger.log_warning(
                     "The access region of this rank has no macro-scale vertices. This rank will not have any micro simulations. To avoid this, change the domain decomposition"
                 )
+                if self._lazy_init:
+                    raise Exception(
+                        "The macro mesh has no vertices in the specified access region, but lazy initialization is turned on. Lazy initialization cannot be used if there are no vertices in the access region, as there would be no data to compute the adaptivity and determine which simulations to initialize."
+                    )
             else:
                 raise Exception(
                     "The macro mesh has no vertices in the specified access region."
