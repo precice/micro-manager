@@ -34,15 +34,19 @@ Apart from the base settings, there are three main sections in the configuration
 
 ## Simulation Parameters
 
-| Parameter             | Description                                                                                                                                          | Default                 |
-|-----------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------|
-| `macro_domain_bounds` | Minimum and maximum bounds of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]` in 3D and `[xmin, xmax, ymin, ymax]` in 2D. | -                       |
-| `decomposition`       | List of number of ranks in each axis with format `[xranks, yranks, zranks]` in 3D and `[xranks, yranks]` in 2D.                                      | `[1, 1, 1]` or `[1, 1]` |
-| `micro_dt`            | Initial time window size (dt) of the micro simulation.                                                                                               | -                       |
-| `adaptivity`          | Set `true` for simulations with adaptivity. See section on [adaptivity](#adaptivity).                                                                | `false`                 |
-| `load_balancing`      | Set `true` for load balancing. See section on [load balancing](#load-balancing).                                                                     | `false`                 |
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `macro_domain_bounds` | Minimum and maximum bounds of the macro-domain, having the format `[xmin, xmax, ymin, ymax, zmin, zmax]` in 3D and `[xmin, xmax, ymin, ymax]` in 2D. | - |
+| `decomposition` | List of number of ranks in each axis with format `[xranks, yranks, zranks]` in 3D and `[xranks, yranks]` in 2D. | `[1, 1, 1]` or `[1, 1]` |
+| `decomposition_type` | Type of domain decomposition. Either `uniform` or `nonuniform`. | `uniform` |
+| `minimum_access_region_size` | If `nonuniform` decomposition, optionally set a minimum domain width in each axis. Format `[xmin, ymin, zmin]` | - |
+| `micro_dt` | Initial time window size (dt) of the micro simulation. | - |
+| `adaptivity` | Set `true` for simulations with adaptivity. See section on [adaptivity](#adaptivity). | `false` |
+| `load_balancing` | Set `true` for load balancing. See section on [load balancing](#load-balancing). | `false` |
 
 The total number of partitions ranks in the `decomposition` list should be the same as the number of ranks in the `mpirun` or `mpiexec` command.
+
+Non-uniform domain decomposition is based on a geometric progression.
 
 ## Diagnostics
 
