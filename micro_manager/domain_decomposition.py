@@ -92,23 +92,21 @@ class DomainDecomposer:
         else:
             raise ValueError("Domain decomposition only supports 2D and 3D cases.")
 
-        dx = []
+        mesh_bounds = []
         for d in range(self._dims):
-            dx.append(
+            dx = (
                 abs(self._macro_bounds[d * 2 + 1] - self._macro_bounds[d * 2])
                 / self._ranks_per_axis[d]
             )
 
-        mesh_bounds = []
-        for d in range(self._dims):
             if rank_in_axis[d] > 0:
-                mesh_bounds.append(self._macro_bounds[d * 2] + rank_in_axis[d] * dx[d])
+                mesh_bounds.append(self._macro_bounds[d * 2] + rank_in_axis[d] * dx)
                 mesh_bounds.append(
-                    self._macro_bounds[d * 2] + (rank_in_axis[d] + 1) * dx[d]
+                    self._macro_bounds[d * 2] + (rank_in_axis[d] + 1) * dx
                 )
             elif rank_in_axis[d] == 0:
                 mesh_bounds.append(self._macro_bounds[d * 2])
-                mesh_bounds.append(self._macro_bounds[d * 2] + dx[d])
+                mesh_bounds.append(self._macro_bounds[d * 2] + dx)
 
             # Adjust the maximum bound to be exactly the domain size
             if rank_in_axis[d] + 1 == self._ranks_per_axis[d]:
