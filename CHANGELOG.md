@@ -2,7 +2,7 @@
 
 ## latest
 
-- Add function `set_global_id` to the dummies and the example in the integration test
+- Add function `set_global_id` to the dummies and the example in the integration test [#247](https://github.com/precice/micro-manager/pull/247)
 
 ## v0.9.0
 
