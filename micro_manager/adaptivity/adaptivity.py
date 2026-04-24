@@ -288,11 +288,11 @@ class AdaptivityCalculator:
         active_lids = self.get_active_sim_local_ids()
         inactive_lids = self.get_inactive_sim_local_ids()
         arg_sizes = {}
-        for name, value in micro_input[active_lids[0]].items():
+        for name, value in micro_input[-1].items():
             arg_sizes[name] = (
                 1 if type(value) != np.ndarray and type(value) != list else len(value)
             )
-        for name, value in micro_sims_output[active_lids[0]].items():
+        for name, value in micro_sims_output[-1].items():
             arg_sizes[name] = (
                 1 if type(value) != np.ndarray and type(value) != list else len(value)
             )

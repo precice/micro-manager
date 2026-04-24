@@ -115,5 +115,7 @@ jobs:
         working-directory: micro-manager
         run: |
           . .venv/bin/activate
+          pip install .[sklearn]
+          pip uninstall -y pyprecice
           cd tests/unit
           mpiexec -n 2 --allow-run-as-root python3 -m unittest test_interpolation.py
