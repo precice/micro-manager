@@ -109,3 +109,11 @@ jobs:
           . .venv/bin/activate
           cd tests/unit
           mpiexec -n 4 --oversubscribe --allow-run-as-root python3 -m unittest test_load_balancing.py
+
+      - name: Run interpolation unit tests with 2 ranks
+        timeout-minutes: 3
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          cd tests/unit
+          mpiexec -n 2 --allow-run-as-root python3 -m unittest test_interpolation.py

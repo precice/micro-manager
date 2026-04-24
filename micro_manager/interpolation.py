@@ -230,10 +230,10 @@ class NDtree:
             """
             if self.data_reserve_count < n:
                 return None
-            if self.children is None:
-                return None
             if not self.is_within(p):
                 return None
+            if self.children is None:
+                return depth
 
             tmp = [
                 node.find_min_depth_for_n_neighbors(n, depth + 1, p)
@@ -478,6 +478,7 @@ class NDtree:
             other : NDtree.Node
                 Other node structure.
             """
+            assert self._mode == NDtree.Mode.DISCRETIZE
             is_split = self.children is not None
             is_split_other = other.children is not None
 
@@ -1104,9 +1105,13 @@ class InterleavedDomain:
         f : np.ndarray
             Support point function values.
         """
-        self._x_local = x
-        self._x_query_local = x_
-        self._f_local = f
+        def dim_extend(a):
+            if a.ndim == 1:
+                return a.reshape(-1, 1)
+            return a
+        self._x_local = dim_extend(x)
+        self._x_query_local = dim_extend(x_)
+        self._f_local = dim_extend(f)
 
     def decompose(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -1243,7 +1248,7 @@ class InterleavedDomain:
             self._x_query_local = self._x_query_local / self._normalization[None, :]
             glob_cond = self._comm.allgather(eval_cond())
 
-        self._projector.initialize(self._x_local)
+        self._projector.initialize(self._x_local * self._normalization[None, :])
         self._proj_x_local = self._projector(self._x_local)
         self._proj_x_query_local = self._projector(self._x_query_local)
 
