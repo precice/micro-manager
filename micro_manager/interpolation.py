@@ -1105,10 +1105,12 @@ class InterleavedDomain:
         f : np.ndarray
             Support point function values.
         """
+
         def dim_extend(a):
             if a.ndim == 1:
                 return a.reshape(-1, 1)
             return a
+
         self._x_local = dim_extend(x)
         self._x_query_local = dim_extend(x_)
         self._f_local = dim_extend(f)
