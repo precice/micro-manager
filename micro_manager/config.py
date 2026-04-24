@@ -329,10 +329,14 @@ class Config:
 
             self._logger.log_info_rank_zero("Adaptivity type: " + self._adaptivity_type)
 
-            if self._adaptivity_type == "global":
+            try:
                 self._adaptivity_mappings = self._data["simulation_params"][
                     "adaptivity_settings"
                 ]["mappings"]
+            except BaseException:
+                self._logger.log_info_rank_zero(
+                    "Adaptivity will not interpolate outputs, only use representatives."
+                )
 
             if self._data["simulation_params"]["adaptivity_settings"].get(
                 "lazy_initialization"
