@@ -1102,11 +1102,17 @@ class MicroManagerCoupling(MicroManager):
 
         # Resolve micro sim output data for inactive simulations
         for inactive_lid in inactive_sim_lids:
+            self.load_balancing.pre_sim_solve(
+                self._global_ids_of_local_sims[inactive_lid]
+            )
             micro_sims_output[inactive_lid]["Active-State"] = 0
             gid = self._global_ids_of_local_sims[inactive_lid]
             micro_sims_output[inactive_lid][
                 "Active-Steps"
             ] = self._micro_sims_active_steps[gid]
+            self.load_balancing.post_sim_solve(
+                self._global_ids_of_local_sims[inactive_lid]
+            )
 
         # Collect micro sim output for adaptivity calculation
         for i in range(self._local_number_of_sims):

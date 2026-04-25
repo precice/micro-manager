@@ -94,6 +94,7 @@ To turn on adaptivity, set `"adaptivity": true` in `simulation_params`. Then und
 Adaptivity can optionally interpolate results using RBF interpolation. For any subset of `write_data_names` fields, a function
 can be defined from `read_data_names` to `write_data_names`. When using multiple functions, their interpolation target, i.e., fields
 of `write_data_names` must be mutually disjunct. Mappings can be defined as:
+
 ```json
 "mappings": [
     {
