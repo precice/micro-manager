@@ -71,6 +71,13 @@ jobs:
           cd tests/unit
           python3 -m unittest test_micro_manager.py
 
+      - name: Run model adaptivity unit tests
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          cd tests/unit
+          python3 -m unittest test_model_adaptivity.py
+
       - name: Install Micro Manager and run tasking unit test
         working-directory: micro-manager
         env:
