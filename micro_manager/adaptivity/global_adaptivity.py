@@ -267,7 +267,16 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         )
 
         micro_sims_output = deepcopy(micro_output)
+        num_active = np.sum(self._is_sim_active)
+        if num_active == self._is_sim_active.shape[0]:
+            self._precice_participant.stop_last_profiling_section()
+            return micro_sims_output
+
         self._communicate_micro_output(micro_sims_output)
+        if num_active <= self._interp_min:
+            self._precice_participant.stop_last_profiling_section()
+            return micro_sims_output
+
         self._interpolate_output(micro_input, micro_sims_output)
 
         self._precice_participant.stop_last_profiling_section()

@@ -1336,28 +1336,37 @@ class InterleavedDomain:
         for coord, idx in query_mapping.items():
             query_mapping_inv[idx] = coord
         sorted_1d_query_indices = sorted(query_mapping.values())
+        if len(sorted_1d_query_indices) == 0:
+            return (
+                np.zeros((0, self._x_local.shape[-1])),
+                np.zeros((0, self._x_query_local.shape[-1])),
+                np.zeros((0, self._f_local.shape[-1])),
+            )
 
         # partition based on query points
-        target_point_per_rank = len(sorted_1d_query_indices) // self._size
+        target_point_per_rank = max(
+            (len(sorted_1d_query_indices) + 1) // self._size, 16
+        )
         partitions = {r: [-1, -1] for r in range(self._size)}
         last_val = sorted_1d_query_indices[0]
         start_idx = 0
         part_begin = 0
         part_idx = 0
-        for i in range(1, len(sorted_1d_query_indices)):
+        for i in range(0, len(sorted_1d_query_indices)):
             if sorted_1d_query_indices[i] != last_val:
                 last_val = sorted_1d_query_indices[i]
                 start_idx = i
-
-            if i - part_begin + 1 < target_point_per_rank:
-                continue
 
             # handle last partition
             if part_idx == self._size - 1:
                 partitions[part_idx][0] = part_begin
                 partitions[part_idx][1] = len(sorted_1d_query_indices) - 1
                 part_idx = part_idx + 1
+                part_begin = len(sorted_1d_query_indices)
                 break
+
+            if i - part_begin + 1 < target_point_per_rank:
+                continue
 
             # partition has minimum size, find nearest end of current cell
             end_idx = i
@@ -1380,8 +1389,9 @@ class InterleavedDomain:
         # last part was not used
         if (
             part_idx in partitions
-            and partitions[part_idx][0] == 0
-            and partitions[part_idx][1] == 0
+            and partitions[part_idx][0] == -1
+            and partitions[part_idx][1] == -1
+            and part_begin < len(sorted_1d_query_indices)
         ):
             partitions[part_idx][0] = part_begin
             partitions[part_idx][1] = len(sorted_1d_query_indices) - 1
@@ -1389,7 +1399,7 @@ class InterleavedDomain:
         # assign surrounding src domain to rank local query points
         src_domains = {r: [None, None] for r in range(self._size)}
         for rank, p_range in partitions.items():
-            if -1 == p_range[0] == p_range[1]:
+            if -1 == p_range[0] and p_range[0] == p_range[1]:
                 continue
 
             # gather coords, find bounding box
@@ -1423,7 +1433,7 @@ class InterleavedDomain:
             # find owning partition
             found = False
             for rank, rank_range in partitions.items():
-                if -1 == rank_range[0] == rank_range[1]:
+                if -1 == rank_range[0] and rank_range[0] == rank_range[1]:
                     continue
 
                 if (

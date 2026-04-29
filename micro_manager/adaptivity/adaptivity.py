@@ -59,6 +59,7 @@ class AdaptivityCalculator:
         self._max_similarity_dist = 0.0
 
         self._interpolation = None
+        self._interp_min = -1
         self._mappings = []
         self._mapping_configs = []
         mappings = configurator.get_adaptivity_mapping_configs()
@@ -132,6 +133,10 @@ class AdaptivityCalculator:
             src_fields = mapping["src_fields"]
             dst_fields = mapping["dst_fields"]
             n_neighbors = mapping["n_neighbors"]
+            if self._interp_min == -1:
+                self._interp_min = n_neighbors
+            else:
+                self._interp_min = min(n_neighbors, self._interp_min)
 
             self._mappings.append((src_fields, dst_fields))
             config = {}
