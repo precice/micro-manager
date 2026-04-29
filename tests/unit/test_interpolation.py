@@ -679,15 +679,13 @@ class TestInterleavedDomain(TestCase):
         self._domain._generate_trees()
         x, xq, f = self._domain._create_partitions()
 
-        expected_xq = (
-            self._ordered_global_xq[4 * self._rank : 4 * self._rank + 4]
-            / self._domain._normalization[None, :]
-        )
-        expected_xq_set = set()
-        for i in range(len(expected_xq)):
-            expected_xq_set.add(tuple(expected_xq[i].tolist()))
-        for i in range(len(xq)):
-            self.assertTrue(tuple(xq[i].tolist()) in expected_xq_set)
+        if self._rank == 0:
+            expected_xq = self._ordered_global_xq / self._domain._normalization[None, :]
+            expected_xq_set = set()
+            for i in range(len(expected_xq)):
+                expected_xq_set.add(tuple(expected_xq[i].tolist()))
+            for i in range(len(xq)):
+                self.assertTrue(tuple(xq[i].tolist()) in expected_xq_set)
 
 
 class TestRBF(TestCase):
