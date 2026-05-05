@@ -59,7 +59,6 @@ class TestFunctioncalls(TestCase):
         """
         manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
 
-        self.assertListEqual(manager._macro_bounds, self.macro_bounds)
         self.assertListEqual(manager._read_data_names, self.fake_read_data_names)
         self.assertListEqual(self.fake_write_data_names, manager._write_data_names)
         self.assertEqual(manager._micro_n_out, 10)
@@ -73,7 +72,6 @@ class TestFunctioncalls(TestCase):
 
         self.assertEqual(manager._micro_dt, 0.1)  # from Interface.initialize
         self.assertEqual(manager._global_number_of_sims, 4)
-        self.assertListEqual(manager._macro_bounds, self.macro_bounds)
         self.assertListEqual(manager._mesh_vertex_ids.tolist(), [0, 1, 2, 3])
         self.assertEqual(len(manager._micro_sims), 4)
         self.assertEqual(

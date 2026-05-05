@@ -33,8 +33,12 @@ class Config:
         self._write_data_names = None
         self._micro_dt = None
 
+        # Domain decomposition information
         self._macro_domain_bounds = None
         self._ranks_per_axis = None
+        self._decomposition_type = "uniform"
+        self._minimum_access_region_size: list = []
+
         self._micro_output_n = 1
         self._diagnostics_data_names = None
 
@@ -258,6 +262,30 @@ class Config:
             self._logger.log_info_rank_zero(
                 "Axis-wise domain decomposition: " + str(self._ranks_per_axis)
             )
+            if self._data["simulation_params"]["decomposition_type"]:
+                self._decomposition_type = self._data["simulation_params"][
+                    "decomposition_type"
+                ]
+                if self._decomposition_type not in ["uniform", "nonuniform"]:
+                    raise Exception(
+                        "Decomposition type can be either 'uniform' or 'nonuniform'."
+                    )
+                if (
+                    self._data["simulation_params"]["decomposition_type"]
+                    == "nonuniform"
+                ):
+                    if self._data["simulation_params"]["minimum_access_region_size"]:
+                        self._minimum_access_region_size = self._data[
+                            "simulation_params"
+                        ]["minimum_access_region_size"]
+                    else:
+                        self._logger.log_info_rank_zero(
+                            "Minimum access region size is not specified. Calculating it as 1 / (2^ranks_per_axis - 1) of the macro domain size in each axis."
+                        )
+
+            self._logger.log_info_rank_zero(
+                "Domain decomposition type: " + self._decomposition_type
+            )
         except BaseException:
             self._logger.log_info_rank_zero(
                 "Domain decomposition is not specified, so the Micro Manager will expect to be run in serial."
@@ -460,16 +488,6 @@ class Config:
             )
 
             try:
-                self._load_balancing_partitioning = self._data["simulation_params"][
-                    "load_balancing_settings"
-                ]["partitioning"]
-            except BaseException:
-                self._logger.log_info_rank_zero(
-                    "Micro Manager will not load balance. Must provide partitioning type."
-                )
-                self._load_balancing = False
-
-            try:
                 self._load_balancing_type = self._data["simulation_params"][
                     "load_balancing_settings"
                 ]["type"]
@@ -514,6 +532,17 @@ class Config:
                     self._logger.log_info_rank_zero(
                         'Load balancing is not using active simulation balancing. Field "balance_inactive_sims" will be ignored.'
                     )
+
+            if self._load_balancing_type == "time":
+                try:
+                    self._load_balancing_partitioning = self._data["simulation_params"][
+                        "load_balancing_settings"
+                    ]["partitioning"]
+                except BaseException:
+                    self._logger.log_info_rank_zero(
+                        "Partitioning type must be provided for time based load balancing. Defaulting to 'lpt'."
+                    )
+                    self._load_balancing_partitioning = "lpt"
 
         try:
             if self._data["simulation_params"]["model_adaptivity"]:
@@ -741,6 +770,28 @@ class Config:
             List containing ranks in the x, y and z axis respectively.
         """
         return self._ranks_per_axis
+
+    def get_decomposition_type(self):
+        """
+        Get the type of domain decomposition.
+
+        Returns
+        -------
+        decomposition_type : str
+            Type of domain decomposition, can be either "uniform" or "non-uniform".
+        """
+        return self._decomposition_type
+
+    def get_minimum_access_region_size(self):
+        """
+        Get the minimum access region size for non-uniform domain decomposition.
+
+        Returns
+        -------
+        minimum_access_region_size : list
+            List containing the minimum access region size in each axis for non-uniform domain decomposition.
+        """
+        return self._minimum_access_region_size
 
     def get_micro_file_name(self):
         """

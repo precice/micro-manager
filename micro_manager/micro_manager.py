@@ -104,11 +104,6 @@ class MicroManagerCoupling(MicroManager):
 
         self._macro_mesh_name = self._config.get_macro_mesh_name()
 
-        self._macro_bounds = self._config.get_macro_domain_bounds()
-
-        if self._is_parallel:  # Simulation is run in parallel
-            self._ranks_per_axis = self._config.get_ranks_per_axis()
-
         # Parameter for interpolation in case of a simulation crash
         self._interpolate_crashed_sims = self._config.interpolate_crashed_micro_sim()
         if self._interpolate_crashed_sims:
@@ -637,28 +632,26 @@ class MicroManagerCoupling(MicroManager):
         )
 
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
-        if not len(self._macro_bounds) / 2 == self._participant.get_mesh_dimensions(
-            self._macro_mesh_name
-        ):
+        if not len(
+            self._config.get_macro_domain_bounds()
+        ) / 2 == self._participant.get_mesh_dimensions(self._macro_mesh_name):
             raise Exception("Provided macro mesh bounds are of incorrect dimension")
 
         if self._is_parallel:
-            if not len(self._ranks_per_axis) == self._participant.get_mesh_dimensions(
-                self._macro_mesh_name
-            ):
+            if not len(
+                self._config.get_ranks_per_axis()
+            ) == self._participant.get_mesh_dimensions(self._macro_mesh_name):
                 raise Exception(
                     "Provided ranks combination is of incorrect dimension"
                     " and does not match the dimensions of the macro mesh."
                 )
 
-            domain_decomposer = DomainDecomposer(self._rank, self._size)
+            domain_decomposer = DomainDecomposer(self._config, self._rank, self._size)
 
         if self._is_parallel and not self._is_load_balancing:
-            coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds(
-                self._macro_bounds, self._ranks_per_axis
-            )
+            coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds()
         else:  # When serial or load balancing, the whole macro domain is assigned to one/each rank
-            coupling_mesh_bounds = self._macro_bounds
+            coupling_mesh_bounds = self._config.get_macro_domain_bounds()
 
         self._participant.set_mesh_access_region(
             self._macro_mesh_name, coupling_mesh_bounds
@@ -691,28 +684,29 @@ class MicroManagerCoupling(MicroManager):
             ) = domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
 
         if self._mesh_vertex_coords.size == 0:
-            raise Exception("Macro mesh has no vertices.")
+            if self._is_parallel:
+                self._is_rank_empty = True
+                self._logger.log_warning(
+                    "The access region of this rank has no macro-scale vertices. This rank will not have any micro simulations. To avoid this, change the domain decomposition"
+                )
+                if self._lazy_init:
+                    raise Exception(
+                        "The macro mesh has no vertices in the specified access region, but lazy initialization is turned on. Lazy initialization cannot be used if there are no vertices in the access region, as there would be no data to compute the adaptivity and determine which simulations to initialize."
+                    )
+            else:
+                raise Exception(
+                    "The macro mesh has no vertices in the specified access region."
+                )
 
         if self._is_load_balancing and self._is_parallel:
             (
                 self._local_number_of_sims,
                 local_macro_coords,
             ) = domain_decomposer.get_local_sims_and_macro_coords(
-                self._macro_bounds, self._ranks_per_axis, self._mesh_vertex_coords
+                self._mesh_vertex_coords
             )
         else:
             self._local_number_of_sims, _ = self._mesh_vertex_coords.shape
-
-        if self._local_number_of_sims == 0:
-            if self._is_parallel:
-                self._logger.log_info(
-                    "Rank {} has no micro simulations and hence will not do any computation.".format(
-                        self._rank
-                    )
-                )
-                self._is_rank_empty = True
-            else:
-                raise Exception("Micro Manager has no micro simulations.")
 
         nms_all_ranks = np.zeros(self._size, dtype=np.int64)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
@@ -849,14 +843,17 @@ class MicroManagerCoupling(MicroManager):
         self._micro_sims_init = False  # DECLARATION
 
         # Read initial data from preCICE, if it is available
-        initial_data = self._read_data_from_precice(dt=0)
+        initial_macro_data = self._read_data_from_precice(dt=0)
 
         first_id = 0  # 0 if lazy initialization is off, otherwise the first active simulation ID
         micro_sims_to_init = range(
             1, self._local_number_of_sims
         )  # All sims if lazy init is off, otherwise all active simulations
 
-        if not initial_data:
+        # Additional bool to check if there are sims to init
+        are_there_sims_to_init = True
+
+        if not initial_macro_data:
             is_initial_data_available = False
 
             if self._lazy_init:
@@ -865,11 +862,12 @@ class MicroManagerCoupling(MicroManager):
                 )
         else:
             is_initial_data_available = True
+
             # For lazy initialization, compute adaptivity with the initial macro data
             if self._lazy_init:
                 for i in range(self._local_number_of_sims):
                     for name in self._adaptivity_macro_data_names:
-                        self._data_for_adaptivity[name][i] = initial_data[i][name]
+                        self._data_for_adaptivity[name][i] = initial_macro_data[i][name]
 
                 self._adaptivity_controller.compute_adaptivity(
                     self._micro_dt, self._micro_sims, self._data_for_adaptivity
@@ -882,29 +880,30 @@ class MicroManagerCoupling(MicroManager):
                         "There are no active simulations on this rank."
                     )
                     micro_sims_to_init = []
+                    are_there_sims_to_init = False
                 else:
                     for i in active_sim_lids:
                         self._micro_sims[i] = micro_problem_cls(
                             self._global_ids_of_local_sims[i]
                         )
 
-                for i in active_sim_lids:
-                    self._micro_sims[i] = self._model_manager.get_instance(
-                        self._global_ids_of_local_sims[i], micro_problem_cls
+                    for i in active_sim_lids:
+                        self._micro_sims[i] = self._model_manager.get_instance(
+                            self._global_ids_of_local_sims[i], micro_problem_cls
+                        )
+
+                    first_id = active_sim_lids[0]  # First active simulation ID
+                    micro_sims_to_init = (
+                        active_sim_lids  # Only active simulations will be initialized
                     )
+                    are_there_sims_to_init = True
 
-                first_id = active_sim_lids[0]  # First active simulation ID
-                micro_sims_to_init = (
-                    active_sim_lids  # Only active simulations will be initialized
-                )
-
-        # Boolean which states if the initialize() method of the micro simulation requires initial data
         test_instance = self._model_manager.get_instance(
             self._global_number_of_sims + 1, micro_problem_cls
         )
         test_data = None
         if is_initial_data_available:
-            test_data = initial_data[0]
+            test_data = initial_macro_data[0]
         (
             self._micro_sims_init,
             sim_requires_init_data,
@@ -920,13 +919,13 @@ class MicroManagerCoupling(MicroManager):
                 "The initialize() method of the Micro simulation requires initial data, but no initial macro data has been provided."
             )
 
-        initial_micro_data = None
+        initial_micro_data: dict[str, list] = dict()
 
-        if self._micro_sims_init:
+        if are_there_sims_to_init and self._micro_sims_init:
             # Call initialize() method of the micro simulation to check if it returns any initial data
             if sim_requires_init_data:
                 initial_micro_output = self._micro_sims[first_id].initialize(
-                    initial_data[first_id]
+                    initial_macro_data[first_id]
                 )
             else:
                 initial_micro_output = self._micro_sims[first_id].initialize()
@@ -940,14 +939,12 @@ class MicroManagerCoupling(MicroManager):
 
                 if sim_requires_init_data:
                     for i in micro_sims_to_init:
-                        self._micro_sims[i].initialize(initial_data[i])
+                        self._micro_sims[i].initialize(initial_macro_data[i])
                 else:
                     for i in micro_sims_to_init:
                         self._micro_sims[i].initialize()
             else:  # Case where the initialize() method returns data
                 if self._is_adaptivity_on:
-                    initial_micro_data: dict[str, list] = dict()
-
                     for name in initial_micro_output.keys():
                         initial_micro_data[name] = [0] * self._local_number_of_sims
                         # Save initial data from first micro simulation as we anyway have it
@@ -968,7 +965,7 @@ class MicroManagerCoupling(MicroManager):
                     if sim_requires_init_data:
                         for i in micro_sims_to_init:
                             initial_micro_output = self._micro_sims[i].initialize(
-                                initial_data[i]
+                                initial_macro_data[i]
                             )
                             for name in self._adaptivity_micro_data_names:
                                 self._data_for_adaptivity[name][i] = (
@@ -983,13 +980,13 @@ class MicroManagerCoupling(MicroManager):
                                     initial_micro_output[name]
                                 )
                                 initial_micro_data[name][i] = initial_micro_output[name]
-                else:
+                else:  # If adaptivity is off, the returned initial data from the initialize() method will be ignored
                     self._logger.log_warning_rank_zero(
                         "The initialize() method of the Micro simulation returns initial data, but adaptivity is turned off. The returned data will be ignored. The initialize method will nevertheless still be called."
                     )
                     if sim_requires_init_data:
                         for i in range(1, self._local_number_of_sims):
-                            self._micro_sims[i].initialize(initial_data[i])
+                            self._micro_sims[i].initialize(initial_macro_data[i])
                     else:
                         for i in range(1, self._local_number_of_sims):
                             self._micro_sims[i].initialize()
@@ -1013,15 +1010,15 @@ class MicroManagerCoupling(MicroManager):
 
         # If lazy initialization is on, initial states of inactive simulations need to be determined
         if self._lazy_init:
-            # Prepare data structure for collective communication
-            if initial_micro_data:
-                initial_micro_data_list = [
+            # If there is initial micro data, and if this rank has sims to init, then the data is to be gathered
+            if initial_micro_data and are_there_sims_to_init:
+                initial_micro_data_list: list[dict] = [
                     dict(zip(initial_micro_data, t))
                     for t in zip(*initial_micro_data.values())
                 ]
             else:
                 # Ranks without active simulations provide empty dicts
-                initial_micro_data_list = [
+                initial_micro_data_list: list[dict] = [
                     dict() for _ in range(self._local_number_of_sims)
                 ]
 

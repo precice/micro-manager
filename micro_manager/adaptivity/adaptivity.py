@@ -124,7 +124,7 @@ class AdaptivityCalculator:
         self._similarity_dists *= exp(-self._hist_param * dt)
 
         for name in data.keys():
-            data_vals = np.array(data[name])
+            data_vals = np.asarray(data[name])
             if data_vals.ndim == 1:
                 # If the adaptivity data is a scalar for each simulation,
                 # expand the dimension to make it a 2D array to unify the calculation.
@@ -195,7 +195,7 @@ class AdaptivityCalculator:
         for active_id_2 in active_ids:
             if active_id != active_id_2:  # don't compare active sim to itself
                 # If active sim is similar to another active sim, deactivate it
-                if self._similarity_dists[active_id, active_id_2] < self._coarse_tol:
+                if self._similarity_dists[active_id, active_id_2] <= self._coarse_tol:
                     return True
         return False
 
@@ -275,16 +275,15 @@ class AdaptivityCalculator:
         similarity_dists : numpy array
             Updated 2D array having similarity distances between each micro simulation pair
         """
-        pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
-        # divide by data to get relative difference
-        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
-        denom = np.maximum(
-            np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
-        )
-        # Add small epsilon to avoid division by zero (invalid value warning) when both are 0
         eps = np.finfo(np.float64).eps
-        relative = pointwise_diff / np.maximum(denom, eps)
-        return np.linalg.norm(relative, ord=1, axis=-1)
+        data_bc = data[np.newaxis, :]
+        data_abs = np.absolute(data_bc)
+        denom = np.maximum(data_abs, np.swapaxes(data_abs, 0, 1))
+        return np.linalg.norm(
+            (data_bc - np.swapaxes(data_bc, 0, 1)) / np.maximum(denom, eps),
+            ord=1,
+            axis=-1,
+        )
 
     def _l2rel(self, data: np.ndarray) -> np.ndarray:
         """
@@ -301,13 +300,12 @@ class AdaptivityCalculator:
         similarity_dists : numpy array
             Updated 2D array having similarity distances between each micro simulation pair
         """
-        pointwise_diff = data[np.newaxis, :] - data[:, np.newaxis]
-        # divide by data to get relative difference
-        # divide i,j by max(abs(data[i]),abs(data[j])) to get relative difference
-        denom = np.maximum(
-            np.absolute(data[np.newaxis, :]), np.absolute(data[:, np.newaxis])
-        )
-        # Add small epsilon to avoid division by zero (invalid value warning) when both are 0
         eps = np.finfo(np.float64).eps
-        relative = pointwise_diff / np.maximum(denom, eps)
-        return np.linalg.norm(relative, ord=2, axis=-1)
+        data_bc = data[np.newaxis, :]
+        data_abs = np.absolute(data_bc)
+        denom = np.maximum(data_abs, np.swapaxes(data_abs, 0, 1))
+        return np.linalg.norm(
+            (data_bc - np.swapaxes(data_bc, 0, 1)) / np.maximum(denom, eps),
+            ord=2,
+            axis=-1,
+        )
