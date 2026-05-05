@@ -1,34 +1,76 @@
 import os
 import xml.etree.ElementTree as ET
+from typing import Dict, Optional
+
 import numpy as np
 
 
-def write_vtu(filename: str, coords: np.ndarray, data: dict) -> None:
-    """
-    Writes a VTU file (UnstructuredGrid with VTK_VERTEX cells) containing
-    points (coords) and associated scalar/vector point data.
+def _as_3d_points(coords: np.ndarray) -> np.ndarray:
+    coords_np = np.asarray(coords, dtype=np.float64)
 
-    Parameters
-    ----------
-    filename : str
-        Output file path (e.g., "output.vtu").
-    coords : numpy array
-        2D or 3D numpy array of shape (N, 2) or (N, 3).
-    data : dict
-        Dictionary of point data fields. Keys are names, values are scalar (N,) or vector (N, d) arrays.
-    """
-    n_points = coords.shape[0]
+    if coords_np.ndim != 2 or coords_np.shape[1] not in (2, 3):
+        raise ValueError("VTU coordinates must have shape (N, 2) or (N, 3).")
 
-    if n_points == 0:
-        return
+    if coords_np.shape[1] == 3:
+        return coords_np
 
-    dim = coords.shape[1]
+    coords_3d = np.zeros((coords_np.shape[0], 3), dtype=np.float64)
+    coords_3d[:, :2] = coords_np
+    return coords_3d
 
-    if dim == 2:
-        coords_3d = np.zeros((n_points, 3), dtype=np.float64)
-        coords_3d[:, :2] = coords
+
+def _data_array_and_components(
+    values: np.ndarray, n_points: int, n_components: Optional[int] = None
+) -> tuple[np.ndarray, int]:
+    values_np = np.asarray(values, dtype=np.float64)
+
+    if values_np.ndim == 0:
+        values_np = np.full(n_points, values_np, dtype=np.float64)
+
+    if values_np.shape[0] != n_points:
+        raise ValueError(
+            "VTU point data arrays must have the same first dimension as coordinates."
+        )
+
+    if values_np.ndim == 1:
+        inferred_components = 1
+    elif values_np.ndim == 2:
+        inferred_components = values_np.shape[-1]
     else:
-        coords_3d = np.asarray(coords, dtype=np.float64)
+        raise ValueError("VTU point data arrays must be scalar or vector arrays.")
+
+    component_count = n_components
+    if component_count is None:
+        component_count = 3 if inferred_components == 2 else inferred_components
+
+    if inferred_components == 2 and component_count == 3:
+        values_3d = np.zeros((n_points, 3), dtype=np.float64)
+        values_3d[:, :2] = values_np
+        values_np = values_3d
+    elif inferred_components != component_count:
+        raise ValueError(
+            "VTU point data component count does not match the provided schema."
+        )
+
+    return values_np, component_count
+
+
+def write_vtu(
+    filename: str,
+    coords: np.ndarray,
+    data: dict,
+    data_schema: Optional[Dict[str, int]] = None,
+) -> None:
+    """
+    Writes a VTU file containing locally owned points and point data
+
+    The file is an ``UnstructuredGrid`` with one ``VTK_VERTEX`` cell per point.
+    ``data_schema`` can be used to force all ranks, including empty ranks, to
+    write the same point-data arrays. This keeps the corresponding ``.pvtu``
+    file valid even if a rank currently owns no points.
+    """
+    coords_3d = _as_3d_points(coords)
+    n_points = coords_3d.shape[0]
 
     vtk_file = ET.Element(
         "VTKFile", type="UnstructuredGrid", version="0.1", byte_order="LittleEndian"
@@ -65,25 +107,29 @@ def write_vtu(filename: str, coords: np.ndarray, data: dict) -> None:
     )
     type_arr.text = " ".join(["1"] * n_points)
 
+    schema = dict(data_schema or {})
+    if not schema:
+        for key, val in data.items():
+            _, n_components = _data_array_and_components(np.asarray(val), n_points)
+            schema[key] = n_components
+
     point_data = ET.SubElement(piece, "PointData")
-    for key, val in data.items():
-        val_np = np.asarray(val, dtype=np.float64)
-        if val_np.ndim == 1:
-            n_comp = 1
+    for key, n_components in schema.items():
+        if key in data:
+            val_np, n_components = _data_array_and_components(
+                np.asarray(data[key]), n_points, n_components
+            )
+        elif n_components == 1:
+            val_np = np.zeros(n_points, dtype=np.float64)
         else:
-            n_comp = val_np.shape[1]
-            if n_comp == 2:
-                val_3d = np.zeros((n_points, 3), dtype=np.float64)
-                val_3d[:, :2] = val_np
-                val_np = val_3d
-                n_comp = 3
+            val_np = np.zeros((n_points, n_components), dtype=np.float64)
 
         data_arr = ET.SubElement(
             point_data,
             "DataArray",
             type="Float64",
             Name=key,
-            NumberOfComponents=str(n_comp),
+            NumberOfComponents=str(n_components),
             format="ascii",
         )
         data_arr.text = " ".join(map(str, val_np.ravel()))
@@ -95,16 +141,7 @@ def write_vtu(filename: str, coords: np.ndarray, data: dict) -> None:
 
 def write_pvtu(filename: str, source_files: list, data_keys: dict) -> None:
     """
-    Writes a Parallel VTU (.pvtu) file referencing the multiple subset .vtu files.
-
-    Parameters
-    ----------
-    filename : str
-        Output file path for the PVTU.
-    source_files : list
-        List of VTU file names that this PVTU references.
-    data_keys : dict
-        Dictionary mapping data array names to their number of components.
+    Writes a Parallel VTU (.pvtu) file referencing rank-local .vtu files.
     """
     vtk_file = ET.Element(
         "VTKFile", type="PUnstructuredGrid", version="0.1", byte_order="LittleEndian"
