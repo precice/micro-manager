@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## latest
+
+- Fixed `MicroSimulation` initialization requiring positional parameters [#255](https://github.com/precice/micro-manager/pull/255)
+
 ## v0.9.0
 
 - Refactored `DomainDecomposer` class and added a new variant of non-uniform decomposition [#243](https://github.com/precice/micro-manager/pull/243)
