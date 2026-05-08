@@ -21,6 +21,7 @@ public:
     void set_state(py::list state);
     py::list get_state() const;
     int get_global_id() const;
+    void set_global_id(int sim_id);
 
 private:
     int _sim_id;

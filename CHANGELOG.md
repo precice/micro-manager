@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## latest
+
+- Add function `set_global_id` to the dummies and the example in the integration test [#247](https://github.com/precice/micro-manager/pull/247)
+
 ## v0.9.0
 
 - Refactored `DomainDecomposer` class and added a new variant of non-uniform decomposition [#243](https://github.com/precice/micro-manager/pull/243)
