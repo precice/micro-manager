@@ -65,6 +65,12 @@ class TestModelAdaptivity(TestCase):
         return controller
 
     def test_check_convergence_ignores_invalid_switch_at_finest_resolution(self):
+        """
+        Check that convergence is reached when the switching function requests a
+        finer model while the simulation is already using the finest available
+        resolution. Such an out-of-range request should be clamped to the
+        current resolution and treated as no model change.
+        """
         controller = self._make_controller(lambda resolution, *_: -1)
 
         controller.check_convergence(
@@ -78,6 +84,12 @@ class TestModelAdaptivity(TestCase):
         self.assertTrue(controller._converged)
 
     def test_check_convergence_ignores_invalid_switch_at_coarsest_resolution(self):
+        """
+        Check that convergence is reached when the switching function requests a
+        coarser model while the simulation is already using the coarsest
+        available resolution. This guards against endless iterations caused by
+        repeated out-of-range coarsening requests.
+        """
         controller = self._make_controller(lambda resolution, *_: 1)
 
         controller.check_convergence(
@@ -91,6 +103,12 @@ class TestModelAdaptivity(TestCase):
         self.assertTrue(controller._converged)
 
     def test_check_convergence_detects_valid_switch(self):
+        """
+        Check that convergence is not reported when the switching function
+        requests a valid change to another available model resolution. The
+        adaptivity loop must continue in this case so the requested switch can
+        be applied.
+        """
         controller = self._make_controller(lambda resolution, *_: 1)
 
         controller.check_convergence(
@@ -104,6 +122,14 @@ class TestModelAdaptivity(TestCase):
         self.assertFalse(controller._converged)
 
     def test_manager_loop_switches_once_then_exits_on_invalid_boundary_request(self):
+        """
+        Reproduce the regression scenario where a model is switched once and
+        the switching function then keeps requesting another change beyond the
+        available resolution range. The manager should solve with the new model,
+        avoid reusing output from the previous model, and stop once the repeated
+        boundary request is clamped to a no-op.
+        """
+
         def switching_function(resolution, location, t, input, prev_output):
             if prev_output is None:
                 return 0
@@ -152,6 +178,12 @@ class TestModelAdaptivity(TestCase):
         self.assertTrue(controller._converged)
 
     def test_manager_loop_exits_on_invalid_switch_request(self):
+        """
+        Check the manager loop for the simpler boundary case where the
+        simulation starts at the coarsest model and the switching function keeps
+        requesting an even coarser model. The loop should perform one solve,
+        recognize that no valid model change remains, and return normally.
+        """
         controller = self._make_controller(lambda resolution, *_: 1)
         manager = MicroManagerCoupling.__new__(MicroManagerCoupling)
         manager._model_adaptivity_controller = controller
