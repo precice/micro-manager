@@ -59,13 +59,34 @@ jobs:
         with:
           path: micro-manager
 
+      - name: Install OpenMPI build dependencies
+        run: |
+          apt-get -qq update
+          apt-get -qq install wget build-essential
+
       - name: Load Cache OpenMPI 5
         id: ompi-cache-load
         uses: actions/cache/restore@v5
         with:
           path: ~/openmpi
           key: openmpi-v5-${{ runner.os }}-build
-          # If this fails, cache gets built in run-unit-tests
+      - name: Build OpenMPI 5
+        if: steps.ompi-cache-load.outputs.cache-hit != 'true'
+        run: |
+          wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.5.tar.gz
+          tar -xzf openmpi-5.0.5.tar.gz
+          cd openmpi-5.0.5
+          mkdir -p ~/openmpi
+          ./configure --prefix=$HOME/openmpi
+          make -j$(nproc)
+          make install
+
+      - name: Save OpenMPI 5 to cache
+        if: steps.ompi-cache-load.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v5
+        with:
+          path: ~/openmpi
+          key: openmpi-v5-${{ runner.os }}-build
 
       - name: Configure OpenMPI
         run: |

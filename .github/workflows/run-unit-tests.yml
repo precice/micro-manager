@@ -41,7 +41,7 @@ jobs:
           make install
 
       - name: Save OpenMPI 5 to cache
-        if: steps.ompi-cache.outputs.cache-hit != 'true'
+        if: steps.ompi-cache-load.outputs.cache-hit != 'true'
         id: ompi-cache-store
         uses: actions/cache/save@v5
         with:
