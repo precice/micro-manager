@@ -69,6 +69,21 @@ class MicroSimulation: # Name is fixed
         It will be called with frequency set by configuration option `simulation_params: micro_output_n`
         This function is *optional*.
         """
+
+    def set_global_id(self, sim_id):
+        """
+        Reset the global ID of the micro simulation.
+
+        Parameters
+        ----------
+        sim_id : int
+            New global ID of the simulation instance.
+        """
+
+    def get_global_id(self):
+        """
+        Return the global ID of the simulation.
+        """
 ```
 
 A dummy code of a sample MicroSimulation class can be found in the [examples/python-dummy/micro_dummy.py](https://github.com/precice/micro-manager/blob/develop/examples/python-dummy/micro_dummy.py) directory.

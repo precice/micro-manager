@@ -56,3 +56,6 @@ class MicroSimulation:
 
     def get_global_id(self):
         return self._sim_id
+
+    def set_global_id(self, sim_id):
+        self._sim_id = sim_id
