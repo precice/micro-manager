@@ -25,6 +25,8 @@ Apart from the base settings, there are three main sections in the configuration
 
 ## Coupling Parameters
 
+This section is nested under `diagnostics`.
+
 | Parameter                  | Description                                                                    |
 |----------------------------|--------------------------------------------------------------------------------|
 | `precice_config_file_name` | Path to the preCICE XML configuration file from the current working directory. |
@@ -33,6 +35,8 @@ Apart from the base settings, there are three main sections in the configuration
 | `write_data_names`         | List with the names of the data to be written to preCICE.                      |
 
 ## Simulation Parameters
+
+This section is nested under `simulation_params`.
 
 | Parameter | Description | Default |
 | --- | --- | --- |
@@ -49,6 +53,8 @@ The total number of partitions ranks in the `decomposition` list should be the s
 Non-uniform domain decomposition is based on a geometric progression.
 
 ## Diagnostics
+
+This section is nested under `diagnostics`.
 
 | Parameter              | Description                                                                                                                                | Default |
 |------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|---------|
@@ -73,7 +79,9 @@ If the parameter `data_from_micro_sims` is set, the data to be output needs to b
 
 See the [adaptivity](tooling-micro-manager-adaptivity.html) documentation for a detailed explanation about the algorithm and variants.
 
-To turn on adaptivity, set `"adaptivity": true` in `simulation_params`. Then under `adaptivity_settings` set the following variables:
+This section is nested under `simulation_params`.
+To turn on adaptivity, set `"adaptivity": true`.
+Then under `adaptivity_settings` set the following variables:
 
 | Parameter                         | Description                                                                                                                                                                                                                                                                                         | Default       |
 |-----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
@@ -113,7 +121,9 @@ Example of adaptivity configuration is
 
 See the [model adaptivity](tooling-micro-manager-model-adaptivity.html) documentation for a detailed explanation about the interface.
 
-To turn on model adaptivity, set `"model_adaptivity": true` in `simulation_params`. Then under `model_adaptivity_settings` set the following variables:
+This section is nested under `simulation_params`.
+To turn on model adaptivity, set `"model_adaptivity": true`.
+Then under `model_adaptivity_settings` set the following variables:
 
 | Parameter            | Description                                                                                                                                                                                                                                        |
 |----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
@@ -129,7 +139,7 @@ Example of model adaptivity configuration is
     "model_adaptivity_settings": {
         "micro_file_names": ["python-dummy/micro_dummy", "python-dummy/micro_dummy", "python-dummy/micro_dummy"],
         "switching_function": "mada_switcher",
-        "micro_stateless": [False, True, True]
+        "micro_stateless": [false, true, true]
     }
 }
 ```
@@ -160,8 +170,11 @@ The Micro Manager uses the output functionality of preCICE, hence these data set
 
 ## Load balancing
 
-Load balancing can be activated by setting `load_balancing` to true.
-It balances based on either the elapsed time required to solve the prior iteration `type="time""` or the number of active simulations `type=active`.
+This section is nested under `simulation_params`.
+To turn on load balancing, set `"load_balancing": true`.
+Then under `load_balancing_setting` set the following configuration.
+
+The load balancing balances based on either the elapsed time required to solve the prior iteration `type="time""` or the number of active simulations `type=active`.
 One Initial load balancing step is performed, prior to any computation (assuming equal workload for time based load balancing or the current active counts for `active` load balancing.).
 Subsequently, in the following iteration another load balancing step is performed based. (This is mainly for the time based balancing to use the just acquired timings.)
 Afterwards balancing is performed `every_n_time_windows`.
