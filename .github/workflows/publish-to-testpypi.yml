@@ -1,26 +1,30 @@
-name: Upload Python Package
+name: Publish to TestPyPI on release PR
 
 on:
-  push:
-    tags:
-      - v*
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
 
 jobs:
   build:
     name: Build package
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v6
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
 
       - run: pip install --upgrade build
 
       - name: Build package
-        run: pyproject-build
-      - uses: actions/upload-artifact@v7
+        run: python -m build
+
+      - uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist
@@ -36,7 +40,7 @@ jobs:
       id-token: write
     steps:
       - name: Download package
-        uses: actions/download-artifact@v8
+        uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist
@@ -45,19 +49,3 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
-
-  publish:
-    name: Upload release to PyPI
-    needs: publish-to-testpypi
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-    steps:
-      - name: Download package
-        uses: actions/download-artifact@v8
-        with:
-          name: dist
-          path: dist
-
-      - name: Publish package distributions to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
