@@ -12,28 +12,28 @@ and the initialize and solve methods are called.
 Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
 """
 
-import os
-import sys
-from typing import Callable
-import numpy as np
-from psutil import Process
 import csv
+import os
+import re
 import subprocess
+import sys
 from functools import partial
+from typing import Callable
 
+import numpy as np
 import precice
+from psutil import Process
 
-from .model_manager import ModelManager
-from .micro_manager_base import MicroManager
-
-from .adaptivity.model_adaptivity import ModelAdaptivity
 from .adaptivity.adaptivity_selection import create_adaptivity_calculator
-
+from .adaptivity.model_adaptivity import ModelAdaptivity
 from .domain_decomposition import DomainDecomposer
-from .tasking.connection import spawn_local_workers
-from .micro_simulation import create_simulation_class, load_backend_class
-from .tools.logging_wrapper import Logger
 from .load_balancing import create_load_balancer
+from .micro_manager_base import MicroManager
+from .micro_simulation import create_simulation_class, load_backend_class
+from .model_manager import ModelManager
+from .tasking.connection import spawn_local_workers
+from .tools.logging_wrapper import Logger
+from .tools.vtu_export import write_pvtu, write_vtu
 
 try:
     from .interpolation import Interpolation
@@ -72,6 +72,27 @@ class MicroManagerCoupling(MicroManager):
             subprocess.run(["mkdir", "-p", self._output_dir])  # Create output directory
         else:
             self._output_dir = os.path.abspath(os.getcwd()) + "/"
+
+        self._export_vtu = False
+        self._export_vtu_dir = "."
+        self._export_vtu_n = 1
+
+        self._is_load_balancing = (
+            self._config.turn_on_load_balancing() and self._is_parallel
+        )
+
+        precice_config_file = self._config.get_precice_config_file_name()
+        if precice_config_file is None:
+            raise ValueError("No preCICE configuration file has been configured.")
+        if self._is_load_balancing:
+            precice_config_file = self._configure_load_balancing_vtu_export(
+                precice_config_file
+            )
+
+        if self._export_vtu:
+            if not os.path.isabs(self._export_vtu_dir):
+                self._export_vtu_dir = os.path.abspath(self._export_vtu_dir)
+            os.makedirs(self._export_vtu_dir, exist_ok=True)
 
         # Data names of data to output to the snapshot database
         self._write_data_names = self._config.get_write_data_names()
@@ -133,7 +154,7 @@ class MicroManagerCoupling(MicroManager):
         # Define the preCICE Participant
         self._participant = precice.Participant(
             "Micro-Manager",
-            self._config.get_precice_config_file_name(),
+            precice_config_file,
             self._rank,
             self._size,
         )
@@ -148,9 +169,6 @@ class MicroManagerCoupling(MicroManager):
         if self._is_model_adaptivity_on:
             self.state_loader = lambda sim: sim.attachments
             self.state_setter = lambda sim, state: sim.attachments.update(state)
-        self._is_load_balancing = (
-            self._config.turn_on_load_balancing() and self._is_parallel
-        )
         self._load_balancing_n = self._config.get_load_balancing_n()
         self.load_balancing = None
 
@@ -187,7 +205,6 @@ class MicroManagerCoupling(MicroManager):
             self._adaptivity_controller.log_metrics(self._n)
 
         while self._participant.is_coupling_ongoing():
-
             dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
 
             if self._is_adaptivity_on:
@@ -330,6 +347,9 @@ class MicroManagerCoupling(MicroManager):
                             if sim:
                                 sim.output()
 
+                if self._export_vtu and (self._n % self._export_vtu_n == 0):
+                    self._export_vtu_data(micro_sims_input, micro_sims_output)
+
                 if (
                     self._is_adaptivity_on
                     and self._adaptivity_output_type
@@ -414,6 +434,189 @@ class MicroManagerCoupling(MicroManager):
         if self._conn is not None:
             self._conn.close()
         self._participant.finalize()
+
+    def _configure_load_balancing_vtu_export(self, precice_config_file: str) -> str:
+        """
+        Configure Micro Manager's native VTU export for load balancing
+
+        preCICE XML files commonly use prefixed tags such as ``export:vtu``
+        without declaring XML namespaces. ``xml.etree.ElementTree`` therefore
+        cannot parse these files reliably. For this specific interception, a
+        text-based replacement is sufficient and keeps all other preCICE tags
+        untouched.
+        """
+        try:
+            with open(precice_config_file, encoding="utf-8") as file:
+                config_text = file.read()
+        except OSError as error:
+            self._logger.log_warning_rank_zero(
+                f"Failed to read preCICE config for VTU interception: {error}"
+            )
+            return precice_config_file
+
+        participant_pattern = re.compile(
+            r"(<participant\b[^>]*\bname\s*=\s*(['\"])Micro-Manager\2[^>]*>)"
+            r"(?P<body>.*?)"
+            r"(</participant>)",
+            re.DOTALL,
+        )
+        participant_match = participant_pattern.search(config_text)
+        if participant_match is None:
+            return precice_config_file
+
+        export_pattern = re.compile(
+            r"\s*<export:vtu\b(?P<self_closing_attrs>[^>]*)/>\s*"
+            r"|\s*<export:vtu\b(?P<paired_attrs>[^>]*)>.*?</export:vtu>\s*",
+            re.DOTALL,
+        )
+
+        body = participant_match.group("body")
+        export_matches = list(export_pattern.finditer(body))
+        if not export_matches:
+            return precice_config_file
+
+        attrs = self._parse_xml_attributes(
+            export_matches[0].group("self_closing_attrs")
+            or export_matches[0].group("paired_attrs")
+            or ""
+        )
+
+        self._export_vtu = True
+        if attrs.get("directory"):
+            self._export_vtu_dir = attrs["directory"]
+        if attrs.get("every-n-time-windows"):
+            self._export_vtu_n = int(attrs["every-n-time-windows"])
+            if self._export_vtu_n == -1:
+                self._export_vtu = False
+            elif self._export_vtu_n <= 0:
+                raise ValueError(
+                    "export:vtu every-n-time-windows must be positive or -1."
+                )
+        if attrs.get("every-iteration", "false").lower() == "true":
+            self._logger.log_warning_rank_zero(
+                "Micro Manager's load-balancing aware VTU export supports exports "
+                "at completed time windows. The preCICE export:vtu option "
+                'every-iteration="true" is ignored.'
+            )
+
+        stripped_body = export_pattern.sub("\n", body)
+        stripped_config = (
+            config_text[: participant_match.start("body")]
+            + stripped_body
+            + config_text[participant_match.end("body") :]
+        )
+
+        modified_xml = precice_config_file + f".lb-modified-rank{self._rank}.xml"
+        with open(modified_xml, "w", encoding="utf-8") as file:
+            file.write(stripped_config)
+
+        self._logger.log_info_rank_zero(
+            "Intercepted preCICE export:vtu for custom load-balancing aware VTU export."
+        )
+        return modified_xml
+
+    @staticmethod
+    def _parse_xml_attributes(attribute_text: str) -> dict[str, str]:
+        """Parse XML-style attributes from a single tag."""
+        attributes = {}
+        attr_pattern = re.compile(r"([\w:.-]+)\s*=\s*(['\"])(.*?)\2", re.DOTALL)
+        for match in attr_pattern.finditer(attribute_text):
+            attributes[match.group(1)] = match.group(3)
+        return attributes
+
+    @staticmethod
+    def _get_export_field_value(
+        field: str, index: int, micro_sims_input: list, micro_sims_output: list
+    ):
+        if micro_sims_input and index < len(micro_sims_input):
+            if field in micro_sims_input[index]:
+                return micro_sims_input[index][field]
+        if micro_sims_output and index < len(micro_sims_output):
+            if field in micro_sims_output[index]:
+                return micro_sims_output[index][field]
+        return None
+
+    @staticmethod
+    def _get_vtu_components(values: np.ndarray) -> int:
+        if values.ndim == 1:
+            return 1
+        if values.ndim == 2:
+            return 3 if values.shape[1] == 2 else values.shape[1]
+        raise ValueError("VTU export supports only scalar or vector point data.")
+
+    def _export_vtu_data(self, micro_sims_input: list, micro_sims_output: list) -> None:
+        """
+        Exports the current micro simulation data locally owned by this rank to VTU files.
+        """
+        data_local = {}
+        dimension = len(self._macro_bounds) // 2
+        coords_local = np.empty((0, dimension))
+
+        if not self._is_rank_empty:
+            coords_local = self._mesh_vertex_coords[self._global_ids_of_local_sims]
+
+            all_fields = list(self._read_data_names) + list(self._write_data_names)
+            all_fields = list(dict.fromkeys(all_fields))
+
+            for field in all_fields:
+                field_data = []
+                template = None
+                for i in range(self._local_number_of_sims):
+                    value = self._get_export_field_value(
+                        field, i, micro_sims_input, micro_sims_output
+                    )
+                    if value is not None and template is None:
+                        template = np.asarray(value, dtype=np.float64)
+                    field_data.append(value)
+
+                if template is None:
+                    continue
+
+                arr = np.zeros(
+                    (self._local_number_of_sims,) + template.shape, dtype=np.float64
+                )
+                for i, value in enumerate(field_data):
+                    if value is not None:
+                        arr[i] = value
+                data_local[field] = arr
+
+        local_schema = {
+            key: self._get_vtu_components(np.asarray(values))
+            for key, values in data_local.items()
+        }
+
+        if self._is_parallel:
+            all_schemas = self._comm.allgather(local_schema)
+            data_schema = {}
+            for schema in all_schemas:
+                for key, components in schema.items():
+                    if key in data_schema and data_schema[key] != components:
+                        raise ValueError(
+                            f"Inconsistent component count for VTU data '{key}'."
+                        )
+                    data_schema[key] = components
+        else:
+            data_schema = local_schema
+
+        mesh_file_name = self._macro_mesh_name.replace(os.sep, "_")
+        filename = os.path.join(
+            self._export_vtu_dir,
+            f"Micro-Manager_{mesh_file_name}_{self._n}_rank{self._rank}.vtu",
+        )
+        write_vtu(filename, coords_local, data_local, data_schema)
+
+        if self._is_parallel:
+            self._comm.Barrier()
+            if self._rank == 0:
+                pvtu_filename = os.path.join(
+                    self._export_vtu_dir,
+                    f"Micro-Manager_{mesh_file_name}_{self._n}.pvtu",
+                )
+                source_files = [
+                    f"Micro-Manager_{mesh_file_name}_{self._n}_rank{rank}.vtu"
+                    for rank in range(self._size)
+                ]
+                write_pvtu(pvtu_filename, source_files, data_schema)
 
     def initialize(self) -> None:
         """
@@ -750,9 +953,9 @@ class MicroManagerCoupling(MicroManager):
                     # Save initial data from first micro simulation as we anyway have it
                     for name in initial_micro_output.keys():
                         if name in self._data_for_adaptivity:
-                            self._data_for_adaptivity[name][
-                                first_id
-                            ] = initial_micro_output[name]
+                            self._data_for_adaptivity[name][first_id] = (
+                                initial_micro_output[name]
+                            )
                         else:
                             raise Exception(
                                 "The initialize() method needs to return data which is required for the adaptivity calculation."
@@ -765,17 +968,17 @@ class MicroManagerCoupling(MicroManager):
                                 initial_macro_data[i]
                             )
                             for name in self._adaptivity_micro_data_names:
-                                self._data_for_adaptivity[name][
-                                    i
-                                ] = initial_micro_output[name]
+                                self._data_for_adaptivity[name][i] = (
+                                    initial_micro_output[name]
+                                )
                                 initial_micro_data[name][i] = initial_micro_output[name]
                     else:
                         for i in micro_sims_to_init:
                             initial_micro_output = self._micro_sims[i].initialize()
                             for name in self._adaptivity_micro_data_names:
-                                self._data_for_adaptivity[name][
-                                    i
-                                ] = initial_micro_output[name]
+                                self._data_for_adaptivity[name][i] = (
+                                    initial_micro_output[name]
+                                )
                                 initial_micro_data[name][i] = initial_micro_output[name]
                 else:  # If adaptivity is off, the returned initial data from the initialize() method will be ignored
                     self._logger.log_warning_rank_zero(
@@ -854,7 +1057,7 @@ class MicroManagerCoupling(MicroManager):
         read_data: dict[str, list] = dict()
 
         if self._is_load_balancing:
-            read_vertex_ids = self._global_ids_of_local_sims
+            read_vertex_ids = self._mesh_vertex_ids[self._global_ids_of_local_sims]
         else:
             read_vertex_ids = self._mesh_vertex_ids
 
@@ -886,7 +1089,7 @@ class MicroManagerCoupling(MicroManager):
             List of dicts in which keys are names of data and the values are the data to be written to preCICE.
         """
         if self._is_load_balancing:
-            write_vertex_ids = self._global_ids_of_local_sims
+            write_vertex_ids = self._mesh_vertex_ids[self._global_ids_of_local_sims]
         else:
             write_vertex_ids = self._mesh_vertex_ids
 
@@ -1045,9 +1248,9 @@ class MicroManagerCoupling(MicroManager):
                     # Mark the micro sim as active for export
                     micro_sims_output[lid]["Active-State"] = 1
                     gid = self._global_ids_of_local_sims[lid]
-                    micro_sims_output[lid][
-                        "Active-Steps"
-                    ] = self._micro_sims_active_steps[gid]
+                    micro_sims_output[lid]["Active-Steps"] = (
+                        self._micro_sims_active_steps[gid]
+                    )
 
                 # If simulation crashes, log the error and keep the output constant at the previous iteration's output
                 except Exception as error_message:
@@ -1101,9 +1304,9 @@ class MicroManagerCoupling(MicroManager):
         for inactive_lid in inactive_sim_lids:
             micro_sims_output[inactive_lid]["Active-State"] = 0
             gid = self._global_ids_of_local_sims[inactive_lid]
-            micro_sims_output[inactive_lid][
-                "Active-Steps"
-            ] = self._micro_sims_active_steps[gid]
+            micro_sims_output[inactive_lid]["Active-Steps"] = (
+                self._micro_sims_active_steps[gid]
+            )
 
         # Collect micro sim output for adaptivity calculation
         for i in range(self._local_number_of_sims):
