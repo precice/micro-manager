@@ -128,20 +128,20 @@ class TestFunctioncalls(TestCase):
         config.set_logger(MagicMock())
         config.read_json_micro_manager()
         self.assertEqual(
-            config._precice_config_file_name.split("/")[-1], "dummy-config.xml"
+            config.precice_config_file_name().split("/")[-1], "dummy-config.xml"
         )
-        self.assertEqual(config._micro_file_name, "test_micro_manager")
-        self.assertEqual(config._macro_mesh_name, "Macro-Mesh")
-        self.assertEqual(config._micro_output_n, 10)
-        self.assertListEqual(config._read_data_names, self.fake_read_data_names)
-        self.assertListEqual(self.fake_write_data_names, config._write_data_names)
-        self.assertEqual(config._adaptivity, True)
-        self.assertListEqual(config._data_for_adaptivity, self.fake_read_data_names)
-        self.assertEqual(config._adaptivity_type, "local")
-        self.assertEqual(config._adaptivity_history_param, 0.5)
-        self.assertEqual(config._adaptivity_coarsening_constant, 0.3)
-        self.assertEqual(config._adaptivity_refining_constant, 0.4)
-        self.assertEqual(config._adaptivity_every_implicit_iteration, False)
+        self.assertEqual(config.micro_file_name(), "test_micro_manager")
+        self.assertEqual(config.macro_mesh_name(), "Macro-Mesh")
+        self.assertEqual(config.micro_output_n(), 10)
+        self.assertListEqual(config.read_data_names(), self.fake_read_data_names)
+        self.assertListEqual(self.fake_write_data_names, config.write_data_names())
+        self.assertEqual(config.enable_adaptivity(), True)
+        self.assertListEqual(config.data_for_adaptivity(), self.fake_read_data_names)
+        self.assertEqual(config.adaptivity_type(), "local")
+        self.assertEqual(config.adaptivity_history_param(), 0.5)
+        self.assertEqual(config.adaptivity_coarsening_constant(), 0.3)
+        self.assertEqual(config.adaptivity_refining_constant(), 0.4)
+        self.assertEqual(config.enable_adaptivity_each_implicit_iteration(), False)
 
 
 if __name__ == "__main__":

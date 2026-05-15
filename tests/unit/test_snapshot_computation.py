@@ -148,13 +148,13 @@ class TestFunctionCalls(TestCase):
         config.read_json_snapshot()
 
         self.assertEqual(
-            config._parameter_file_name.split("/")[-1], "test_parameter.hdf5"
+            config.parameter_file_name().split("/")[-1], "test_parameter.hdf5"
         )
-        self.assertEqual(config._micro_file_name, "test_snapshot_computation")
-        self.assertListEqual(config._read_data_names, self.fake_read_data_names)
-        self.assertListEqual(config._write_data_names, self.fake_write_data_names)
-        self.assertEqual(config._postprocessing_file_name, "snapshot_post_processing")
-        self.assertTrue(config._initialize_once)
+        self.assertEqual(config.micro_file_name(), "test_snapshot_computation")
+        self.assertListEqual(config.read_data_names(), self.fake_read_data_names)
+        self.assertListEqual(config.write_data_names(), self.fake_write_data_names)
+        self.assertEqual(config.postprocessing_file_name(), "snapshot_post_processing")
+        self.assertTrue(config.enable_single_sim_object())
 
 
 if __name__ == "__main__":

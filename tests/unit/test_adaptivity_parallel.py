@@ -39,8 +39,8 @@ class TestGlobalAdaptivity(TestCase):
         self._size = self._comm.Get_size()
 
         self._configurator = MagicMock()
-        self._configurator.get_output_dir = MagicMock(return_value="output_dir")
-        self._configurator.get_micro_file_name = MagicMock(
+        self._configurator.output_dir = MagicMock(return_value="output_dir")
+        self._configurator.micro_file_name = MagicMock(
             return_value="test_adaptivity_parallel"
         )
 
@@ -57,7 +57,7 @@ class TestGlobalAdaptivity(TestCase):
         expected_is_sim_active = np.array([True, False, True, True, True])
         expected_sim_is_associated_to = [-2, 3, -2, -2, -2]
 
-        self._configurator.get_adaptivity_similarity_measure = MagicMock(
+        self._configurator.adaptivity_similarity_measure = MagicMock(
             return_value="L1"
         )
 
@@ -137,10 +137,10 @@ class TestGlobalAdaptivity(TestCase):
         expected_is_sim_active = np.array([False, False, True, False, True])
         expected_sim_is_associated_to = [4, 2, -2, 2, -2]
 
-        self._configurator.get_adaptivity_hist_param = MagicMock(return_value=0.1)
-        self._configurator.get_adaptivity_refining_const = MagicMock(return_value=0.5)
-        self._configurator.get_adaptivity_coarsening_const = MagicMock(return_value=0.3)
-        self._configurator.get_adaptivity_similarity_measure = MagicMock(
+        self._configurator.adaptivity_history_param = MagicMock(return_value=0.1)
+        self._configurator.adaptivity_refining_constant = MagicMock(return_value=0.5)
+        self._configurator.adaptivity_coarsening_constant = MagicMock(return_value=0.3)
+        self._configurator.adaptivity_similarity_measure = MagicMock(
             return_value="L2rel"
         )
 
@@ -204,7 +204,7 @@ class TestGlobalAdaptivity(TestCase):
             sim_output = [output_1, None]
             expected_sim_output = [output_1, output_0]
 
-        self._configurator.get_adaptivity_similarity_measure = MagicMock(
+        self._configurator.adaptivity_similarity_measure = MagicMock(
             return_value="L1"
         )
 
@@ -245,7 +245,7 @@ class TestGlobalAdaptivity(TestCase):
         The first three simulations are on rank 0, and the last two on rank 1.
         The expected ranks of simulations are [0, 0, 0, 1, 1].
         """
-        self._configurator.get_adaptivity_similarity_measure = MagicMock(
+        self._configurator.adaptivity_similarity_measure = MagicMock(
             return_value="L1"
         )
 

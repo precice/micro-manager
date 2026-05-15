@@ -15,7 +15,7 @@ import numpy as np
 class AdaptivityCalculator:
     def __init__(
         self,
-        configurator: Config,
+        config: Config,
         nsims: int,
         micro_problem_cls: MicroSimulationClass,
         model_manager: ModelManager,
@@ -27,7 +27,7 @@ class AdaptivityCalculator:
 
         Parameters
         ----------
-        configurator : object of class Config
+        config : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
         nsims : int
             Number of micro simulations.
@@ -40,12 +40,12 @@ class AdaptivityCalculator:
         rank : int
             Rank of the MPI communicator.
         """
-        self._refine_const = configurator.get_adaptivity_refining_const()
-        self._coarse_const = configurator.get_adaptivity_coarsening_const()
-        self._hist_param = configurator.get_adaptivity_hist_param()
-        self._adaptivity_data_names = configurator.get_data_for_adaptivity()
-        self._adaptivity_type = configurator.get_adaptivity_type()
-        self._adaptivity_output_type = configurator.get_adaptivity_output_type()
+        self._refine_const = config.adaptivity_refining_constant()
+        self._coarse_const = config.adaptivity_coarsening_constant()
+        self._hist_param = config.adaptivity_history_param()
+        self._adaptivity_data_names = config.data_for_adaptivity()
+        self._adaptivity_type = config.adaptivity_type()
+        self._adaptivity_output_type = config.adaptivity_output_type()
 
         self._micro_problem_cls = micro_problem_cls
         self._model_manager = model_manager
@@ -78,10 +78,10 @@ class AdaptivityCalculator:
         self._just_deactivated: list[int] = []
 
         self._similarity_measure = self._get_similarity_measure(
-            configurator.get_adaptivity_similarity_measure()
+            config.adaptivity_similarity_measure()
         )
 
-        output_dir = configurator.get_output_dir()
+        output_dir = config.output_dir()
 
         if output_dir is not None:
             metrics_output_dir = output_dir + "/adaptivity-metrics"

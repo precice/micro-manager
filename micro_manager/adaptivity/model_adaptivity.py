@@ -23,7 +23,7 @@ class ModelAdaptivity:
     def __init__(
         self,
         model_manager: ModelManager,
-        configurator: Config,
+        config: Config,
         comm: MPI.Comm,
         rank: int,
         log_file: str,
@@ -37,7 +37,7 @@ class ModelAdaptivity:
         ----------
         model_manager: ModelManager
             ModelManager instance
-        configurator : object of class Config
+        config : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
         comm: MPI.Comm
             MPI communicator
@@ -54,12 +54,12 @@ class ModelAdaptivity:
 
         self._comm = comm
         self._model_manager = model_manager
-        self._model_files = configurator.get_model_adaptivity_file_names()
+        self._model_files = config.model_adaptivity_file_names()
         self._switching_func_name = (
-            configurator.get_model_adaptivity_switching_function()
+            config.model_adaptivity_switching_function()
         )
 
-        stateless_flags = configurator.get_model_adaptivity_micro_stateless()
+        stateless_flags = config.model_adaptivity_micro_stateless()
         self._model_classes = []
         pos = 0
         for model_file in self._model_files:

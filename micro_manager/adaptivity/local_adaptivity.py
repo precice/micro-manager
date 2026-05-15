@@ -18,7 +18,7 @@ from micro_manager.interpolation import RBF_PU
 class LocalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(
         self,
-        configurator: Config,
+        config: Config,
         num_sims: int,
         base_logger: Logger,
         rank: int,
@@ -31,7 +31,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         Parameters
         ----------
-        configurator : object of class Config
+        config : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
         num_sims : int
             Number of micro simulations.
@@ -47,7 +47,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             Handles instantiation of micro simulation.
         """
         super().__init__(
-            configurator, num_sims, micro_problem_cls, model_manager, base_logger, rank
+            config, num_sims, micro_problem_cls, model_manager, base_logger, rank
         )
         self._comm = comm
         self._interpolation = RBF_PU(
