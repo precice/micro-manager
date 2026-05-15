@@ -1162,7 +1162,7 @@ class MicroManagerCoupling(MicroManager):
         for lid, sim in enumerate(self._micro_sims):
             res = -1
             if sim is not None:
-                self._model_adaptivity_controller.get_sim_class_resolution(sim)
+                res = self._model_adaptivity_controller.get_sim_class_resolution(sim)
             output[lid]["model_resolution"] = res
         return output
 
