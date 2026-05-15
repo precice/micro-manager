@@ -709,7 +709,7 @@ class Config:
                 "Adaptivity settings are provided but adaptivity is turned off."
             )
 
-        if self.enable_adaptivity():
+        with self.show_log_if(self.enable_adaptivity()):
             self.adaptivity_type.set = self.json["simulation_params"][
                 "adaptivity_settings"
             ]["type"].get_with_default(
