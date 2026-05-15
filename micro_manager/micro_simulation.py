@@ -561,10 +561,10 @@ def __getattr__(self, name):
         params = f"{', '.join(argspec.args[1::])}"
         if argspec.varargs is not None:
             init_args += f", *args"
-            params += f", args"
+            params += f", *args"
         if argspec.varkw is not None:
             init_args += f", **kwargs"
-            params += f", kwargs"
+            params += f", **kwargs"
         class_body += f"""
 def initialize({init_args}):
     return self._wrapped.initialize({params})
