@@ -3,13 +3,14 @@ Class Config provides functionality to read a JSON file and pass the values to t
 """
 
 import json
+import logging
 import os
 import importlib.metadata
 import string
 from collections import defaultdict
 from typing import Optional, Type, List, Dict, Any, Callable
 import inspect
-from tools.logging_wrapper import Logger
+from .tools.logging_wrapper import Logger
 
 
 class ConfigDSL:
@@ -149,10 +150,10 @@ class ConfigDSL:
             if options is not None and current_element not in options:
                 raise RuntimeError("Wrong option")
         except BaseException as e:
-            self.handle_fmt_error(fmt_error, e, kwargs)
+            self.handle_fmt_error(fmt_error or "", e, kwargs)
             return default
 
-        self.handle_fmt_success(fmt_success, current_element, kwargs)
+        self.handle_fmt_success(fmt_success or "", current_element, kwargs)
         return current_element
 
     def get_or_raise(
@@ -197,10 +198,10 @@ class ConfigDSL:
             if options is not None and current_element not in options:
                 raise RuntimeError("Wrong option")
         except BaseException as e:
-            self.handle_fmt_error(fmt_error, e, kwargs)
+            self.handle_fmt_error(fmt_error or "", e, kwargs)
             raise e
 
-        self.handle_fmt_success(fmt_success, current_element, kwargs)
+        self.handle_fmt_success(fmt_success or "", current_element, kwargs)
         return current_element
 
     def handle_fmt(
@@ -382,6 +383,55 @@ def config_entry(func: Callable) -> Callable:
     return ConfigEntryProxy(func)
 
 
+class ConfigLogContext:
+    """
+    Provides a context in which the loggers of the config can be optionally switched.
+    If one log uses a high log level, this can disable log-outputs for the subsequent code block.
+    """
+
+    def __init__(self, config: "Config", should_swap: bool):
+        """
+        Constructs a ConfigLogContext object.
+
+        Parameters
+        ----------
+        config : Config
+            Config object.
+        should_swap : bool
+            Should the loggers be swapped.
+        """
+        self._config: Config = config
+        self._should_swap: bool = should_swap
+
+    def swap(self):
+        """
+        Swaps the loggers used by the config object.
+        """
+        tmp = self._config._logger
+        self._config._logger = self._config._logger_null
+        self._config._logger_null = tmp
+
+    def __enter__(self) -> "ConfigLogContext":
+        """
+        Called upon entering a with ... statement.
+
+        Returns
+        -------
+        ctx : ConfigLogContext
+            Logging context.
+        """
+        if self._should_swap:
+            self.swap()
+        return self
+
+    def __exit__(self, *args) -> None:
+        """
+        Called upon exiting a with ... statement.
+        """
+        if self._should_swap:
+            self.swap()
+
+
 class Config:
     """
     Handles the reading of parameters in the JSON configuration file provided by the user. This class is based on
@@ -401,16 +451,20 @@ class Config:
         self._base_dir: str = os.path.dirname(
             os.path.join(os.getcwd(), config_file_name)
         )
-        self._logger: Optional[Logger] = None
+        self._logger_null: Logger = Logger(Config.__name__, level=logging.CRITICAL)
+        self._logger: Logger = self._logger_null
         self._data: Optional[Dict[str, Any]] = None
         self._fields: Dict[str, Any] = defaultdict(lambda: None)
 
         # attach external backing field to all config entries
+        # inspection triggers assertions: need to temporarily set to value other than None
+        self._data = {}
         config_entries = inspect.getmembers(
             self, lambda f: hasattr(f, "attach_instance")
         )
         for _, e in config_entries:
             e.attach_instance(self)
+        self._data = None
 
     def set_logger(self, logger: Logger):
         """
@@ -423,12 +477,34 @@ class Config:
         """
         self._logger = logger
 
+    def show_log_if(self, cond: bool) -> ConfigLogContext:
+        """
+        Redirects log requests in the resulting context if cond is True.
+
+        Usage:
+        with self.show_log_if(cond):
+            ... load fields ...
+
+        Hereby default arguments can be loaded for inactive modules without emitting log output.
+
+        Parameters
+        ----------
+        cond : bool
+            Should redirect?
+
+        Returns
+        -------
+        ctx : ConfigLogContext
+            Logging context
+        """
+        return ConfigLogContext(self, not cond)
+
     @property
     def json(self) -> ConfigDSL:
         """
         Returns and Object to load JSON values dynamically.
         """
-        assert self._data is not None and self._logger is not None
+        assert self._data is not None
         return ConfigDSL(self._data, self._logger)
 
     def _read_json_base(self, config_file_name: str):
@@ -440,7 +516,6 @@ class Config:
         config_file_name : string
             Path to the JSON configuration file
         """
-        assert self._logger is not None
         self._logger.log_info_rank_zero(
             f"Micro Manager version: {importlib.metadata.version('micro-manager-precice')}"
         )
@@ -517,8 +592,7 @@ class Config:
         # ======================================================
         #                        Tasking
         # ======================================================
-
-        if self.json["tasking"].exists():
+        with self.show_log_if(self.json["tasking"].exists()):
             self.tasking_backend.set = self.json["tasking"]["backend"].get_with_default(
                 "socket",
                 "Tasking backend: {data}",
@@ -558,7 +632,6 @@ class Config:
         Reads Micro Manager relevant information from JSON configuration file
         and saves the data to the respective instance attributes.
         """
-        assert self._logger is not None
         self._read_json_base(self._config_file_name)
 
         self.precice_config_file_name.set = os.path.join(
@@ -636,7 +709,7 @@ class Config:
                 "Adaptivity settings are provided but adaptivity is turned off."
             )
 
-        if self.enable_adaptivity():
+        with self.show_log_if(self.enable_adaptivity()):
             self.adaptivity_type.set = self.json["simulation_params"][
                 "adaptivity_settings"
             ]["type"].get_with_default(
@@ -749,6 +822,7 @@ class Config:
             else:
                 self.write_data_names().append("rank_of_sim")
 
+        with self.show_log_if(self.enable_load_balancing()):
             self.load_balancing_n.set = self.json["simulation_params"][
                 "load_balancing_settings"
             ]["every_n_time_windows"].get_with_default(
@@ -879,7 +953,6 @@ class Config:
         """
         Reads Snapshot relevant information from JSON configuration file
         """
-        assert self._logger is not None
         self._read_json_base(self._config_file_name)  # Read base information
         self._logger.log_info_rank_zero(
             f"Reading JSON configuration file: {self._config_file_name}"
