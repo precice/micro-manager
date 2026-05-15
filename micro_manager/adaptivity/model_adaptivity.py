@@ -55,9 +55,7 @@ class ModelAdaptivity:
         self._comm = comm
         self._model_manager = model_manager
         self._model_files = config.model_adaptivity_file_names()
-        self._switching_func_name = (
-            config.model_adaptivity_switching_function()
-        )
+        self._switching_func_name = config.model_adaptivity_switching_function()
 
         stateless_flags = config.model_adaptivity_micro_stateless()
         self._model_classes = []

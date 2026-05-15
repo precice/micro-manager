@@ -94,9 +94,7 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.output_dir = MagicMock(return_value="output_dir")
-        configurator.micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         adaptivity_controller = AdaptivityCalculator(
             configurator,
@@ -144,9 +142,7 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.output_dir = MagicMock(return_value="output_dir")
-        configurator.micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
@@ -182,9 +178,7 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.output_dir = MagicMock(return_value="output_dir")
-        configurator.micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         adaptivity_controller = AdaptivityCalculator(
             configurator,
@@ -284,9 +278,7 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.adaptivity_similarity_measure = MagicMock(return_value="L2rel")
         configurator.output_dir = MagicMock(return_value="output_dir")
-        configurator.micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
         adaptivity_l2rel = AdaptivityCalculator(
             configurator,
             nsims=3,
@@ -297,9 +289,7 @@ class TestLocalAdaptivity(TestCase):
         )
 
         configurator_l1 = MagicMock()
-        configurator_l1.adaptivity_similarity_measure = MagicMock(
-            return_value="L1rel"
-        )
+        configurator_l1.adaptivity_similarity_measure = MagicMock(return_value="L1rel")
         configurator_l1.output_dir = MagicMock(return_value="output_dir")
         configurator_l1.micro_file_name = MagicMock(
             return_value="test_adaptivity_serial"
@@ -340,9 +330,7 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.output_dir = MagicMock(return_value="output_dir")
-        configurator.micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         adaptivity_controller = AdaptivityCalculator(
             configurator,
@@ -383,9 +371,7 @@ class TestLocalAdaptivity(TestCase):
         configurator = MagicMock()
         configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
         configurator.output_dir = MagicMock(return_value="output_dir")
-        configurator.micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,

@@ -57,9 +57,7 @@ class TestGlobalAdaptivity(TestCase):
         expected_is_sim_active = np.array([True, False, True, True, True])
         expected_sim_is_associated_to = [-2, 3, -2, -2, -2]
 
-        self._configurator.adaptivity_similarity_measure = MagicMock(
-            return_value="L1"
-        )
+        self._configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
 
         sim_cls = create_simulation_class(
             MagicMock(),
@@ -204,9 +202,7 @@ class TestGlobalAdaptivity(TestCase):
             sim_output = [output_1, None]
             expected_sim_output = [output_1, output_0]
 
-        self._configurator.adaptivity_similarity_measure = MagicMock(
-            return_value="L1"
-        )
+        self._configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
 
         sim_cls = create_simulation_class(
             MagicMock(),
@@ -245,9 +241,7 @@ class TestGlobalAdaptivity(TestCase):
         The first three simulations are on rank 0, and the last two on rank 1.
         The expected ranks of simulations are [0, 0, 0, 1, 1].
         """
-        self._configurator.adaptivity_similarity_measure = MagicMock(
-            return_value="L1"
-        )
+        self._configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
 
         if self._rank == 0:
             global_ids = [0, 1, 2]

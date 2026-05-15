@@ -17,6 +17,7 @@ class ConfigDSL:
     Provides a standardized context to read data from JSON.
     Data retrieval can be set up to yield optionals, with default values or raise Errors.
     """
+
     def __init__(self, data: Dict, log: Logger):
         """
         Constructs a context for the JSON data.
@@ -68,12 +69,12 @@ class ConfigDSL:
         return True
 
     def get_or_none(
-            self,
-            fmt_success: Optional[str]=None,
-            fmt_error: Optional[str]=None,
-            dtype: Optional[Type]=None,
-            options: Optional[List]=None,
-            **kwargs
+        self,
+        fmt_success: Optional[str] = None,
+        fmt_error: Optional[str] = None,
+        dtype: Optional[Type] = None,
+        options: Optional[List] = None,
+        **kwargs,
     ) -> Optional[Any]:
         """
         Resolves the value specified by the set path. Returns the result if available, otherwise None.
@@ -99,16 +100,18 @@ class ConfigDSL:
         result: Optional[Any]
             None if path not available or other failure, else value of JSON.
         """
-        return self.get_with_default(None, fmt_success, fmt_error, dtype, options, **kwargs)
+        return self.get_with_default(
+            None, fmt_success, fmt_error, dtype, options, **kwargs
+        )
 
     def get_with_default(
-            self,
-            default: Any,
-            fmt_success: Optional[str] = None,
-            fmt_error: Optional[str] = None,
-            dtype: Optional[Type] = None,
-            options: Optional[List] = None,
-            **kwargs
+        self,
+        default: Any,
+        fmt_success: Optional[str] = None,
+        fmt_error: Optional[str] = None,
+        dtype: Optional[Type] = None,
+        options: Optional[List] = None,
+        **kwargs,
     ) -> Any:
         """
         Resolves the value specified by the set path. Returns the result if available, otherwise the specified default.
@@ -153,12 +156,12 @@ class ConfigDSL:
         return current_element
 
     def get_or_raise(
-            self,
-            fmt_success: Optional[str] = None,
-            fmt_error: Optional[str] = None,
-            dtype: Optional[Type] = None,
-            options: Optional[List] = None,
-            **kwargs
+        self,
+        fmt_success: Optional[str] = None,
+        fmt_error: Optional[str] = None,
+        dtype: Optional[Type] = None,
+        options: Optional[List] = None,
+        **kwargs,
     ):
         """
         Resolves the value specified by the set path. Returns the result if available, otherwise throws.
@@ -201,9 +204,9 @@ class ConfigDSL:
         return current_element
 
     def handle_fmt(
-            self,
-            fmt: Optional[str],
-            kwargs: Optional[Dict[str, Any]],
+        self,
+        fmt: Optional[str],
+        kwargs: Optional[Dict[str, Any]],
     ) -> None:
         """
         Processes the message and prints to the logger.
@@ -230,10 +233,7 @@ class ConfigDSL:
         self._log.log_info_rank_zero(msg)
 
     def handle_fmt_error(
-            self,
-            fmt_error: str,
-            ex: BaseException,
-            kwargs: Dict[str, Any]
+        self, fmt_error: str, ex: BaseException, kwargs: Dict[str, Any]
     ) -> None:
         """
         Processes the error message and prints to the logger.
@@ -251,10 +251,10 @@ class ConfigDSL:
         self.handle_fmt(fmt_error, kwargs)
 
     def handle_fmt_success(
-            self,
-            fmt_success: str,
-            data: Any,
-            kwargs: Dict[str, Any],
+        self,
+        fmt_success: str,
+        data: Any,
+        kwargs: Dict[str, Any],
     ) -> None:
         """
         Processes the success message and prints to the logger.
@@ -272,6 +272,7 @@ class ConfigDSL:
         self.handle_fmt(fmt_success, kwargs)
 
     _formatter = string.Formatter()
+
     @staticmethod
     def fmt_check_key(fmt: str, key: str) -> bool:
         """
@@ -314,11 +315,12 @@ class ConfigEntryProxy:
     The additional write access should simplify writing to the dict.
 
     """
-    def __init__(self, func: Callable):
-        self._func : Callable = func
-        self._instance : Optional[Config] = None
 
-    def attach_instance(self, instance:"Config"):
+    def __init__(self, func: Callable):
+        self._func: Callable = func
+        self._instance: Optional[Config] = None
+
+    def attach_instance(self, instance: "Config"):
         self._instance = instance
 
     @property
@@ -396,13 +398,17 @@ class Config:
             Path to the JSON configuration file
         """
         self._config_file_name: str = config_file_name
-        self._base_dir: str = os.path.dirname(os.path.join(os.getcwd(), config_file_name))
+        self._base_dir: str = os.path.dirname(
+            os.path.join(os.getcwd(), config_file_name)
+        )
         self._logger: Optional[Logger] = None
         self._data: Optional[Dict[str, Any]] = None
         self._fields: Dict[str, Any] = defaultdict(lambda: None)
 
         # attach external backing field to all config entries
-        config_entries = inspect.getmembers(self, lambda f: hasattr(f, "attach_instance"))
+        config_entries = inspect.getmembers(
+            self, lambda f: hasattr(f, "attach_instance")
+        )
         for _, e in config_entries:
             e.attach_instance(self)
 
@@ -435,7 +441,9 @@ class Config:
             Path to the JSON configuration file
         """
         assert self._logger is not None
-        self._logger.log_info_rank_zero(f"Micro Manager version: {importlib.metadata.version('micro-manager-precice')}")
+        self._logger.log_info_rank_zero(
+            f"Micro Manager version: {importlib.metadata.version('micro-manager-precice')}"
+        )
         path = os.path.join(self._base_dir, os.path.basename(config_file_name))
         with open(path, "r") as read_file:
             self._data = json.load(read_file)
@@ -447,49 +455,61 @@ class Config:
         # ======================================================
 
         # convert paths to python-importable paths
-        self.micro_file_name.set = (self.json["micro_file_name"].get_or_raise(
-            "Micro simulation file name: {data}",
-            "'micro_file_name' must be specified!",
-            str
-        ).replace("/", ".")
-         .replace("\\", ".")
-         .replace(".py", ""))
+        self.micro_file_name.set = (
+            self.json["micro_file_name"]
+            .get_or_raise(
+                "Micro simulation file name: {data}",
+                "'micro_file_name' must be specified!",
+                str,
+            )
+            .replace("/", ".")
+            .replace("\\", ".")
+            .replace(".py", "")
+        )
 
         self.enable_micro_stateless.set = self.json["micro_stateless"].get_with_default(
             False,
             "Only creating one full instance of Micro Model.",
             "Creating full instance of Micro Model per mesh vertex.",
-            bool
+            bool,
         )
 
         self.output_dir.set = self.json["output_directory"].get_or_none(
             "Logging and metrics output directory: {data}",
-            "No output directory provided. Output (including logging) will be saved in the current working directory."
+            "No output directory provided. Output (including logging) will be saved in the current working directory.",
         )
 
-        self.memory_usage_output_type.set = self.json["memory_usage_output_type"].get_with_default(
+        self.memory_usage_output_type.set = self.json[
+            "memory_usage_output_type"
+        ].get_with_default(
             "",
             "Memory usage output type: {data}",
             "Micro Manager will not output memory usage.",
             options=["all", "local", "global"],
         )
 
-        self.memory_usage_output_n.set = self.json["memory_usage_output_n"].get_with_default(
+        self.memory_usage_output_n.set = self.json[
+            "memory_usage_output_n"
+        ].get_with_default(
             1,
             "Memory usage will be output every {data} time windows.",
-            "No output interval for memory usage output provided. Memory usage will be output every time window."
+            "No output interval for memory usage output provided. Memory usage will be output every time window.",
         )
 
-        self.write_data_names.set = self.json["coupling_params"]["write_data_names"].get_or_none(
+        self.write_data_names.set = self.json["coupling_params"][
+            "write_data_names"
+        ].get_or_none(
             "Micro Manager is writing the following data: {data}",
             "No write data names provided. Micro manager will only read data from preCICE.",
-            list
+            list,
         )
 
-        self.read_data_names.set = self.json["coupling_params"]["read_data_names"].get_or_none(
+        self.read_data_names.set = self.json["coupling_params"][
+            "read_data_names"
+        ].get_or_none(
             "Micro Manager is reading the following data: {data}",
             "No read data names provided. Micro manager will only write data to preCICE.",
-            list
+            list,
         )
 
         self.micro_dt.set = self.json["simulation_params"]["micro_dt"].get_or_raise()
@@ -503,14 +523,18 @@ class Config:
                 "socket",
                 "Tasking backend: {data}",
                 "No tasking backed defined. Falling back to sockets.",
-                options=["mpi", "socket"]
+                options=["mpi", "socket"],
             )
-            self.enable_tasking_slurm.set = self.json["tasking"]["is_slurm"].get_with_default(
+            self.enable_tasking_slurm.set = self.json["tasking"][
+                "is_slurm"
+            ].get_with_default(
                 False,
                 "Tasking using slurm: {data}",
                 "No tasking slurm flag defined. Assuming non-slurm system.",
             )
-            self.tasking_num_workers.set = self.json["tasking"]["num_workers"].get_with_default(
+            self.tasking_num_workers.set = self.json["tasking"][
+                "num_workers"
+            ].get_with_default(
                 1,
                 "Tasking will use {data} workers",
                 "No tasking worker count defined. Using 1 worker per rank.",
@@ -521,10 +545,12 @@ class Config:
                 "No tasking mpi implementation defined. Assuming open mpi.",
                 options=["open", "mpi"],
             )
-            self.tasking_hostfile.set = self.json["tasking"]["hostfile"].get_with_default(
+            self.tasking_hostfile.set = self.json["tasking"][
+                "hostfile"
+            ].get_with_default(
                 "./hosts.micro",
                 "Tasking will use nodes from hostlist file: {data}",
-                "No hostfile for tasking defined. Using hosts.micro as default."
+                "No hostfile for tasking defined. Using hosts.micro as default.",
             )
 
     def read_json_micro_manager(self):
@@ -538,83 +564,105 @@ class Config:
         self.precice_config_file_name.set = os.path.join(
             self._base_dir, self._data["coupling_params"]["precice_config_file_name"]
         )
-        self._logger.log_info_rank_zero(f"preCICE configuration file name: {self.precice_config_file_name()}")
+        self._logger.log_info_rank_zero(
+            f"preCICE configuration file name: {self.precice_config_file_name()}"
+        )
 
         # ======================================================
         #                 Mesh and Decomposition
         # ======================================================
 
-        self.macro_mesh_name.set = self.json["coupling_params"]["macro_mesh_name"].get_or_raise(
-            "Macro mesh name: {data}"
-        )
+        self.macro_mesh_name.set = self.json["coupling_params"][
+            "macro_mesh_name"
+        ].get_or_raise("Macro mesh name: {data}")
 
-        self.macro_domain_bounds.set = self.json["simulation_params"]["macro_domain_bounds"].get_or_raise(
-            "Macro domain bounds: {data}"
-        )
+        self.macro_domain_bounds.set = self.json["simulation_params"][
+            "macro_domain_bounds"
+        ].get_or_raise("Macro domain bounds: {data}")
 
-        self.ranks_per_axis.set = self.json["simulation_params"]["decomposition"].get_with_default(
+        self.ranks_per_axis.set = self.json["simulation_params"][
+            "decomposition"
+        ].get_with_default(
             [1, 1, 1],
             "Axis-wise domain decomposition: {data}",
             "Domain decomposition is not specified, so the Micro Manager will expect to be run in serial.",
             list,
         )
 
-        self.decomposition_type.set = self.json["simulation_params"]["decomposition_type"].get_with_default(
+        self.decomposition_type.set = self.json["simulation_params"][
+            "decomposition_type"
+        ].get_with_default(
             "uniform",
             "Domain decomposition type: {data}",
             "Domain decomposition is not specified, so the Micro Manager will expect to be run in serial.",
             str,
-            ["uniform", "nonuniform"]
+            ["uniform", "nonuniform"],
         )
         self.minimum_access_region_size.set = []
         if self.decomposition_type() == "nonuniform":
-            self.minimum_access_region_size.set = self.json["simulation_params"]["minimum_access_region_size"].get_with_default(
+            self.minimum_access_region_size.set = self.json["simulation_params"][
+                "minimum_access_region_size"
+            ].get_with_default(
                 [],
                 None,
-                "Minimum access region size is not specified. Calculating it as 1 / (2^ranks_per_axis - 1) of the macro domain size in each axis."
-
+                "Minimum access region size is not specified. Calculating it as 1 / (2^ranks_per_axis - 1) of the macro domain size in each axis.",
             )
 
         # ======================================================
         #                      Adaptivity
         # ======================================================
 
-        self.enable_adaptivity.set = self.json["simulation_params"]["adaptivity"].get_with_default(
+        self.enable_adaptivity.set = self.json["simulation_params"][
+            "adaptivity"
+        ].get_with_default(
             False,
             "Micro Manager will adaptively run micro simulations.",
             None,
             bool,
         )
-        adaptivity_settings_avail = self.json["simulation_params"]["adaptivity_settings"].exists()
+        adaptivity_settings_avail = self.json["simulation_params"][
+            "adaptivity_settings"
+        ].exists()
         if self.enable_adaptivity() and not adaptivity_settings_avail:
             self.enable_adaptivity.set = False
-            self._logger.log_info_rank_zero("Adaptivity is turned on but no adaptivity settings are provided.")
+            self._logger.log_info_rank_zero(
+                "Adaptivity is turned on but no adaptivity settings are provided."
+            )
             self._logger.log_info_rank_zero(
                 "Micro Manager will not adaptively run micro simulations, but instead will run all micro simulations."
             )
         if not self.enable_adaptivity() and adaptivity_settings_avail:
-            self._logger.log_info_rank_zero("Adaptivity settings are provided but adaptivity is turned off.")
+            self._logger.log_info_rank_zero(
+                "Adaptivity settings are provided but adaptivity is turned off."
+            )
 
         if self.enable_adaptivity():
-            self.adaptivity_type.set = self.json["simulation_params"]["adaptivity_settings"]["type"].get_with_default(
+            self.adaptivity_type.set = self.json["simulation_params"][
+                "adaptivity_settings"
+            ]["type"].get_with_default(
                 "local",
                 "Adaptivity type: {data}",
                 "Adaptivity type can be either local or global.",
                 options=["local", "global"],
             )
-            self.adaptivity_mapping_configs.set = self.json["simulation_params"]["adaptivity_settings"]["mappings"].get_with_default(
+            self.adaptivity_mapping_configs.set = self.json["simulation_params"][
+                "adaptivity_settings"
+            ]["mappings"].get_with_default(
                 [],
                 None,
-                "Adaptivity will not interpolate outputs, only use representatives."
+                "Adaptivity will not interpolate outputs, only use representatives.",
             )
-            self.enable_adaptivity_lazy_init.set = self.json["simulation_params"]["adaptivity_settings"]["lazy_initialization"].get_with_default(False)
+            self.enable_adaptivity_lazy_init.set = self.json["simulation_params"][
+                "adaptivity_settings"
+            ]["lazy_initialization"].get_with_default(False)
             if self.enable_adaptivity_lazy_init():
                 self._logger.log_info_rank_zero(
                     "Micro simulations will be created only when they are required to be active for the very first time."
                 )
-            self.data_for_adaptivity.set = self.json["simulation_params"]["adaptivity_settings"]["data"].get_or_raise(
-                "Data used for adaptivity: {data}",
-                "Adaptivity Data must be provided."
+            self.data_for_adaptivity.set = self.json["simulation_params"][
+                "adaptivity_settings"
+            ]["data"].get_or_raise(
+                "Data used for adaptivity: {data}", "Adaptivity Data must be provided."
             )
             if self.data_for_adaptivity() == self.write_data_names():
                 self._logger.log_info_rank_zero(
@@ -622,44 +670,55 @@ class Config:
                     " same set of active and inactive simulations for the entire simulation time. If this is not intended,"
                     " please include macro data as well."
                 )
-            self.adaptivity_n.set = self.json["simulation_params"]["adaptivity_settings"]["adaptivity_every_n_time_windows"].get_with_default(
+            self.adaptivity_n.set = self.json["simulation_params"][
+                "adaptivity_settings"
+            ]["adaptivity_every_n_time_windows"].get_with_default(
                 1,
                 "Adaptivity will be computed every {data} time windows.",
-                "No interval for adaptivity computation provided. Adaptivity will be computed in every time window."
+                "No interval for adaptivity computation provided. Adaptivity will be computed in every time window.",
             )
-            self.adaptivity_output_type.set = self.json["simulation_params"]["adaptivity_settings"]["output_type"].get_with_default(
+            self.adaptivity_output_type.set = self.json["simulation_params"][
+                "adaptivity_settings"
+            ]["output_type"].get_with_default(
                 "",
                 "Adaptivity output type: {data}",
                 "Adaptivity output type can be either 'all', 'local' or 'global'. No metrics will be output.",
                 options=["all", "local", "global"],
             )
-            self.adaptivity_output_n.set = self.json["simulation_params"]["adaptivity_settings"]["output_n"].get_with_default(
+            self.adaptivity_output_n.set = self.json["simulation_params"][
+                "adaptivity_settings"
+            ]["output_n"].get_with_default(
                 1,
                 "Adaptivity will be computed every {data} time windows.",
                 "No output interval for adaptivity provided. Adaptivity metrics will be output every time window.",
             )
-            self.adaptivity_history_param.set = self.json["simulation_params"]["adaptivity_settings"]["history_param"].get_or_raise(
-                "Adaptivity history parameter: {data}"
-            )
-            self.adaptivity_coarsening_constant.set = self.json["simulation_params"]["adaptivity_settings"]["coarsening_constant"].get_or_raise(
+            self.adaptivity_history_param.set = self.json["simulation_params"][
+                "adaptivity_settings"
+            ]["history_param"].get_or_raise("Adaptivity history parameter: {data}")
+            self.adaptivity_coarsening_constant.set = self.json["simulation_params"][
+                "adaptivity_settings"
+            ]["coarsening_constant"].get_or_raise(
                 "Adaptivity coarsening constant: {data}"
             )
-            self.adaptivity_refining_constant.set = self.json["simulation_params"]["adaptivity_settings"]["refining_constant"].get_or_raise(
-                "Adaptivity refining constant: {data}"
-            )
-            self.adaptivity_similarity_measure.set = self.json["simulation_params"]["adaptivity_settings"]["similarity_measure"].get_with_default(
+            self.adaptivity_refining_constant.set = self.json["simulation_params"][
+                "adaptivity_settings"
+            ]["refining_constant"].get_or_raise("Adaptivity refining constant: {data}")
+            self.adaptivity_similarity_measure.set = self.json["simulation_params"][
+                "adaptivity_settings"
+            ]["similarity_measure"].get_with_default(
                 "L1",
                 "Adaptivity similarity measure: {data}",
-                "No similarity measure provided, using L1 norm as default."
+                "No similarity measure provided, using L1 norm as default.",
             )
-            self.enable_adaptivity_each_implicit_iteration.set = self.json["simulation_params"]["adaptivity_settings"]["every_implicit_iteration"].get_with_default(
+            self.enable_adaptivity_each_implicit_iteration.set = self.json[
+                "simulation_params"
+            ]["adaptivity_settings"]["every_implicit_iteration"].get_with_default(
                 False,
-
-                "Micro Manager will compute adaptivity once at the start of every time window."
+                "Micro Manager will compute adaptivity once at the start of every time window.",
             )
             if self.enable_adaptivity_each_implicit_iteration():
                 self._logger.log_info_rank_zero(
-                        "Micro Manager will compute adaptivity in every implicit iteration, if implicit coupling is done."
+                    "Micro Manager will compute adaptivity in every implicit iteration, if implicit coupling is done."
                 )
             else:
                 self._logger.log_info_rank_zero(
@@ -673,7 +732,9 @@ class Config:
         #                   Load Balancing
         # ======================================================
 
-        self.enable_load_balancing.set = self.json["simulation_params"]["load_balancing"].get_with_default(False)
+        self.enable_load_balancing.set = self.json["simulation_params"][
+            "load_balancing"
+        ].get_with_default(False)
         if self.enable_load_balancing():
             self._logger.log_info_rank_zero(
                 "Micro Manager will dynamically balance micro simulations based on compute times."
@@ -688,32 +749,44 @@ class Config:
             else:
                 self.write_data_names().append("rank_of_sim")
 
-            self.load_balancing_n.set = self.json["simulation_params"]["load_balancing_settings"]["every_n_time_windows"].get_with_default(
+            self.load_balancing_n.set = self.json["simulation_params"][
+                "load_balancing_settings"
+            ]["every_n_time_windows"].get_with_default(
                 1,
                 "Load balancing will be computed every {data} time windows.",
-                "Load balancing will be computed in every time window."
+                "Load balancing will be computed in every time window.",
             )
-            self.load_balancing_type.set = self.json["simulation_params"]["load_balancing_settings"]["type"].get_with_default(
+            self.load_balancing_type.set = self.json["simulation_params"][
+                "load_balancing_settings"
+            ]["type"].get_with_default(
                 "time",
                 "Load balancing type: {data}",
                 "Load balancing will use time based balancing.",
-                options=["time", "active"]
+                options=["time", "active"],
             )
             if self.load_balancing_type() == "active":
-                self.enable_load_balancing_inactive.set = self.json["simulation_params"]["load_balancing_settings"]["balance_inactive_simulations"].get_with_default(
+                self.enable_load_balancing_inactive.set = self.json[
+                    "simulation_params"
+                ]["load_balancing_settings"][
+                    "balance_inactive_simulations"
+                ].get_with_default(
                     False,
                     "Load balancing enable inactive balancing: {data}",
                     "Load balancing will not balance inactive micro simulations.",
-                    dtype=bool
+                    dtype=bool,
                 )
 
-                self.load_balancing_threshold.set = self.json["simulation_params"]["load_balancing_settings"]["threshold"].get_with_default(
+                self.load_balancing_threshold.set = self.json["simulation_params"][
+                    "load_balancing_settings"
+                ]["threshold"].get_with_default(
                     0,
                     "Load balancing threshold: {data}",
                     "Load balancing will use 0 threshold.",
                 )
             if self.load_balancing_type() == "time":
-                self.load_balancing_partitioning.set = self.json["simulation_params"]["load_balancing_settings"]["partitioning"].get_with_default(
+                self.load_balancing_partitioning.set = self.json["simulation_params"][
+                    "load_balancing_settings"
+                ]["partitioning"].get_with_default(
                     "lpt",
                     "Load balancing partitioning: {data}",
                     "No partitioning provided, using LPT as default.",
@@ -724,13 +797,22 @@ class Config:
         #                   Model Adaptivity
         # ======================================================
 
-        self.enable_model_adaptivity.set = self.json["simulation_params"]["model_adaptivity"].get_with_default(False)
-        if self.enable_model_adaptivity() and not self.json["simulation_params"]["model_adaptivity_settings"].exists():
+        self.enable_model_adaptivity.set = self.json["simulation_params"][
+            "model_adaptivity"
+        ].get_with_default(False)
+        if (
+            self.enable_model_adaptivity()
+            and not self.json["simulation_params"]["model_adaptivity_settings"].exists()
+        ):
             self.enable_model_adaptivity.set = False
-            self._logger.log_info_rank_zero("Model Adaptivity is turned on but no model adaptivity settings are provided.")
+            self._logger.log_info_rank_zero(
+                "Model Adaptivity is turned on but no model adaptivity settings are provided."
+            )
 
         if self.enable_model_adaptivity():
-            file_names = self.json["simulation_params"]["model_adaptivity_settings"]["micro_file_names"].get_or_raise()
+            file_names = self.json["simulation_params"]["model_adaptivity_settings"][
+                "micro_file_names"
+            ].get_or_raise()
             self.model_adaptivity_file_names.set = [
                 name.replace("/", ".").replace("\\", ".").replace(".py", "")
                 for name in file_names
@@ -744,8 +826,12 @@ class Config:
             else:
                 self.write_data_names().append("model_resolution")
 
-            self.model_adaptivity_switching_function.set = self.json["simulation_params"]["model_adaptivity_settings"]["switching_function"].get_or_raise()
-            self.model_adaptivity_micro_stateless.set = self.json["simulation_params"]["model_adaptivity_settings"]["micro_stateless"].get_with_default(
+            self.model_adaptivity_switching_function.set = self.json[
+                "simulation_params"
+            ]["model_adaptivity_settings"]["switching_function"].get_or_raise()
+            self.model_adaptivity_micro_stateless.set = self.json["simulation_params"][
+                "model_adaptivity_settings"
+            ]["micro_stateless"].get_with_default(
                 [False] * len(file_names),
             )
 
@@ -763,18 +849,26 @@ class Config:
         #          Crash Interpolation and Diagnostics
         # ======================================================
 
-        self.enable_crashed_sim_interpolation.set = self.json["simulation_params"]["interpolate_crash"].get_with_default(False)
+        self.enable_crashed_sim_interpolation.set = self.json["simulation_params"][
+            "interpolate_crash"
+        ].get_with_default(False)
         if self.enable_crashed_sim_interpolation():
-            self._logger.log_info_rank_zero("Micro Manager will interpolate output of crashed micro simulations from its neighbors.")
+            self._logger.log_info_rank_zero(
+                "Micro Manager will interpolate output of crashed micro simulations from its neighbors."
+            )
 
         # TODO what? this is not being saved nor used
-        diagnostics_data_names = self.json["diagnostics"]["data_from_micro_sims"].get_or_none(
+        diagnostics_data_names = self.json["diagnostics"][
+            "data_from_micro_sims"
+        ].get_or_none(
             None,
             "No diagnostics data is defined. Micro Manager will not output any diagnostics data.",
             list,
         )
 
-        self.micro_output_n.set = self.json["diagnostics"]["micro_output_n"].get_with_default(
+        self.micro_output_n.set = self.json["diagnostics"][
+            "micro_output_n"
+        ].get_with_default(
             1,
             "Micro Manager will compute micro output every {data} time windows.",
             "Output interval of micro simulations not specified, if output is available then it will be called "
@@ -787,43 +881,53 @@ class Config:
         """
         assert self._logger is not None
         self._read_json_base(self._config_file_name)  # Read base information
-        self._logger.log_info_rank_zero(f"Reading JSON configuration file: {self._config_file_name}")
+        self._logger.log_info_rank_zero(
+            f"Reading JSON configuration file: {self._config_file_name}"
+        )
         self._logger.log_info_rank_zero("Micro Manager is running in snapshot mode.")
         self.parameter_file_name.set = os.path.join(
-            self._base_dir, self.json["coupling_params"]["parameter_file_name"].get_or_raise()
+            self._base_dir,
+            self.json["coupling_params"]["parameter_file_name"].get_or_raise(),
         )
-        self._logger.log_info_rank_zero(f"Parameter file name: {self.parameter_file_name()}")
+        self._logger.log_info_rank_zero(
+            f"Parameter file name: {self.parameter_file_name()}"
+        )
 
-        self.output_file_name.set = self.json["snapshot_params"]["output_file_name"].get_with_default(
+        self.output_file_name.set = self.json["snapshot_params"][
+            "output_file_name"
+        ].get_with_default(
             "snapshot_data",
             "Output file name: {data}",
-            "No snapshot output file name provided. Defaulting to 'snapshot_data'."
+            "No snapshot output file name provided. Defaulting to 'snapshot_data'.",
         )
 
-        post_proc_file = self.json["snapshot_params"]["post_processing_file_name"].get_or_none(
+        post_proc_file = self.json["snapshot_params"][
+            "post_processing_file_name"
+        ].get_or_none(
             "Post-processing file name {data}",
-            "No post-processing file name provided. Snapshot computation will not perform any post-processing."
+            "No post-processing file name provided. Snapshot computation will not perform any post-processing.",
         )
         if post_proc_file is not None:
             post_proc_file = (
-                post_proc_file
-                .replace("/", ".")
-                .replace("\\", ".")
-                .replace(".py", "")
+                post_proc_file.replace("/", ".").replace("\\", ".").replace(".py", "")
             )
         self.postprocessing_file_name.set = post_proc_file
 
         # TODO what? this is not being saved nor used
-        diagnostics_data_names = self.json["diagnostics"]["data_from_micro_sims"].get_or_none(
+        diagnostics_data_names = self.json["diagnostics"][
+            "data_from_micro_sims"
+        ].get_or_none(
             "Diagnostics data: {data}",
             "No diagnostics data is defined. Micro Manager will not output any diagnostics data.",
             list,
         )
 
-        self.enable_single_sim_object.set = self.json["snapshot_params"]["initialize_once"].get_with_default(
+        self.enable_single_sim_object.set = self.json["snapshot_params"][
+            "initialize_once"
+        ].get_with_default(
             False,
             "Micro Manager will initialize only one micro simulations object for snapshot computation.",
-            "For each snapshot a new micro simulation object will be created."
+            "For each snapshot a new micro simulation object will be created.",
         )
 
     @config_entry
