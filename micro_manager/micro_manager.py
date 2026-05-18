@@ -742,6 +742,23 @@ class MicroManagerCoupling(MicroManager):
                         self._micro_sims[i].initialize()
             else:  # Case where the initialize() method returns data
                 if self._is_adaptivity_on:
+                    # Check for missing data
+                    expected, provided = set(self._adaptivity_micro_data_names), set(
+                        initial_micro_output.keys()
+                    )
+                    if missing := expected - provided:
+                        raise Exception(
+                            "The initialize() method needs to return data which is required for the adaptivity calculation. "
+                            f'Of the expected data {", ".join(expected)}, the following is missing: {", ".join(missing)}'
+                        )
+                    elif extra := provided - set(
+                        self._adaptivity_macro_data_names
+                        + self._adaptivity_micro_data_names
+                    ):
+                        self._logger.log_warning_rank_zero(
+                            f'The initialize() method of the Micro simulation returns extra initial data which isn\'t used by the adaptivity: {", ".join(extra)}'
+                        )
+
                     for name in initial_micro_output.keys():
                         initial_micro_data[name] = [0] * self._local_number_of_sims
                         # Save initial data from first micro simulation as we anyway have it
@@ -753,10 +770,6 @@ class MicroManagerCoupling(MicroManager):
                             self._data_for_adaptivity[name][
                                 first_id
                             ] = initial_micro_output[name]
-                        else:
-                            raise Exception(
-                                "The initialize() method needs to return data which is required for the adaptivity calculation."
-                            )
 
                     # Gather initial data from the rest of the micro simulations
                     if sim_requires_init_data:
