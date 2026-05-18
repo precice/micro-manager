@@ -7,9 +7,27 @@ summary: Provide a JSON file to configure the Micro Manager.
 
 {% note %} In the preCICE XML configuration the Micro Manager is a participant with the name `Micro-Manager`. {% endnote %}
 
-The Micro Manager is configured with a JSON file. Several parameters can be set.
+The Micro Manager is configured with a [JSON](https://en.wikipedia.org/wiki/JSON#Syntax) file. Several parameters can be set, in different sections. For example:
+
+```json
+{
+    "micro_file_name": "python/micro.py",
+    "coupling_params": {
+        "precice_config_file_name": "precice-config.xml",
+        "macro_mesh_name": "Macro-Mesh",
+        "read_data_names": ["Macro-Scalar", "Macro-Vector"],
+        "write_data_names": ["Micro-Scalar", "Micro-Vector"]
+    },
+    "simulation_params": {
+        "micro_dt": 1.0,
+        "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
+    }
+}
+```
 
 ## Micro Manager Configuration
+
+These parameters are in the outer section.
 
 | Parameter                  | Description                                                                                                                                                                                           | Default       |
 |----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
@@ -25,6 +43,8 @@ Apart from the base settings, there are three main sections in the configuration
 
 ## Coupling Parameters
 
+These parameters are in the section `coupling_params`.
+
 | Parameter                  | Description                                                                    |
 |----------------------------|--------------------------------------------------------------------------------|
 | `precice_config_file_name` | Path to the preCICE XML configuration file from the current working directory. |
@@ -33,6 +53,8 @@ Apart from the base settings, there are three main sections in the configuration
 | `write_data_names`         | List with the names of the data to be written to preCICE.                      |
 
 ## Simulation Parameters
+
+These parameters are in the section `simulation_params`.
 
 | Parameter | Description | Default |
 | --- | --- | --- |
@@ -49,6 +71,8 @@ The total number of partitions ranks in the `decomposition` list should be the s
 Non-uniform domain decomposition is based on a geometric progression.
 
 ## Diagnostics
+
+These parameters are in the section `diagnostics`.
 
 | Parameter              | Description                                                                                                                                | Default |
 |------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|---------|
