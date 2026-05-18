@@ -743,7 +743,7 @@ class MicroManagerCoupling(MicroManager):
             else:  # Case where the initialize() method returns data
                 if self._is_adaptivity_on:
                     # Check for missing data
-                    expected, provided = set(self._data_for_adaptivity.keys()), set(
+                    expected, provided = set(self._adaptivity_micro_data_names), set(
                         initial_micro_output.keys()
                     )
                     if missing := expected - provided:
@@ -751,7 +751,7 @@ class MicroManagerCoupling(MicroManager):
                             "The initialize() method needs to return data which is required for the adaptivity calculation. "
                             f'Of the expected data {", ".join(expected)}, the following is missing: {", ".join(missing)}'
                         )
-                    elif extra := provided - expected:
+                    elif extra := provided - set(self._adaptivity_macro_data_names + self._adaptivity_micro_data_names):
                         self._logger.log_warning_rank_zero(
                             f'The initialize() method of the Micro simulation returns extra initial data which isn\'t used by the adaptivity: {", ".join(extra)}'
                         )
