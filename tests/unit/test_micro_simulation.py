@@ -3,14 +3,19 @@ Tests for micro_simulation.py covering MicroSimulationInterface,
 MicroSimulationLocal, MicroSimulationClass, and create_simulation_class.
 """
 
+import importlib
+import sys
+import tempfile
 import unittest
 import warnings
+from pathlib import Path
 from unittest.mock import MagicMock
 
 from micro_manager.micro_simulation import (
     MicroSimulationInterface,
     MicroSimulationLocal,
     create_simulation_class,
+    load_backend_class,
 )
 
 
@@ -241,6 +246,80 @@ class TestMicroSimulationRemote(unittest.TestCase):
         )
         sent_task = conn.send.call_args_list[0][0][1]
         self.assertEqual(sent_task[0], "ConstructLateTask")
+
+
+class TestLoadBackendClass(unittest.TestCase):
+    def _write_module(self, directory, module_name, content):
+        module_path = Path(directory) / f"{module_name}.py"
+        module_path.write_text(content)
+        importlib.invalidate_caches()
+        return module_path
+
+    def test_missing_dependency_is_reported(self):
+        module_name = "micro_sim_with_missing_dependency"
+        missing_dependency = "missing_dependency_for_micro_manager_test"
+
+        with tempfile.TemporaryDirectory() as directory:
+            self._write_module(
+                directory,
+                module_name,
+                f"import {missing_dependency}\n\nclass MicroSimulation:\n    pass\n",
+            )
+            sys.path.insert(0, directory)
+            self.addCleanup(sys.path.remove, directory)
+            self.addCleanup(sys.modules.pop, module_name, None)
+
+            with self.assertRaises(ModuleNotFoundError) as context:
+                load_backend_class(module_name)
+
+            self.assertEqual(context.exception.name, missing_dependency)
+            self.assertIn(missing_dependency, str(context.exception))
+
+    def test_transitive_missing_dependency_is_reported(self):
+        module_name = "micro_sim_with_transitive_missing_dependency"
+        helper_module = "micro_sim_helper"
+        missing_dependency = "missing_dependency_for_transitive_import_test"
+
+        with tempfile.TemporaryDirectory() as directory:
+            self._write_module(
+                directory,
+                helper_module,
+                f"import {missing_dependency}\n\nVALUE = 1\n",
+            )
+            self._write_module(
+                directory,
+                module_name,
+                f"import {helper_module}\n\nclass MicroSimulation:\n    pass\n",
+            )
+            sys.path.insert(0, directory)
+            self.addCleanup(sys.path.remove, directory)
+            self.addCleanup(sys.modules.pop, module_name, None)
+            self.addCleanup(sys.modules.pop, helper_module, None)
+
+            with self.assertRaises(ModuleNotFoundError) as context:
+                load_backend_class(module_name)
+
+            self.assertEqual(context.exception.name, missing_dependency)
+            self.assertIn(missing_dependency, str(context.exception))
+
+    def test_missing_micro_simulation_class_raises_runtime_error(self):
+        module_name = "micro_sim_without_expected_class"
+
+        with tempfile.TemporaryDirectory() as directory:
+            self._write_module(
+                directory, module_name, "class OtherSimulation:\n    pass\n"
+            )
+            sys.path.insert(0, directory)
+            self.addCleanup(sys.path.remove, directory)
+            self.addCleanup(sys.modules.pop, module_name, None)
+
+            with self.assertRaises(RuntimeError) as context:
+                load_backend_class(module_name)
+
+            self.assertIn(
+                f"Could not load micro simulation from {module_name}",
+                str(context.exception),
+            )
 
 
 class TestCreateSimulationClass(unittest.TestCase):
