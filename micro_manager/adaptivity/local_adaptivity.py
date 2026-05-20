@@ -51,7 +51,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         )
         self._comm = comm
         self._interpolation = RBF_PU(
-            configurator,
             base_logger,
             MPI.COMM_SELF,
             MPI.COMM_SELF.Get_rank(),

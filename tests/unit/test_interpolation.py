@@ -4,13 +4,17 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 from micro_manager.interpolation import (
     Interpolation,
+    RBF_PU,
+)
+from micro_manager.tools.spatial_methods import (
     NDtree,
     HilbertDirect,
+    InterleavedDomain,
+)
+from micro_manager.tools.projection import (
     Projector,
     STDProjector,
     IdentityProjector,
-    InterleavedDomain,
-    RBF_PU,
 )
 from mpi4py import MPI
 
@@ -573,8 +577,7 @@ class TestInterleavedDomain(TestCase):
         self._comm = MPI.COMM_WORLD
         self._rank = self._comm.Get_rank()
         self._size = self._comm.Get_size()
-        config = MagicMock()
-        self._domain = InterleavedDomain(config, self._comm)
+        self._domain = InterleavedDomain(self._comm)
         self._domain.configure(rbf_config["domain_config"])
         self._ordered_global_x = ordered_global_x
         self._ordered_global_f = ordered_global_f
@@ -693,7 +696,7 @@ class TestRBF(TestCase):
         self._comm = MPI.COMM_WORLD
         self._rank = self._comm.Get_rank()
         self._size = self._comm.Get_size()
-        self._rbf = RBF_PU(MagicMock(), MagicMock(), self._comm, self._rank, self._size)
+        self._rbf = RBF_PU(MagicMock(), self._comm, self._rank, self._size)
         self._rbf.configure(rbf_config)
 
     @unittest.skipUnless(

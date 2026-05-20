@@ -115,7 +115,7 @@ To turn on adaptivity, set `"adaptivity": true` in `simulation_params`. Then und
 | `load_balancing`                  | Set to `true` to dynamically balance simulations for parallel runs. See [load balancing settings](#load-balancing) below.                                                                                                                                                                           | `false`       |
 | `mappings`                        | Optional interpolation of results. Set to list of mapping configurations. See below for further details.                                                                                                                                                                                            | `[]`          |
 
-Adaptivity can optionally interpolate results using RBF interpolation. For any subset of `write_data_names` fields, a function
+Results of inactive simulations can be interpolated from active simulations using radial basis function interpolation. For data in `write_data_names`, a function
 can be defined from `read_data_names` to `write_data_names`. When using multiple functions, their interpolation target, i.e., fields
 of `write_data_names` must be mutually disjunct. Mappings can be defined as:
 
@@ -126,8 +126,6 @@ of `write_data_names` must be mutually disjunct. Mappings can be defined as:
         "dst_fields": ["output1", "output2"],
         "n_neighbors": 50,
         "rbf_config": {
-            "use_pu": false,
-            "pu_overlap": 0.1,
             "basis": {
                 "type": "c6"
             }
@@ -141,21 +139,19 @@ of `write_data_names` must be mutually disjunct. Mappings can be defined as:
             }
         }
     },
-    {...}
 ]
 ```
 
-| Parameter       | Description                                                           | Default |
-|-----------------|-----------------------------------------------------------------------|---------|
-| `src_fields`    | List of entries from `read_data_names`                                | `None`  |
-| `dst_fields`    | List of entries from `write_data_names`                               | `None`  |
-| `n_neighbours`  | Interpolation parameter. Determines minimum amount of support points. | `50`    |
-| `rbf_config`    | RBF interpolation configuration.                                      | `None`  |
-| `domain_config` | Function source domain description.                                   |         |
+| Parameter       | Description                             | Default |
+|-----------------|-----------------------------------------|---------|
+| `src_fields`    | List of entries from `read_data_names`  | `None`  |
+| `dst_fields`    | List of entries from `write_data_names` | `None`  |
+| `n_neighbours`  | The minimum amount of support points.   | `50`    |
+| `rbf_config`    | RBF interpolation configuration.        | `None`  |
+| `domain_config` | Function source domain description.     |         |
 
-Currently, only RBF interpolation is supported. However, the configuration options for PU-RBF interpolation already exist.
-A selection of different basis function is available: `c0`, `c2`, `c4`, `c6`.
-The domain must be described/further configured as input data is shared across rank and must be redistribute for interpolation.
+A selection of basis functions is available: `c0`, `c2`, `c4`, `c6`.
+The domain must be described/further configured as input data is shared across ranks and must be redistributed for interpolation.
 Towards this, spatial discretization techniques are used. For better performance, data can be projected to a lower dimensional space
 using the fields with the highest standard deviation.
 

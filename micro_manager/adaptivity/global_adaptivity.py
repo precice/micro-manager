@@ -70,7 +70,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._comm = comm
 
         self._interpolation = RBF_PU(
-            configurator, base_logger, comm, self._rank, self._comm.Get_size()
+            base_logger, comm, self._rank, self._comm.Get_size()
         )
         rank_of_sim = get_ranks_of_sims(global_ids, rank, comm, global_number_of_sims)
 

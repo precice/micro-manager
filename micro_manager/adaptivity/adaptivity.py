@@ -302,7 +302,7 @@ class AdaptivityCalculator:
                 1 if type(value) != np.ndarray and type(value) != list else len(value)
             )
 
-        # compute interpolation
+        # create interpolation data structures
         n_points = len(active_lids)
         n_points_inactive = len(inactive_lids)
         for m_idx, fun in enumerate(self._mappings):
