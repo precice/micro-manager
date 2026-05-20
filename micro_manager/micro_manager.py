@@ -1162,6 +1162,12 @@ class MicroManagerCoupling(MicroManager):
             )
 
         self._model_adaptivity_controller.finalise_solve()
+
+        for lid, sim in enumerate(self._micro_sims):
+            res = -1
+            if sim is not None:
+                res = self._model_adaptivity_controller.get_sim_class_resolution(sim)
+            output[lid]["model_resolution"] = res
         return output
 
     def _get_solve_variant(self) -> Callable[[list, float], list]:

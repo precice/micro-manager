@@ -174,7 +174,7 @@ class TestModelAdaptivity(TestCase):
         )
 
         self.assertEqual(manager._micro_sims[0].name, "coarse")
-        self.assertEqual(result, [{"result": 2}])
+        self.assertEqual(result, [{"result": 2, "model_resolution": 1}])
         self.assertTrue(controller._converged)
 
     def test_manager_loop_exits_on_invalid_switch_request(self):
@@ -214,4 +214,4 @@ class TestModelAdaptivity(TestCase):
 
         self.assertEqual(len(solve_calls), 1)
         self.assertEqual(solve_calls[0]["computed_outputs"], {})
-        self.assertEqual(result, [{"result": 1.0}])
+        self.assertEqual(result, [{"result": 1.0, "model_resolution": 1}])
