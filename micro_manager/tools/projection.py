@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 from mpi4py import MPI
 
+
 class Projector(ABC):
     """
     Interface to project high-dimensional data into low-dimensional space.
