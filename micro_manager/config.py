@@ -25,6 +25,7 @@ class Config:
         self._config_file_name = config_file_name
         self._logger = None
         self._micro_file_name = None
+        self._micro_sim_config_file_name = None
         self._micro_stateless = False
 
         self._precice_config_file_name = None
@@ -143,6 +144,16 @@ class Config:
         self._logger.log_info_rank_zero(
             "Micro simulation file name: " + self._data["micro_file_name"]
         )
+
+        try:
+            self._micro_sim_config_file_name = self._data["micro_sim_config_file_name"]
+            self._logger.log_info_rank_zero(
+                "Micro simulation config file name: " + self._micro_sim_config_file_name
+            )
+        except BaseException:
+            self._logger.log_info_rank_zero(
+                "No micro simulation config file name provided. Micro Manager assumes that the name is hardcoded in the micro simulation file."
+            )
 
         try:
             self._output_dir = self._data["output_directory"]
