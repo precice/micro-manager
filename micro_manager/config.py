@@ -779,7 +779,7 @@ class Config:
             self.adaptivity_similarity_measure.set = self.json["simulation_params"][
                 "adaptivity_settings"
             ]["similarity_measure"].get_with_default(
-                "L1",
+                "L2rel",
                 "Adaptivity similarity measure: {data}",
                 "No similarity measure provided, using L1 norm as default.",
             )
