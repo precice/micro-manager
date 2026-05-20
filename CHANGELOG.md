@@ -2,7 +2,7 @@
 
 ## latest
 
-- Fixed model adaptivity active simulation mask generation for 0 local simulations [#266](https://github.com/precice/micro-manager/pull/266)
+- Fixed model adaptivity active simulation mask generation for 0 local simulations [#270](https://github.com/precice/micro-manager/pull/270)
 - Allow `initialize()` to return data that is not used by the adaptivity [#261](https://github.com/precice/micro-manager/pull/261)
 - Fixed `MicroSimulation` initialization requiring positional parameters [#255](https://github.com/precice/micro-manager/pull/255)
 - Fixed model adaptivity convergence at resolution boundaries to prevent infinite loops for out-of-range switching requests [#252](https://github.com/precice/micro-manager/pull/252)
