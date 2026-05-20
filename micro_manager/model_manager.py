@@ -1,6 +1,5 @@
 from micro_manager.micro_simulation import (
     MicroSimulationClass,
-    MicroSimulationWrapper,
     MicroSimulationInterface,
 )
 
@@ -45,14 +44,6 @@ class ModelWrapper(MicroSimulationInterface):
         return self._backend.__class__
 
     @property
-    def attachments(self):
-        return self._backend.attachments
-
-    @attachments.setter
-    def attachments(self, value):
-        self._backend.attachments = value
-
-    @property
     def name(self):
         return self._backend.name
 
@@ -67,7 +58,7 @@ class ModelManager:
     def __init__(self):
         self._registered_classes: list[MicroSimulationClass] = []
         self._stateless_map: dict[MicroSimulationClass, bool] = dict()
-        self._backend_map: dict[MicroSimulationClass, MicroSimulationWrapper] = dict()
+        self._backend_map: dict[MicroSimulationClass, MicroSimulationInterface] = dict()
 
     def register(self, micro_sim_cls: MicroSimulationClass, stateless: bool):
         """

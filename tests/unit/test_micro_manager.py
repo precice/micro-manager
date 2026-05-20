@@ -4,6 +4,7 @@ from unittest.mock import MagicMock
 import numpy as np
 
 import micro_manager
+from micro_manager.simulation_container import SimulationContainer
 
 
 class MicroSimulation:
@@ -31,7 +32,7 @@ class MicroSimulation:
         pass
 
 
-class TestFunctioncalls(TestCase):
+class TestFunctionCalls(TestCase):
     def setUp(self):
         self.fake_read_data_names = ["Macro-Scalar-Data", "Macro-Vector-Data"]
         self.fake_read_data = [
@@ -71,11 +72,11 @@ class TestFunctioncalls(TestCase):
         manager.initialize()
 
         self.assertEqual(manager._micro_dt, 0.1)  # from Interface.initialize
-        self.assertEqual(manager._global_number_of_sims, 4)
+        self.assertEqual(manager._sim_container.global_num_sims, 4)
         self.assertListEqual(manager._mesh_vertex_ids.tolist(), [0, 1, 2, 3])
-        self.assertEqual(len(manager._micro_sims), 4)
+        self.assertEqual(len(manager._sim_container), 4)
         self.assertEqual(
-            manager._micro_sims[0].very_important_value, 0
+            manager._sim_container[0].very_important_value, 0
         )  # test inheritance
         self.assertListEqual(manager._read_data_names, self.fake_read_data_names)
         self.assertListEqual(self.fake_write_data_names, manager._write_data_names)
@@ -85,9 +86,10 @@ class TestFunctioncalls(TestCase):
         Test if the internal functions _read_data_from_precice and _write_data_to_precice work as expected.
         """
         manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
-
-        manager._global_ids_of_local_sims = 4
-        manager._mesh_vertex_ids = np.array([0, 1, 2, 3])
+        container = SimulationContainer()
+        container.initialize(4, 4, [0, 1, 2, 3], np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]))
+        manager._sim_container = container
+        manager._mesh_vertex_ids = container.local_coords
 
         manager._write_data_to_precice(self.fake_write_data)
         read_data = manager._read_data_from_precice(1.0)
@@ -106,8 +108,12 @@ class TestFunctioncalls(TestCase):
         manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
         manager.initialize()
 
-        manager._local_number_of_sims = 4
-        manager._micro_sims = [MicroSimulation(i) for i in range(4)]
+        # manually initialize container
+        container = SimulationContainer()
+        container.initialize(4, 4, [0, 1, 2, 3], np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]))
+        manager._sim_container = container
+        for lid in container.range_lid:
+            container[lid] = MicroSimulation(lid)
         manager._micro_sims_active_steps = np.zeros(4, dtype=np.int32)
 
         micro_sims_output = manager._solve_micro_simulations(self.fake_read_data, 1.0)

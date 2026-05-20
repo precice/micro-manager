@@ -8,6 +8,7 @@ from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.model_manager import ModelManager
+from micro_manager.simulation_container import SimulationContainer
 
 import numpy as np
 
@@ -17,6 +18,7 @@ class AdaptivityCalculator:
         self,
         config: Config,
         nsims: int,
+        sim_container: SimulationContainer,
         micro_problem_cls: MicroSimulationClass,
         model_manager: ModelManager,
         base_logger: Logger,
@@ -31,6 +33,8 @@ class AdaptivityCalculator:
             Object which has getter functions to get parameters defined in the configuration file.
         nsims : int
             Number of micro simulations.
+        sim_container : SimulationContainer
+            Simulation container object.
         micro_problem_cls : callable
             Class of micro problem.
         model_manager : object
@@ -49,6 +53,7 @@ class AdaptivityCalculator:
 
         self._micro_problem_cls = micro_problem_cls
         self._model_manager = model_manager
+        self._sim_container: SimulationContainer = sim_container
 
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
