@@ -212,8 +212,11 @@ class MicroManagerCoupling(MicroManager):
                     # Write a checkpoint if a simulation is just activated.
                     # This checkpoint will be asynchronous to the checkpoints written at the start of the time window.
                     if self._is_model_adaptivity_on:
+                        active_sim_lids = (
+                            self._adaptivity_controller.get_active_sim_local_ids()
+                        )
                         self._model_adaptivity_controller.update_states(
-                            self._micro_sims, active_sim_gids
+                            self._micro_sims, active_sim_lids
                         )
                     for i in range(self._local_number_of_sims):
                         if sim_states_cp[i] is None and self._micro_sims[i]:
@@ -244,13 +247,13 @@ class MicroManagerCoupling(MicroManager):
             # Write a checkpoint
             if self._participant.requires_writing_checkpoint() or performed_lb:
                 if self._is_model_adaptivity_on:
-                    active_sim_gids = None
+                    active_sim_lids = None
                     if self._is_adaptivity_on:
-                        active_sim_gids = (
+                        active_sim_lids = (
                             self._adaptivity_controller.get_active_sim_local_ids()
                         )
                     self._model_adaptivity_controller.update_states(
-                        self._micro_sims, active_sim_gids
+                        self._micro_sims, active_sim_lids
                     )
                 for i in range(self._local_number_of_sims):
                     sim_states_cp[i] = (
@@ -308,13 +311,13 @@ class MicroManagerCoupling(MicroManager):
                         self.state_setter(self._micro_sims[i], sim_states_cp[i])
 
                 if self._is_model_adaptivity_on:
-                    active_sim_gids = None
+                    active_sim_lids = None
                     if self._is_adaptivity_on:
-                        active_sim_gids = (
+                        active_sim_lids = (
                             self._adaptivity_controller.get_active_sim_local_ids()
                         )
                     self._model_adaptivity_controller.write_back_states(
-                        self._micro_sims, active_sim_gids
+                        self._micro_sims, active_sim_lids
                     )
 
                 first_iteration = False
@@ -742,6 +745,23 @@ class MicroManagerCoupling(MicroManager):
                         self._micro_sims[i].initialize()
             else:  # Case where the initialize() method returns data
                 if self._is_adaptivity_on:
+                    # Check for missing data
+                    expected, provided = set(self._adaptivity_micro_data_names), set(
+                        initial_micro_output.keys()
+                    )
+                    if missing := expected - provided:
+                        raise Exception(
+                            "The initialize() method needs to return data which is required for the adaptivity calculation. "
+                            f'Of the expected data {", ".join(expected)}, the following is missing: {", ".join(missing)}'
+                        )
+                    elif extra := provided - set(
+                        self._adaptivity_macro_data_names
+                        + self._adaptivity_micro_data_names
+                    ):
+                        self._logger.log_warning_rank_zero(
+                            f'The initialize() method of the Micro simulation returns extra initial data which isn\'t used by the adaptivity: {", ".join(extra)}'
+                        )
+
                     for name in initial_micro_output.keys():
                         initial_micro_data[name] = [0] * self._local_number_of_sims
                         # Save initial data from first micro simulation as we anyway have it
@@ -753,10 +773,6 @@ class MicroManagerCoupling(MicroManager):
                             self._data_for_adaptivity[name][
                                 first_id
                             ] = initial_micro_output[name]
-                        else:
-                            raise Exception(
-                                "The initialize() method needs to return data which is required for the adaptivity calculation."
-                            )
 
                     # Gather initial data from the rest of the micro simulations
                     if sim_requires_init_data:
@@ -1099,11 +1115,17 @@ class MicroManagerCoupling(MicroManager):
 
         # Resolve micro sim output data for inactive simulations
         for inactive_lid in inactive_sim_lids:
+            self.load_balancing.pre_sim_solve(
+                self._global_ids_of_local_sims[inactive_lid]
+            )
             micro_sims_output[inactive_lid]["Active-State"] = 0
             gid = self._global_ids_of_local_sims[inactive_lid]
             micro_sims_output[inactive_lid][
                 "Active-Steps"
             ] = self._micro_sims_active_steps[gid]
+            self.load_balancing.post_sim_solve(
+                self._global_ids_of_local_sims[inactive_lid]
+            )
 
         # Collect micro sim output for adaptivity calculation
         for i in range(self._local_number_of_sims):
@@ -1149,6 +1171,12 @@ class MicroManagerCoupling(MicroManager):
             )
 
         self._model_adaptivity_controller.finalise_solve()
+
+        for lid, sim in enumerate(self._micro_sims):
+            res = -1
+            if sim is not None:
+                res = self._model_adaptivity_controller.get_sim_class_resolution(sim)
+            output[lid]["model_resolution"] = res
         return output
 
     def _get_solve_variant(self) -> Callable[[list, float], list]:

@@ -566,6 +566,7 @@ class Config:
             )
 
         if self._m_adap:
+            self._write_data_names.append("model_resolution")
             self._m_adap_micro_file_names = [
                 name.replace("/", ".").replace("\\", ".").replace(".py", "")
                 for name in self._data["simulation_params"][

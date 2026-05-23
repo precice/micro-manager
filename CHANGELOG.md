@@ -2,6 +2,12 @@
 
 ## latest
 
+- Fixed naming of variables tracking active simulations in the `MicroManager` [#273](https://github.com/precice/micro-manager/pull/273)
+- Improved load balancing of inactive simulations by tracking a small amount of time [#272](https://github.com/precice/micro-manager/pull/272)
+- Added the exported field `model_resolution` when using model adaptivity [#271](https://github.com/precice/micro-manager/pull/271)
+- Fixed model adaptivity active simulation mask generation for 0 local simulations [#270](https://github.com/precice/micro-manager/pull/270)
+- Allow `initialize()` to return data that is not used by the adaptivity [#261](https://github.com/precice/micro-manager/pull/261)
+- Fixed `MicroSimulation` initialization requiring positional parameters [#255](https://github.com/precice/micro-manager/pull/255)
 - Fixed model adaptivity convergence at resolution boundaries to prevent infinite loops for out-of-range switching requests [#252](https://github.com/precice/micro-manager/pull/252)
 - Add function `set_global_id` to the dummies and the example in the integration test [#247](https://github.com/precice/micro-manager/pull/247)
 

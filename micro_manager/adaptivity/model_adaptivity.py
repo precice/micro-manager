@@ -453,6 +453,7 @@ class ModelAdaptivity:
             active_sims = np.ones(size)
         else:
             mask = np.zeros(size)
-            mask[active_sim_ids] = 1
+            if len(active_sim_ids) > 0:
+                mask[active_sim_ids] = 1
             active_sims = mask
         return active_sims.astype(bool)
