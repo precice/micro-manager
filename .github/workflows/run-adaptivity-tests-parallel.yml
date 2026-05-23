@@ -1,15 +1,13 @@
 name: Test adaptivity functionality in parallel
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - "*"
+  workflow_run:
+    workflows: [Build OpenMPI cache]
+    types:
+      - completed
 jobs:
   integration_tests:
     name: Integration tests
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
@@ -17,6 +15,7 @@ jobs:
         uses: actions/checkout@v6
         with:
           path: micro-manager
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Install sudo for MPI
         working-directory: micro-manager
@@ -51,6 +50,7 @@ jobs:
 
   unit_tests:
     name: Unit tests
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
@@ -58,38 +58,21 @@ jobs:
         uses: actions/checkout@v6
         with:
           path: micro-manager
-
-      - name: Install OpenMPI build dependencies
-        run: |
-          apt-get -qq update
-          apt-get -qq install wget build-essential
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Load Cache OpenMPI 5
         id: ompi-cache-load
         uses: actions/cache/restore@v5
         with:
           path: ~/openmpi
-          key: openmpi-v5-${{ runner.os }}-build
-      - name: Build OpenMPI 5
-        if: steps.ompi-cache-load.outputs.cache-hit != 'true'
-        run: |
-          wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.5.tar.gz
-          tar -xzf openmpi-5.0.5.tar.gz
-          cd openmpi-5.0.5
-          mkdir -p ~/openmpi
-          ./configure --prefix=$HOME/openmpi
-          make -j$(nproc)
-          make install
-
-      - name: Save OpenMPI 5 to cache
-        if: steps.ompi-cache-load.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
-        with:
-          path: ~/openmpi
-          key: openmpi-v5-${{ runner.os }}-build
+          key: openmpi-5.0.5-${{ runner.os }}-build
 
       - name: Configure OpenMPI
         run: |
+          if [ ! -d ~/openmpi ]; then
+            echo "::error::OpenMPI cache not found. The cache workflow may have failed."
+            exit 1
+          fi
           cp -r ~/openmpi/* /usr/local/
           ldconfig
           which mpiexec
