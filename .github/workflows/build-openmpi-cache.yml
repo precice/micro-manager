@@ -31,7 +31,6 @@ jobs:
       - name: Build OpenMPI 5
         if: steps.ompi-cache-load.outputs.cache-hit != 'true'
         run: |
-          set -euo pipefail
           wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.5.tar.gz
           tar -xzf openmpi-5.0.5.tar.gz
           cd openmpi-5.0.5
