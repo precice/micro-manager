@@ -610,7 +610,7 @@ def load_backend_class(path_to_micro_file: str) -> type:
             )
         else:
             raise RuntimeError(
-                f"Counldn't load dependency of python module '{path_to_micro_file}' containing the micro simulation: {ie}"
+                f"Counld not load a dependency of the python module '{path_to_micro_file}' containing the micro simulation: {ie}"
             )
     except Exception as e:
         raise RuntimeError(
