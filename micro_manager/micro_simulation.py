@@ -606,7 +606,7 @@ def load_backend_class(path_to_micro_file: str) -> type:
     except ModuleNotFoundError as ie:
         if ie.name == path_to_micro_file:
             raise RuntimeError(
-                f"Couldn't load python module '{path_to_micro_file}' containing the micro simulation"
+                f"Could not load the python module '{path_to_micro_file}' containing the micro simulation"
             )
         else:
             raise RuntimeError(
