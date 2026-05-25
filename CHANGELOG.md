@@ -2,6 +2,7 @@
 
 ## latest
 
+- Fixed CI OpenMPI cache miss by centralizing the MPI build into a dedicated workflow [#263](https://github.com/precice/micro-manager/pull/263)
 - Fixed naming of variables tracking active simulations in the `MicroManager` [#273](https://github.com/precice/micro-manager/pull/273)
 - Improved load balancing of inactive simulations by tracking a small amount of time [#272](https://github.com/precice/micro-manager/pull/272)
 - Added the exported field `model_resolution` when using model adaptivity [#271](https://github.com/precice/micro-manager/pull/271)
