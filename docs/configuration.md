@@ -185,7 +185,7 @@ The Micro Manager uses the output functionality of preCICE, hence these data set
 ## Load balancing
 
 Load balancing can be activated by setting `load_balancing` to true.
-It balances based on either the elapsed time required to solve the prior iteration `type="time""` or the number of active simulations `type=active`.
+It balances based on either the elapsed time required to solve the prior iteration `type="time"` or the number of active simulations `type="active"`.
 One Initial load balancing step is performed, prior to any computation (assuming equal workload for time based load balancing or the current active counts for `active` load balancing.).
 Subsequently, in the following iteration another load balancing step is performed based. (This is mainly for the time based balancing to use the just acquired timings.)
 Afterwards balancing is performed `every_n_time_windows`.
