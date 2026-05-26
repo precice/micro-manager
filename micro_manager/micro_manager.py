@@ -484,6 +484,7 @@ class MicroManagerCoupling(MicroManager):
             ) = domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
 
             # Global coordinates that are necessary for model adaptivity
+            # TODO: Avoid the allgather by smartly selecting the relevant coordinates in model adaptivity
             self._global_mesh_vertex_coords = self._comm.allgather(
                 self._mesh_vertex_coords
             )
