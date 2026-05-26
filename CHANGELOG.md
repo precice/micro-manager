@@ -1,6 +1,6 @@
 # Micro Manager changelog
 
-## latest
+## v0.10.0
 
 - Fixed load balancing for case where number of sims to send and recv are not the same [#276](https://github.com/precice/micro-manager/pull/276)
 - Fixed CI OpenMPI cache miss by centralizing the MPI build into a dedicated workflow [#263](https://github.com/precice/micro-manager/pull/263)
