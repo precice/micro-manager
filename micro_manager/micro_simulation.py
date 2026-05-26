@@ -624,6 +624,7 @@ def load_backend_class(path_to_micro_file: str) -> type:
     for suffix in suffixes:
         if cls := getattr(mod, f"{CLS_NAME}{suffix}", None):
             micro_cls = cls
+            break
     if micro_cls is None:
         raise RuntimeError(
             f"Loaded module '{path_to_micro_file}' does not contain a MicroSimulation class"
