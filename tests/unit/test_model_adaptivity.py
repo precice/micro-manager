@@ -140,6 +140,7 @@ class TestModelAdaptivity(TestCase):
         manager._model_adaptivity_controller = controller
         manager._is_adaptivity_on = False
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
+        manager._global_mesh_vertex_coords = manager._mesh_vertex_coords
         manager._global_ids_of_local_sims = [0]
         manager._t = 1.0
         manager._micro_sims = [DummySimulation("fine", global_id=0)]
@@ -189,6 +190,7 @@ class TestModelAdaptivity(TestCase):
         manager._model_adaptivity_controller = controller
         manager._is_adaptivity_on = False
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
+        manager._global_mesh_vertex_coords = manager._mesh_vertex_coords
         manager._global_ids_of_local_sims = [0]
         manager._t = 1.0
         manager._micro_sims = [DummySimulation("coarse")]
