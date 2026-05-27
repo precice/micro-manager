@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## latest
+
+- Fixed passing of macro mesh coordinates when model adaptivity is run in parallel [#282](https://github.com/precice/micro-manager/pull/282)
+
 ## v0.10.0
 
 - Fixed load balancing for case where number of sims to send and recv are not the same [#276](https://github.com/precice/micro-manager/pull/276)
