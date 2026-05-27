@@ -555,16 +555,27 @@ def __getattr__(self, name):
     # Only add initialize override if the wrapped class actually has it,
     # so that requires_initialize() returns True for those classes.
     if has_initialize:
-        argspec = inspect.getfullargspec(cls.initialize)
-        # build args
-        init_args = f"{', '.join(argspec.args)}"
-        params = f"{', '.join(argspec.args[1::])}"
-        if argspec.varargs is not None:
-            init_args += f", *args"
-            params += f", *args"
-        if argspec.varkw is not None:
-            init_args += f", **kwargs"
-            params += f", **kwargs"
+        try:
+            argspec = inspect.getfullargspec(cls.initialize)
+            # build args
+            params = f"{', '.join(argspec.args[1:])}"
+            if argspec.varargs is not None:
+                params += f", *args"
+            if argspec.varkw is not None:
+                params += f", **kwargs"
+        except TypeError:
+            # pybind11 methods do not expose Python-style argument specs
+            has_param = False
+            try:
+                test_instance = cls(-1)
+                test_instance.initialize()
+            except TypeError:
+                # calling without args failed, need to provide one
+                has_param = True
+
+            pos_arg = "input_data, " if has_param else ""
+            params = f"{pos_arg}*args, **kwargs"
+        init_args = f"self, {params}"
         class_body += f"""
 def initialize({init_args}):
     return self._wrapped.initialize({params})
