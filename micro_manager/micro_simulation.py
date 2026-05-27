@@ -572,7 +572,7 @@ def __getattr__(self, name):
             except TypeError:
                 # calling without args failed, need to provide one
                 has_param = True
-            
+
             pos_arg = "input_data, " if has_param else ""
             params = f"{pos_arg}*args, **kwargs"
         init_args = f"self, {params}"
