@@ -674,10 +674,8 @@ class ActiveBalancer(LoadBalancer):
             ) = self._get_active_exchange_counts()
 
             if (
-                n_global_send_sims == 0
-                and n_global_recv_sims == 0
-                and not self._bypass_skip
-            ):
+                n_global_send_sims == 0 or n_global_recv_sims == 0
+            ) and not self._bypass_skip:
                 self._log.log_warning_rank_zero(
                     "It appears that the micro simulations are already fairly balanced. No load balancing will be done. Try changing the threshold value to induce load balancing."
                 )

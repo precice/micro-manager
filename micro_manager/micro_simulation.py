@@ -610,39 +610,47 @@ def load_backend_class(path_to_micro_file: str) -> type:
         A class inheriting from MicroSimulationInterface.
     """
 
-    def try_load(name):
-        try:
-            return getattr(ipl.import_module(path_to_micro_file, name), name)
-        except ImportError as ie:
-            return None
-        except AttributeError as ae:
-            return None
+    # try to load the module
+    try:
+        mod = ipl.import_module(path_to_micro_file)
+    except ModuleNotFoundError as ie:
+        if ie.name == path_to_micro_file:
+            raise RuntimeError(
+                f"Could not load the python module '{path_to_micro_file}' containing the micro simulation"
+            )
+        else:
+            raise RuntimeError(
+                f"Counld not load a dependency of the python module '{path_to_micro_file}' containing the micro simulation: {ie}"
+            )
+    except Exception as e:
+        raise RuntimeError(
+            f"Error loading python module '{path_to_micro_file}' containing the micro simulation: {e}"
+        )
 
-    def check_cls(cls):
-        try:
-            inherits = issubclass(cls, MicroSimulationInterface)
-        except TypeError:
-            # pybind11 extension types may not support issubclass — wrap them
-            inherits = False
-
-        if not inherits:
-            cls = _wrap_non_interface_class(cls, path_to_micro_file)
-        return cls
-
+    # try to load the class
     CLS_NAME = "MicroSimulation"
-    # attempt to load with base name
-    result = try_load(CLS_NAME)
-    if result is not None:
-        return check_cls(result)
+    suffixes = [""] + [str(i) for i in range(10)]
+    micro_cls = None
+    for suffix in suffixes:
+        if cls := getattr(mod, f"{CLS_NAME}{suffix}", None):
+            micro_cls = cls
+            break
+    if micro_cls is None:
+        raise RuntimeError(
+            f"Loaded module '{path_to_micro_file}' does not contain a MicroSimulation class"
+        )
 
-    # attempt to load with appended indices
-    for i in range(10):
-        result = try_load(f"{CLS_NAME}{i}")
-        if result is not None:
-            return check_cls(result)
+    # check loaded class
+    try:
+        inherits = issubclass(micro_cls, MicroSimulationInterface)
+    except TypeError:
+        # pybind11 extension types may not support issubclass — wrap them
+        inherits = False
 
-    # failed to load any class
-    raise RuntimeError(f"Could not load micro simulation from {path_to_micro_file}")
+    if inherits:
+        return micro_cls
+    else:
+        return _wrap_non_interface_class(micro_cls, path_to_micro_file)
 
 
 def create_simulation_class(
