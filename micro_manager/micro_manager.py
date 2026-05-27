@@ -1156,7 +1156,7 @@ class MicroManagerCoupling(MicroManager):
 
         while self._model_adaptivity_controller.should_iterate():
             switched_lids = self._model_adaptivity_controller.switch_models(
-                self._global_mesh_vertex_coords[self._global_ids_of_local_sims],
+                self._mesh_vertex_coords,
                 self._t,
                 micro_sims_input,
                 output,
@@ -1172,7 +1172,7 @@ class MicroManagerCoupling(MicroManager):
                     computed_outputs[gid] = out
             output = solve_variant(micro_sims_input, dt, computed_outputs)
             self._model_adaptivity_controller.check_convergence(
-                self._global_mesh_vertex_coords[self._global_ids_of_local_sims],
+                self._mesh_vertex_coords,
                 self._t,
                 micro_sims_input,
                 output,
