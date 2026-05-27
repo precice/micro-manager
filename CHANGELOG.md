@@ -2,6 +2,7 @@
 
 ## latest
 
+- Fixed parameter inspection of the `initialize()` routine when micro simulation is pybind11 wrapped [#281](https://github.com/precice/micro-manager/pull/281)
 - Fixed passing of macro mesh coordinates when model adaptivity is run in parallel [#282](https://github.com/precice/micro-manager/pull/282)
 
 ## v0.10.0
