@@ -543,6 +543,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         for gid in self._sim_container.local_gids:
             if not self._is_sim_active[gid]:
                 lid = self._sim_container.local_gids.index(gid)
+                if self._sim_container[lid] is None:
+                    continue
                 # Release resources now, especially for remote simulation instance.
                 # If left to garbage collector this might lead to a race condition.
                 # Releasing with call to sim.destroy(), afterwards reference in sim

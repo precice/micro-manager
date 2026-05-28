@@ -317,7 +317,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         # Delete the inactive micro simulations which have not been activated
         for lid in range(self._is_sim_active.size):
-            if not self._is_sim_active[lid]:
+            if not self._is_sim_active[lid] and self._sim_container[lid] is not None:
                 # Release resources now, especially for remote simulation instance.
                 # If left to garbage collector this might lead to a race condition.
                 # Releasing with call to sim.destroy(), afterwards reference in sim
