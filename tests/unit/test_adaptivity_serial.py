@@ -30,6 +30,9 @@ class MicroSimulation:
     def solve(self, micro_input, dt):
         pass
 
+    def destroy(self):
+        pass
+
 
 class ModelManager:
     def get_instance(self, gid, micro_problem_cls):
