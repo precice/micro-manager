@@ -4,6 +4,11 @@
 
 - Added RBF interpolation, currently used within adaptivity for output interpolation [#242](https://github.com/precice/micro-manager/pull/242)
 
+## v0.10.1
+
+- Fixed parameter inspection of the `initialize()` routine when micro simulation is pybind11 wrapped [#281](https://github.com/precice/micro-manager/pull/281)
+- Fixed passing of macro mesh coordinates when model adaptivity is run in parallel [#282](https://github.com/precice/micro-manager/pull/282)
+
 ## v0.10.0
 
 - Fixed load balancing for case where number of sims to send and recv are not the same [#276](https://github.com/precice/micro-manager/pull/276)

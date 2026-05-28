@@ -475,6 +475,7 @@ class MicroManagerCoupling(MicroManager):
             # Gather all vertex coords and IDs from all ranks onto all ranks,
             # filter out coords already claimed by lower-ranked ranks.
             # When load balancing, all ranks receive all coords. No duplicates can arise.
+            # TODO: Avoid the allgather by smartly selecting the relevant coordinates
             all_coords = self._comm.allgather(self._mesh_vertex_coords)
             all_ids = self._comm.allgather(self._mesh_vertex_ids)
 
@@ -484,12 +485,11 @@ class MicroManagerCoupling(MicroManager):
             ) = domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
 
             # Global coordinates that are necessary for model adaptivity
-            # TODO: Avoid the allgather by smartly selecting the relevant coordinates in model adaptivity
-            self._global_mesh_vertex_coords = self._comm.allgather(
-                self._mesh_vertex_coords
-            )
-
-        if not self._is_parallel or self._is_load_balancing:
+            global_mesh_vertex_coords = self._comm.allgather(self._mesh_vertex_coords)
+            self._global_mesh_vertex_coords = np.array(
+                global_mesh_vertex_coords
+            ).reshape((-1, self._mesh_vertex_coords.shape[-1]))
+        else:
             # For a serial run or when load balancing, the local mesh vertex coordinates are the global mesh vertex coordinates
             self._global_mesh_vertex_coords = self._mesh_vertex_coords
 
