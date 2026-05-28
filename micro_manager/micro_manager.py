@@ -257,7 +257,8 @@ class MicroManagerCoupling(MicroManager):
 
                 if self._is_parallel:
                     crash_ratio = (
-                        np.sum(crashed_sims_on_all_ranks) / self._sim_container.global_num_sims
+                        np.sum(crashed_sims_on_all_ranks)
+                        / self._sim_container.global_num_sims
                     )
                 else:
                     crash_ratio = np.sum(self._has_sim_crashed) / len(
@@ -732,7 +733,9 @@ class MicroManagerCoupling(MicroManager):
                         )
 
                     for name in initial_micro_output.keys():
-                        initial_micro_data[name] = [0] * self._sim_container.local_num_sims
+                        initial_micro_data[name] = [
+                            0
+                        ] * self._sim_container.local_num_sims
                         # Save initial data from first micro simulation as we anyway have it
                         initial_micro_data[name][first_id] = initial_micro_output[name]
 
@@ -1252,5 +1255,7 @@ class MicroManagerCoupling(MicroManager):
         # Reintroduce removed information
         if self._is_adaptivity_on:
             output_interpol["Active-State"] = 1
-            output_interpol["Active-Steps"] = self._micro_sims_active_steps[unset_sim_lid]
+            output_interpol["Active-Steps"] = self._micro_sims_active_steps[
+                unset_sim_lid
+            ]
         return output_interpol

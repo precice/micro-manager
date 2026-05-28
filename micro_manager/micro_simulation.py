@@ -354,7 +354,13 @@ class MicroSimulationClass:
     def __call__(self, gid, *, late_init=False):
         if self._num_ranks > 1 and self._conn is not None:
             return MicroSimulationRemote(
-                gid, self._name, late_init, self._num_ranks, self._conn, self._cls_path, self._sim_cls
+                gid,
+                self._name,
+                late_init,
+                self._num_ranks,
+                self._conn,
+                self._cls_path,
+                self._sim_cls,
             )
         else:
             return MicroSimulationLocal(gid, self._name, late_init, self._sim_cls)

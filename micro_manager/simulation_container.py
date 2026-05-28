@@ -1,4 +1,4 @@
-from micro_simulation import MicroSimulationInterface
+from .micro_simulation import MicroSimulationInterface
 
 from typing import Optional, Any, List, Dict, Set, Iterable, Tuple
 import numpy as np
@@ -6,11 +6,11 @@ import numpy as np
 
 class SimulationContainer:
     EntryType = Tuple[
-            Optional[MicroSimulationInterface],
-            Dict[str, Optional[Any]],
-            int,
-            np.ndarray,
-        ]
+        Optional[MicroSimulationInterface],
+        Dict[str, Optional[Any]],
+        int,
+        np.ndarray,
+    ]
 
     def __init__(self):
         """
@@ -20,15 +20,21 @@ class SimulationContainer:
         ----------
 
         """
-        self._sims : List[Optional[MicroSimulationInterface]] = []
+        self._sims: List[Optional[MicroSimulationInterface]] = []
         # we store one state for each potential model, associated by its name
-        self._sim_checkpoints : List[Dict[str, Optional[Any]]] = []
-        self._sim_gids : List[int] = []
-        self._sim_gids_set : Set[int] = set()
-        self._sim_coords : List[np.ndarray] = []
-        self._global_num_sims : int = 0
+        self._sim_checkpoints: List[Dict[str, Optional[Any]]] = []
+        self._sim_gids: List[int] = []
+        self._sim_gids_set: Set[int] = set()
+        self._sim_coords: List[np.ndarray] = []
+        self._global_num_sims: int = 0
 
-    def initialize(self, glob_num_sims: int, local_num_sims: int, local_gids: List[int], local_coords: List[np.ndarray]) -> None:
+    def initialize(
+        self,
+        glob_num_sims: int,
+        local_num_sims: int,
+        local_gids: List[int],
+        local_coords: List[np.ndarray],
+    ) -> None:
         """
         Initializes buffers to appropriate sizes.
 
@@ -308,7 +314,9 @@ class SimulationContainer:
         del self._sim_coords[lid]
         self._sim_gids_set.remove(gid)
 
-    def add_sim(self, gid: int, sim: Optional[MicroSimulationInterface], coord: np.ndarray) -> int:
+    def add_sim(
+        self, gid: int, sim: Optional[MicroSimulationInterface], coord: np.ndarray
+    ) -> int:
         """
         Adds the provided simulation to this container.
 

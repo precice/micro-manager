@@ -5,6 +5,7 @@ import numpy as np
 import micro_manager
 from micro_manager.simulation_container import SimulationContainer
 
+
 class MicroSimulation:
     def __init__(self, sim_id):
         self.sim_id = sim_id
@@ -53,10 +54,7 @@ class TestSimulationCrashHandling(TestCase):
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
         container = SimulationContainer()
         container.initialize(
-            4,
-            4,
-            [0, 1, 2, 3],
-            np.array([[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0]])
+            4, 4, [0, 1, 2, 3], np.array([[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0]])
         )
         manager._has_sim_crashed = [False] * 4
         manager._mesh_vertex_coords = container.local_coords
@@ -109,7 +107,7 @@ class TestSimulationCrashHandling(TestCase):
             5,
             5,
             [0, 1, 2, 3, 4],
-            np.array([[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0], [1, 1, 0]])
+            np.array([[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0], [1, 1, 0]]),
         )
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
         manager._micro_sims_active_steps = np.zeros(5, dtype=np.int32)

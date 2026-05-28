@@ -87,7 +87,9 @@ class TestFunctionCalls(TestCase):
         """
         manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
         container = SimulationContainer()
-        container.initialize(4, 4, [0, 1, 2, 3], np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]))
+        container.initialize(
+            4, 4, [0, 1, 2, 3], np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]])
+        )
         manager._sim_container = container
         manager._mesh_vertex_ids = container.local_coords
 
@@ -110,7 +112,9 @@ class TestFunctionCalls(TestCase):
 
         # manually initialize container
         container = SimulationContainer()
-        container.initialize(4, 4, [0, 1, 2, 3], np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]]))
+        container.initialize(
+            4, 4, [0, 1, 2, 3], np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]])
+        )
         manager._sim_container = container
         for lid in container.range_lid:
             container[lid] = MicroSimulation(lid)

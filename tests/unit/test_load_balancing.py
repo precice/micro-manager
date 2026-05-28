@@ -78,7 +78,12 @@ class TestLBTime(TestCase):
         )
 
         container = SimulationContainer()
-        container.initialize(global_number_of_sims, len(global_ids), global_ids, [np.zeros(3) for _ in global_ids])
+        container.initialize(
+            global_number_of_sims,
+            len(global_ids),
+            global_ids,
+            [np.zeros(3) for _ in global_ids],
+        )
         for lid, gid in enumerate(container.local_gids):
             container[lid] = sim_cls(gid)
 
@@ -149,7 +154,12 @@ class TestLBTime(TestCase):
         )
 
         container = SimulationContainer()
-        container.initialize(global_number_of_sims, len(global_ids), global_ids, [np.zeros(3) for _ in global_ids])
+        container.initialize(
+            global_number_of_sims,
+            len(global_ids),
+            global_ids,
+            [np.zeros(3) for _ in global_ids],
+        )
         for lid, gid in enumerate(container.local_gids):
             sim = None
             if gid not in [0, 2]:
@@ -244,7 +254,12 @@ class TestLBActive(TestCase):
         )
 
         container = SimulationContainer()
-        container.initialize(global_number_of_sims, len(global_ids), global_ids, [np.zeros(3) for _ in global_ids])
+        container.initialize(
+            global_number_of_sims,
+            len(global_ids),
+            global_ids,
+            [np.zeros(3) for _ in global_ids],
+        )
         for lid, gid in enumerate(container.local_gids):
             container[lid] = sim_cls(gid)
 
@@ -261,7 +276,7 @@ class TestLBActive(TestCase):
 
         load_balancer.balance()
 
-        actual_global_ids = []#
+        actual_global_ids = []  #
         for lid in container.local_gids:
             sim = container[lid]
             actual_global_ids.append(sim.get_global_id())
@@ -315,7 +330,12 @@ class TestLBActive(TestCase):
         )
 
         container = SimulationContainer()
-        container.initialize(global_number_of_sims, len(global_ids), global_ids, [np.zeros(3) for _ in global_ids])
+        container.initialize(
+            global_number_of_sims,
+            len(global_ids),
+            global_ids,
+            [np.zeros(3) for _ in global_ids],
+        )
         for lid, gid in enumerate(container.local_gids):
             container[lid] = sim_cls(gid)
 
@@ -414,7 +434,12 @@ class TestLBActive(TestCase):
         )
 
         container = SimulationContainer()
-        container.initialize(global_number_of_sims, len(global_ids), global_ids, [np.zeros(3) for _ in global_ids])
+        container.initialize(
+            global_number_of_sims,
+            len(global_ids),
+            global_ids,
+            [np.zeros(3) for _ in global_ids],
+        )
         for lid, gid in enumerate(container.local_gids):
             container[lid] = sim_cls(gid)
 
@@ -514,7 +539,12 @@ class TestLBActive(TestCase):
         )
 
         container = SimulationContainer()
-        container.initialize(global_number_of_sims, len(global_ids), global_ids, [np.zeros(3) for _ in global_ids])
+        container.initialize(
+            global_number_of_sims,
+            len(global_ids),
+            global_ids,
+            [np.zeros(3) for _ in global_ids],
+        )
         for lid, gid in enumerate(container.local_gids):
             container[lid] = sim_cls(gid)
 

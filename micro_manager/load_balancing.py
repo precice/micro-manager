@@ -210,7 +210,10 @@ class LoadBalancer:
             "micro_manager.solve.load_balancing.init"
         )
         current_partitioning = get_ranks_of_sims(
-            self._sim_container.local_gids, self._rank, self._comm, self._sim_container.global_num_sims
+            self._sim_container.local_gids,
+            self._rank,
+            self._comm,
+            self._sim_container.global_num_sims,
         )
         # self._precice_participant.start_profiling_section("micro_manager.solve.load_balancing.init.partition")
         target_partitioning, work_loads = self._partition_impl(
@@ -305,9 +308,9 @@ class LoadBalancer:
             list of global inactive gids
         """
         global_active_gids = set(self._get_global_active_gids())
-        global_inactive_gids = set(np.arange(self._sim_container.global_num_sims)).difference(
-            global_active_gids
-        )
+        global_inactive_gids = set(
+            np.arange(self._sim_container.global_num_sims)
+        ).difference(global_active_gids)
         return list(global_inactive_gids)
 
     def _exchange_sims(self, send_map, recv_map, inactive_map={}):
@@ -586,7 +589,10 @@ class ActiveBalancer(LoadBalancer):
         send_map: dict[int, int] = dict()
         recv_map: dict[int, int] = dict()
         ranks_of_sims = get_ranks_of_sims(
-            self._sim_container.local_gids, self._rank, self._comm, self._sim_container.global_num_sims
+            self._sim_container.local_gids,
+            self._rank,
+            self._comm,
+            self._sim_container.global_num_sims,
         )
         global_ids_of_inactive_sims = self._get_global_inactive_gids()
 

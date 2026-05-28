@@ -48,7 +48,13 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             Handles instantiation of micro simulation.
         """
         super().__init__(
-            config, sim_container.local_num_sims, sim_container, micro_problem_cls, model_manager, base_logger, rank
+            config,
+            sim_container.local_num_sims,
+            sim_container,
+            micro_problem_cls,
+            model_manager,
+            base_logger,
+            rank,
         )
         self._comm = comm
         self._interpolation = RBF_PU(
@@ -60,7 +66,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
-        self._similarity_dists = np.zeros((sim_container.local_num_sims, sim_container.local_num_sims))
+        self._similarity_dists = np.zeros(
+            (sim_container.local_num_sims, sim_container.local_num_sims)
+        )
 
     def compute_adaptivity(
         self,
@@ -299,7 +307,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         # Update the set of inactive micro sims
         for lid in to_be_activated_ids:
             associated_active_id = self._sim_is_associated_to[lid]
-            self._sim_container[lid] = self._model_manager.get_instance(lid, self._micro_problem_cls)
+            self._sim_container[lid] = self._model_manager.get_instance(
+                lid, self._micro_problem_cls
+            )
             state = self._sim_container.get_state(associated_active_id)
             self._sim_container.set_state(lid, state)
             # Active sim cannot have an associated sim

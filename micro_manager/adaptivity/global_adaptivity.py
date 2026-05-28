@@ -82,7 +82,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             self._MPI_local_rank == 0
         ):  # Only the first rank in the node allocates the shared memory
             nbytes = (
-                self._sim_container.global_num_sims * self._sim_container.global_num_sims * itemsize
+                self._sim_container.global_num_sims
+                * self._sim_container.global_num_sims
+                * itemsize
             )
         else:
             nbytes = 0
@@ -103,7 +105,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._similarity_dists: np.ndarray = np.ndarray(
             buffer=array_buffer,
             dtype="f",
-            shape=(self._sim_container.global_num_sims, self._sim_container.global_num_sims),
+            shape=(
+                self._sim_container.global_num_sims,
+                self._sim_container.global_num_sims,
+            ),
         )
 
         if self._MPI_local_rank == 0:
@@ -309,7 +314,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             or self._adaptivity_output_type == "local"
         ):
             ranks_of_sims = get_ranks_of_sims(
-                self._sim_container.local_gids, self._rank, self._comm, self._sim_container.global_num_sims
+                self._sim_container.local_gids,
+                self._rank,
+                self._comm,
+                self._sim_container.global_num_sims,
             )
 
             assoc_ranks = []  # Ranks to which inactive sims on this rank are associated
@@ -416,7 +424,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     active_to_inactive_map[assoc_active_gid] = [gid]
             else:  # If associated active simulation is on this rank, copy the output directly
                 lid = self._sim_container.local_gids.index(gid)
-                assoc_active_lid = self._sim_container.local_gids.index(assoc_active_gid)
+                assoc_active_lid = self._sim_container.local_gids.index(
+                    assoc_active_gid
+                )
                 micro_output[lid] = deepcopy(micro_output[assoc_active_lid])
 
         assoc_active_gids = list(active_to_inactive_map.keys())
@@ -483,7 +493,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
             # Associated active simulation is on the same rank
             if self._sim_container.is_sim_on_rank(assoc_active_gid):
-                assoc_active_lid = self._sim_container.local_gids.index(assoc_active_gid)
+                assoc_active_lid = self._sim_container.local_gids.index(
+                    assoc_active_gid
+                )
                 state = self._sim_container.get_state(assoc_active_lid)
                 self._sim_container.set_state(to_be_activated_lid, state)
             else:  # Associated active simulation is not on this rank
@@ -503,7 +515,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             if sim == 0 or sim is None:
                 sim_states_and_global_ids.append((None, gid))
             else:
-                sim_states_and_global_ids.append((self._sim_container.get_state(lid), gid))
+                sim_states_and_global_ids.append(
+                    (self._sim_container.get_state(lid), gid)
+                )
 
         recv_reqs = p2p_comm(
             self._sim_container.local_gids,

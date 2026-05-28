@@ -176,7 +176,9 @@ class ModelAdaptivity:
             List of lids of simulations that were switched.
         """
         locations = self._sim_container.local_coords
-        active_sims = self._create_active_mask(active_sim_ids, self._sim_container.local_num_sims)
+        active_sims = self._create_active_mask(
+            active_sim_ids, self._sim_container.local_num_sims
+        )
         current_res = self._gather_current_resolutions(active_sims)
         target_res = self._gather_target_resolutions(
             current_res, locations, t, inputs, prev_output, active_sims
@@ -243,7 +245,9 @@ class ModelAdaptivity:
             List of all active simulation ids.
         """
         locations = self._sim_container.local_coords
-        active_sims = self._create_active_mask(active_sim_ids, self._sim_container.local_num_sims)
+        active_sims = self._create_active_mask(
+            active_sim_ids, self._sim_container.local_num_sims
+        )
         resolutions = self._gather_current_resolutions(active_sims)
         target_resolutions = self._gather_target_resolutions(
             resolutions, locations, t, inputs, prev_output, active_sims
@@ -301,9 +305,7 @@ class ModelAdaptivity:
             (idx for idx, cls in enumerate(self._model_classes) if cls.name == sim.name)
         )
 
-    def _gather_current_resolutions(
-        self, active_sims: np.ndarray
-    ) -> np.ndarray:
+    def _gather_current_resolutions(self, active_sims: np.ndarray) -> np.ndarray:
         """
         Gathers current resolutions. Inactive sims have resolution -1.
 
@@ -319,7 +321,9 @@ class ModelAdaptivity:
         """
         return np.array(
             [
-                self.get_sim_class_resolution(self._sim_container[lid]) if active_sims[lid] == 1 else -1
+                self.get_sim_class_resolution(self._sim_container[lid])
+                if active_sims[lid] == 1
+                else -1
                 for lid in self._sim_container.range_lid
             ]
         )

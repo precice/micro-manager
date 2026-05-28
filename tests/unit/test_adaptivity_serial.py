@@ -98,7 +98,12 @@ class TestLocalAdaptivity(TestCase):
         configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         container = SimulationContainer()
-        container.initialize(self._number_of_sims, self._number_of_sims, list(range(self._number_of_sims)), [np.zeros(3) for _ in range(self._number_of_sims)])
+        container.initialize(
+            self._number_of_sims,
+            self._number_of_sims,
+            list(range(self._number_of_sims)),
+            [np.zeros(3) for _ in range(self._number_of_sims)],
+        )
 
         adaptivity_controller = AdaptivityCalculator(
             configurator,
@@ -150,7 +155,12 @@ class TestLocalAdaptivity(TestCase):
         configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         container = SimulationContainer()
-        container.initialize(self._number_of_sims, self._number_of_sims, list(range(self._number_of_sims)), [np.zeros(3) for _ in range(self._number_of_sims)])
+        container.initialize(
+            self._number_of_sims,
+            self._number_of_sims,
+            list(range(self._number_of_sims)),
+            [np.zeros(3) for _ in range(self._number_of_sims)],
+        )
 
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
@@ -190,7 +200,12 @@ class TestLocalAdaptivity(TestCase):
         configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         container = SimulationContainer()
-        container.initialize(self._number_of_sims, self._number_of_sims, list(range(self._number_of_sims)), [np.zeros(3) for _ in range(self._number_of_sims)])
+        container.initialize(
+            self._number_of_sims,
+            self._number_of_sims,
+            list(range(self._number_of_sims)),
+            [np.zeros(3) for _ in range(self._number_of_sims)],
+        )
 
         adaptivity_controller = AdaptivityCalculator(
             configurator,
@@ -289,7 +304,12 @@ class TestLocalAdaptivity(TestCase):
         import warnings
 
         container = SimulationContainer()
-        container.initialize(self._number_of_sims, self._number_of_sims, list(range(self._number_of_sims)), [np.zeros(3) for _ in range(self._number_of_sims)])
+        container.initialize(
+            self._number_of_sims,
+            self._number_of_sims,
+            list(range(self._number_of_sims)),
+            [np.zeros(3) for _ in range(self._number_of_sims)],
+        )
 
         configurator = MagicMock()
         configurator.adaptivity_similarity_measure = MagicMock(return_value="L2rel")
@@ -351,7 +371,12 @@ class TestLocalAdaptivity(TestCase):
         configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         container = SimulationContainer()
-        container.initialize(self._number_of_sims, self._number_of_sims, list(range(self._number_of_sims)), [np.zeros(3) for _ in range(self._number_of_sims)])
+        container.initialize(
+            self._number_of_sims,
+            self._number_of_sims,
+            list(range(self._number_of_sims)),
+            [np.zeros(3) for _ in range(self._number_of_sims)],
+        )
 
         adaptivity_controller = AdaptivityCalculator(
             configurator,
@@ -396,7 +421,12 @@ class TestLocalAdaptivity(TestCase):
         configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         container = SimulationContainer()
-        container.initialize(self._number_of_sims, self._number_of_sims, list(range(self._number_of_sims)), [np.zeros(3) for _ in range(self._number_of_sims)])
+        container.initialize(
+            self._number_of_sims,
+            self._number_of_sims,
+            list(range(self._number_of_sims)),
+            [np.zeros(3) for _ in range(self._number_of_sims)],
+        )
 
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
