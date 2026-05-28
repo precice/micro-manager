@@ -61,11 +61,11 @@ class MicroManagerCoupling(MicroManager):
         self._config.set_logger(self._logger)
         self._config.read_json_micro_manager()
 
-        self._memory_usage_output_type = self._config.get_memory_usage_output_type()
+        self._memory_usage_output_type = self._config.memory_usage_output_type()
 
-        self._memory_usage_output_n = self._config.get_memory_usage_output_n()
+        self._memory_usage_output_n = self._config.memory_usage_output_n()
 
-        self._output_dir = self._config.get_output_dir()
+        self._output_dir = self._config.output_dir()
 
         if self._output_dir is not None:
             self._output_dir = os.path.abspath(self._output_dir) + "/"
@@ -74,17 +74,17 @@ class MicroManagerCoupling(MicroManager):
             self._output_dir = os.path.abspath(os.getcwd()) + "/"
 
         # Data names of data to output to the snapshot database
-        self._write_data_names = self._config.get_write_data_names()
+        self._write_data_names = self._config.write_data_names()
 
         # Data names of data to read as input parameter to the simulations
-        self._read_data_names = self._config.get_read_data_names()
+        self._read_data_names = self._config.read_data_names()
 
-        self._micro_dt = self._config.get_micro_dt()
+        self._micro_dt = self._config.micro_dt()
 
-        self._macro_mesh_name = self._config.get_macro_mesh_name()
+        self._macro_mesh_name = self._config.macro_mesh_name()
 
         # Parameter for interpolation in case of a simulation crash
-        self._interpolate_crashed_sims = self._config.interpolate_crashed_micro_sim()
+        self._interpolate_crashed_sims = self._config.enable_crashed_sim_interpolation()
         if self._interpolate_crashed_sims:
             if Interpolation is None:
                 self._logger.log_info_rank_zero(
@@ -96,16 +96,16 @@ class MicroManagerCoupling(MicroManager):
                 self._crash_threshold = 0.2
                 self._number_of_nearest_neighbors = 4
 
-        self._micro_n_out = self._config.get_micro_output_n()
+        self._micro_n_out = self._config.micro_output_n()
 
-        self._lazy_init = self._config.initialize_sims_lazily()
+        self._lazy_init = self._config.enable_adaptivity_lazy_init()
 
-        self._is_adaptivity_on = self._config.turn_on_adaptivity()
+        self._is_adaptivity_on = self._config.enable_adaptivity()
 
         if self._is_adaptivity_on:
             self._data_for_adaptivity: dict[str, list] = dict()
 
-            self._adaptivity_data_names = self._config.get_data_for_adaptivity()
+            self._adaptivity_data_names = self._config.data_for_adaptivity()
 
             # Names of macro data to be used for adaptivity computation
             self._adaptivity_macro_data_names: list = []
@@ -119,21 +119,21 @@ class MicroManagerCoupling(MicroManager):
                     self._adaptivity_micro_data_names.append(name)
 
             self._adaptivity_in_every_implicit_step = (
-                self._config.is_adaptivity_required_in_every_implicit_iteration()
+                self._config.enable_adaptivity_each_implicit_iteration()
             )
 
-        self._adaptivity_n = self._config.get_adaptivity_n()
+        self._adaptivity_n = self._config.adaptivity_n()
 
-        self._adaptivity_output_type = self._config.get_adaptivity_output_type()
+        self._adaptivity_output_type = self._config.adaptivity_output_type()
 
-        self._adaptivity_output_n = self._config.get_adaptivity_output_n()
+        self._adaptivity_output_n = self._config.adaptivity_output_n()
 
-        self._is_model_adaptivity_on = self._config.turn_on_model_adaptivity()
+        self._is_model_adaptivity_on = self._config.enable_model_adaptivity()
 
         # Define the preCICE Participant
         self._participant = precice.Participant(
             "Micro-Manager",
-            self._config.get_precice_config_file_name(),
+            self._config.precice_config_file_name(),
             self._rank,
             self._size,
         )
@@ -149,9 +149,9 @@ class MicroManagerCoupling(MicroManager):
             self.state_loader = lambda sim: sim.attachments
             self.state_setter = lambda sim, state: sim.attachments.update(state)
         self._is_load_balancing = (
-            self._config.turn_on_load_balancing() and self._is_parallel
+            self._config.enable_load_balancing() and self._is_parallel
         )
-        self._load_balancing_n = self._config.get_load_balancing_n()
+        self._load_balancing_n = self._config.load_balancing_n()
         self.load_balancing = None
 
     # **************
@@ -433,13 +433,13 @@ class MicroManagerCoupling(MicroManager):
 
         # Decompose the macro-domain and set the mesh access region for each partition in preCICE
         if not len(
-            self._config.get_macro_domain_bounds()
+            self._config.macro_domain_bounds()
         ) / 2 == self._participant.get_mesh_dimensions(self._macro_mesh_name):
             raise Exception("Provided macro mesh bounds are of incorrect dimension")
 
         if self._is_parallel:
             if not len(
-                self._config.get_ranks_per_axis()
+                self._config.ranks_per_axis()
             ) == self._participant.get_mesh_dimensions(self._macro_mesh_name):
                 raise Exception(
                     "Provided ranks combination is of incorrect dimension"
@@ -451,7 +451,7 @@ class MicroManagerCoupling(MicroManager):
         if self._is_parallel and not self._is_load_balancing:
             coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds()
         else:  # When serial or load balancing, the whole macro domain is assigned to one/each rank
-            coupling_mesh_bounds = self._config.get_macro_domain_bounds()
+            coupling_mesh_bounds = self._config.macro_domain_bounds()
 
         self._participant.set_mesh_access_region(
             self._macro_mesh_name, coupling_mesh_bounds
@@ -585,14 +585,14 @@ class MicroManagerCoupling(MicroManager):
         # Setup remote workers
         base_dir = os.path.dirname(os.path.abspath(__file__))
         worker_exec = os.path.join(base_dir, "tasking", "worker_main.py")
-        num_ranks = self._config.get_tasking_num_workers()
+        num_ranks = self._config.tasking_num_workers()
         self._conn = spawn_local_workers(
             worker_exec,
             num_ranks,
-            self._config.get_tasking_backend(),
-            self._config.get_tasking_use_slurm(),
-            self._config.get_mpi_impl(),
-            self._config.get_tasking_hostfile(),
+            self._config.tasking_backend(),
+            self._config.enable_tasking_slurm(),
+            self._config.mpi_impl(),
+            self._config.tasking_hostfile(),
         )
 
         # load micro sim
@@ -611,17 +611,17 @@ class MicroManagerCoupling(MicroManager):
                 self._model_adaptivity_controller.get_resolution_sim_class(0)
             )
         else:
-            micro_problem_base = load_backend_class(self._config.get_micro_file_name())
+            micro_problem_base = load_backend_class(self._config.micro_file_name())
             micro_problem_cls = create_simulation_class(
                 self._logger,
                 micro_problem_base,
-                self._config.get_micro_file_name(),
-                self._config.get_tasking_num_workers(),
+                self._config.micro_file_name(),
+                self._config.tasking_num_workers(),
                 self._conn,
                 "MicroSimulationDefault",
             )
             self._model_manager.register(
-                micro_problem_cls, self._config.turn_on_micro_stateless()
+                micro_problem_cls, self._config.enable_micro_stateless()
             )
 
         # Create micro simulation objects

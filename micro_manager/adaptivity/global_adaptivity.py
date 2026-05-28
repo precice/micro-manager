@@ -23,7 +23,7 @@ from micro_manager.tools.p2p import p2p_comm, get_ranks_of_sims
 class GlobalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(
         self,
-        configurator: Config,
+        config: Config,
         global_number_of_sims: int,
         global_ids: list,
         participant,
@@ -38,7 +38,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         Parameters
         ----------
-        configurator : object of class Config
+        config : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
         global_number_of_sims : int
             Total number of simulations in the macro-micro coupled problem.
@@ -58,7 +58,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Handles instantiation of the micro simulation.
         """
         super().__init__(
-            configurator,
+            config,
             global_number_of_sims,
             micro_problem_cls,
             model_manager,

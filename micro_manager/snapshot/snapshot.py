@@ -41,7 +41,7 @@ class MicroManagerSnapshot(MicroManager):
         self._config.set_logger(self._logger)
         self._config.read_json_snapshot()
 
-        self._output_dir = self._config.get_output_dir()
+        self._output_dir = self._config.output_dir()
 
         if self._output_dir is not None:
             self._output_dir = os.path.abspath(self._output_dir) + "/"
@@ -49,24 +49,24 @@ class MicroManagerSnapshot(MicroManager):
         else:
             self._output_dir = os.path.abspath(os.getcwd()) + "/"
 
-        self._output_file_name = self._config.get_output_file_name()
+        self._output_file_name = self._config.output_file_name()
 
         # Data names of data to output to the snapshot database
-        self._write_data_names = self._config.get_write_data_names()
+        self._write_data_names = self._config.write_data_names()
 
         # Data names of data to read as input parameter to the simulations
-        self._read_data_names = self._config.get_read_data_names()
+        self._read_data_names = self._config.read_data_names()
 
-        self._micro_dt = self._config.get_micro_dt()
+        self._micro_dt = self._config.micro_dt()
 
         # Path to the parameter file containing input parameters for micro simulations
-        self._parameter_file = self._config.get_parameter_file_name()
+        self._parameter_file = self._config.parameter_file_name()
 
         # Get name of pos-processing script
-        self._post_processing_file_name = self._config.get_postprocessing_file_name()
+        self._post_processing_file_name = self._config.postprocessing_file_name()
 
         # Check if simulation object can be re-used.
-        self._initialize_once = self._config.create_single_sim_object()
+        self._initialize_once = self._config.enable_single_sim_object()
 
         # Collect crashed indices
         self._crashed_snapshots: list[int] = []  # Declaration
@@ -87,7 +87,7 @@ class MicroManagerSnapshot(MicroManager):
         micro_problem_cls = create_simulation_class(
             self._logger,
             self._micro_problem,
-            self._config.get_micro_file_name(),
+            self._config.micro_file_name(),
             1,
             None,
         )
@@ -262,7 +262,7 @@ class MicroManagerSnapshot(MicroManager):
         for i in range(self._local_number_of_sims):
             self._global_ids_of_local_sims.append(sim_id)
             sim_id += 1
-        self._micro_problem = load_backend_class(self._config.get_micro_file_name())
+        self._micro_problem = load_backend_class(self._config.micro_file_name())
 
         self._micro_sims_have_output = False
         if hasattr(self._micro_problem, "output") and callable(

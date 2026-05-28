@@ -2,6 +2,7 @@
 
 ## latest
 
+- Redesigned configuration loading for enhanced clarity and standardization [#264](https://github.com/precice/micro-manager/pull/264)
 - Added RBF interpolation, currently used within adaptivity for output interpolation [#242](https://github.com/precice/micro-manager/pull/242)
 
 ## v0.10.1

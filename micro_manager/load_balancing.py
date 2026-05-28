@@ -60,7 +60,7 @@ class LoadBalancer:
         rank: int
             local rank
         """
-        self._enabled = config.turn_on_load_balancing()
+        self._enabled = config.enable_load_balancing()
         self._precice_participant = precice_participant
         self._model_manager = model_manager
         self._adaptivity_controller = adaptivity_controller
@@ -78,7 +78,7 @@ class LoadBalancer:
         self._balance_metric_local = dict()
         self._balance_metric_global = np.zeros(global_number_of_sims)
         self._partition_impl = self.get_partition_impl(
-            config.get_load_balancing_partitioning()
+            config.load_balancing_partitioning()
         )
 
         if (
@@ -440,8 +440,8 @@ class ActiveBalancer(LoadBalancer):
             rank,
         )
         self._partition_impl = lambda a, b: (None, None)
-        self._threshold = config.get_load_balancing_threshold()
-        self._balance_inactive_sims = config.turn_on_load_balancing_inactive()
+        self._threshold = config.load_balancing_threshold()
+        self._balance_inactive_sims = config.enable_load_balancing_inactive()
         self._bypass_skip = False  # used for testing
         self._bypass_active = False  # used for testing
 
@@ -716,7 +716,7 @@ def create_load_balancer(
     comm: MPI.Comm,
     rank: int,
 ) -> LoadBalancer:
-    lb_type = config.get_load_balancing_type()
+    lb_type = config.load_balancing_type()
 
     if lb_type == "time":
         lb_cls = LoadBalancer
