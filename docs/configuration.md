@@ -113,6 +113,57 @@ To turn on adaptivity, set `"adaptivity": true` in `simulation_params`. Then und
 | `similarity_measure`              | Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.                                                                                     | `L2rel`       |
 | `lazy_initialization`             | Set to `true` to lazily create and initialize micro simulations. If selected, micro simulation objects are created only when the micro simulation is activated for the first time.                                                                                                                  | `false`       |
 | `load_balancing`                  | Set to `true` to dynamically balance simulations for parallel runs. See [load balancing settings](#load-balancing) below.                                                                                                                                                                           | `false`       |
+| `mappings`                        | Optional interpolation of results. Set to list of mapping configurations. See below for further details.                                                                                                                                                                                            | `[]`          |
+
+Results of inactive simulations can be interpolated from active simulations using radial basis function interpolation. For data in `write_data_names`, a function
+can be defined from `read_data_names` to `write_data_names`. When using multiple functions, their interpolation target, i.e., fields
+of `write_data_names` must be mutually disjunct. Mappings can be defined as:
+
+```json
+"mappings": [
+    {
+        "src_fields": ["input1", "input2"],
+        "dst_fields": ["output1", "output2"],
+        "n_neighbors": 50,
+        "rbf_config": {
+            "basis": {
+                "type": "c6"
+            }
+        },
+        "domain_config": {
+            "max_filling": 8,
+            "coarsening_factor": 2,
+            "projection": {
+                "type": "std",
+                "target_dims": 3
+            }
+        }
+    },
+]
+```
+
+| Parameter       | Description                             | Default |
+|-----------------|-----------------------------------------|---------|
+| `src_fields`    | List of entries from `read_data_names`  | `None`  |
+| `dst_fields`    | List of entries from `write_data_names` | `None`  |
+| `n_neighbours`  | The minimum amount of support points.   | `50`    |
+| `rbf_config`    | RBF interpolation configuration.        | `None`  |
+| `domain_config` | Function source domain description.     |         |
+
+A selection of basis functions is available: `c0`, `c2`, `c4`, `c6`.
+The domain must be described/further configured as input data is shared across ranks and must be redistributed for interpolation.
+Towards this, spatial discretization techniques are used. For better performance, data can be projected to a lower dimensional space
+using the fields with the highest standard deviation.
+
+| Parameter           | Description                                                               | Default    |
+|---------------------|---------------------------------------------------------------------------|------------|
+| `use_pu`            | Enables PU-RBF. (currently not supported)                                 | `False`    |
+| `pu_overlap`        | Controlls overlap radius for PU decomposition.                            | `0.1`      |
+| `basis`             | RBF basis function: `c0`, `c2`, `c4`, `c6`                                | `None`     |
+| `max_filling`       | Tunes maximum filling of tree nodes used during decomposition.            | `8`        |
+| `coarsening_factor` | Adjusts the fidelity of the discretized domain. Only integer values >= 1. | `2`        |
+| `projection`        | Either `std` or `identity`.                                               | `identity` |
+| `target_dims`       | Only if `std` is used. Denotes the target dimension after projection.     | `None`     |
 
 Example of adaptivity configuration is
 

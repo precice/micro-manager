@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## latest
+
+- Added RBF interpolation, currently used within adaptivity for output interpolation [#242](https://github.com/precice/micro-manager/pull/242)
+
 ## v0.10.1
 
 - Fixed parameter inspection of the `initialize()` routine when micro simulation is pybind11 wrapped [#281](https://github.com/precice/micro-manager/pull/281)

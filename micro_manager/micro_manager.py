@@ -847,7 +847,7 @@ class MicroManagerCoupling(MicroManager):
 
             initial_micro_data_list = (
                 self._adaptivity_controller.get_full_field_micro_output(
-                    initial_micro_data_list
+                    initial_data, initial_micro_data_list
                 )
             )
 
@@ -1118,7 +1118,7 @@ class MicroManagerCoupling(MicroManager):
                 )
 
         micro_sims_output = self._adaptivity_controller.get_full_field_micro_output(
-            micro_sims_output
+            micro_sims_input, micro_sims_output
         )
 
         inactive_sim_lids = self._adaptivity_controller.get_inactive_sim_local_ids()
