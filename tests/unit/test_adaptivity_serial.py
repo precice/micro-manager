@@ -13,6 +13,7 @@ from micro_manager.simulation_container import SimulationContainer
 class MicroSimulation:
     def __init__(self, global_id):
         self._global_id = global_id
+        self.name = MicroSimulation.__name__
 
     def get_global_id(self):
         return self._global_id
@@ -164,7 +165,6 @@ class TestLocalAdaptivity(TestCase):
 
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
-            self._number_of_sims,
             sim_container=container,
             base_logger=MagicMock(),
             rank=0,
