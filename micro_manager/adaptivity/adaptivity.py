@@ -62,7 +62,7 @@ class AdaptivityCalculator:
         self._interp_min = -1
         self._mappings = []
         self._mapping_configs = []
-        mappings = configurator.get_adaptivity_mapping_configs()
+        mappings = config.adaptivity_mapping_configs()
         self._load_mappings(mappings)
 
         # is_sim_active: 1D array having state (active or inactive) of each micro simulation
