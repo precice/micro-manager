@@ -51,13 +51,14 @@ Bastidas, Manuela & Bringedal, Carina & Pop, Iuliu Sorin. (2021). A two-scale it
 
 These steps are repeated every time the adaptivity computation is triggered.
 
-The coarsening tolerance $$ t_c $$ is calculated by
+The coarsening tolerance $$ tol_c $$ is calculated by
 
-$$ t_c = C_c C_r \displaystyle\max_{x_{1},x_{2} \in N(t_{n})} {D(x_{1},x_{2}; t_{n})} $$
+$$ tol_c = C_c C_r \displaystyle\max_{x_{1},x_{2} \in N(t_{n})} {D(x_{1},x_{2}; t_{n})} $$
 
-The refining tolerance $$ t_r $$ is calculated by
 
-$$ t_r = C_r \displaystyle\max_{x_{1},x_{2} \in N(t_{n})} {D(x_{1},x_{2}; t_{n})} $$
+The refining tolerance $$ tol_r $$ is calculated by
+
+$$ tol_r = C_r \displaystyle\max_{x_{1},x_{2} \in N(t_{n})} {D(x_{1},x_{2}; t_{n})} $$
 
 The primary tuning parameters for adaptivity are the history parameter $$ \Lambda $$, the coarsening constant $$ C_c $$, and the refining constant $$ C_r $$. Their effects can be interpreted as:
 
