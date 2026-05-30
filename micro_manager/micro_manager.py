@@ -563,7 +563,9 @@ class MicroManagerCoupling(MicroManager):
         )
 
         # load micro sim
-        micro_problem_cls = None
+        self._model_manager.load_models(self._config, num_ranks, self._conn)
+        micro_problem_cls = self._model_manager.get_cls_by_idx(0)
+
         if self._is_model_adaptivity_on:
             self._model_adaptivity_controller: ModelAdaptivity = ModelAdaptivity(
                 self._model_manager,
@@ -572,24 +574,6 @@ class MicroManagerCoupling(MicroManager):
                 self._comm,
                 self._rank,
                 self._log_file,
-                self._conn,
-                num_ranks,
-            )
-            micro_problem_cls = (
-                self._model_adaptivity_controller.get_resolution_sim_class(0)
-            )
-        else:
-            micro_problem_base = load_backend_class(self._config.micro_file_name())
-            micro_problem_cls = create_simulation_class(
-                self._logger,
-                micro_problem_base,
-                self._config.micro_file_name(),
-                self._config.tasking_num_workers(),
-                self._conn,
-                "MicroSimulationDefault",
-            )
-            self._model_manager.register(
-                micro_problem_cls, self._config.enable_micro_stateless()
             )
 
         # Create micro simulation objects

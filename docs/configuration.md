@@ -11,7 +11,7 @@ The Micro Manager is configured with a [JSON](https://en.wikipedia.org/wiki/JSON
 
 ```json
 {
-    "micro_file_name": "python/micro.py",
+    "micro_file_names": ["python/micro.py"],
     "coupling_params": {
         "precice_config_file_name": "precice-config.xml",
         "macro_mesh_name": "Macro-Mesh",
@@ -29,13 +29,13 @@ The Micro Manager is configured with a [JSON](https://en.wikipedia.org/wiki/JSON
 
 These parameters are in the outer section.
 
-| Parameter                  | Description                                                                                                                                                                                           | Default       |
-|----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
-| `micro_file_name`          | Path to the file containing the Python importable micro simulation class. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed. | -             |
-| `micro_stateless`          | Boolean if micro simulation is stateless allowing model instancing.                                                                                                                                   | False         |
-| `output_directory`         | Path to output directory for logging and performance metrics. Directory is created if not existing already.                                                                                           | `.`           |
-| `memory_usage_output_type` | Set to either `local`, `global`, or `all`. `local` outputs rank-wise peak memory usage. `global` outputs global averaged peak memory usage. `all` outputs both local and global levels.               | Empty string. |
-| `memory_usage_output_n`    | Interval of output.                                                                                                                                                                                   | 1             |
+| Parameter                  | Description                                                                                                                                                                                                  | Default       |
+|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
+| `micro_file_names`         | Paths to the files containing the Python importable micro simulation classes. If the files are not in the working directory, give the relative paths from the directory where the Micro Manager is executed. | -             |
+| `micro_stateless_flags`    | List of booleans if micro simulation is stateless allowing model instancing.                                                                                                                                 | False         |
+| `output_directory`         | Path to output directory for logging and performance metrics. Directory is created if not existing already.                                                                                                  | `.`           |
+| `memory_usage_output_type` | Set to either `local`, `global`, or `all`. `local` outputs rank-wise peak memory usage. `global` outputs global averaged peak memory usage. `all` outputs both local and global levels.                      | Empty string. |
+| `memory_usage_output_n`    | Interval of output.                                                                                                                                                                                          | 1             |
 
 All output is to a CSV file with the peak memory usage (RSS) in every time window, in MBs.
 
@@ -192,9 +192,7 @@ To turn on model adaptivity, set `"model_adaptivity": true` in `simulation_param
 
 | Parameter            | Description                                                                                                                                                                                                                                        |
 |----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `micro_file_names`   | List of paths to the files containing the Python importable micro simulation classes, in order of decreasing model fidelity. If the files are not in the working directory, give the relative path from the directory where the Micro Manager is executed. Requires a minimum of 2 files. |
 | `switching_function` | Path to the file containing the Python importable switching function. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.                                                  |
-| `micro_stateless`    | List of boolean values, whether the respective micro simulation model is stateless and can use model instancing.                                                                                                                                   |
 
 Example of model adaptivity configuration is
 
@@ -202,9 +200,7 @@ Example of model adaptivity configuration is
 "simulation_params": {
     "model_adaptivity": true,
     "model_adaptivity_settings": {
-        "micro_file_names": ["python-dummy/micro_dummy", "python-dummy/micro_dummy", "python-dummy/micro_dummy"],
         "switching_function": "mada_switcher",
-        "micro_stateless": [False, True, True]
     }
 }
 ```

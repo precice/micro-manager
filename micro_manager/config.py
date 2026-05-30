@@ -530,24 +530,39 @@ class Config:
         # ======================================================
 
         # convert paths to python-importable paths
-        self.micro_file_name.set = (
-            self.json["micro_file_name"]
-            .get_or_raise(
-                "Micro simulation file name: {data}",
-                "'micro_file_name' must be specified!",
-                str,
-            )
-            .replace("/", ".")
-            .replace("\\", ".")
-            .replace(".py", "")
+        file_names = self.json["micro_file_names"].get_or_raise(
+            "Micro simulation file name: {data}",
+            "'micro_file_name' must be specified!",
+            List[str],
         )
+        self.micro_file_names.set = [
+            name.replace("/", ".").replace("\\", ".").replace(".py", "")
+            for name in file_names
+        ]
+        if len(self.micro_file_names()) < 1:
+            self._logger.log_info_rank_zero(
+                "Must provide at least one micro simulation file."
+            )
+            raise RuntimeError("Missing Micro Simulation File")
 
-        self.enable_micro_stateless.set = self.json["micro_stateless"].get_with_default(
-            False,
+        self.micro_stateless_flags.set = self.json[
+            "micro_stateless_flags"
+        ].get_with_default(
+            [False] * len(self.micro_file_names()),
             "Only creating one full instance of Micro Model.",
             "Creating full instance of Micro Model per mesh vertex.",
-            bool,
+            List[bool],
         )
+
+        for i in range(len(self.micro_file_names())):
+            if self.micro_stateless_flags()[i]:
+                self._logger.log_info_rank_zero(
+                    f"Only creating one full instance of Micro Model {i}."
+                )
+            else:
+                self._logger.log_info_rank_zero(
+                    f"Creating full instance of Micro Model {i} per mesh vertex."
+                )
 
         self.output_dir.set = self.json["output_directory"].get_or_none(
             "Logging and metrics output directory: {data}",
@@ -884,14 +899,7 @@ class Config:
             )
 
         if self.enable_model_adaptivity():
-            file_names = self.json["simulation_params"]["model_adaptivity_settings"][
-                "micro_file_names"
-            ].get_or_raise()
-            self.model_adaptivity_file_names.set = [
-                name.replace("/", ".").replace("\\", ".").replace(".py", "")
-                for name in file_names
-            ]
-            if len(file_names) < 2:
+            if len(self.micro_file_names()) < 2:
                 self._logger.log_info_rank_zero(
                     "Not enough Micro Models provided for Model Adaptivity. Need min 2."
                 )
@@ -903,21 +911,6 @@ class Config:
             self.model_adaptivity_switching_function.set = self.json[
                 "simulation_params"
             ]["model_adaptivity_settings"]["switching_function"].get_or_raise()
-            self.model_adaptivity_micro_stateless.set = self.json["simulation_params"][
-                "model_adaptivity_settings"
-            ]["micro_stateless"].get_with_default(
-                [False] * len(file_names),
-            )
-
-            for i in range(len(file_names)):
-                if self.model_adaptivity_micro_stateless()[i]:
-                    self._logger.log_info_rank_zero(
-                        f"Only creating one full instance of Micro Model {i}."
-                    )
-                else:
-                    self._logger.log_info_rank_zero(
-                        f"Creating full instance of Micro Model {i} per mesh vertex."
-                    )
 
         # ======================================================
         #          Crash Interpolation and Diagnostics
@@ -1106,26 +1099,26 @@ class Config:
         pass
 
     @config_entry
-    def micro_file_name(self) -> str:
+    def micro_file_names(self) -> List[str]:
         """
-        Get the path to the Python script of the micro-simulation.
+        Get the paths to the Python scripts of the micro-simulations.
 
         Returns
         -------
-        micro_file_name : str
-            String carrying the path to the Python script of the micro-simulation.
+        micro_file_names : List[str]
+            List of strings carrying the paths to the Python scripts of the micro-simulations.
         """
         pass
 
     @config_entry
-    def enable_micro_stateless(self) -> bool:
+    def micro_stateless_flags(self) -> List[bool]:
         """
-        Boolean stating whether micro model is stateless or not.
+        List of booleans stating whether micro models are stateless or not.
 
         Returns
         -------
-        stateless : bool
-            True if micro model is stateless, False otherwise.
+        stateless_list : List[bool]
+            Entry is True if micro model is stateless, False otherwise.
         """
         pass
 
@@ -1495,30 +1488,6 @@ class Config:
         adaptivity : bool
             True is model adaptivity settings are done, False otherwise.
 
-        """
-        pass
-
-    @config_entry
-    def model_adaptivity_file_names(self) -> List[str]:
-        """
-        Get the paths to the Python scripts of the model-adaptive-micro-simulations.
-
-        Returns
-        -------
-        micro_file_names : List[str]
-            String carrying the path to the Python script of the micro-simulation.
-        """
-        pass
-
-    @config_entry
-    def model_adaptivity_micro_stateless(self) -> List[bool]:
-        """
-        List of boolean stating whether the respective micro model is stateless or not.
-
-        Returns
-        -------
-        stateless : List[bool]
-            True if micro model is stateless, False otherwise.
         """
         pass
 

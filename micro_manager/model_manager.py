@@ -1,6 +1,12 @@
-from micro_manager.micro_simulation import (
+from typing import Optional, Any
+
+from .tools.logging_wrapper import Logger
+from .config import Config
+from .micro_simulation import (
     MicroSimulationClass,
     MicroSimulationInterface,
+    load_backend_class,
+    create_simulation_class,
 )
 
 
@@ -10,30 +16,18 @@ class ModelWrapper(MicroSimulationInterface):
     This is used to replace instances in the main simulation container.
     """
 
-    def __init__(self, global_id, backend):
+    def __init__(self, global_id: int, backend: MicroSimulationInterface):
         self._global_id = global_id
         self._backend = backend
 
-    def set_global_id(self, global_id):
+    def __getattr__(self, name):
+        return getattr(self._backend, name)
+
+    def set_global_id(self, global_id: int):
         self._global_id = global_id
 
     def get_global_id(self) -> int:
         return self._global_id
-
-    def solve(self, macro_data, dt):
-        return self._backend.solve(macro_data, dt)
-
-    def get_state(self):
-        return self._backend.get_state()
-
-    def set_state(self, state):
-        self._backend.set_state(state)
-
-    def initialize(self, *args, **kwargs):
-        return self._backend.initialize(*args, **kwargs)
-
-    def output(self):
-        return self._backend.output()
 
     def destroy(self):
         # we do not want to delete our compute instance
@@ -43,10 +37,6 @@ class ModelWrapper(MicroSimulationInterface):
     def __class__(self):
         return self._backend.__class__
 
-    @property
-    def name(self):
-        return self._backend.name
-
 
 class ModelManager:
     """
@@ -55,10 +45,31 @@ class ModelManager:
     as the ModelManager handles either case.
     """
 
-    def __init__(self):
+    def __init__(self, logger: Logger):
         self._registered_classes: list[MicroSimulationClass] = []
         self._stateless_map: dict[MicroSimulationClass, bool] = dict()
         self._backend_map: dict[MicroSimulationClass, MicroSimulationInterface] = dict()
+        self._logger: Logger = logger
+
+    def load_models(self, config: Config, n_workers: int, conn_workers: Optional[Any]):
+        stateless_flags = config.micro_stateless_flags()
+        for idx, model_file in enumerate(config.micro_file_names()):
+            try:
+                base_model = load_backend_class(model_file)
+                sim_cls = create_simulation_class(
+                    self._logger, base_model, model_file, n_workers, conn_workers
+                )
+                self.register(sim_cls, stateless_flags[idx])
+            except Exception as e:
+                self._logger.log_info_rank_zero(
+                    f"Failed to load model class with error: {e}"
+                )
+
+        if (
+            len(self._registered_classes) != len(stateless_flags)
+            or len(self._registered_classes) == 0
+        ):
+            raise RuntimeError("Not all models were loaded. Stopping!")
 
     def register(self, micro_sim_cls: MicroSimulationClass, stateless: bool):
         """
@@ -81,6 +92,10 @@ class ModelManager:
             self._backend_map[micro_sim_cls] = micro_sim_cls(
                 len(self._registered_classes) - 1
             )
+
+    @property
+    def num_models(self) -> int:
+        return len(self._registered_classes)
 
     def get_cls_by_name(self, name: str) -> MicroSimulationClass:
         """
@@ -115,6 +130,28 @@ class ModelManager:
             Class given by index
         """
         return self._registered_classes[idx]
+
+    def get_idx_of_sim(self, sim: MicroSimulationInterface) -> int:
+        """
+        Returns the model index of the provided simulation object
+
+        Parameters
+        ----------
+        sim: MicroSimulationInterface
+            simulation object to be checked
+
+        Returns
+        -------
+        idx: int
+            model index
+        """
+        return next(
+            (
+                idx
+                for idx, cls in enumerate(self._registered_classes)
+                if cls.name == sim.name
+            )
+        )
 
     def is_stateless(self, name: str) -> bool:
         """
