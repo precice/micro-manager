@@ -200,7 +200,7 @@ class ModelAdaptivity:
 
             # check if a state of the target resolution exists
             # then update state buffer with current state
-            state_dict = self._sim_container.get_state(lid)
+            state_dict = self._sim_container.get_sim_state(lid)
             new_state_exists = key_new in state_dict
 
             # construct new sim and delay initialization if possible

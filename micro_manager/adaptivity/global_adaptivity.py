@@ -496,8 +496,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 assoc_active_lid = self._sim_container.local_gids.index(
                     assoc_active_gid
                 )
-                state = self._sim_container.get_state(assoc_active_lid)
-                self._sim_container.set_state(to_be_activated_lid, state)
+                state = self._sim_container.get_sim_state(assoc_active_lid)
+                self._sim_container.set_sim_state(to_be_activated_lid, state)
             else:  # Associated active simulation is not on this rank
                 if assoc_active_gid in to_be_activated_map:
                     to_be_activated_map[assoc_active_gid].append(to_be_activated_lid)
@@ -516,7 +516,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 sim_states_and_global_ids.append((None, gid))
             else:
                 sim_states_and_global_ids.append(
-                    (self._sim_container.get_state(lid), gid)
+                    (self._sim_container.get_sim_state(lid), gid)
                 )
 
         recv_reqs = p2p_comm(
@@ -537,7 +537,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 self._sim_container[lid] = self._model_manager.get_instance(
                     self._sim_container.local_gids[lid], self._micro_problem_cls
                 )
-                self._sim_container.set_state(lid, state)
+                self._sim_container.set_sim_state(lid, state)
 
         # Delete the micro simulation object if it is inactive
         for gid in self._sim_container.local_gids:

@@ -310,8 +310,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             self._sim_container[lid] = self._model_manager.get_instance(
                 lid, self._micro_problem_cls
             )
-            state = self._sim_container.get_state(associated_active_id)
-            self._sim_container.set_state(lid, state)
+            state = self._sim_container.get_sim_state(associated_active_id)
+            self._sim_container.set_sim_state(lid, state)
             # Active sim cannot have an associated sim
             self._sim_is_associated_to[lid] = -2
 

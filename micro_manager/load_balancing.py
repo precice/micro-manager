@@ -345,7 +345,7 @@ class LoadBalancer:
                 is_stateless,
                 None
                 if is_stateless or is_inactive
-                else self._sim_container.get_state(lid),
+                else self._sim_container.get_sim_state(lid),
                 cls_name,
                 gid,
                 coord,
@@ -381,7 +381,7 @@ class LoadBalancer:
             lid = self._sim_container.add_sim(gid, sim, coord)
 
             if not is_stateless and state is not None:
-                self._sim_container.set_state(lid, state)
+                self._sim_container.set_sim_state(lid, state)
 
 
 class ActiveBalancer(LoadBalancer):

@@ -5,6 +5,14 @@ import numpy as np
 
 
 class SimulationContainer:
+    """
+    The simulation container stores all simulation instances of this rank alongside
+    the corresponding GIDs and macro-scale coordinates. Further, this container manages
+    checkpointing by providing methods to store and load simulation states. Lastly, it
+    provides functionality to insert and remove simulation instances as well as further
+    utility methods and properties.
+    """
+
     EntryType = Tuple[
         Optional[MicroSimulationInterface],
         Dict[str, Optional[Any]],
@@ -14,7 +22,8 @@ class SimulationContainer:
 
     def __init__(self):
         """
-        Constructs SimContainer. When model adaptivity is active, state storage needs to capture states of all models.
+        Constructs SimulationContainer.
+        When model adaptivity is active, state storage must capture the states of all models.
 
         Parameters
         ----------
@@ -192,7 +201,7 @@ class SimulationContainer:
         for lid in self.range_lid:
             self._sim_checkpoints[lid].clear()
 
-    def get_state(self, lid: int) -> Dict[str, Any]:
+    def get_sim_state(self, lid: int) -> Dict[str, Any]:
         """
         Gets the state of the simulation at the given local id.
 
@@ -215,7 +224,7 @@ class SimulationContainer:
 
         return state_dict
 
-    def set_state(self, lid: int, state: Dict[str, Any]) -> None:
+    def set_sim_state(self, lid: int, state: Dict[str, Any]) -> None:
         """
         Sets the state of the simulation at the given local id to the provided state.
 
@@ -237,7 +246,7 @@ class SimulationContainer:
 
     def __len__(self) -> int:
         """
-        Returns the number of local simulations.
+        Returns the number of simulations on this rank (local).
 
         Returns
         -------
@@ -249,7 +258,7 @@ class SimulationContainer:
     def __iter__(self) -> Iterable[EntryType]:
         """
         Iterates over all entries in this container. Each entry is a tuple of a potential
-        simulation instance, its checkpoint data, the GID and spatial coordinate.
+        simulation instance, its checkpoint data, the GID, and the macro-scale coordinate.
 
         Returns
         -------
