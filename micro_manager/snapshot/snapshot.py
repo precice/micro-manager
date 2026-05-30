@@ -243,7 +243,6 @@ class MicroManagerSnapshot(MicroManager):
                         self._rank
                     )
                 )
-                self._is_rank_empty = True
             else:
                 raise Exception("Snapshot has no micro simulations.")
 

@@ -8,6 +8,7 @@ from mpi4py import MPI
 from micro_manager.load_balancing import LoadBalancer, ActiveBalancer
 from micro_manager.micro_simulation import create_simulation_class
 from micro_manager.tools.p2p import get_ranks_of_sims
+from micro_manager.simulation_container import SimulationContainer
 
 
 class MicroSimulation:
@@ -76,9 +77,15 @@ class TestLBTime(TestCase):
             None,
         )
 
-        micro_sims = []
-        for i in global_ids:
-            micro_sims.append(sim_cls(i))
+        container = SimulationContainer()
+        container.initialize(
+            global_number_of_sims,
+            len(global_ids),
+            global_ids,
+            [np.zeros(3) for _ in global_ids],
+        )
+        for lid, gid in enumerate(container.local_gids):
+            container[lid] = sim_cls(gid)
 
         config = MagicMock()
         config.enable_load_balancing = MagicMock(return_value=True)
@@ -87,13 +94,9 @@ class TestLBTime(TestCase):
             MagicMock(),
             ModelManager(sim_cls),
             None,
-            lambda sim: sim.get_state(),
-            lambda sim, state: sim.set_state(state),
+            container,
             MagicMock(),
             config,
-            micro_sims,
-            global_ids,
-            global_number_of_sims,
             self._comm,
             self._rank,
         )
@@ -101,12 +104,13 @@ class TestLBTime(TestCase):
         load_balancer.balance()
 
         actual_global_ids = []
-        for sim in micro_sims:
+        for lid in container.range_lid:
+            sim = container[lid]
             actual_global_ids.append(sim.get_global_id())
         self.assertListEqual(sorted(actual_global_ids), expected_global_ids)
 
         actual_ranks_of_sims = get_ranks_of_sims(
-            global_ids, self._rank, self._comm, global_number_of_sims
+            container.local_gids, self._rank, self._comm, container.global_num_sims
         )
         self.assertListEqual(list(expected_ranks_of_sims), list(actual_ranks_of_sims))
 
@@ -149,12 +153,18 @@ class TestLBTime(TestCase):
             None,
         )
 
-        micro_sims = []
-        for i in global_ids:
-            if i in [0, 2]:
-                micro_sims.append(None)
-            else:
-                micro_sims.append(sim_cls(i))
+        container = SimulationContainer()
+        container.initialize(
+            global_number_of_sims,
+            len(global_ids),
+            global_ids,
+            [np.zeros(3) for _ in global_ids],
+        )
+        for lid, gid in enumerate(container.local_gids):
+            sim = None
+            if gid not in [0, 2]:
+                sim = sim_cls(gid)
+            container[lid] = sim
 
         config = MagicMock()
         config.enable_load_balancing = MagicMock(return_value=True)
@@ -163,43 +173,35 @@ class TestLBTime(TestCase):
             MagicMock(),
             ModelManager(sim_cls),
             adaptivity,
-            lambda sim: sim.get_state(),
-            lambda sim, state: sim.set_state(state),
+            container,
             MagicMock(),
             config,
-            micro_sims,
-            global_ids,
-            global_number_of_sims,
             self._comm,
             self._rank,
         )
 
         load_balancer.balance()
 
-        self.assertListEqual(sorted(global_ids), expected_global_ids)
+        self.assertListEqual(sorted(container.local_gids), expected_global_ids)
 
         actual_ranks_of_sims = get_ranks_of_sims(
-            global_ids, self._rank, self._comm, global_number_of_sims
+            container.local_gids, self._rank, self._comm, container.global_num_sims
         )
         self.assertListEqual(list(expected_ranks_of_sims), list(actual_ranks_of_sims))
 
 
 class GlobalAdaptivityCalculator:
-    def __init__(self, is_active, active_lids, active_gids, associated, on_rank):
+    def __init__(self, is_active, active_lids, active_gids, associated):
         self._is_sim_active = is_active
         self._active_lids = active_lids
         self._active_gids = active_gids
         self._sim_is_associated_to = associated
-        self._on_rank = on_rank
 
     def get_active_sim_local_ids(self):
         return self._active_lids
 
     def get_active_sim_global_ids(self):
         return self._active_gids
-
-    def set_is_on_rank(self, *args, **kwargs):
-        pass
 
 
 class TestLBActive(TestCase):
@@ -241,7 +243,6 @@ class TestLBActive(TestCase):
             active_lids,
             active_gids,
             [-2] * global_number_of_sims,
-            [gid in global_ids for gid in range(global_number_of_sims)],
         )
 
         sim_cls = create_simulation_class(
@@ -252,34 +253,37 @@ class TestLBActive(TestCase):
             None,
         )
 
-        micro_sims = []
-        for i in global_ids:
-            micro_sims.append(sim_cls(i))
+        container = SimulationContainer()
+        container.initialize(
+            global_number_of_sims,
+            len(global_ids),
+            global_ids,
+            [np.zeros(3) for _ in global_ids],
+        )
+        for lid, gid in enumerate(container.local_gids):
+            container[lid] = sim_cls(gid)
 
         load_balancer = ActiveBalancer(
             MagicMock(),
             ModelManager(sim_cls),
             adaptivity_controller,
-            lambda sim: sim.get_state(),
-            lambda sim, state: sim.set_state(state),
+            container,
             MagicMock(),
             config,
-            micro_sims,
-            global_ids,
-            global_number_of_sims,
             self._comm,
             self._rank,
         )
 
         load_balancer.balance()
 
-        actual_global_ids = []
-        for sim in micro_sims:
+        actual_global_ids = []  #
+        for lid in container.local_gids:
+            sim = container[lid]
             actual_global_ids.append(sim.get_global_id())
         self.assertListEqual(actual_global_ids, expected_global_ids)
 
         actual_ranks_of_sims = get_ranks_of_sims(
-            actual_global_ids, self._rank, self._comm, global_number_of_sims
+            container.local_gids, self._rank, self._comm, container.global_num_sims
         )
         self.assertListEqual(expected_ranks_of_sims, list(actual_ranks_of_sims))
 
@@ -315,7 +319,6 @@ class TestLBActive(TestCase):
             active_lids,
             active_gids,
             [-2, -2, 0, 1, 0],
-            [gid in global_ids for gid in range(global_number_of_sims)],
         )
 
         sim_cls = create_simulation_class(
@@ -326,21 +329,23 @@ class TestLBActive(TestCase):
             None,
         )
 
-        micro_sims = []
-        for i in global_ids:
-            micro_sims.append(sim_cls(i))
+        container = SimulationContainer()
+        container.initialize(
+            global_number_of_sims,
+            len(global_ids),
+            global_ids,
+            [np.zeros(3) for _ in global_ids],
+        )
+        for lid, gid in enumerate(container.local_gids):
+            container[lid] = sim_cls(gid)
 
         load_balancer = ActiveBalancer(
             MagicMock(),
             ModelManager(sim_cls),
             adaptivity_controller,
-            lambda sim: sim.get_state(),
-            lambda sim, state: sim.set_state(state),
+            container,
             MagicMock(),
             config,
-            micro_sims,
-            global_ids,
-            global_number_of_sims,
             self._comm,
             self._rank,
         )
@@ -348,11 +353,10 @@ class TestLBActive(TestCase):
         load_balancer._bypass_active = True
 
         load_balancer.balance()
-        self.assertEqual(global_ids, expected_global_ids)
 
-        self.assertListEqual(global_ids, expected_global_ids)
+        self.assertListEqual(container.local_gids, expected_global_ids)
         actual_ranks_of_sims = get_ranks_of_sims(
-            global_ids, self._rank, self._comm, global_number_of_sims
+            container.local_gids, self._rank, self._comm, container.global_num_sims
         )
 
         self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
@@ -419,7 +423,6 @@ class TestLBActive(TestCase):
             active_lids,
             active_gids,
             [-2] * global_number_of_sims,
-            [gid in global_ids for gid in range(global_number_of_sims)],
         )
 
         sim_cls = create_simulation_class(
@@ -430,21 +433,23 @@ class TestLBActive(TestCase):
             None,
         )
 
-        micro_sims = []
-        for i in global_ids:
-            micro_sims.append(sim_cls(i))
+        container = SimulationContainer()
+        container.initialize(
+            global_number_of_sims,
+            len(global_ids),
+            global_ids,
+            [np.zeros(3) for _ in global_ids],
+        )
+        for lid, gid in enumerate(container.local_gids):
+            container[lid] = sim_cls(gid)
 
         load_balancer = ActiveBalancer(
             MagicMock(),
             ModelManager(sim_cls),
             adaptivity_controller,
-            lambda sim: sim.get_state(),
-            lambda sim, state: sim.set_state(state),
+            container,
             MagicMock(),
             config,
-            micro_sims,
-            global_ids,
-            global_number_of_sims,
             self._comm,
             self._rank,
         )
@@ -452,12 +457,13 @@ class TestLBActive(TestCase):
         load_balancer.balance()
 
         actual_global_ids = []
-        for sim in micro_sims:
+        for lid in container.local_gids:
+            sim = container[lid]
             actual_global_ids.append(sim.get_global_id())
         self.assertListEqual(actual_global_ids, expected_global_ids)
 
         actual_ranks_of_sims = get_ranks_of_sims(
-            actual_global_ids, self._rank, self._comm, global_number_of_sims
+            container.local_gids, self._rank, self._comm, container.global_num_sims
         )
         self.assertListEqual(expected_ranks_of_sims, list(actual_ranks_of_sims))
 
@@ -522,7 +528,6 @@ class TestLBActive(TestCase):
             active_lids,
             active_gids,
             [-2, -2, -2, 0, 1, 13, 12, 12, -2, 1, 2, 8, -2, -2, -2],
-            [gid in global_ids for gid in range(global_number_of_sims)],
         )
 
         sim_cls = create_simulation_class(
@@ -533,21 +538,23 @@ class TestLBActive(TestCase):
             None,
         )
 
-        micro_sims = []
-        for i in global_ids:
-            micro_sims.append(sim_cls(i))
+        container = SimulationContainer()
+        container.initialize(
+            global_number_of_sims,
+            len(global_ids),
+            global_ids,
+            [np.zeros(3) for _ in global_ids],
+        )
+        for lid, gid in enumerate(container.local_gids):
+            container[lid] = sim_cls(gid)
 
         load_balancer = ActiveBalancer(
             MagicMock(),
             ModelManager(sim_cls),
             adaptivity_controller,
-            lambda sim: sim.get_state(),
-            lambda sim, state: sim.set_state(state),
+            container,
             MagicMock(),
             config,
-            micro_sims,
-            global_ids,
-            global_number_of_sims,
             self._comm,
             self._rank,
         )
@@ -556,11 +563,9 @@ class TestLBActive(TestCase):
 
         load_balancer.balance()
 
-        self.assertEqual(global_ids, expected_global_ids)
-
-        self.assertListEqual(global_ids, expected_global_ids)
+        self.assertListEqual(container.local_gids, expected_global_ids)
         actual_ranks_of_sims = get_ranks_of_sims(
-            global_ids, self._rank, self._comm, global_number_of_sims
+            container.local_gids, self._rank, self._comm, container.global_num_sims
         )
 
         self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))

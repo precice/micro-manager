@@ -54,10 +54,6 @@ class MicroManager(MicroManagerInterface):
         self._is_parallel = self._size > 1
         self._micro_sims_have_output = False
 
-        self._local_number_of_sims = 0
-        self._global_number_of_sims = 0
-        self._is_rank_empty = False
-
         self._config = Config(config_file)
 
     def initialize(self):

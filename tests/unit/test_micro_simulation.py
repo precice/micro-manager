@@ -74,44 +74,44 @@ class TestMicroSimulationInterface(unittest.TestCase):
 
 class TestMicroSimulationLocal(unittest.TestCase):
     def test_solve(self):
-        local = MicroSimulationLocal(0, False, MinimalSim)
+        local = MicroSimulationLocal(0, "MinimalSim", False, MinimalSim)
         result = local.solve({"in": 1}, 0.1)
         self.assertEqual(result, {"out": 1})
 
     def test_get_set_state(self):
-        local = MicroSimulationLocal(0, False, MinimalSim)
+        local = MicroSimulationLocal(0, "MinimalSim", False, MinimalSim)
         local.set_state(42)
         self.assertEqual(local.get_state(), 42)
 
     def test_get_set_global_id(self):
-        local = MicroSimulationLocal(5, False, MinimalSim)
+        local = MicroSimulationLocal(5, "MinimalSim", False, MinimalSim)
         self.assertEqual(local.get_global_id(), 5)
         local.set_global_id(99)
         self.assertEqual(local.get_global_id(), 99)
 
     def test_late_init_sets_instance_gid_to_minus_one(self):
         """When late_init=True, the wrapped instance should be constructed with gid=-1."""
-        local = MicroSimulationLocal(3, True, MinimalSim)
+        local = MicroSimulationLocal(3, "MinimalSim", True, MinimalSim)
         # The outer local gid should remain 3
         self.assertEqual(local.get_global_id(), 3)
         # The inner instance should have been constructed with -1
         self.assertEqual(local._instance.get_global_id(), -1)
 
     def test_initialize(self):
-        local = MicroSimulationLocal(0, False, SimWithInitialize)
+        local = MicroSimulationLocal(0, "SimWithInitialize", False, SimWithInitialize)
         result = local.initialize({"data": 1})
         self.assertEqual(result, {"init": True})
 
     def test_output(self):
-        local = MicroSimulationLocal(0, False, SimWithOutput)
+        local = MicroSimulationLocal(0, "SimWithOutput", False, SimWithOutput)
         self.assertIsNone(local.output())
 
     def test_requires_initialize(self):
-        local = MicroSimulationLocal(0, False, SimWithInitialize)
+        local = MicroSimulationLocal(0, "SimWithInitialize", False, SimWithInitialize)
         self.assertTrue(local.requires_initialize())
 
     def test_requires_output(self):
-        local = MicroSimulationLocal(0, False, SimWithOutput)
+        local = MicroSimulationLocal(0, "SimWithOutput", False, SimWithOutput)
         self.assertTrue(local.requires_output())
 
     def test_getattr_delegates_to_instance(self):
@@ -120,7 +120,7 @@ class TestMicroSimulationLocal(unittest.TestCase):
         class SimWithExtra(MinimalSim):
             extra_attr = "hello"
 
-        local = MicroSimulationLocal(7, False, SimWithExtra)
+        local = MicroSimulationLocal(7, "SimWithExtra", False, SimWithExtra)
         # extra_attr is not defined on MicroSimulationLocal — must come via __getattr__
         self.assertEqual(local.extra_attr, "hello")
 
@@ -134,6 +134,7 @@ class TestMicroSimulationRemote(unittest.TestCase):
         return (
             MicroSimulationRemote(
                 gid=0,
+                name="MinimalSim",
                 late_init=late_init,
                 num_ranks=1,
                 conn=conn,
@@ -191,6 +192,7 @@ class TestMicroSimulationRemote(unittest.TestCase):
         conn.recv.return_value = None
         remote = MicroSimulationRemote(
             gid=0,
+            name="SimWithInitialize",
             late_init=False,
             num_ranks=1,
             conn=conn,
@@ -210,6 +212,7 @@ class TestMicroSimulationRemote(unittest.TestCase):
         conn.recv.return_value = None
         remote = MicroSimulationRemote(
             gid=0,
+            name="SimWithOutput",
             late_init=False,
             num_ranks=1,
             conn=conn,
@@ -233,6 +236,7 @@ class TestMicroSimulationRemote(unittest.TestCase):
         conn.recv.return_value = None
         remote = MicroSimulationRemote(
             gid=5,
+            name="MinimalSim",
             late_init=True,
             num_ranks=1,
             conn=conn,

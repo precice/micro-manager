@@ -13,6 +13,7 @@ from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.misc import clamp_in_range
 from micro_manager.model_manager import ModelManager
 from micro_manager.tasking.connection import Connection
+from micro_manager.simulation_container import SimulationContainer
 
 from mpi4py import MPI
 import numpy as np
@@ -23,6 +24,7 @@ class ModelAdaptivity:
     def __init__(
         self,
         model_manager: ModelManager,
+        sim_container: SimulationContainer,
         config: Config,
         comm: MPI.Comm,
         rank: int,
@@ -37,6 +39,8 @@ class ModelAdaptivity:
         ----------
         model_manager: ModelManager
             ModelManager instance
+        sim_container: SimulationContainer
+            SimulationContainer instance
         config : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
         comm: MPI.Comm
@@ -54,6 +58,7 @@ class ModelAdaptivity:
 
         self._comm = comm
         self._model_manager = model_manager
+        self._sim_container = sim_container
         self._model_files = config.model_adaptivity_file_names()
         self._switching_func_name = config.model_adaptivity_switching_function()
 
@@ -142,11 +147,9 @@ class ModelAdaptivity:
 
     def switch_models(
         self,
-        locations: np.ndarray,
         t: float,
         inputs: list[dict],
         prev_output: Optional[list[dict]],
-        sims: list,
         active_sim_ids: Optional[list] = None,
     ) -> list[int]:
         """
@@ -172,112 +175,58 @@ class ModelAdaptivity:
         switched_lids : list[int]
             List of lids of simulations that were switched.
         """
-        size = len(sims)
-        active_sims = self._create_active_mask(active_sim_ids, size)
-        current_res = self._gather_current_resolutions(sims, active_sims)
+        locations = self._sim_container.local_coords
+        active_sims = self._create_active_mask(
+            active_sim_ids, self._sim_container.local_num_sims
+        )
+        current_res = self._gather_current_resolutions(active_sims)
         target_res = self._gather_target_resolutions(
             current_res, locations, t, inputs, prev_output, active_sims
         )
 
         self._logger.log_info(f"New resolutions for t={t}: {target_res}")
 
-        for idx in range(size):
-            if current_res[idx] == target_res[idx]:
+        for lid in self._sim_container.range_lid:
+            if current_res[lid] == target_res[lid]:
                 continue
 
-            sim = sims[idx]
-            gid = sim.get_global_id()
-            target_class = self.get_resolution_sim_class(target_res[idx])
+            sim = self._sim_container[lid]
+            gid = self._sim_container.local_gids[lid]
+            target_class = self.get_resolution_sim_class(target_res[lid])
 
             # we store state for each resolution separately
             # keys are sim names of respective resolution
-            key = f"{sim.name}-state"
             key_new = f"{target_class.name}-state"
 
             # check if a state of the target resolution exists
             # then update state buffer with current state
-            new_state_exists = key_new in sim.attachments
-            sim.attachments[key] = sim.get_state()
+            state_dict = self._sim_container.get_sim_state(lid)
+            new_state_exists = key_new in state_dict
 
             # construct new sim and delay initialization if possible
             sim_new = self._model_manager.get_instance(
                 gid, target_class, late_init=new_state_exists
             )
-            # need to copy over the multi-state buffer to new sim object
-            sim_new.attachments = sim.attachments
-            sim_new.attachments[key_new] = sim_new.get_state()
 
             # if state of target resolution exists
             # use it to initialize
             if new_state_exists:
-                sim_new_state = sim.attachments[key_new]
+                sim_new_state = state_dict[key_new]
                 sim_new.set_state(sim_new_state)
+            else:
+                state_dict[key_new] = sim_new.get_state()
 
             # release resources of previous sim and set to new sim
-            sims[idx].destroy()
-            sims[idx] = sim_new
+            sim.destroy()
+            self._sim_container[lid] = sim_new
 
         return np.flatnonzero(current_res != target_res).tolist()
 
-    def update_states(
-        self,
-        sims: list,
-        active_sim_ids: Optional[list] = None,
-    ):
-        """
-        Updates the current state of the current model in the local buffers.
-
-        Parameters
-        ----------
-        sims : list
-            List of all simulation objects.
-        active_sim_ids : [list, None]
-            List of all active simulation ids.
-        """
-        size = len(sims)
-        active_sims = self._create_active_mask(active_sim_ids, size)
-
-        for idx in range(size):
-            if not active_sims[idx]:
-                continue
-
-            sim = sims[idx]
-            key = f"{sim.name}-state"
-            sim.attachments[key] = sim.get_state()
-
-    def write_back_states(
-        self,
-        sims: list,
-        active_sim_ids: Optional[list] = None,
-    ):
-        """
-        Loads the current state of the current model into local buffers.
-
-        Parameters
-        ----------
-        sims : list
-            List of all simulation objects.
-        active_sim_ids : [list, None]
-            List of all active simulation ids.
-        """
-        size = len(sims)
-        active_sims = self._create_active_mask(active_sim_ids, size)
-
-        for idx in range(size):
-            if not active_sims[idx]:
-                continue
-
-            sim = sims[idx]
-            key = f"{sim.name}-state"
-            sim.set_state(sim.attachments[key])
-
     def check_convergence(
         self,
-        locations: np.ndarray,
         t: float,
         inputs: list,
         prev_output: Optional[list[dict]],
-        sims: list,
         active_sim_ids: Optional[list] = None,
     ) -> None:
         """
@@ -286,22 +235,20 @@ class ModelAdaptivity:
 
         Parameters
         ----------
-        locations : np.array - shape(N,D)
-            Array with gaussian points for all sims. D is the mesh dimension.
         t : float
             Current time in simulation.
         inputs : list[dict]
             List of all input objects.
         prev_output : [None, list[dict]]
             Contains the outputs of the previous model evaluation.
-        sims : list
-            List of all simulation objects.
         active_sim_ids : [list, None]
             List of all active simulation ids.
         """
-        size = len(sims)
-        active_sims = self._create_active_mask(active_sim_ids, size)
-        resolutions = self._gather_current_resolutions(sims, active_sims)
+        locations = self._sim_container.local_coords
+        active_sims = self._create_active_mask(
+            active_sim_ids, self._sim_container.local_num_sims
+        )
+        resolutions = self._gather_current_resolutions(active_sims)
         target_resolutions = self._gather_target_resolutions(
             resolutions, locations, t, inputs, prev_output, active_sims
         )
@@ -358,16 +305,12 @@ class ModelAdaptivity:
             (idx for idx, cls in enumerate(self._model_classes) if cls.name == sim.name)
         )
 
-    def _gather_current_resolutions(
-        self, sims: list, active_sims: np.ndarray
-    ) -> np.ndarray:
+    def _gather_current_resolutions(self, active_sims: np.ndarray) -> np.ndarray:
         """
         Gathers current resolutions. Inactive sims have resolution -1.
 
         Parameters
         ----------
-        sims : list
-            List of all simulation objects.
         active_sims : np.array
             Boolean array indicating whether the model is active or not.
 
@@ -378,8 +321,10 @@ class ModelAdaptivity:
         """
         return np.array(
             [
-                self.get_sim_class_resolution(sim) if active_sims[idx] == 1 else -1
-                for idx, sim in enumerate(sims)
+                self.get_sim_class_resolution(self._sim_container[lid])
+                if active_sims[lid] == 1
+                else -1
+                for lid in self._sim_container.range_lid
             ]
         )
 

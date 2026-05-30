@@ -66,7 +66,6 @@ def p2p_comm(
     rank: int,
     comm: MPI.Comm,
     global_number_of_sims: int,
-    is_sim_on_this_rank: list[bool],
     assoc_active_ids: list[int],
     data: list,
 ) -> list:
@@ -83,8 +82,6 @@ def p2p_comm(
         MPI communicator.
     global_number_of_sims : int
         Global number of sims.
-    is_sim_on_this_rank: list[bool]
-        Bool flags of whether a simulation given its gid is on this rank or not.
     assoc_active_ids : list[int]
         Global IDs of active simulations which are not on this rank and are associated to
         the inactive simulations on this rank.
@@ -117,7 +114,7 @@ def p2p_comm(
 
     for d in send_map_list:
         for i, r in d.items():
-            if is_sim_on_this_rank[i]:
+            if rank_of_sim[i] == rank:
                 if i in send_map:
                     send_map[i].append(r)
                 else:

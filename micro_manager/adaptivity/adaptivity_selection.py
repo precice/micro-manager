@@ -5,9 +5,7 @@ from .adaptivity import AdaptivityCalculator
 
 def create_adaptivity_calculator(
     config,
-    local_number_of_sims,
-    global_number_of_sims,
-    global_ids_of_local_sims,
+    sim_container,
     participant,
     logger,
     rank,
@@ -20,7 +18,7 @@ def create_adaptivity_calculator(
     if adaptivity_type == "local":
         return LocalAdaptivityCalculator(
             config,
-            local_number_of_sims,
+            sim_container,
             logger,
             rank,
             comm,
@@ -31,8 +29,7 @@ def create_adaptivity_calculator(
     if adaptivity_type == "global":
         return GlobalAdaptivityCalculator(
             config,
-            global_number_of_sims,
-            global_ids_of_local_sims,
+            sim_container,
             participant,
             logger,
             rank,
