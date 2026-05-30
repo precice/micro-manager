@@ -7,9 +7,27 @@ summary: Provide a JSON file to configure the Micro Manager.
 
 {% note %} In the preCICE XML configuration the Micro Manager is a participant with the name `Micro-Manager`. {% endnote %}
 
-The Micro Manager is configured with a JSON file. Several parameters can be set.
+The Micro Manager is configured with a [JSON](https://en.wikipedia.org/wiki/JSON#Syntax) file. Several parameters can be set, in different sections. For example:
+
+```json
+{
+    "micro_file_name": "python/micro.py",
+    "coupling_params": {
+        "precice_config_file_name": "precice-config.xml",
+        "macro_mesh_name": "Macro-Mesh",
+        "read_data_names": ["Macro-Scalar", "Macro-Vector"],
+        "write_data_names": ["Micro-Scalar", "Micro-Vector"]
+    },
+    "simulation_params": {
+        "micro_dt": 1.0,
+        "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
+    }
+}
+```
 
 ## Micro Manager Configuration
+
+These parameters are in the outer section.
 
 | Parameter                  | Description                                                                                                                                                                                           | Default       |
 |----------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
@@ -25,6 +43,8 @@ Apart from the base settings, there are three main sections in the configuration
 
 ## Coupling Parameters
 
+These parameters are in the section `coupling_params`.
+
 | Parameter                  | Description                                                                    |
 |----------------------------|--------------------------------------------------------------------------------|
 | `precice_config_file_name` | Path to the preCICE XML configuration file from the current working directory. |
@@ -33,6 +53,8 @@ Apart from the base settings, there are three main sections in the configuration
 | `write_data_names`         | List with the names of the data to be written to preCICE.                      |
 
 ## Simulation Parameters
+
+These parameters are in the section `simulation_params`.
 
 | Parameter | Description | Default |
 | --- | --- | --- |
@@ -49,6 +71,8 @@ The total number of partitions ranks in the `decomposition` list should be the s
 Non-uniform domain decomposition is based on a geometric progression.
 
 ## Diagnostics
+
+These parameters are in the section `diagnostics`.
 
 | Parameter              | Description                                                                                                                                | Default |
 |------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|---------|
@@ -89,6 +113,57 @@ To turn on adaptivity, set `"adaptivity": true` in `simulation_params`. Then und
 | `similarity_measure`              | Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.                                                                                     | `L2rel`       |
 | `lazy_initialization`             | Set to `true` to lazily create and initialize micro simulations. If selected, micro simulation objects are created only when the micro simulation is activated for the first time.                                                                                                                  | `false`       |
 | `load_balancing`                  | Set to `true` to dynamically balance simulations for parallel runs. See [load balancing settings](#load-balancing) below.                                                                                                                                                                           | `false`       |
+| `mappings`                        | Optional interpolation of results. Set to list of mapping configurations. See below for further details.                                                                                                                                                                                            | `[]`          |
+
+Results of inactive simulations can be interpolated from active simulations using radial basis function interpolation. For data in `write_data_names`, a function
+can be defined from `read_data_names` to `write_data_names`. When using multiple functions, their interpolation target, i.e., fields
+of `write_data_names` must be mutually disjunct. Mappings can be defined as:
+
+```json
+"mappings": [
+    {
+        "src_fields": ["input1", "input2"],
+        "dst_fields": ["output1", "output2"],
+        "n_neighbors": 50,
+        "rbf_config": {
+            "basis": {
+                "type": "c6"
+            }
+        },
+        "domain_config": {
+            "max_filling": 8,
+            "coarsening_factor": 2,
+            "projection": {
+                "type": "std",
+                "target_dims": 3
+            }
+        }
+    },
+]
+```
+
+| Parameter       | Description                             | Default |
+|-----------------|-----------------------------------------|---------|
+| `src_fields`    | List of entries from `read_data_names`  | `None`  |
+| `dst_fields`    | List of entries from `write_data_names` | `None`  |
+| `n_neighbours`  | The minimum amount of support points.   | `50`    |
+| `rbf_config`    | RBF interpolation configuration.        | `None`  |
+| `domain_config` | Function source domain description.     |         |
+
+A selection of basis functions is available: `c0`, `c2`, `c4`, `c6`.
+The domain must be described/further configured as input data is shared across ranks and must be redistributed for interpolation.
+Towards this, spatial discretization techniques are used. For better performance, data can be projected to a lower dimensional space
+using the fields with the highest standard deviation.
+
+| Parameter           | Description                                                               | Default    |
+|---------------------|---------------------------------------------------------------------------|------------|
+| `use_pu`            | Enables PU-RBF. (currently not supported)                                 | `False`    |
+| `pu_overlap`        | Controlls overlap radius for PU decomposition.                            | `0.1`      |
+| `basis`             | RBF basis function: `c0`, `c2`, `c4`, `c6`                                | `None`     |
+| `max_filling`       | Tunes maximum filling of tree nodes used during decomposition.            | `8`        |
+| `coarsening_factor` | Adjusts the fidelity of the discretized domain. Only integer values >= 1. | `2`        |
+| `projection`        | Either `std` or `identity`.                                               | `identity` |
+| `target_dims`       | Only if `std` is used. Denotes the target dimension after projection.     | `None`     |
 
 Example of adaptivity configuration is
 
@@ -117,7 +192,7 @@ To turn on model adaptivity, set `"model_adaptivity": true` in `simulation_param
 
 | Parameter            | Description                                                                                                                                                                                                                                        |
 |----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `micro_file_names`   | List of paths to the files containing the Python importable micro simulation classes. If the files are not in the working directory, give the relative path from the directory where the Micro Manager is executed. Requires a minimum of 2 files. |
+| `micro_file_names`   | List of paths to the files containing the Python importable micro simulation classes, in order of decreasing model fidelity. If the files are not in the working directory, give the relative path from the directory where the Micro Manager is executed. Requires a minimum of 2 files. |
 | `switching_function` | Path to the file containing the Python importable switching function. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.                                                  |
 | `micro_stateless`    | List of boolean values, whether the respective micro simulation model is stateless and can use model instancing.                                                                                                                                   |
 
@@ -161,7 +236,7 @@ The Micro Manager uses the output functionality of preCICE, hence these data set
 ## Load balancing
 
 Load balancing can be activated by setting `load_balancing` to true.
-It balances based on either the elapsed time required to solve the prior iteration `type="time""` or the number of active simulations `type=active`.
+It balances based on either the elapsed time required to solve the prior iteration `type="time"` or the number of active simulations `type="active"`.
 One Initial load balancing step is performed, prior to any computation (assuming equal workload for time based load balancing or the current active counts for `active` load balancing.).
 Subsequently, in the following iteration another load balancing step is performed based. (This is mainly for the time based balancing to use the just acquired timings.)
 Afterwards balancing is performed `every_n_time_windows`.

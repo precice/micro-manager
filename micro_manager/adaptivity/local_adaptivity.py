@@ -12,12 +12,13 @@ from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.model_manager import ModelManager
+from micro_manager.interpolation import RBF_PU
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(
         self,
-        configurator: Config,
+        config: Config,
         num_sims: int,
         base_logger: Logger,
         rank: int,
@@ -30,7 +31,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         Parameters
         ----------
-        configurator : object of class Config
+        config : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
         num_sims : int
             Number of micro simulations.
@@ -46,9 +47,15 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             Handles instantiation of micro simulation.
         """
         super().__init__(
-            configurator, num_sims, micro_problem_cls, model_manager, base_logger, rank
+            config, num_sims, micro_problem_cls, model_manager, base_logger, rank
         )
         self._comm = comm
+        self._interpolation = RBF_PU(
+            base_logger,
+            MPI.COMM_SELF,
+            MPI.COMM_SELF.Get_rank(),
+            MPI.COMM_SELF.Get_size(),
+        )
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
@@ -146,12 +153,16 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         inactive_sim_ids = self.get_inactive_sim_local_ids()
         return inactive_sim_ids
 
-    def get_full_field_micro_output(self, micro_output: list) -> list:
+    def get_full_field_micro_output(
+        self, micro_input: list, micro_output: list
+    ) -> list:
         """
         Get the full field micro output from active simulations to inactive simulations.
 
         Parameters
         ----------
+        micro_input : list
+            List of dicts containing the input data for each simulation.
         micro_output : list
             List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
 
@@ -168,6 +179,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             micro_sims_output[inactive_id] = deepcopy(
                 micro_sims_output[self._sim_is_associated_to[inactive_id]]
             )
+        self._interpolate_output(micro_input, micro_sims_output)
 
         return micro_sims_output
 

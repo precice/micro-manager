@@ -15,7 +15,7 @@ def create_adaptivity_calculator(
     micro_problem_cls,
     model_manager,
 ) -> AdaptivityCalculator:
-    adaptivity_type = config.get_adaptivity_type()
+    adaptivity_type = config.adaptivity_type()
 
     if adaptivity_type == "local":
         return LocalAdaptivityCalculator(

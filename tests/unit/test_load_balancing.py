@@ -81,8 +81,8 @@ class TestLBTime(TestCase):
             micro_sims.append(sim_cls(i))
 
         config = MagicMock()
-        config.turn_on_load_balancing = MagicMock(return_value=True)
-        config.get_load_balancing_partitioning = MagicMock(return_value="lpt")
+        config.enable_load_balancing = MagicMock(return_value=True)
+        config.load_balancing_partitioning = MagicMock(return_value="lpt")
         load_balancer = LoadBalancer(
             MagicMock(),
             ModelManager(sim_cls),
@@ -157,8 +157,8 @@ class TestLBTime(TestCase):
                 micro_sims.append(sim_cls(i))
 
         config = MagicMock()
-        config.turn_on_load_balancing = MagicMock(return_value=True)
-        config.get_load_balancing_partitioning = MagicMock(return_value="lpt")
+        config.enable_load_balancing = MagicMock(return_value=True)
+        config.load_balancing_partitioning = MagicMock(return_value="lpt")
         load_balancer = LoadBalancer(
             MagicMock(),
             ModelManager(sim_cls),
@@ -217,10 +217,10 @@ class TestLBActive(TestCase):
         Run this test in parallel using MPI with 2 ranks.
         """
         config = MagicMock()
-        config.get_load_balancing_threshold = MagicMock(return_value=0)
-        config.turn_on_load_balancing_inactive = MagicMock(return_value=False)
-        config.turn_on_load_balancing = MagicMock(return_value=True)
-        config.get_load_balancing_partitioning = MagicMock(return_value="lpt")
+        config.load_balancing_threshold = MagicMock(return_value=0)
+        config.enable_load_balancing_inactive = MagicMock(return_value=False)
+        config.enable_load_balancing = MagicMock(return_value=True)
+        config.load_balancing_partitioning = MagicMock(return_value="lpt")
 
         global_number_of_sims = 8
 
@@ -292,10 +292,10 @@ class TestLBActive(TestCase):
         Run this test in parallel using MPI with 2 ranks.
         """
         config = MagicMock()
-        config.get_load_balancing_threshold = MagicMock(return_value=0)
-        config.turn_on_load_balancing_inactive = MagicMock(return_value=True)
-        config.turn_on_load_balancing = MagicMock(return_value=True)
-        config.get_load_balancing_partitioning = MagicMock(return_value="lpt")
+        config.load_balancing_threshold = MagicMock(return_value=0)
+        config.enable_load_balancing_inactive = MagicMock(return_value=True)
+        config.enable_load_balancing = MagicMock(return_value=True)
+        config.load_balancing_partitioning = MagicMock(return_value="lpt")
         global_number_of_sims = 5
 
         if self._rank == 0:
@@ -366,10 +366,10 @@ class TestLBActive(TestCase):
         Run this test in parallel using MPI with 4 ranks.
         """
         config = MagicMock()
-        config.get_load_balancing_threshold = MagicMock(return_value=0)
-        config.turn_on_load_balancing_inactive = MagicMock(return_value=False)
-        config.turn_on_load_balancing = MagicMock(return_value=True)
-        config.get_load_balancing_partitioning = MagicMock(return_value="lpt")
+        config.load_balancing_threshold = MagicMock(return_value=0)
+        config.enable_load_balancing_inactive = MagicMock(return_value=False)
+        config.enable_load_balancing = MagicMock(return_value=True)
+        config.load_balancing_partitioning = MagicMock(return_value="lpt")
 
         global_number_of_sims = 15
 
@@ -470,10 +470,10 @@ class TestLBActive(TestCase):
         Run this test in parallel using MPI with 4 ranks.
         """
         config = MagicMock()
-        config.get_load_balancing_threshold = MagicMock(return_value=0)
-        config.turn_on_load_balancing_inactive = MagicMock(return_value=True)
-        config.turn_on_load_balancing = MagicMock(return_value=True)
-        config.get_load_balancing_partitioning = MagicMock(return_value="lpt")
+        config.load_balancing_threshold = MagicMock(return_value=0)
+        config.enable_load_balancing_inactive = MagicMock(return_value=True)
+        config.enable_load_balancing = MagicMock(return_value=True)
+        config.load_balancing_partitioning = MagicMock(return_value="lpt")
         global_number_of_sims = 15
 
         # global_active_gids = [0, 1, 2, 8, 12, 13, 14]

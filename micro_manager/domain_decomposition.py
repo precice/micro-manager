@@ -26,21 +26,21 @@ class DomainDecomposer:
         self._size = size
 
         self._ranks_per_axis = (
-            configurator.get_ranks_per_axis()
+            configurator.ranks_per_axis()
         )  # Check if ranks per axis is provided in the configuration file for parallel runs
 
         self._dims = len(self._ranks_per_axis)
 
         self._is_minimum_access_region_size_specified = False
 
-        self._decomposition_type = configurator.get_decomposition_type()
+        self._decomposition_type = configurator.decomposition_type()
 
-        self._macro_bounds = configurator.get_macro_domain_bounds()
+        self._macro_bounds = configurator.macro_domain_bounds()
 
         self._get_local_mesh_bounds = self._get_local_mesh_bounds_variant()
 
         self._minimum_access_region_size: list = (
-            configurator.get_minimum_access_region_size()
+            configurator.minimum_access_region_size()
         )
         if self._minimum_access_region_size:  # if list is not empty
             self._is_minimum_access_region_size_specified = True

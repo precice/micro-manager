@@ -92,11 +92,9 @@ class TestLocalAdaptivity(TestCase):
         Test functionality of calculating the similarity distance matrix in class AdaptivityCalculator.
         """
         configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
+        configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.output_dir = MagicMock(return_value="output_dir")
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         adaptivity_controller = AdaptivityCalculator(
             configurator,
@@ -142,11 +140,9 @@ class TestLocalAdaptivity(TestCase):
         Test functionality of updating active simulations in class LocalAdaptivityCalculator.
         """
         configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
+        configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.output_dir = MagicMock(return_value="output_dir")
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
@@ -180,11 +176,9 @@ class TestLocalAdaptivity(TestCase):
         Test functionality for calculating similarity criteria between pairs of simulations using different norms in class AdaptivityCalculator.
         """
         configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
+        configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.output_dir = MagicMock(return_value="output_dir")
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         adaptivity_controller = AdaptivityCalculator(
             configurator,
@@ -282,11 +276,9 @@ class TestLocalAdaptivity(TestCase):
         import warnings
 
         configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L2rel")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
+        configurator.adaptivity_similarity_measure = MagicMock(return_value="L2rel")
+        configurator.output_dir = MagicMock(return_value="output_dir")
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
         adaptivity_l2rel = AdaptivityCalculator(
             configurator,
             nsims=3,
@@ -297,11 +289,9 @@ class TestLocalAdaptivity(TestCase):
         )
 
         configurator_l1 = MagicMock()
-        configurator_l1.get_adaptivity_similarity_measure = MagicMock(
-            return_value="L1rel"
-        )
-        configurator_l1.get_output_dir = MagicMock(return_value="output_dir")
-        configurator_l1.get_micro_file_name = MagicMock(
+        configurator_l1.adaptivity_similarity_measure = MagicMock(return_value="L1rel")
+        configurator_l1.output_dir = MagicMock(return_value="output_dir")
+        configurator_l1.micro_file_name = MagicMock(
             return_value="test_adaptivity_serial"
         )
         adaptivity_l1rel = AdaptivityCalculator(
@@ -338,11 +328,9 @@ class TestLocalAdaptivity(TestCase):
         Test functionality to associate inactive sims to active ones, in the class AdaptivityCalculator.
         """
         configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
+        configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.output_dir = MagicMock(return_value="output_dir")
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         adaptivity_controller = AdaptivityCalculator(
             configurator,
@@ -381,11 +369,9 @@ class TestLocalAdaptivity(TestCase):
         Test functionality to update inactive simulations in a particular setting, for a local adaptivity setting.
         """
         configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
+        configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.output_dir = MagicMock(return_value="output_dir")
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
 
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,

@@ -23,7 +23,7 @@ class ModelAdaptivity:
     def __init__(
         self,
         model_manager: ModelManager,
-        configurator: Config,
+        config: Config,
         comm: MPI.Comm,
         rank: int,
         log_file: str,
@@ -37,7 +37,7 @@ class ModelAdaptivity:
         ----------
         model_manager: ModelManager
             ModelManager instance
-        configurator : object of class Config
+        config : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
         comm: MPI.Comm
             MPI communicator
@@ -54,12 +54,10 @@ class ModelAdaptivity:
 
         self._comm = comm
         self._model_manager = model_manager
-        self._model_files = configurator.get_model_adaptivity_file_names()
-        self._switching_func_name = (
-            configurator.get_model_adaptivity_switching_function()
-        )
+        self._model_files = config.model_adaptivity_file_names()
+        self._switching_func_name = config.model_adaptivity_switching_function()
 
-        stateless_flags = configurator.get_model_adaptivity_micro_stateless()
+        stateless_flags = config.model_adaptivity_micro_stateless()
         self._model_classes = []
         pos = 0
         for model_file in self._model_files:
@@ -219,7 +217,7 @@ class ModelAdaptivity:
             sims[idx].destroy()
             sims[idx] = sim_new
 
-        return np.argwhere((current_res - target_res) != 0).tolist()
+        return np.flatnonzero(current_res != target_res).tolist()
 
     def update_states(
         self,
@@ -304,15 +302,10 @@ class ModelAdaptivity:
         size = len(sims)
         active_sims = self._create_active_mask(active_sim_ids, size)
         resolutions = self._gather_current_resolutions(sims, active_sims)
-        next_switch = np.zeros_like(resolutions)
-        for idx in range(active_sims.shape[0]):
-            if active_sims[idx] != 1:
-                continue
-            prev_out = prev_output[idx] if prev_output is not None else None
-            next_switch[idx] = self._switching_func(
-                resolutions[idx], locations[idx], t, inputs[idx], prev_out
-            )
-        local_num_changes = np.sum(next_switch != 0)
+        target_resolutions = self._gather_target_resolutions(
+            resolutions, locations, t, inputs, prev_output, active_sims
+        )
+        local_num_changes = np.sum(target_resolutions != resolutions)
         global_num_changes = self._comm.allreduce(local_num_changes, op=MPI.SUM)
         self._converged = global_num_changes == 0
 
@@ -458,6 +451,7 @@ class ModelAdaptivity:
             active_sims = np.ones(size)
         else:
             mask = np.zeros(size)
-            mask[active_sim_ids] = 1
+            if len(active_sim_ids) > 0:
+                mask[active_sim_ids] = 1
             active_sims = mask
         return active_sims.astype(bool)

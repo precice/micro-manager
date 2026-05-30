@@ -1,55 +1,38 @@
 name: Run unit tests for user-side functions
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - "*"
+  workflow_run:
+    workflows: [Build OpenMPI cache]
+    types:
+      - completed
 jobs:
   unit_tests:
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
       - uses: actions/checkout@v6
         with:
           path: micro-manager
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Install dependencies
         run: |
           apt-get -qq update
           apt-get -qq install python3-dev python3-venv git pkg-config
-          apt-get -qq install wget build-essential
 
       - name: Load Cache OpenMPI 5
         id: ompi-cache-load
         uses: actions/cache/restore@v5
         with:
           path: ~/openmpi
-          key: openmpi-v5-${{ runner.os }}-build
-
-      - name: Build OpenMPI 5
-        if: steps.ompi-cache-load.outputs.cache-hit != 'true'
-        run: |
-          wget https://download.open-mpi.org/release/open-mpi/v5.0/openmpi-5.0.5.tar.gz
-          tar -xzf openmpi-5.0.5.tar.gz
-          cd openmpi-5.0.5
-          mkdir -p ~/openmpi
-          ./configure --prefix=$HOME/openmpi
-          make -j$(nproc)
-          make install
-
-      - name: Save OpenMPI 5 to cache
-        if: steps.ompi-cache.outputs.cache-hit != 'true'
-        id: ompi-cache-store
-        uses: actions/cache/save@v5
-        with:
-          path: ~/openmpi
-          key: openmpi-v5-${{ runner.os }}-build
+          key: openmpi-5.0.5-${{ runner.os }}-build
 
       - name: Configure OpenMPI
         run: |
+          if [ ! -d ~/openmpi ]; then
+            echo "::error::OpenMPI cache not found. The cache workflow may have failed."
+            exit 1
+          fi
           cp -r ~/openmpi/* /usr/local/
           ldconfig
           which mpiexec
@@ -70,6 +53,13 @@ jobs:
           pip uninstall -y pyprecice
           cd tests/unit
           python3 -m unittest test_micro_manager.py
+
+      - name: Run model adaptivity unit tests
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          cd tests/unit
+          python3 -m unittest test_model_adaptivity.py
 
       - name: Install Micro Manager and run tasking unit test
         working-directory: micro-manager
