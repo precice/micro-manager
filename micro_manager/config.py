@@ -533,7 +533,7 @@ class Config:
         file_names = self.json["micro_file_names"].get_or_raise(
             "Micro simulation file name: {data}",
             "'micro_file_name' must be specified!",
-            List[str],
+            list,
         )
         self.micro_file_names.set = [
             name.replace("/", ".").replace("\\", ".").replace(".py", "")
@@ -551,7 +551,7 @@ class Config:
             [False] * len(self.micro_file_names()),
             "Only creating one full instance of Micro Model.",
             "Creating full instance of Micro Model per mesh vertex.",
-            List[bool],
+            list,
         )
 
         for i in range(len(self.micro_file_names())):
