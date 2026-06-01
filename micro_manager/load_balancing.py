@@ -13,17 +13,20 @@ from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.mpi_handler import MPIHandler
 from micro_manager.simulation_container import SimulationContainer
 
+
 @dataclass
 class LoadBalancerSimData:
     """
     Captures the full simulation state required to transfer between ranks.
     """
+
     is_inactive: bool
     is_stateless: Optional[bool]
     state: Optional[Any]
     cls_name: Optional[str]
     gid: int
     coord: np.ndarray
+
 
 class LoadBalancer:
     def __init__(
@@ -201,7 +204,7 @@ class LoadBalancer:
         workload_per_partition = np.zeros(n_parts)
         workload_per_partition[0] = np.sum(self._balance_metric_global)
         return (
-            {gid:0 for gid in self._sim_container.range_gid},
+            {gid: 0 for gid in self._sim_container.range_gid},
             workload_per_partition,
         )
 
@@ -240,7 +243,9 @@ class LoadBalancer:
             f"Load Balancing Number of Simulations per Rank: {sims_per_rank}"
         )
 
-    def _gather_send_data(self, gid: int, inactive_set: Set[int]=set()) -> LoadBalancerSimData:
+    def _gather_send_data(
+        self, gid: int, inactive_set: Set[int] = set()
+    ) -> LoadBalancerSimData:
         """
         Collects all required data to exchange simulations between ranks.
 
@@ -279,7 +284,11 @@ class LoadBalancer:
         )
 
     def _get_communication_map(
-        self, current_partitioning: Dict[int, int], target_partitioning: Dict[int, int], active_set: Set[int], inactive_set: Set[int]
+        self,
+        current_partitioning: Dict[int, int],
+        target_partitioning: Dict[int, int],
+        active_set: Set[int],
+        inactive_set: Set[int],
     ) -> Dict[int, List[LoadBalancerSimData]]:
         """
         Create dictionaries which map global IDs of simulations to ranks for sending and receiving.
@@ -336,7 +345,9 @@ class LoadBalancer:
             global_active_gids.extend(l)
         return set(global_active_gids)
 
-    def _get_global_inactive_gids(self, active_gids: Optional[Set[int]]=None) -> Set[int]:
+    def _get_global_inactive_gids(
+        self, active_gids: Optional[Set[int]] = None
+    ) -> Set[int]:
         """
         Get global IDs of all inactive gids. This is based on local ids.
 
@@ -350,7 +361,9 @@ class LoadBalancer:
         inactive_gids: Set[int]
             set of global inactive gids
         """
-        global_active_gids = self._get_global_active_gids() if active_gids is None else active_gids
+        global_active_gids = (
+            self._get_global_active_gids() if active_gids is None else active_gids
+        )
         global_inactive_gids = set(
             np.arange(self._sim_container.global_num_sims)
         ).difference(global_active_gids)
@@ -471,7 +484,9 @@ class ActiveBalancer(LoadBalancer):
             n_global_recv_sims,
         )
 
-    def _get_active_comm_maps(self, global_send_sims: list, global_recv_sims: list, active_gids: set):
+    def _get_active_comm_maps(
+        self, global_send_sims: list, global_recv_sims: list, active_gids: set
+    ):
         """
         Create dictionaries which map global IDs of simulations to ranks for sending and receiving.
 
@@ -624,7 +639,9 @@ class ActiveBalancer(LoadBalancer):
                     if excess_send_sims == 0:
                         break
 
-    def _get_communication_maps(self, stub0: Any, stub1: Any, active_set: Set[int], inactive_set: Set[int]):
+    def _get_communication_maps(
+        self, stub0: Any, stub1: Any, active_set: Set[int], inactive_set: Set[int]
+    ):
         send_map: dict[int, int] = dict()
         recv_map: dict[int, int] = dict()
 
@@ -658,7 +675,9 @@ class ActiveBalancer(LoadBalancer):
 
         # if requested, also balance inactive simulations if there was a change in active simulations
         if self._balance_inactive_sims:
-            send_map_inactive, recv_map_inactive = self._get_inactive_comm_maps(inactive_set)
+            send_map_inactive, recv_map_inactive = self._get_inactive_comm_maps(
+                inactive_set
+            )
             send_map.update(send_map_inactive)
             recv_map.update(recv_map_inactive)
 

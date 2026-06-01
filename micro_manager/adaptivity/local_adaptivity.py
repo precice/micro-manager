@@ -231,7 +231,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             self._adaptivity_output_type == "global"
             or self._adaptivity_output_type == "all"
         ):
-            active_sims_rankwise = self._mpi.comm.gather(active_sims_on_this_rank, root=0)
+            active_sims_rankwise = self._mpi.comm.gather(
+                active_sims_on_this_rank, root=0
+            )
             inactive_sims_rankwise = self._mpi.comm.gather(
                 inactive_sims_on_this_rank, root=0
             )

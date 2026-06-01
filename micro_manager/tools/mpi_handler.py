@@ -4,13 +4,14 @@ from mpi4py import MPI
 import numpy as np
 import hashlib
 
+
 class MPIHandler:
     """
     Encapsulates all MPI related aspects and provides Micro Manager specific functionality.
     All methods can override the rank and communicator if desired.
     """
 
-    def __init__(self, comm: MPI.Comm=MPI.COMM_WORLD):
+    def __init__(self, comm: MPI.Comm = MPI.COMM_WORLD):
         self._comm = comm
         self._size = self._comm.Get_size()
         self._rank = self._comm.Get_rank()
@@ -67,7 +68,13 @@ class MPIHandler:
 
         return array_buffer, node_handler
 
-    def get_ranks_of_objects(self, objects: List[Any], /, comm: Optional[MPI.Comm]=None, rank: Optional[int]=None) -> Dict[Any, int]:
+    def get_ranks_of_objects(
+        self,
+        objects: List[Any],
+        /,
+        comm: Optional[MPI.Comm] = None,
+        rank: Optional[int] = None,
+    ) -> Dict[Any, int]:
         """
         Get the ranks of all objects.
 
@@ -86,9 +93,11 @@ class MPIHandler:
             Mapping of all objects of all ranks to their respective rank IDs.
         """
         _rank, _comm = self._gather_comm_rank(rank, comm)
-        glob_maps : List[Dict[Any, int]] = _comm.allgather({obj: _rank for obj in objects})
+        glob_maps: List[Dict[Any, int]] = _comm.allgather(
+            {obj: _rank for obj in objects}
+        )
 
-        obj_to_rank : Dict[Any, int] = dict()
+        obj_to_rank: Dict[Any, int] = dict()
         for map in glob_maps:
             for obj, rnk in map.items():
                 obj_to_rank[obj] = rnk
@@ -96,9 +105,16 @@ class MPIHandler:
         return obj_to_rank
 
     def create_empty_exchange_map(self) -> Dict[int, List[Any]]:
-        return { r:[] for r in range(self.size)}
+        return {r: [] for r in range(self.size)}
 
-    def exchange(self, send_map: Dict[int, List[Any]], /, return_inverse: bool=False, comm: Optional[MPI.Comm]=None, rank: Optional[int]=None) -> Union[List[Any], Tuple[List[Any], Dict[int, List[Any]]]]:
+    def exchange(
+        self,
+        send_map: Dict[int, List[Any]],
+        /,
+        return_inverse: bool = False,
+        comm: Optional[MPI.Comm] = None,
+        rank: Optional[int] = None,
+    ) -> Union[List[Any], Tuple[List[Any], Dict[int, List[Any]]]]:
         """
         Transfers data between ranks as p2p communication according to the provided send_map.
 
@@ -192,11 +208,13 @@ class MPIHandler:
         tag = int(send_hashtag.hexdigest()[:6], base=16)
         return tag
 
-    def _gather_comm_rank(self, rank: Optional[int], comm: Optional[MPI.Comm]) -> Tuple[int, MPI.Comm]:
-        rnk : int = self.rank
+    def _gather_comm_rank(
+        self, rank: Optional[int], comm: Optional[MPI.Comm]
+    ) -> Tuple[int, MPI.Comm]:
+        rnk: int = self.rank
         if rank is not None:
             rnk = rank
-        cmm : MPI.Comm = self.comm
+        cmm: MPI.Comm = self.comm
         if comm is not None:
             cmm = comm
 

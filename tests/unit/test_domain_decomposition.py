@@ -171,9 +171,7 @@ class TestNonUniformDomainDecomposition(TestCase):
         mpi = MagicMock()
         mpi.rank = 15
         mpi.size = 128
-        domain_decomposer = DomainDecomposer(
-            self._configuration_mock, mpi
-        )
+        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
         self.assertTrue(
@@ -184,9 +182,7 @@ class TestNonUniformDomainDecomposition(TestCase):
         mpi = MagicMock()
         mpi.rank = 112
         mpi.size = 128
-        domain_decomposer = DomainDecomposer(
-            self._configuration_mock, mpi
-        )
+        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
         self.assertTrue(

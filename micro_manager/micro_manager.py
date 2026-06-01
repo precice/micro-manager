@@ -447,7 +447,9 @@ class MicroManagerCoupling(MicroManager):
             ) = domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
 
             # Global coordinates that are necessary for model adaptivity
-            global_mesh_vertex_coords = self._mpi.comm.allgather(self._mesh_vertex_coords)
+            global_mesh_vertex_coords = self._mpi.comm.allgather(
+                self._mesh_vertex_coords
+            )
             self._global_mesh_vertex_coords = np.array(
                 global_mesh_vertex_coords
             ).reshape((-1, self._mesh_vertex_coords.shape[-1]))

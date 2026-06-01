@@ -676,11 +676,17 @@ class TestRBF(TestCase):
         MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
     )
     def test_interpolation(self):
-        xq = ordered_global_xq[reordering_q][4 * self._mpi.rank : 4 * self._mpi.rank + 4]
+        xq = ordered_global_xq[reordering_q][
+            4 * self._mpi.rank : 4 * self._mpi.rank + 4
+        ]
         self._rbf.set_local_data(
-            ordered_global_x[reordering][10 * self._mpi.rank : 10 * self._mpi.rank + 10],
+            ordered_global_x[reordering][
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
+            ],
             xq,
-            ordered_global_f[reordering][10 * self._mpi.rank : 10 * self._mpi.rank + 10],
+            ordered_global_f[reordering][
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
+            ],
         )
 
         fq = self._rbf.interpolate()
