@@ -35,6 +35,7 @@ from .tasking.connection import spawn_local_workers
 from .micro_simulation import create_simulation_class, load_backend_class
 from .tools.logging_wrapper import Logger
 from .load_balancing import create_load_balancer
+from .tools.mpi_handler import MPIHandler, MPI
 
 try:
     from .interpolation import Interpolation
@@ -55,9 +56,10 @@ class MicroManagerCoupling(MicroManager):
             Name of the JSON configuration file (provided by the user).
         """
         super().__init__(config_file)
+        self._mpi = MPIHandler(MPI.COMM_WORLD)
 
         self._log_file = log_file
-        self._logger = Logger(__name__, log_file, self._rank)
+        self._logger = Logger(__name__, log_file, self._mpi.rank)
 
         self._config.set_logger(self._logger)
         self._config.read_json_micro_manager()
@@ -135,8 +137,8 @@ class MicroManagerCoupling(MicroManager):
         self._participant = precice.Participant(
             "Micro-Manager",
             self._config.precice_config_file_name(),
-            self._rank,
-            self._size,
+            self._mpi.rank,
+            self._mpi.size,
         )
 
         self._t = 0  # global time
@@ -145,12 +147,12 @@ class MicroManagerCoupling(MicroManager):
         self._model_manager = ModelManager(self._logger)
         self._conn = None
         self._is_load_balancing = (
-            self._config.enable_load_balancing() and self._is_parallel
+            self._config.enable_load_balancing() and self._mpi.is_parallel()
         )
         self._load_balancing_n = self._config.load_balancing_n()
         self.load_balancing = None
 
-        self._sim_container = SimulationContainer()
+        self._sim_container = SimulationContainer(self._mpi)
 
     # **************
     # Public methods
@@ -246,16 +248,16 @@ class MicroManagerCoupling(MicroManager):
 
             if self._is_load_balancing:
                 for i in range(self._sim_container.local_num_sims):
-                    micro_sims_output[i]["rank_of_sim"] = self._rank
+                    micro_sims_output[i]["rank_of_sim"] = self._mpi.rank
 
             # Check if more than a certain percentage of the micro simulations have crashed and terminate if threshold is exceeded
             if self._interpolate_crashed_sims:
-                crashed_sims_on_all_ranks = np.zeros(self._size, dtype=np.int64)
-                self._comm.Allgather(
+                crashed_sims_on_all_ranks = np.zeros(self._mpi.size, dtype=np.int64)
+                self._mpi.comm.Allgather(
                     np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
                 )
 
-                if self._is_parallel:
+                if self._mpi.is_parallel():
                     crash_ratio = (
                         np.sum(crashed_sims_on_all_ranks)
                         / self._sim_container.global_num_sims
@@ -334,7 +336,7 @@ class MicroManagerCoupling(MicroManager):
             or self._memory_usage_output_type == "local"
         ):
             mem_usage_output_file = (
-                self._output_dir + "peak_mem_usage_" + str(self._rank) + ".csv"
+                self._output_dir + "peak_mem_usage_" + str(self._mpi.rank) + ".csv"
             )
             with open(mem_usage_output_file, mode="w", newline="") as file:
                 writer = csv.writer(file)
@@ -350,20 +352,20 @@ class MicroManagerCoupling(MicroManager):
                 mem_usage
             )  # Convert to numpy array for collective Gather operation
             global_mem_usage = None
-            if self._rank == 0:
+            if self._mpi.rank == 0:
                 global_mem_usage = np.empty(
-                    [self._size, len(mem_usage)], dtype=np.float64
+                    [self._mpi.size, len(mem_usage)], dtype=np.float64
                 )
 
-            self._comm.Gather(mem_usage, global_mem_usage, root=0)
+            self._mpi.comm.Gather(mem_usage, global_mem_usage, root=0)
 
-            if self._rank == 0:
+            if self._mpi.rank == 0:
                 avg_mem_usage = np.zeros((len(mem_usage)))
                 for t in range(len(mem_usage)):
                     rank_wise_mem_usage = 0
-                    for r in range(self._size):
+                    for r in range(self._mpi.size):
                         rank_wise_mem_usage += global_mem_usage[r][t]
-                    avg_mem_usage[t] = rank_wise_mem_usage / self._size
+                    avg_mem_usage[t] = rank_wise_mem_usage / self._mpi.size
 
                 mem_usage_output_file = (
                     self._output_dir + "global_avg_peak_mem_usage.csv"
@@ -397,7 +399,7 @@ class MicroManagerCoupling(MicroManager):
         ) / 2 == self._participant.get_mesh_dimensions(self._macro_mesh_name):
             raise Exception("Provided macro mesh bounds are of incorrect dimension")
 
-        if self._is_parallel:
+        if self._mpi.is_parallel():
             if not len(
                 self._config.ranks_per_axis()
             ) == self._participant.get_mesh_dimensions(self._macro_mesh_name):
@@ -406,9 +408,9 @@ class MicroManagerCoupling(MicroManager):
                     " and does not match the dimensions of the macro mesh."
                 )
 
-            domain_decomposer = DomainDecomposer(self._config, self._rank, self._size)
+            domain_decomposer = DomainDecomposer(self._config, self._mpi)
 
-        if self._is_parallel and not self._is_load_balancing:
+        if self._mpi.is_parallel() and not self._is_load_balancing:
             coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds()
         else:  # When serial or load balancing, the whole macro domain is assigned to one/each rank
             coupling_mesh_bounds = self._config.macro_domain_bounds()
@@ -431,13 +433,13 @@ class MicroManagerCoupling(MicroManager):
             self._mesh_vertex_coords,
         ) = self._participant.get_mesh_vertex_ids_and_coordinates(self._macro_mesh_name)
 
-        if self._is_parallel and not self._is_load_balancing:
+        if self._mpi.is_parallel() and not self._is_load_balancing:
             # Gather all vertex coords and IDs from all ranks onto all ranks,
             # filter out coords already claimed by lower-ranked ranks.
             # When load balancing, all ranks receive all coords. No duplicates can arise.
             # TODO: Avoid the allgather by smartly selecting the relevant coordinates
-            all_coords = self._comm.allgather(self._mesh_vertex_coords)
-            all_ids = self._comm.allgather(self._mesh_vertex_ids)
+            all_coords = self._mpi.comm.allgather(self._mesh_vertex_coords)
+            all_ids = self._mpi.comm.allgather(self._mesh_vertex_ids)
 
             (
                 self._mesh_vertex_coords,
@@ -445,7 +447,7 @@ class MicroManagerCoupling(MicroManager):
             ) = domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
 
             # Global coordinates that are necessary for model adaptivity
-            global_mesh_vertex_coords = self._comm.allgather(self._mesh_vertex_coords)
+            global_mesh_vertex_coords = self._mpi.comm.allgather(self._mesh_vertex_coords)
             self._global_mesh_vertex_coords = np.array(
                 global_mesh_vertex_coords
             ).reshape((-1, self._mesh_vertex_coords.shape[-1]))
@@ -454,7 +456,7 @@ class MicroManagerCoupling(MicroManager):
             self._global_mesh_vertex_coords = self._mesh_vertex_coords
 
         if self._mesh_vertex_coords.size == 0:
-            if self._is_parallel:
+            if self._mpi.is_parallel():
                 self._logger.log_warning(
                     "The access region of this rank has no macro-scale vertices. This rank will not have any micro simulations. To avoid this, change the domain decomposition"
                 )
@@ -467,7 +469,7 @@ class MicroManagerCoupling(MicroManager):
                     "The macro mesh has no vertices in the specified access region."
                 )
 
-        if self._is_load_balancing and self._is_parallel:
+        if self._is_load_balancing and self._mpi.is_parallel():
             (
                 local_number_of_sims,
                 local_macro_coords,
@@ -478,11 +480,11 @@ class MicroManagerCoupling(MicroManager):
             local_number_of_sims, _ = self._mesh_vertex_coords.shape
             local_macro_coords = self._mesh_vertex_coords
 
-        nms_all_ranks = np.zeros(self._size, dtype=np.int64)
+        nms_all_ranks = np.zeros(self._mpi.size, dtype=np.int64)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
         # simulations have been created by previous ranks, so that it can set
         # the correct global IDs
-        self._comm.Allgatherv(np.array(local_number_of_sims), nms_all_ranks)
+        self._mpi.comm.Allgatherv(np.array(local_number_of_sims), nms_all_ranks)
 
         max_nms = np.max(nms_all_ranks)
         min_nms = np.min(nms_all_ranks)
@@ -532,7 +534,7 @@ class MicroManagerCoupling(MicroManager):
                 coord_tuple = tuple(coords)
                 global_ids_of_local_sims.append(coord_to_index[coord_tuple])
         else:
-            sim_id = np.sum(nms_all_ranks[: self._rank])
+            sim_id = np.sum(nms_all_ranks[: self._mpi.rank])
             for i in range(local_number_of_sims):
                 global_ids_of_local_sims.append(sim_id)
                 sim_id += 1
@@ -571,8 +573,7 @@ class MicroManagerCoupling(MicroManager):
                 self._model_manager,
                 self._sim_container,
                 self._config,
-                self._comm,
-                self._rank,
+                self._mpi,
                 self._log_file,
             )
 
@@ -589,8 +590,7 @@ class MicroManagerCoupling(MicroManager):
                 self._sim_container,
                 self._participant,
                 self._logger,
-                self._rank,
-                self._comm,
+                self._mpi,
                 micro_problem_cls,
                 self._model_manager,
             )
@@ -769,8 +769,7 @@ class MicroManagerCoupling(MicroManager):
             self._sim_container,
             self._logger,
             self._config,
-            self._comm,
-            self._rank,
+            self._mpi,
         )
 
         # If lazy initialization is on, initial states of inactive simulations need to be determined
@@ -932,8 +931,8 @@ class MicroManagerCoupling(MicroManager):
 
         # If interpolate is off, terminate after crash
         if not self._interpolate_crashed_sims:
-            crashed_sims_on_all_ranks = np.zeros(self._size, dtype=np.int64)
-            self._comm.Allgather(
+            crashed_sims_on_all_ranks = np.zeros(self._mpi.size, dtype=np.int64)
+            self._mpi.comm.Allgather(
                 np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
             )
             if sum(crashed_sims_on_all_ranks) > 0:
@@ -1022,8 +1021,8 @@ class MicroManagerCoupling(MicroManager):
 
         # If interpolate is off, terminate after crash
         if not self._interpolate_crashed_sims:
-            crashed_sims_on_all_ranks = np.zeros(self._size, dtype=np.int64)
-            self._comm.Allgather(
+            crashed_sims_on_all_ranks = np.zeros(self._mpi.size, dtype=np.int64)
+            self._mpi.comm.Allgather(
                 np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
             )
             if sum(crashed_sims_on_all_ranks) > 0:

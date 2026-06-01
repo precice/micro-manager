@@ -4,6 +4,7 @@ import numpy as np
 
 import micro_manager
 from micro_manager.simulation_container import SimulationContainer
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 
 
 class MicroSimulation:
@@ -52,7 +53,7 @@ class TestSimulationCrashHandling(TestCase):
         manager.initialize()
 
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
-        container = SimulationContainer()
+        container = SimulationContainer(manager._mpi)
         container.initialize(
             4, 4, [0, 1, 2, 3], np.array([[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0]])
         )
@@ -102,7 +103,7 @@ class TestSimulationCrashHandling(TestCase):
         manager = micro_manager.MicroManagerCoupling("micro-manager-config_crash.json")
         manager.initialize()
 
-        container = SimulationContainer()
+        container = SimulationContainer(manager._mpi)
         container.initialize(
             5,
             5,

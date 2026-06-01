@@ -1,12 +1,11 @@
 import numpy as np
-from mpi4py import MPI
 
 from copy import deepcopy
 from enum import Enum
-from typing import Optional, Tuple, Union
+from typing import Optional, Tuple
 
 from micro_manager.tools.projection import Projector, STDProjector, IdentityProjector
-from micro_manager.tools.p2p import create_tag
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 
 
 class NDtree:
@@ -790,18 +789,16 @@ class InterleavedDomain:
     Will de- and re-compose the distributed data to allow for domain local operations.
     """
 
-    def __init__(self, comm: MPI.Comm):
+    def __init__(self, mpi: MPIHandler):
         """
         Constructs InterleavedDomain object.
 
         Parameters
         ----------
-        comm : MPI.Comm
-            MPI communicator.
+        mpi : MPIHandler
+            MPI handler object.
         """
-        self._comm = comm
-        self._size = comm.Get_size()
-        self._rank = comm.Get_rank()
+        self._mpi = mpi
 
         # decomp data
         self._x_local = None  # n_points x point_dim
@@ -854,7 +851,7 @@ class InterleavedDomain:
                     if "projection_std_dims" not in domain_config
                     else domain_config["projection_std_dims"]
                 )
-                self._projector = STDProjector(target_dims, self._comm)
+                self._projector = STDProjector(target_dims, self._mpi)
             case "identity":
                 self._projector = IdentityProjector()
 
@@ -898,7 +895,7 @@ class InterleavedDomain:
             Assigned support point function values.
         """
         # if not parallel, no work to be done
-        if self._size == 1:
+        if not self._mpi.is_parallel():
             return self._x_local, self._x_query_local, self._f_local
 
         self._generate_trees()
@@ -934,18 +931,18 @@ class InterleavedDomain:
             Reassembled query point function values.
         """
         # if not parallel, no work to be done
-        if self._size == 1:
+        if not self._mpi.is_parallel():
             return f_query
 
         # transfer data back to original rank
-        send_map = {r: [] for r in range(self._size)}
+        send_map = self._mpi.create_empty_exchange_map()
         for i in range(x_query.shape[0]):
             dst_rank = self._query_rank_mapping[tuple(x_query[i, :].tolist())]
             data = []
             data.extend(x_query[i, :].tolist())
             data.extend(f_query[i, :].tolist())
             send_map[dst_rank].append(data)
-        local_data = self._communicate(send_map)
+        local_data = self._mpi.exchange(send_map)
         local_data = np.array(local_data).reshape(
             -1, x_query.shape[-1] + f_query.shape[-1]
         )
@@ -972,7 +969,7 @@ class InterleavedDomain:
         if self._x_query_local.shape[0] > 0:
             xq_loc_min = np.min(self._x_query_local, axis=0)
         local_min = np.minimum(x_loc_min, xq_loc_min)
-        glob_min = np.min(np.array(self._comm.allgather(local_min)), axis=0)
+        glob_min = np.min(np.array(self._mpi.comm.allgather(local_min)), axis=0)
         self._bound_low = glob_min
 
         x_loc_max = -np.ones(self._x_local.shape[-1]) * np.inf
@@ -982,7 +979,7 @@ class InterleavedDomain:
         if self._x_query_local.shape[0] > 0:
             xq_loc_max = np.max(self._x_query_local, axis=0)
         local_max = np.maximum(x_loc_max, xq_loc_max)
-        glob_max = np.max(np.array(self._comm.allgather(local_max)), axis=0)
+        glob_max = np.max(np.array(self._mpi.comm.allgather(local_max)), axis=0)
         self._bound_high = glob_max
 
         delta = glob_max - glob_min
@@ -1005,7 +1002,7 @@ class InterleavedDomain:
                 ]
             )
 
-        glob_cond = self._comm.allgather(eval_cond())
+        glob_cond = self._mpi.comm.allgather(eval_cond())
         while any(glob_cond):
             # undo prev norm
             self._x_local = self._x_local * self._normalization[None, :]
@@ -1014,7 +1011,7 @@ class InterleavedDomain:
             self._normalization += 1e-10
             self._x_local = self._x_local / self._normalization[None, :]
             self._x_query_local = self._x_query_local / self._normalization[None, :]
-            glob_cond = self._comm.allgather(eval_cond())
+            glob_cond = self._mpi.comm.allgather(eval_cond())
 
         self._projector.initialize(self._x_local * self._normalization[None, :])
         self._proj_x_local = self._projector(self._x_local)
@@ -1037,7 +1034,7 @@ class InterleavedDomain:
         for m in range(self._proj_x_query_local.shape[0]):
             depth_tree.insert(self._proj_x_query_local[m, :])
         max_depth = np.maximum(
-            self._comm.allreduce(depth_tree.get_height(), op=MPI.MAX)
+            self._mpi.comm.allreduce(depth_tree.get_height(), op=MPI.MAX)
             // self._coarsening_factor,
             self._coarsening_factor,
         )
@@ -1057,7 +1054,7 @@ class InterleavedDomain:
         # merge into a global tree structure
         def bcast_tree(t) -> NDtree:
             serial = t.serialize()
-            serial_global = self._comm.allgather(serial)
+            serial_global = self._mpi.comm.allgather(serial)
             res = NDtree(
                 NDtree.Mode.DISCRETIZE, low, high, max_depth, self._max_filling
             )
@@ -1090,7 +1087,7 @@ class InterleavedDomain:
         r_m_depth = self._tree.find_min_depth_for_n_neighbors(
             self._n_neighbors, self._proj_x_query_local
         )
-        r_m_depth = self._comm.allreduce(r_m_depth, op=MPI.MAX)
+        r_m_depth = self._mpi.comm.allreduce(r_m_depth, op=MPI.MAX)
         r_m_cells = np.power(2, r_m_depth)
         grid_resolution = self._tree.get_height()
         hMap = HilbertDirect(self._proj_x_local.shape[-1], grid_resolution)
@@ -1111,9 +1108,9 @@ class InterleavedDomain:
 
         # partition based on query points
         target_point_per_rank = max(
-            (len(sorted_1d_query_indices) + 1) // self._size, 16
+            (len(sorted_1d_query_indices) + 1) // self._mpi.size, 16
         )
-        partitions = {r: [-1, -1] for r in range(self._size)}
+        partitions = {r: [-1, -1] for r in range(self._mpi.size)}
         last_val = sorted_1d_query_indices[0]
         start_idx = 0
         part_begin = 0
@@ -1124,7 +1121,7 @@ class InterleavedDomain:
                 start_idx = i
 
             # handle last partition
-            if part_idx == self._size - 1:
+            if part_idx == self._mpi.size - 1:
                 partitions[part_idx][0] = part_begin
                 partitions[part_idx][1] = len(sorted_1d_query_indices) - 1
                 part_idx = part_idx + 1
@@ -1163,7 +1160,7 @@ class InterleavedDomain:
             partitions[part_idx][1] = len(sorted_1d_query_indices) - 1
 
         # assign surrounding src domain to rank local query points
-        src_domains = {r: [None, None] for r in range(self._size)}
+        src_domains = {r: [None, None] for r in range(self._mpi.size)}
         for rank, p_range in partitions.items():
             if -1 == p_range[0] and p_range[0] == p_range[1]:
                 continue
@@ -1194,7 +1191,7 @@ class InterleavedDomain:
         owned_query_indices = [
             query_mapping[tuple(coord.tolist())] for coord in owned_query_coords
         ]
-        send_map = {r: [] for r in range(self._size)}
+        send_map = self._mpi.create_empty_exchange_map()
         for i in range(len(owned_query_indices)):
             # find owning partition
             found = False
@@ -1217,7 +1214,7 @@ class InterleavedDomain:
                 raise RuntimeError("Corresponding rank not found for query point")
 
         # transfer query points
-        x_query_part, inv_map = self._communicate(send_map, return_inverse=True)
+        x_query_part, inv_map = self._mpi.exchange(send_map, return_inverse=True)
         x_query = np.array(x_query_part).reshape(-1, self._x_query_local.shape[-1])
         # invert query send map for later (to transfer back)
         self._query_rank_mapping = {}
@@ -1227,7 +1224,7 @@ class InterleavedDomain:
                 self._query_rank_mapping[tuple(data_[p_idx, :].tolist())] = rank
 
         # figure out which source points need to be sent where
-        send_map = {r: [] for r in range(self._size)}
+        send_map = self._mpi.create_empty_exchange_map()
         source_coords = self._tree.get_filled_coords(grid_resolution)
         source_mapping = {tuple(c.tolist()): hMap.coord2index(c) for c in source_coords}
         owned_source_coords = self._tree.get_coords_of(
@@ -1250,7 +1247,7 @@ class InterleavedDomain:
                     send_map[rank].append(data)
 
         # transfer source points
-        xf_part = self._communicate(send_map)
+        xf_part = self._mpi.exchange(send_map)
         xf_part = np.array(xf_part).reshape(
             -1, self._x_local.shape[-1] + self._f_local.shape[-1]
         )
@@ -1258,68 +1255,3 @@ class InterleavedDomain:
         f = xf_part[:, self._x_local.shape[-1] :]
 
         return x, x_query, f
-
-    def _communicate(
-        self, send_map: dict[int, list], return_inverse: bool = False
-    ) -> Union[list, Tuple[list, dict[int, list]]]:
-        """
-        Transfers data between ranks a p2p communication according to the provided send_map.
-
-        Parameters
-        ----------
-        send_map : dict[int, list]
-            Mapping from destination rank to list of data to be transferred.
-        return_inverse : bool
-            Return inverse transfer or not.
-
-        Returns
-        -------
-        comm_result : Union[list, Tuple[list, dict[int, list]]]
-            If return_inverse is True, returns a list of all received data as well as a mapping from which rank
-            which data was sent. Otherwise, returns only the received data list.
-        """
-        send_counts = [len(send_map[r]) for r in range(self._size)]
-        send_counts[self._rank] = 0  # ignore local count
-        glob_send_counts = self._comm.allgather(send_counts)
-
-        send_reqs = []
-        for recv_rank, data in send_map.items():
-            if recv_rank == self._rank:
-                continue
-            if len(data) == 0:
-                continue
-            for d_idx, entry in enumerate(data):
-                req = self._comm.isend(
-                    entry, dest=recv_rank, tag=create_tag(d_idx, self._rank, recv_rank)
-                )
-                send_reqs.append(req)
-
-        recv_reqs = []
-        for send_rank in range(self._size):
-            if send_rank == self._rank:
-                continue
-            if glob_send_counts[send_rank][self._rank] == 0:
-                continue
-            for d_idx in range(glob_send_counts[send_rank][self._rank]):
-                req = self._comm.irecv(
-                    None, source=send_rank, tag=create_tag(d_idx, send_rank, self._rank)
-                )
-                recv_reqs.append(tuple([send_rank, req]))
-
-        MPI.Request.Waitall(send_reqs)
-
-        result = []
-        result.extend(send_map[self._rank])
-        inv_map = {r: [] for r in range(self._size)}
-        inv_map[self._rank].extend(send_map[self._rank])
-
-        for source_rank, req in recv_reqs:
-            data = req.wait()
-            result.append(data)
-            if return_inverse:
-                inv_map[source_rank].append(data)
-
-        if return_inverse:
-            return result, inv_map
-        else:
-            return result
