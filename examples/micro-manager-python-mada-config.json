@@ -1,5 +1,5 @@
 {
-    "micro_file_name": "python-dummy/micro_dummy",
+    "micro_file_names": ["python-dummy/micro_dummy", "python-dummy/micro_dummy", "python-dummy/micro_dummy"],
     "coupling_params": {
         "precice_config_file_name": "precice-config.xml",
         "macro_mesh_name": "Macro-Mesh",
@@ -11,7 +11,6 @@
         "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
         "model_adaptivity": true,
         "model_adaptivity_settings": {
-            "micro_file_names": ["python-dummy/micro_dummy", "python-dummy/micro_dummy", "python-dummy/micro_dummy"],
             "switching_function": "mada_switcher"
         }
     },
