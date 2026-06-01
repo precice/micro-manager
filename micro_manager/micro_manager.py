@@ -142,7 +142,7 @@ class MicroManagerCoupling(MicroManager):
         self._t = 0  # global time
         self._n = 0  # sim-step
 
-        self._model_manager = ModelManager()
+        self._model_manager = ModelManager(self._logger)
         self._conn = None
         self._is_load_balancing = (
             self._config.enable_load_balancing() and self._is_parallel
