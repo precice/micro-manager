@@ -3,14 +3,19 @@ Tests for micro_simulation.py covering MicroSimulationInterface,
 MicroSimulationLocal, MicroSimulationClass, and create_simulation_class.
 """
 
+import importlib
+import sys
+import tempfile
 import unittest
 import warnings
+from pathlib import Path
 from unittest.mock import MagicMock
 
 from micro_manager.micro_simulation import (
     MicroSimulationInterface,
     MicroSimulationLocal,
     create_simulation_class,
+    load_backend_class,
 )
 
 
@@ -245,6 +250,123 @@ class TestMicroSimulationRemote(unittest.TestCase):
         )
         sent_task = conn.send.call_args_list[0][0][1]
         self.assertEqual(sent_task[0], "ConstructLateTask")
+
+
+class TestLoadBackendClass(unittest.TestCase):
+    def _write_module(self, directory, module_name, content):
+        module_path = Path(directory) / f"{module_name}.py"
+        module_path.write_text(content)
+        importlib.invalidate_caches()
+        return module_path
+
+    def test_missing_direct_dependency_raises_runtime_error(self):
+        """A direct ``import missing_pkg`` inside the micro sim should
+        raise RuntimeError with context about the missing dependency."""
+        module_name = "micro_sim_with_missing_dependency"
+        missing_dependency = "missing_dependency_for_micro_manager_test"
+
+        with tempfile.TemporaryDirectory() as directory:
+            self._write_module(
+                directory,
+                module_name,
+                f"import {missing_dependency}\n\nclass MicroSimulation:\n    pass\n",
+            )
+            sys.path.insert(0, directory)
+            self.addCleanup(sys.path.remove, directory)
+            self.addCleanup(sys.modules.pop, module_name, None)
+
+            with self.assertRaises(RuntimeError) as context:
+                load_backend_class(module_name)
+
+            msg = str(context.exception)
+            self.assertIn("load a dependency", msg)
+            self.assertIn(module_name, msg)
+            self.assertIn(missing_dependency, msg)
+
+    def test_transitive_missing_dependency_raises_runtime_error(self):
+        """A missing package imported *transitively* (helper -> missing_pkg)
+        should still surface as RuntimeError with the dependency name."""
+        module_name = "micro_sim_with_transitive_missing_dependency"
+        helper_module = "micro_sim_helper"
+        missing_dependency = "missing_dependency_for_transitive_import_test"
+
+        with tempfile.TemporaryDirectory() as directory:
+            self._write_module(
+                directory,
+                helper_module,
+                f"import {missing_dependency}\n\nVALUE = 1\n",
+            )
+            self._write_module(
+                directory,
+                module_name,
+                f"import {helper_module}\n\nclass MicroSimulation:\n    pass\n",
+            )
+            sys.path.insert(0, directory)
+            self.addCleanup(sys.path.remove, directory)
+            self.addCleanup(sys.modules.pop, module_name, None)
+            self.addCleanup(sys.modules.pop, helper_module, None)
+
+            with self.assertRaises(RuntimeError) as context:
+                load_backend_class(module_name)
+
+            msg = str(context.exception)
+            self.assertIn("load a dependency", msg)
+            self.assertIn(module_name, msg)
+            self.assertIn(missing_dependency, msg)
+
+    def test_module_not_found_raises_runtime_error(self):
+        """When the micro simulation file itself does not exist,
+        a RuntimeError should be raised indicating the module could not be loaded."""
+        module_name = "nonexistent_micro_simulation_module"
+
+        with self.assertRaises(RuntimeError) as context:
+            load_backend_class(module_name)
+
+        msg = str(context.exception)
+        self.assertIn("Could not load the python module", msg)
+        self.assertIn(module_name, msg)
+
+    def test_missing_micro_simulation_class_raises_runtime_error(self):
+        """A loadable module that lacks a MicroSimulation class should
+        raise RuntimeError with a descriptive message."""
+        module_name = "micro_sim_without_expected_class"
+
+        with tempfile.TemporaryDirectory() as directory:
+            self._write_module(
+                directory, module_name, "class OtherSimulation:\n    pass\n"
+            )
+            sys.path.insert(0, directory)
+            self.addCleanup(sys.path.remove, directory)
+            self.addCleanup(sys.modules.pop, module_name, None)
+
+            with self.assertRaises(RuntimeError) as context:
+                load_backend_class(module_name)
+
+            msg = str(context.exception)
+            self.assertIn("does not contain a MicroSimulation class", msg)
+            self.assertIn(module_name, msg)
+
+    def test_generic_import_error_raises_runtime_error(self):
+        """A non-ModuleNotFoundError exception during import (e.g. SyntaxError)
+        should be wrapped in RuntimeError with context."""
+        module_name = "micro_sim_with_syntax_error"
+
+        with tempfile.TemporaryDirectory() as directory:
+            self._write_module(
+                directory,
+                module_name,
+                "this is not valid python\n",
+            )
+            sys.path.insert(0, directory)
+            self.addCleanup(sys.path.remove, directory)
+            self.addCleanup(sys.modules.pop, module_name, None)
+
+            with self.assertRaises(RuntimeError) as context:
+                load_backend_class(module_name)
+
+            msg = str(context.exception)
+            self.assertIn("Error loading python module", msg)
+            self.assertIn(module_name, msg)
 
 
 class TestCreateSimulationClass(unittest.TestCase):
