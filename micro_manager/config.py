@@ -557,11 +557,11 @@ class Config:
         for i in range(len(self.micro_file_names())):
             if self.micro_stateless_flags()[i]:
                 self._logger.log_info_rank_zero(
-                    f"Only creating one full instance of Micro Model {i}."
+                    f"Creating only one instance of Micro Model {i}."
                 )
             else:
                 self._logger.log_info_rank_zero(
-                    f"Creating full instance of Micro Model {i} per mesh vertex."
+                    f"Creating all instances of Micro Model {i} per mesh vertex."
                 )
 
         self.output_dir.set = self.json["output_directory"].get_or_none(
