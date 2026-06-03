@@ -1,5 +1,5 @@
 {
-    "micro_file_name": "cpp-dummy/micro_dummy",
+    "micro_file_names": ["cpp-dummy/micro_dummy"],
     "coupling_params": {
         "precice_config_file_name": "precice-config-adaptivity.xml",
         "macro_mesh_name": "Macro-Mesh",

@@ -1,7 +1,7 @@
 """
 Class ModelAdaptivity provides methods to change micro simulation resolution on the fly.
 """
-from typing import Union, Optional
+from typing import Union, Optional, List, Dict, Any
 
 from micro_manager.config import Config
 from micro_manager.micro_simulation import (
@@ -29,8 +29,6 @@ class ModelAdaptivity:
         comm: MPI.Comm,
         rank: int,
         log_file: str,
-        conn: Connection,
-        num_ranks: int,
     ) -> None:
         """
         Class constructor.
@@ -49,43 +47,13 @@ class ModelAdaptivity:
             Rank of the MPI communicator.
         log_file : str
             Path to the log file to write to.
-        conn: Connection
-            Connection to workers
-        num_ranks : int
-            Number of workers
         """
         self._logger = Logger(__name__, log_file, rank)
 
         self._comm = comm
         self._model_manager = model_manager
         self._sim_container = sim_container
-        self._model_files = config.model_adaptivity_file_names()
         self._switching_func_name = config.model_adaptivity_switching_function()
-
-        stateless_flags = config.model_adaptivity_micro_stateless()
-        self._model_classes = []
-        pos = 0
-        for model_file in self._model_files:
-            try:
-                model = load_backend_class(model_file)
-                self._model_classes.append(
-                    create_simulation_class(
-                        self._logger, model, model_file, num_ranks, conn
-                    )
-                )
-                self._model_manager.register(
-                    self._model_classes[pos], stateless_flags[pos]
-                )
-                pos += 1
-            except Exception as e:
-                self._logger.log_info_rank_zero(
-                    f"Failed to load model class with error: {e}"
-                )
-        if (
-            len(self._model_classes) != len(self._model_files)
-            or len(self._model_classes) == 0
-        ):
-            raise RuntimeError("Not all models were loaded. Stopping!")
 
         FUNC_NAME = "switching_function"
         self._switching_func = ModelAdaptivity.switching_interface
@@ -105,8 +73,8 @@ class ModelAdaptivity:
         resolution: int,
         location: np.ndarray,
         t: float,
-        input: dict,
-        prev_output: Optional[dict],
+        input: Dict[str, Any],
+        prev_output: Optional[Dict[str, Any]],
     ) -> int:
         """
         Switching interface function, use as reference
@@ -119,9 +87,9 @@ class ModelAdaptivity:
             Array with gaussian point for respective sim. D is the mesh dimension.
         t : float
             Current time in simulation.
-        input : dict
+        input : Dict[str, Any]
             input object.
-        prev_output : [None, dict-like]
+        prev_output : Optional[Dict[str, Any]]
             Contains the output of the previous model evaluation.
 
         """
@@ -148,26 +116,22 @@ class ModelAdaptivity:
     def switch_models(
         self,
         t: float,
-        inputs: list[dict],
-        prev_output: Optional[list[dict]],
-        active_sim_ids: Optional[list] = None,
-    ) -> list[int]:
+        inputs: List[Dict[str, Any]],
+        prev_output: Optional[List[Dict[str, Any]]],
+        active_sim_ids: Optional[List[int]] = None,
+    ) -> List[int]:
         """
         Switches models within sims list. If active_sim_ids is None, all sims are considered as active.
 
         Parameters
         ----------
-        locations : np.array - shape(N,D)
-            Array with gaussian points for all sims. D is the mesh dimension.
         t : float
             Current time in simulation.
-        inputs : list[dict]
+        inputs : List[Dict[str, Any]]
             List of input objects.
-        prev_output : [None, list[dict]]
+        prev_output : Optional[List[Dict[str, Any]]]
             Contains the outputs of the previous model evaluation.
-        sims : list
-            List of all simulation objects.
-        active_sim_ids : [list, None]
+        active_sim_ids : Optional[List[int]]
             List of all active simulation ids.
 
         Returns
@@ -192,7 +156,9 @@ class ModelAdaptivity:
 
             sim = self._sim_container[lid]
             gid = self._sim_container.local_gids[lid]
-            target_class = self.get_resolution_sim_class(target_res[lid])
+            target_class = self._model_manager.get_cls_by_idx(
+                clamp_in_range(target_res[lid], 0, self.get_num_resolutions() - 1)
+            )
 
             # we store state for each resolution separately
             # keys are sim names of respective resolution
@@ -225,9 +191,9 @@ class ModelAdaptivity:
     def check_convergence(
         self,
         t: float,
-        inputs: list,
-        prev_output: Optional[list[dict]],
-        active_sim_ids: Optional[list] = None,
+        inputs: List[Dict[str, Any]],
+        prev_output: Optional[List[Dict[str, Any]]],
+        active_sim_ids: Optional[List[int]] = None,
     ) -> None:
         """
         Similarly to switch_models, checks whether models would be switched in next step.
@@ -237,11 +203,11 @@ class ModelAdaptivity:
         ----------
         t : float
             Current time in simulation.
-        inputs : list[dict]
+        inputs : List[Dict[str, Any]]
             List of all input objects.
-        prev_output : [None, list[dict]]
+        prev_output : Optional[List[Dict[str, Any]]]
             Contains the outputs of the previous model evaluation.
-        active_sim_ids : [list, None]
+        active_sim_ids : Optional[List[int]]
             List of all active simulation ids.
         """
         locations = self._sim_container.local_coords
@@ -265,45 +231,7 @@ class ModelAdaptivity:
         num_resolutions : int
             Number of loaded resolutions.
         """
-        return len(self._model_classes)
-
-    def get_resolution_sim_class(
-        self, resolution: Union[int, np.ndarray]
-    ) -> Union[MicroSimulationClass, list[MicroSimulationClass]]:
-        """
-        Looks up the class associated with the provided resolution.
-
-        Parameters
-        ----------
-        resolution : [int, np.array]
-            target resolution
-
-        Returns
-        -------
-        sim_class : class
-            associated class
-        """
-        return self._model_classes[
-            clamp_in_range(resolution, 0, len(self._model_classes) - 1)
-        ]
-
-    def get_sim_class_resolution(self, sim: MicroSimulationClass) -> int:
-        """
-        Looks up the resolution associated with the provided simulation object.
-
-        Parameters
-        ----------
-        sim : Simulation
-            Simulation object
-
-        Returns
-        -------
-        resolution : int
-            target resolution
-        """
-        return next(
-            (idx for idx, cls in enumerate(self._model_classes) if cls.name == sim.name)
-        )
+        return self._model_manager.num_models
 
     def _gather_current_resolutions(self, active_sims: np.ndarray) -> np.ndarray:
         """
@@ -321,7 +249,7 @@ class ModelAdaptivity:
         """
         return np.array(
             [
-                self.get_sim_class_resolution(self._sim_container[lid])
+                self._model_manager.get_idx_of_sim(self._sim_container[lid])
                 if active_sims[lid] == 1
                 else -1
                 for lid in self._sim_container.range_lid
@@ -331,10 +259,10 @@ class ModelAdaptivity:
     def _gather_target_resolutions(
         self,
         cur_res: np.ndarray,
-        locations: np.ndarray,
+        locations: List[np.ndarray],
         t: float,
-        inputs: list[dict],
-        prev_output: Optional[list[dict]],
+        inputs: List[Dict[str, Any]],
+        prev_output: Optional[List[Dict[str, Any]]],
         active_sims: np.ndarray,
     ) -> np.ndarray:
         """
@@ -342,22 +270,22 @@ class ModelAdaptivity:
 
         Parameters
         ----------
-        cur_res : np.array
+        cur_res : np.ndarray
             Current resolutions, from _gather_current_resolutions.
-        locations : np.array
+        locations : List[np.ndarray]
             Array with gaussian points for all sims. D is the mesh dimension.
         t : float
             Current time in simulation.
-        inputs : list[dict]
+        inputs : List[Dict[str, Any]]
             List of all input objects.
-        prev_output : [None, list[dict]]
+        prev_output : Optional[List[Dict[str, Any]]]
             Contains the outputs of the previous model evaluation.
         active_sims : np.array
             Boolean array indicating whether the model is active or not.
 
         Returns
         -------
-        resolutions : np.array
+        resolutions : np.ndarray
             Target resolutions.
         """
         switch_tgt = np.zeros_like(cur_res)
@@ -372,24 +300,26 @@ class ModelAdaptivity:
         res_tgt[active_sims] = clamp_in_range(
             switch_tgt[active_sims] + cur_res[active_sims],
             0,
-            len(self._model_classes) - 1,
+            self.get_num_resolutions() - 1,
         )
         return res_tgt
 
-    def _create_active_mask(self, active_sim_ids: list, size: int) -> np.ndarray:
+    def _create_active_mask(
+        self, active_sim_ids: Optional[List[int]], size: int
+    ) -> np.ndarray:
         """
         Converts list of active simulation ids to np boolean mask.
 
         Parameters
         ----------
-        active_sim_ids : np.array
+        active_sim_ids : Optional[List[int]]
             List of all active simulation ids.
         size : int
             size of active_sim_ids
 
         Returns
         -------
-        active_mask : np.array
+        active_mask : np.ndarray
             Boolean mask of active simulation ids.
         """
         if active_sim_ids is None:
