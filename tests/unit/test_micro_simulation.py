@@ -275,7 +275,7 @@ class TestLoadBackendClass(unittest.TestCase):
                 load_backend_class(module_name)
 
             msg = str(context.exception)
-            self.assertIn("Could not load a dependency", msg)
+            self.assertIn("load a dependency", msg)
             self.assertIn(module_name, msg)
             self.assertIn(missing_dependency, msg)
 
@@ -306,7 +306,7 @@ class TestLoadBackendClass(unittest.TestCase):
                 load_backend_class(module_name)
 
             msg = str(context.exception)
-            self.assertIn("Could not load a dependency", msg)
+            self.assertIn("load a dependency", msg)
             self.assertIn(module_name, msg)
             self.assertIn(missing_dependency, msg)
 

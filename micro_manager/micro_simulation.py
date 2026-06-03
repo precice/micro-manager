@@ -4,19 +4,19 @@ class MicroSimulation. A global ID member variable is defined for the class Simu
 created object is uniquely identifiable in a global setting.
 """
 
-import importlib as ipl
-import inspect
 from abc import ABC, abstractmethod
+import inspect
+import importlib as ipl
 
 from .tasking.task import (
-    ConstructLateTask,
     ConstructTask,
+    ConstructLateTask,
     DeleteTask,
-    GetStateTask,
     InitializeTask,
     OutputTask,
-    SetStateTask,
     SolveTask,
+    SetStateTask,
+    GetStateTask,
 )
 
 
@@ -631,7 +631,7 @@ def load_backend_class(path_to_micro_file: str) -> type:
             )
         else:
             raise RuntimeError(
-                f"Could not load a dependency of the python module '{path_to_micro_file}' containing the micro simulation: {ie}"
+                f"Counld not load a dependency of the python module '{path_to_micro_file}' containing the micro simulation: {ie}"
             )
     except Exception as e:
         raise RuntimeError(
