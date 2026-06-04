@@ -5,7 +5,7 @@ on:
 
 jobs:
   coverage:
-    name: Run test coverage check
+    name: Evaluate
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:

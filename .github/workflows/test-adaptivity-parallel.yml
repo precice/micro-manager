@@ -4,7 +4,7 @@ on:
 
 jobs:
   integration_tests:
-    name: Integration tests
+    name: Integration
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
@@ -45,7 +45,7 @@ jobs:
           python3 unit_cube.py 2
 
   unit_tests:
-    name: Unit tests
+    name: Unit
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:

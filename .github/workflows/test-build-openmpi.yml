@@ -5,7 +5,7 @@ on:
 
 jobs:
   build_cache:
-    name: Build and cache OpenMPI 5
+    name: OpenMPI 5
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:

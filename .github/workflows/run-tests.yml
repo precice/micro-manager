@@ -14,34 +14,43 @@ jobs:
   #          PREREQUISITE
   # ===============================
   formatting:
+    name: Format
     uses: ./.github/workflows/test-formatting.yml
   build-cache:
+    name: Build Cache
     needs: formatting
     uses: ./.github/workflows/test-build-openmpi.yml
   # ===============================
   # JOBS DEPENDING ON OPENMPI CACHE
   # ===============================
   unit-tests:
+    name: User-Side
     needs: build-cache
     uses: ./.github/workflows/test-unit.yml
   adaptivity-parallel:
+    name: Adaptivity Parallel
     needs: build-cache
     uses: ./.github/workflows/test-adaptivity-parallel.yml
   coverage:
+    name: Coverage
     needs: build-cache
     uses: ./.github/workflows/test-coverage.yml
   # ===============================
   #       INDEPENDENT OF MPI
   # ===============================
   domain-decomp:
+    name: Domain Decomp
     needs: formatting
     uses: ./.github/workflows/test-domain-decomposition.yml
   pip-install:
+    name: PIP
     needs: formatting
     uses: ./.github/workflows/test-pip-install.yml
   integration-dummy:
+    name: Integration
     needs: formatting
     uses: ./.github/workflows/test-macro-micro-dummy.yml
   adaptivity-serial:
+    name: Adaptivity Serial
     needs: formatting
     uses: ./.github/workflows/test-adaptivity-serial.yml

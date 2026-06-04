@@ -4,6 +4,7 @@ on:
 
 jobs:
   unit_tests:
+    name: Unit
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:

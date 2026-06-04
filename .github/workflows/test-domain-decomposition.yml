@@ -4,7 +4,7 @@ on:
 
 jobs:
   unit_tests:
-    name: Run domain decomposition unit tests
+    name: Unit
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:

@@ -4,7 +4,7 @@ on:
 
 jobs:
   unit_and_integration_tests:
-    name: Unit and integration tests
+    name: Unit & Integration
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:

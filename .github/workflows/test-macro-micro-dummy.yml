@@ -4,7 +4,7 @@ on:
 
 jobs:
   run_dummy:
-    name: Run dummy
+    name: Dummy
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:

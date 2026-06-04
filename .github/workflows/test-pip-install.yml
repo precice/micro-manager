@@ -5,6 +5,7 @@ on:
 
 jobs:
   test-pip-install:
+    name: Install
     runs-on: ubuntu-latest
     container: precice/precice:nightly
 
