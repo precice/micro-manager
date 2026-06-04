@@ -10,7 +10,13 @@ on:
   workflow_dispatch:
 
 jobs:
+  # ===============================
+  #          PREREQUISITE
+  # ===============================
+  formatting:
+    uses: ./.github/workflows/test-formatting.yml
   build-cache:
+    needs: formatting
     uses: ./.github/workflows/test-build-openmpi.yml
   # ===============================
   # JOBS DEPENDING ON OPENMPI CACHE
@@ -25,13 +31,17 @@ jobs:
     needs: build-cache
     uses: ./.github/workflows/test-coverage.yml
   # ===============================
-  #        INDEPENDENT JOBS
+  #       INDEPENDENT OF MPI
   # ===============================
   domain-decomp:
+    needs: formatting
     uses: ./.github/workflows/test-domain-decomposition.yml
   pip-install:
+    needs: formatting
     uses: ./.github/workflows/test-pip-install.yml
   integration-dummy:
+    needs: formatting
     uses: ./.github/workflows/test-macro-micro-dummy.yml
   adaptivity-serial:
+    needs: formatting
     uses: ./.github/workflows/test-adaptivity-serial.yml
