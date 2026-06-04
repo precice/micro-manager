@@ -1,5 +1,5 @@
 {
-    "micro_file_name": "test_snapshot_computation",
+    "micro_file_names": ["test_snapshot_computation"],
     "output_directory": "output",
     "coupling_params": {
         "parameter_file_name": "hdf_files/test_parameter.hdf5",
