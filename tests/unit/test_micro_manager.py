@@ -140,7 +140,7 @@ class TestFunctionCalls(TestCase):
         self.assertEqual(
             config.precice_config_file_name().split("/")[-1], "dummy-config.xml"
         )
-        self.assertEqual(config.micro_file_name(), "test_micro_manager")
+        self.assertListEqual(config.micro_file_names(), ["test_micro_manager"])
         self.assertEqual(config.macro_mesh_name(), "Macro-Mesh")
         self.assertEqual(config.micro_output_n(), 10)
         self.assertListEqual(config.read_data_names(), self.fake_read_data_names)
