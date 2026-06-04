@@ -457,7 +457,7 @@ class TestLBActive(TestCase):
         load_balancer.balance()
 
         actual_global_ids = []
-        for lid in container.local_gids:
+        for lid, gid in enumerate(container.local_gids):
             sim = container[lid]
             actual_global_ids.append(sim.get_global_id())
         self.assertListEqual(actual_global_ids, expected_global_ids)
