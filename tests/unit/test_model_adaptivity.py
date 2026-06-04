@@ -168,6 +168,7 @@ class TestModelAdaptivity(TestCase):
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
         manager._t = 1.0
         manager._sim_container = container
+        manager._model_manager = controller._model_manager
 
         solve_calls = []
 
@@ -219,6 +220,7 @@ class TestModelAdaptivity(TestCase):
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
         manager._t = 1.0
         manager._sim_container = container
+        manager._model_manager = controller._model_manager
 
         solve_calls = []
 
