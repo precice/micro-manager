@@ -1,12 +1,7 @@
 name: Test adaptivity functionality in serial
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - "*"
+  workflow_call:
+
 jobs:
   unit_and_integration_tests:
     name: Unit and integration tests

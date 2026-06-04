@@ -1,12 +1,7 @@
 name: Run Python and C++ dummy
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - "*"
+  workflow_call:
+
 jobs:
   run_dummy:
     name: Run dummy

@@ -1,13 +1,7 @@
 name: Test pip installation and dependency check
 
 on:
-  push:
-    branches:
-      - develop
-      - main
-  pull_request:
-    branches:
-      - "*"
+  workflow_call:
 
 jobs:
   test-pip-install:

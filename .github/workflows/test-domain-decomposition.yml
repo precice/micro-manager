@@ -1,12 +1,7 @@
 name: Test functions in class DomainDecomposer
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - "*"
+  workflow_call:
+
 jobs:
   unit_tests:
     name: Run domain decomposition unit tests

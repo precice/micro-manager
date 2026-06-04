@@ -1,0 +1,37 @@
+name: Test Suite
+on:
+  push:
+    branches:
+      - main
+      - develop
+  pull_request:
+    branches:
+      - "*"
+  workflow_dispatch:
+
+jobs:
+  build-cache:
+    uses: ./.github/workflows/test-build-openmpi.yml
+  # ===============================
+  # JOBS DEPENDING ON OPENMPI CACHE
+  # ===============================
+  unit-tests:
+    needs: build-cache
+    uses: ./.github/workflows/test-unit.yml
+  adaptivity-parallel:
+    needs: build-cache
+    uses: ./.github/workflows/test-adaptivity-parallel.yml
+  coverage:
+    needs: build-cache
+    uses: ./.github/workflows/test-coverage.yml
+  # ===============================
+  #        INDEPENDENT JOBS
+  # ===============================
+  domain-decomp:
+    uses: ./.github/workflows/test-domain-decomposition.yml
+  pip-install:
+    uses: ./.github/workflows/test-pip-install.yml
+  integration-dummy:
+    uses: ./.github/workflows/test-macro-micro-dummy.yml
+  adaptivity-serial:
+    uses: ./.github/workflows/test-adaptivity-serial.yml

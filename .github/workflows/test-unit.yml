@@ -1,19 +1,15 @@
 name: Run unit tests for user-side functions
 on:
-  workflow_run:
-    workflows: [Build OpenMPI cache]
-    types:
-      - completed
+  workflow_call:
+
 jobs:
   unit_tests:
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
       - uses: actions/checkout@v6
         with:
           path: micro-manager
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Install dependencies
         run: |
