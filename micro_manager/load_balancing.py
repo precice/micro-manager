@@ -488,7 +488,9 @@ class ActiveBalancer(LoadBalancer):
         )
 
     def _get_active_comm_maps(
-        self, global_send_sims: list, global_recv_sims: list, active_gids: set
+        self,
+        global_send_sims: list,
+        global_recv_sims: list,
     ):
         """
         Create dictionaries which map global IDs of simulations to ranks for sending and receiving.
@@ -508,7 +510,12 @@ class ActiveBalancer(LoadBalancer):
             recv_map : dict
                 keys are global IDs of sim states to receive, values are ranks to receive from
         """
-        rank_wise_global_ids_of_active_sims = active_gids
+        active_sims_global_ids = list(
+            self._adaptivity_controller.get_active_sim_global_ids()
+        )
+        rank_wise_global_ids_of_active_sims = self._mpi.comm.allgather(
+            active_sims_global_ids
+        )
 
         # Keys are ranks sending sims, values are lists of tuples: (list of global IDs to send, the rank to send them to)
         global_send_map: Dict[int, List[int]] = dict()
@@ -671,7 +678,7 @@ class ActiveBalancer(LoadBalancer):
                     n_global_recv_sims,
                 )
                 send_map_active, recv_map_active = self._get_active_comm_maps(
-                    global_send_sims, global_recv_sims, active_set
+                    global_send_sims, global_recv_sims
                 )
                 send_map.update(send_map_active)
                 recv_map.update(recv_map_active)
