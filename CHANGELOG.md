@@ -2,6 +2,7 @@
 
 ## latest
 
+- Fixed non-visible CI test cases on PR interface [#290](https://github.com/precice/micro-manager/pull/290)
 - Moved Simulation Class ownership and loading to Model Manager [#286](https://github.com/precice/micro-manager/pull/286)
 - Added simulation container for more encapsulation [#284](https://github.com/precice/micro-manager/pull/284)
 - Redesigned configuration loading for enhanced clarity and standardization [#264](https://github.com/precice/micro-manager/pull/264)
