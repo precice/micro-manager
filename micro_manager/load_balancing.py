@@ -642,7 +642,7 @@ class ActiveBalancer(LoadBalancer):
                     if excess_send_sims == 0:
                         break
 
-    def _get_communication_maps(
+    def _get_communication_map(
         self, stub0: Any, stub1: Any, active_set: Set[int], inactive_set: Set[int]
     ):
         send_map: dict[int, int] = dict()
