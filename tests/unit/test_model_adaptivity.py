@@ -174,7 +174,7 @@ class TestModelAdaptivity(TestCase):
         def solve_variant(micro_sims_input, dt, computed_outputs):
             solve_calls.append(
                 {
-                    "sim_name": manager._micro_sims[0].name,
+                    "sim_name": manager._sim_container[0].name,
                     "computed_outputs": computed_outputs.copy(),
                 }
             )
