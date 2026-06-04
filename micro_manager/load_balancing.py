@@ -383,19 +383,22 @@ class LoadBalancer:
 
         # Delete the simulations which no longer exist on this rank
         for send_list in send_map.values():
-            for _, _, _, _, gid, _ in send_list:
-                lid = self._sim_container.local_gids.index(gid)
+            for entry in send_list:
+                lid = self._sim_container.local_gids.index(entry.gid)
                 self._sim_container.remove_sim(lid)
 
         # Create simulations and set them to the received states
-        for is_inactive, is_stateless, state, cls_name, gid, coord in recv_sims:
+        for entry in recv_sims:
             sim = None
-            if not is_inactive:
-                sim = self._model_manager.get_instance_by_name(gid, cls_name)
-            lid = self._sim_container.add_sim(gid, sim, coord)
+            if not entry.is_inactive:
+                assert entry.cls_name is not None
+                sim = self._model_manager.get_instance_by_name(
+                    entry.gid, entry.cls_name
+                )
+            lid = self._sim_container.add_sim(entry.gid, sim, entry.coord)
 
-            if not is_stateless and state is not None:
-                self._sim_container.set_sim_state(lid, state)
+            if not entry.is_stateless and entry.state is not None:
+                self._sim_container.set_sim_state(lid, entry.state)
 
 
 class ActiveBalancer(LoadBalancer):
