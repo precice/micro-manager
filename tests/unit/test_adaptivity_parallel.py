@@ -255,12 +255,11 @@ class TestGlobalAdaptivity(TestCase):
         """
         self._configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
 
+        expected_ranks_of_sims = {0: 0, 1: 0, 2: 0, 3: 1, 4: 1}
         if self._mpi.rank == 0:
             global_ids = [0, 1, 2]
-            expected_ranks_of_sims = [0, 0, 0, 1, 1]
         elif self._mpi.rank == 1:
             global_ids = [3, 4]
-            expected_ranks_of_sims = [0, 0, 0, 1, 1]
 
         container = SimulationContainer(self._mpi)
         container.initialize(
@@ -271,4 +270,4 @@ class TestGlobalAdaptivity(TestCase):
         )
 
         actual_ranks_of_sims = container.get_ranks_of_sims()
-        self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
+        self.assertDictEqual(expected_ranks_of_sims, actual_ranks_of_sims)
