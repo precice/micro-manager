@@ -5,6 +5,8 @@ A collection of miscellaneous functions that are used in various parts of the co
 from typing import Union
 import numpy as np
 
+# TODO remove me: this is a dummy change to trigger CI
+
 
 def divide_in_parts(number, parts):
     if parts <= 0:
