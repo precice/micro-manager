@@ -407,8 +407,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         recv_data = self._mpi.exchange(send_map)
 
         # Add received output of active sims to inactive sims on this rank
-        for gid, data in recv_data:
-            for inactive_gid in active_to_inactive_map[assoc_active_gids[gid]]:
+        for active_gid, data in recv_data:
+            for inactive_gid in active_to_inactive_map[active_gid]:
                 inactive_lid = self._sim_container.local_gids.index(inactive_gid)
                 micro_output[inactive_lid] = deepcopy(data)
 
