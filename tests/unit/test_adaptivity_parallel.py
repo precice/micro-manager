@@ -72,7 +72,7 @@ class TestGlobalAdaptivity(TestCase):
         adaptivity_controller = GlobalAdaptivityCalculator(
             self._configurator,
             sim_container=container,
-            participant=MagicMock(),
+            profiler=MagicMock(),
             base_logger=MagicMock(),
             mpi=self._mpi,
             micro_problem_cls=sim_cls,
@@ -160,7 +160,7 @@ class TestGlobalAdaptivity(TestCase):
         adaptivity_controller = GlobalAdaptivityCalculator(
             self._configurator,
             sim_container=container,
-            participant=MagicMock(),
+            profiler=MagicMock(),
             base_logger=MagicMock(),
             mpi=self._mpi,
             micro_problem_cls=sim_cls,
@@ -226,7 +226,7 @@ class TestGlobalAdaptivity(TestCase):
         adaptivity_controller = GlobalAdaptivityCalculator(
             self._configurator,
             sim_container=container,
-            participant=MagicMock(),
+            profiler=MagicMock(),
             base_logger=MagicMock(),
             mpi=self._mpi,
             micro_problem_cls=sim_cls,

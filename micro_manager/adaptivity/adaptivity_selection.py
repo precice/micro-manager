@@ -6,7 +6,7 @@ from .adaptivity import AdaptivityCalculator
 def create_adaptivity_calculator(
     config,
     sim_container,
-    participant,
+    profiler,
     logger,
     mpi,
     micro_problem_cls,
@@ -28,7 +28,7 @@ def create_adaptivity_calculator(
         return GlobalAdaptivityCalculator(
             config,
             sim_container,
-            participant,
+            profiler,
             logger,
             mpi,
             micro_problem_cls,

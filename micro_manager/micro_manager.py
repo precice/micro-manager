@@ -36,6 +36,8 @@ from .micro_simulation import create_simulation_class, load_backend_class
 from .tools.logging_wrapper import Logger
 from .load_balancing import create_load_balancer
 from .tools.mpi_handler import MPIHandler, MPI
+from .tools.coupling import CouplingHandler
+from .tools.profiling import Profiler
 
 try:
     from .interpolation import Interpolation
@@ -76,15 +78,14 @@ class MicroManagerCoupling(MicroManager):
         else:
             self._output_dir = os.path.abspath(os.getcwd()) + "/"
 
-        # Data names of data to output to the snapshot database
-        self._write_data_names = self._config.write_data_names()
+        self._sim_container = SimulationContainer(self._mpi)
 
-        # Data names of data to read as input parameter to the simulations
-        self._read_data_names = self._config.read_data_names()
-
-        self._micro_dt = self._config.micro_dt()
-
-        self._macro_mesh_name = self._config.macro_mesh_name()
+        self._coupling: CouplingHandler = CouplingHandler(
+            self._config,
+            self._mpi,
+            self._sim_container,
+        )
+        self._profiler: Profiler = Profiler(self._coupling.participant)
 
         # Parameter for interpolation in case of a simulation crash
         self._interpolate_crashed_sims = self._config.enable_crashed_sim_interpolation()
@@ -116,9 +117,9 @@ class MicroManagerCoupling(MicroManager):
             # Names of micro data to be used for adaptivity computation
             self._adaptivity_micro_data_names: list = []
             for name in self._adaptivity_data_names:
-                if name in self._read_data_names:
+                if name in self._coupling.read_data_names:
                     self._adaptivity_macro_data_names.append(name)
-                if name in self._write_data_names:
+                if name in self._coupling.write_data_names:
                     self._adaptivity_micro_data_names.append(name)
 
             self._adaptivity_in_every_implicit_step = (
@@ -133,14 +134,6 @@ class MicroManagerCoupling(MicroManager):
 
         self._is_model_adaptivity_on = self._config.enable_model_adaptivity()
 
-        # Define the preCICE Participant
-        self._participant = precice.Participant(
-            "Micro-Manager",
-            self._config.precice_config_file_name(),
-            self._mpi.rank,
-            self._mpi.size,
-        )
-
         self._t = 0  # global time
         self._n = 0  # sim-step
 
@@ -151,8 +144,6 @@ class MicroManagerCoupling(MicroManager):
         )
         self._load_balancing_n = self._config.load_balancing_n()
         self.load_balancing = None
-
-        self._sim_container = SimulationContainer(self._mpi)
 
     # **************
     # Public methods
@@ -175,8 +166,6 @@ class MicroManagerCoupling(MicroManager):
         # call _solve_micro_simulations or _solve_micro_simulations_with_adaptivity internally
         # should use ModelAdaptivity methods to coordinate
 
-        dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
-
         first_iteration = True
         lb_counter = -1
 
@@ -184,33 +173,28 @@ class MicroManagerCoupling(MicroManager):
             # Log initial adaptivity metrics
             self._adaptivity_controller.log_metrics(self._n)
 
-        while self._participant.is_coupling_ongoing():
-
-            dt = min(self._participant.get_max_time_step_size(), self._micro_dt)
+        while self._coupling.is_ongoing():
+            dt = self._coupling.dt
 
             if self._is_adaptivity_on:
                 if (self._adaptivity_in_every_implicit_step or first_iteration) and (
                     self._n % self._adaptivity_n == 0
                 ):
-                    self._participant.start_profiling_section(
+                    with self._profiler.measure(
                         "micro_manager.solve.adaptivity_computation"
-                    )
+                    ):
+                        self._adaptivity_controller.compute_adaptivity(
+                            dt,
+                            self._data_for_adaptivity,
+                        )
+                        for (
+                            gid
+                        ) in self._adaptivity_controller.get_active_sim_global_ids():
+                            self._micro_sims_active_steps[gid] += 1
 
-                    self._adaptivity_controller.compute_adaptivity(
-                        dt,
-                        self._data_for_adaptivity,
-                    )
-                    active_sim_gids = (
-                        self._adaptivity_controller.get_active_sim_global_ids()
-                    )
-                    for gid in active_sim_gids:
-                        self._micro_sims_active_steps[gid] += 1
-
-                    # Write a checkpoint if a simulation is just activated.
-                    # This checkpoint will be asynchronous to the checkpoints written at the start of the time window.
-                    self._sim_container.write_checkpoints(only_none=True)
-
-                    self._participant.stop_last_profiling_section()
+                        # Write a checkpoint if a simulation is just activated.
+                        # This checkpoint will be asynchronous to the checkpoints written at the start of the time window.
+                        self._sim_container.write_checkpoints(only_none=True)
 
             # handle load balancing, in first iteration all sims are assumed to have same cost
             performed_lb = False
@@ -231,20 +215,20 @@ class MicroManagerCoupling(MicroManager):
                 performed_lb = True
             lb_counter += 1
 
-            # Write a checkpoint
-            if self._participant.requires_writing_checkpoint() or performed_lb:
+            if self._coupling.requires_writing_checkpoint() or performed_lb:
                 self._sim_container.write_checkpoints()
 
-            micro_sims_input = self._read_data_from_precice(dt)
+            read_buffer = {} if self._is_adaptivity_on else None
+            micro_sims_input = self._coupling.read_from_precice(read_buffer=read_buffer)
+            # TODO: will be removed in adaptivity refactoring
+            if self._is_adaptivity_on and read_buffer is not None:
+                for name in read_buffer.keys():
+                    if name in self._adaptivity_macro_data_names:
+                        self._data_for_adaptivity[name] = read_buffer[name]
 
-            self._participant.start_profiling_section(
-                "micro_manager.solve.solve_micro_simulations"
-            )
-
-            micro_sims_output = micro_sim_solve(micro_sims_input, dt)
-            self.load_balancing.update()
-
-            self._participant.stop_last_profiling_section()
+            with self._profiler.measure("micro_manager.solve.solve_micro_simulations"):
+                micro_sims_output = micro_sim_solve(micro_sims_input, dt)
+                self.load_balancing.update()
 
             if self._is_load_balancing:
                 for i in range(self._sim_container.local_num_sims):
@@ -274,17 +258,16 @@ class MicroManagerCoupling(MicroManager):
                     )
                     sys.exit()
 
-            self._write_data_to_precice(micro_sims_output)
-
-            self._participant.advance(dt)
+            self._coupling.write_to_precice(micro_sims_output)
+            self._coupling.advance(dt)
 
             # Revert micro simulations to their last checkpoints if required
-            if self._participant.requires_reading_checkpoint():
+            if self._coupling.requires_reading_checkpoint():
                 self._sim_container.load_checkpoints()
                 first_iteration = False
 
             # Time window has converged, now micro output can be generated
-            if self._participant.is_time_window_complete():
+            if self._coupling.is_time_window_complete():
                 self._t += dt  # Update time to the end of the time window
                 self._n += 1  # Update time step to the end of the time window
 
@@ -378,7 +361,7 @@ class MicroManagerCoupling(MicroManager):
 
         if self._conn is not None:
             self._conn.close()
-        self._participant.finalize()
+        self._coupling.finalize()
 
     def initialize(self) -> None:
         """
@@ -389,82 +372,62 @@ class MicroManagerCoupling(MicroManager):
         - Create all micro simulation objects and initialize them if an initialize() method is available.
         - If required, write initial data to preCICE.
         """
-        self._participant.start_profiling_section(
-            "micro_manager.initialize.direct_access"
-        )
+        with self._profiler.measure("micro_manager.initialize.direct_access"):
+            # Decompose the macro-domain and set the mesh access region for each partition in preCICE
+            if (
+                not len(self._config.macro_domain_bounds()) / 2
+                == self._coupling.mesh_dims
+            ):
+                raise Exception("Provided macro mesh bounds are of incorrect dimension")
 
-        # Decompose the macro-domain and set the mesh access region for each partition in preCICE
-        if not len(
-            self._config.macro_domain_bounds()
-        ) / 2 == self._participant.get_mesh_dimensions(self._macro_mesh_name):
-            raise Exception("Provided macro mesh bounds are of incorrect dimension")
-
-        if self._mpi.is_parallel():
-            if not len(
-                self._config.ranks_per_axis()
-            ) == self._participant.get_mesh_dimensions(self._macro_mesh_name):
-                raise Exception(
-                    "Provided ranks combination is of incorrect dimension"
-                    " and does not match the dimensions of the macro mesh."
-                )
+            if self._mpi.is_parallel():
+                if not len(self._config.ranks_per_axis()) == self._coupling.mesh_dims:
+                    raise Exception(
+                        "Provided ranks combination is of incorrect dimension"
+                        " and does not match the dimensions of the macro mesh."
+                    )
 
             domain_decomposer = DomainDecomposer(self._config, self._mpi)
 
-        if self._mpi.is_parallel() and not self._is_load_balancing:
-            coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds()
-        else:  # When serial or load balancing, the whole macro domain is assigned to one/each rank
-            coupling_mesh_bounds = self._config.macro_domain_bounds()
-
-        self._participant.set_mesh_access_region(
-            self._macro_mesh_name, coupling_mesh_bounds
-        )
-
-        self._participant.stop_last_profiling_section()
+            if self._mpi.is_parallel() and not self._is_load_balancing:
+                coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds()
+            else:  # When serial or load balancing, the whole macro domain is assigned to one/each rank
+                coupling_mesh_bounds = self._config.macro_domain_bounds()
+            self._coupling.set_access_region(coupling_mesh_bounds)
 
         # initialize preCICE
-        self._participant.initialize()
+        self._coupling.initialize()
 
-        self._participant.start_profiling_section(
-            "micro_manager.initialize.initialize_micro_sims"
-        )
-
-        (
-            self._mesh_vertex_ids,
-            self._mesh_vertex_coords,
-        ) = self._participant.get_mesh_vertex_ids_and_coordinates(self._macro_mesh_name)
+        self._profiler.begin("micro_manager.initialize.initialize_micro_sims")
+        self._coupling.apply_access_region()
 
         if self._mpi.is_parallel() and not self._is_load_balancing:
             # Gather all vertex coords and IDs from all ranks onto all ranks,
             # filter out coords already claimed by lower-ranked ranks.
             # When load balancing, all ranks receive all coords. No duplicates can arise.
             # TODO: Avoid the allgather by smartly selecting the relevant coordinates
-            all_coords = self._mpi.comm.allgather(self._mesh_vertex_coords)
-            all_ids = self._mpi.comm.allgather(self._mesh_vertex_ids)
+            all_coords = self._mpi.comm.allgather(self._coupling.registered_vertex_coords)
+            all_ids = self._mpi.comm.allgather(self._coupling.registered_vertex_ids)
 
-            (
-                self._mesh_vertex_coords,
-                self._mesh_vertex_ids,
-            ) = domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
+            coords, ids = domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
+            self._coupling.override_registered_vertices(coords, ids)
 
-            # Global coordinates that are necessary for model adaptivity
-            global_mesh_vertex_coords = self._mpi.comm.allgather(
-                self._mesh_vertex_coords
-            )
-            self._global_mesh_vertex_coords = np.array(
-                global_mesh_vertex_coords
-            ).reshape((-1, self._mesh_vertex_coords.shape[-1]))
-        else:
-            # For a serial run or when load balancing, the local mesh vertex coordinates are the global mesh vertex coordinates
-            self._global_mesh_vertex_coords = self._mesh_vertex_coords
+        # Global coordinates that are necessary for model adaptivity
+        self._coupling.load_global_vertex_coords()
 
-        if self._mesh_vertex_coords.size == 0:
+        if self._coupling.num_registered_vertices == 0:
             if self._mpi.is_parallel():
                 self._logger.log_warning(
-                    "The access region of this rank has no macro-scale vertices. This rank will not have any micro simulations. To avoid this, change the domain decomposition"
+                    "The access region of this rank has no macro-scale vertices. "
+                    "This rank will not have any micro simulations. "
+                    "To avoid this, change the domain decomposition"
                 )
                 if self._lazy_init:
                     raise Exception(
-                        "The macro mesh has no vertices in the specified access region, but lazy initialization is turned on. Lazy initialization cannot be used if there are no vertices in the access region, as there would be no data to compute the adaptivity and determine which simulations to initialize."
+                        "The macro mesh has no vertices in the specified access region, "
+                        "but lazy initialization is turned on. Lazy initialization cannot be used "
+                        "if there are no vertices in the access region, as there would be no data to compute "
+                        "the adaptivity and determine which simulations to initialize."
                     )
             else:
                 raise Exception(
@@ -476,11 +439,11 @@ class MicroManagerCoupling(MicroManager):
                 local_number_of_sims,
                 local_macro_coords,
             ) = domain_decomposer.get_local_sims_and_macro_coords(
-                self._mesh_vertex_coords
+                self._coupling.registered_vertex_coords
             )
         else:
-            local_number_of_sims, _ = self._mesh_vertex_coords.shape
-            local_macro_coords = self._mesh_vertex_coords
+            local_number_of_sims, _ = self._coupling.num_registered_vertices
+            local_macro_coords = self._coupling.registered_vertex_coords
 
         nms_all_ranks = np.zeros(self._mpi.size, dtype=np.int64)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
@@ -528,7 +491,8 @@ class MicroManagerCoupling(MicroManager):
         if self._is_load_balancing:
             # Create a set of global coordinate indices for faster lookup
             coord_to_index = {
-                tuple(coord): i for i, coord in enumerate(self._mesh_vertex_coords)
+                tuple(coord): i
+                for i, coord in enumerate(self._coupling.registered_vertex_coords)
             }
 
             # Set global IDs based on the coordinate ordering in preCICE to be consistent with the scenario without load balancing
@@ -590,7 +554,7 @@ class MicroManagerCoupling(MicroManager):
             self._adaptivity_controller = create_adaptivity_calculator(
                 self._config,
                 self._sim_container,
-                self._participant,
+                self._profiler,
                 self._logger,
                 self._mpi,
                 micro_problem_cls,
@@ -604,7 +568,13 @@ class MicroManagerCoupling(MicroManager):
         self._micro_sims_init = False  # DECLARATION
 
         # Read initial data from preCICE, if it is available
-        initial_macro_data = self._read_data_from_precice(dt=0)
+        read_buffer = {} if self._is_adaptivity_on else None
+        initial_macro_data = self._coupling.read_from_precice(0, read_buffer)
+        # TODO: will be removed in adaptivity refactoring
+        if self._is_adaptivity_on and read_buffer is not None:
+            for name in read_buffer.keys():
+                if name in self._adaptivity_macro_data_names:
+                    self._data_for_adaptivity[name] = read_buffer[name]
 
         first_id = 0  # 0 if lazy initialization is off, otherwise the first active simulation ID
         micro_sims_to_init = range(
@@ -631,7 +601,7 @@ class MicroManagerCoupling(MicroManager):
                         self._data_for_adaptivity[name][i] = initial_macro_data[i][name]
 
                 self._adaptivity_controller.compute_adaptivity(
-                    self._micro_dt, self._data_for_adaptivity
+                    self._coupling.micro_dt, self._data_for_adaptivity
                 )
 
                 active_sim_lids = self._adaptivity_controller.get_active_sim_local_ids()
@@ -765,7 +735,7 @@ class MicroManagerCoupling(MicroManager):
         self._micro_sims_have_output = micro_problem_cls.check_output()
 
         self.load_balancing = create_load_balancer(
-            self._participant,
+            self._profiler,
             self._model_manager,
             self._adaptivity_controller if self._is_adaptivity_on else None,
             self._sim_container,
@@ -790,7 +760,7 @@ class MicroManagerCoupling(MicroManager):
 
             initial_micro_data_list = (
                 self._adaptivity_controller.get_full_field_micro_output(
-                    initial_data, initial_micro_data_list
+                    initial_macro_data, initial_micro_data_list
                 )
             )
 
@@ -800,86 +770,11 @@ class MicroManagerCoupling(MicroManager):
                         name
                     ]
 
-        self._participant.stop_last_profiling_section()
+        self._profiler.end()
 
     # ***************
     # Private methods
     # ***************
-
-    def _read_data_from_precice(self, dt) -> list:
-        """
-        Read data from preCICE.
-
-        Parameters
-        ----------
-        dt : float
-            Time step size at which data is to be read from preCICE.
-
-        Returns
-        -------
-        local_read_data : list
-            List of dicts in which keys are names of data being read and the values are the data from preCICE.
-        """
-        read_data: dict[str, list] = dict()
-
-        if self._is_load_balancing:
-            read_vertex_ids = self._sim_container.local_gids
-        else:
-            read_vertex_ids = self._mesh_vertex_ids
-
-        for name in self._read_data_names:
-            read_data[name] = []
-
-        for name in self._read_data_names:
-            read_data.update(
-                {
-                    name: self._participant.read_data(
-                        self._macro_mesh_name, name, read_vertex_ids, dt
-                    )
-                }
-            )
-
-            if self._is_adaptivity_on:
-                if name in self._adaptivity_macro_data_names:
-                    self._data_for_adaptivity[name] = read_data[name]
-
-        return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
-
-    def _write_data_to_precice(self, data: list) -> None:
-        """
-        Write data to preCICE.
-
-        Parameters
-        ----------
-        data : list
-            List of dicts in which keys are names of data and the values are the data to be written to preCICE.
-        """
-        if self._is_load_balancing:
-            write_vertex_ids = self._sim_container.local_gids
-        else:
-            write_vertex_ids = self._mesh_vertex_ids
-
-        data_dict: dict[str, list] = dict()
-        if not self._sim_container.empty():
-            for name in data[0]:
-                data_dict[name] = []
-
-            for d in data:
-                for name, values in d.items():
-                    data_dict[name].append(values)
-
-            for dname in self._write_data_names:
-                self._participant.write_data(
-                    self._macro_mesh_name,
-                    dname,
-                    write_vertex_ids,
-                    data_dict[dname],
-                )
-        else:
-            for dname in self._write_data_names:
-                self._participant.write_data(
-                    self._macro_mesh_name, dname, [], np.array([])
-                )
 
     def _solve_micro_simulations(
         self, micro_sims_input: list, dt: float, computed_outputs: dict = {}
@@ -1101,7 +996,7 @@ class MicroManagerCoupling(MicroManager):
                 for lid, out in enumerate(output):
                     if lid in switched_lids:
                         continue
-                    gid = self._sim_container.local_gids[lid]
+                    gid = self._sim_container.local_gids[int(lid)]
                     computed_outputs[gid] = out
             output = solve_variant(micro_sims_input, dt, computed_outputs)
             self._model_adaptivity_controller.check_convergence(
