@@ -13,7 +13,14 @@ class CouplingHandler:
     all preCICE relevant data.
     """
 
-    def __init__(self, config: Config, rank: int, size: int, comm: MPI.Comm, simulation_container: SimulationContainer):
+    def __init__(
+        self,
+        config: Config,
+        rank: int,
+        size: int,
+        comm: MPI.Comm,
+        simulation_container: SimulationContainer,
+    ):
         """
         Creates a new CouplingHandler instance in which a connection to preCICE is established.
 
@@ -30,64 +37,78 @@ class CouplingHandler:
         simulation_container : SimulationContainer
             Simulation container object.
         """
-        self._rank : int = rank
-        self._size : int = size
-        self._comm : MPI.Comm = comm
+        self._rank: int = rank
+        self._size: int = size
+        self._comm: MPI.Comm = comm
 
-        self._micro_dt : float = config.micro_dt()
-        self._macro_mesh_name : str = config.macro_mesh_name()
+        self._micro_dt: float = config.micro_dt()
+        self._macro_mesh_name: str = config.macro_mesh_name()
         # Data names of data to output to the snapshot database
-        self._write_data_names : List[str] = config.write_data_names()
+        self._write_data_names: List[str] = config.write_data_names()
         # Data names of data to read as input parameter to the simulations
-        self._read_data_names : List[str] = config.read_data_names()
+        self._read_data_names: List[str] = config.read_data_names()
 
         # Define the preCICE Participant
-        self._participant : p.Participant = p.Participant(
+        self._participant: p.Participant = p.Participant(
             "Micro-Manager",
             config.precice_config_file_name(),
             rank,
             size,
         )
-        self._sim_container : SimulationContainer = simulation_container
+        self._sim_container: SimulationContainer = simulation_container
 
-        self._access_region : List[List[float]] = []
+        self._access_region: List[List[float]] = []
         # Based on the access region, this rank is associated with a subset of
         # IDs and coordinates of the global macro mesh within preCICE.
-        self._mesh_vertex_ids : List[int] = []
-        self._mesh_vertex_coords : List[np.ndarray] = []
-        self._global_mesh_vertex_coords : List[np.ndarray] = []
-        self._mesh_dims : int = self._participant.get_mesh_dimensions(self._macro_mesh_name)
+        self._mesh_vertex_ids: List[int] = []
+        self._mesh_vertex_coords: List[np.ndarray] = []
+        self._global_mesh_vertex_coords: List[np.ndarray] = []
+        self._mesh_dims: int = self._participant.get_mesh_dimensions(
+            self._macro_mesh_name
+        )
 
     @property
     def write_data_names(self) -> List[str]:
         return self._write_data_names
+
     @property
     def read_data_names(self) -> List[str]:
         return self._read_data_names
+
     @property
     def macro_mesh_name(self) -> str:
         return self._macro_mesh_name
+
     @property
     def registered_vertex_ids(self) -> List[int]:
         return self._mesh_vertex_ids
+
     @property
     def registered_vertex_coords(self) -> List[np.ndarray]:
         return self._mesh_vertex_coords
+
     @property
     def global_vertex_coords(self) -> List[np.ndarray]:
         return self._global_mesh_vertex_coords
+
     @property
     def dt(self) -> float:
-        return float(np.minimum(self._micro_dt, self._participant.get_max_time_step_size()))
+        return float(
+            np.minimum(self._micro_dt, self._participant.get_max_time_step_size())
+        )
+
     @property
     def micro_dt(self) -> float:
         return self._micro_dt
+
     @property
     def participant(self):
         return self._participant
+
     @property
     def mesh_dims(self) -> int:
         return self._mesh_dims
+
     @property
     def num_registered_vertices(self) -> int:
         return len(self._mesh_vertex_coords)
@@ -109,7 +130,9 @@ class CouplingHandler:
             self._access_region,
         )
 
-    def override_registered_vertices(self, coords: List[np.ndarray], ids: List[int]) -> None:
+    def override_registered_vertices(
+        self, coords: List[np.ndarray], ids: List[int]
+    ) -> None:
         """
         Sets the registered vertex IDs and coordinates to the provided parameters. Used for example
         after some postprocessing (filtering).
@@ -139,7 +162,9 @@ class CouplingHandler:
         """
         Reads the IDs and coordinates defined by the access region.
         """
-        ids, coords = self._participant.get_mesh_vertex_ids_and_coordinates(self._macro_mesh_name)
+        ids, coords = self._participant.get_mesh_vertex_ids_and_coordinates(
+            self._macro_mesh_name
+        )
         self._mesh_vertex_ids.extend(ids)
         self._mesh_vertex_coords.extend(coords)
 
@@ -199,7 +224,7 @@ class CouplingHandler:
         """
         return self._participant.requires_reading_checkpoint()
 
-    def advance(self, dt: Optional[float]=None) -> None:
+    def advance(self, dt: Optional[float] = None) -> None:
         """
         Attempts to advance the coupling to the next time step.
 
@@ -211,7 +236,11 @@ class CouplingHandler:
         dt = dt or self.dt
         self._participant.advance(dt)
 
-    def read_from_precice(self, dt: Optional[float]=None, read_buffer: Optional[Dict[str, List[Any]]]=None) -> List[Dict[str, Any]]:
+    def read_from_precice(
+        self,
+        dt: Optional[float] = None,
+        read_buffer: Optional[Dict[str, List[Any]]] = None,
+    ) -> List[Dict[str, Any]]:
         """
         Read data from preCICE.
 
@@ -229,8 +258,8 @@ class CouplingHandler:
         """
         read_data: Dict[str, List[Any]] = read_buffer or {}
         read_data.clear()
-        read_data.update({name:[] for name in self._read_data_names})
-        read_vertex_ids : List[int] = self._sim_container.local_gids
+        read_data.update({name: [] for name in self._read_data_names})
+        read_vertex_ids: List[int] = self._sim_container.local_gids
         dt = dt or self.dt
 
         for name in self._read_data_names:
@@ -254,7 +283,9 @@ class CouplingHandler:
             List of dicts in which keys are names of data and the values are the data to be written to preCICE.
         """
         write_vertex_ids: List[int] = self._sim_container.local_gids
-        data_dict: Dict[str, List[Any]] = {dname: [] for dname in self._write_data_names}
+        data_dict: Dict[str, List[Any]] = {
+            dname: [] for dname in self._write_data_names
+        }
 
         for d in data:
             for dname in self._write_data_names:

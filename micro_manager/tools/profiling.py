@@ -8,7 +8,8 @@ class ProfilingContext:
     Upon exiting it, profiling is stopped.
     Only one context may be active at a time. This is checked during debug mode.
     """
-    CONTEXT_ACTIVE : bool = False
+
+    CONTEXT_ACTIVE: bool = False
 
     def __init__(self, participant: p.Participant, name: str):
         """
@@ -21,8 +22,8 @@ class ProfilingContext:
         name : str
             profiling name
         """
-        self._part : p.Participant = participant
-        self._name : str = name
+        self._part: p.Participant = participant
+        self._name: str = name
 
     def __enter__(self) -> "ProfilingContext":
         """
@@ -58,7 +59,7 @@ class Profiler:
         participant : p.Participant
             preCICE participant
         """
-        self._part : p.Participant = participant
+        self._part: p.Participant = participant
 
     def measure(self, name: str) -> ProfilingContext:
         """

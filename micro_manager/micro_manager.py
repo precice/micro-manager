@@ -442,7 +442,7 @@ class MicroManagerCoupling(MicroManager):
                 self._coupling.registered_vertex_coords
             )
         else:
-            local_number_of_sims, _ = self._coupling.num_registered_vertices
+            local_number_of_sims = self._coupling.num_registered_vertices
             local_macro_coords = self._coupling.registered_vertex_coords
 
         nms_all_ranks = np.zeros(self._mpi.size, dtype=np.int64)
