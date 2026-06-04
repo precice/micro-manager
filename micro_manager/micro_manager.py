@@ -1116,7 +1116,7 @@ class MicroManagerCoupling(MicroManager):
             sim = self._sim_container[lid]
             res = -1
             if sim is not None:
-                res = self._model_adaptivity_controller.get_sim_class_resolution(sim)
+                res = self._model_manager.get_idx_of_sim(sim)
             output[lid]["model_resolution"] = res
         return output
 

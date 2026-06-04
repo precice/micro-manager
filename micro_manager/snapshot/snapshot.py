@@ -87,7 +87,7 @@ class MicroManagerSnapshot(MicroManager):
         micro_problem_cls = create_simulation_class(
             self._logger,
             self._micro_problem,
-            self._config.micro_file_name(),
+            self._config.micro_file_names()[0],
             1,
             None,
         )
@@ -261,7 +261,7 @@ class MicroManagerSnapshot(MicroManager):
         for i in range(self._local_number_of_sims):
             self._global_ids_of_local_sims.append(sim_id)
             sim_id += 1
-        self._micro_problem = load_backend_class(self._config.micro_file_name())
+        self._micro_problem = load_backend_class(self._config.micro_file_names()[0])
 
         self._micro_sims_have_output = False
         if hasattr(self._micro_problem, "output") and callable(

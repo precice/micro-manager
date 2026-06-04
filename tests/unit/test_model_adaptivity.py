@@ -39,6 +39,15 @@ class DummySimulation:
 class DummyModelManager:
     def __init__(self):
         self.created_instances = []
+        self.num_models = 2
+        self.models = [
+            DummyModelClass("fine"),
+            DummyModelClass("coarse"),
+        ]
+        self.name_to_idx = {
+            "fine": 0,
+            "coarse": 1,
+        }
 
     def get_instance(self, gid, target_class, *, late_init=False):
         self.created_instances.append(
@@ -50,15 +59,24 @@ class DummyModelManager:
         )
         return DummySimulation(target_class.name, gid, late_init=late_init)
 
+    def get_idx_of_sim(self, sim):
+        if sim.name not in self.name_to_idx:
+            raise KeyError("unknown sim type")
+        return self.name_to_idx[sim.name]
+
+    def get_cls_by_idx(self, idx):
+        return self.models[idx]
+
+    def get_cls_by_name(self, name):
+        if name not in self.name_to_idx:
+            raise KeyError("unknown model name")
+        return self.models[self.name_to_idx[name]]
+
 
 class TestModelAdaptivity(TestCase):
     def _make_controller(self, container, switching_func):
         controller = ModelAdaptivity.__new__(ModelAdaptivity)
         controller._switching_func = switching_func
-        controller._model_classes = [
-            DummyModelClass("fine"),
-            DummyModelClass("coarse"),
-        ]
         controller._sim_container = container
         controller._model_manager = DummyModelManager()
         controller._comm = MPI.COMM_SELF
@@ -150,13 +168,14 @@ class TestModelAdaptivity(TestCase):
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
         manager._t = 1.0
         manager._sim_container = container
+        manager._model_manager = controller._model_manager
 
         solve_calls = []
 
         def solve_variant(micro_sims_input, dt, computed_outputs):
             solve_calls.append(
                 {
-                    "sim_name": manager._micro_sims[0].name,
+                    "sim_name": manager._sim_container[0].name,
                     "computed_outputs": computed_outputs.copy(),
                 }
             )
@@ -201,6 +220,7 @@ class TestModelAdaptivity(TestCase):
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
         manager._t = 1.0
         manager._sim_container = container
+        manager._model_manager = controller._model_manager
 
         solve_calls = []
 
