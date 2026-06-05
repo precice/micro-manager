@@ -397,7 +397,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         assoc_active_gids = list(active_to_inactive_map.keys())
 
-        send_map = self._create_comm_map(
+        send_map = self._create_send_map(
             assoc_active_gids,
             [
                 (self._sim_container.local_gids[lid], micro_output[lid])
@@ -484,7 +484,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     (self._sim_container.get_sim_state(lid), gid)
                 )
 
-        send_map = self._create_comm_map(
+        send_map = self._create_send_map(
             list(to_be_activated_map.keys()), sim_states_and_global_ids
         )
         recv_data = self._mpi.exchange(send_map)
@@ -516,7 +516,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         self._sim_is_associated_to = np.copy(_sim_is_associated_to_updated)
 
-    def _create_comm_map(
+    def _create_send_map(
         self, requested_gids: List[int], lid_range_data: List[Any]
     ) -> Dict[int, List[Any]]:
         send_map_local = {gid: self._mpi.rank for gid in requested_gids}

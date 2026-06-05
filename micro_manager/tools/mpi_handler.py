@@ -1,5 +1,4 @@
 from typing import Optional, Tuple, List, Any, Dict, Union
-
 from mpi4py import MPI
 import numpy as np
 import hashlib
@@ -55,7 +54,7 @@ class MPIHandler:
         item_size = dtype.Get_size()
         n_bytes = 0
         if node_handler.rank == 0:
-            n_bytes = count * count * item_size
+            n_bytes = count * item_size
 
         win = MPI.Win.Allocate_shared(n_bytes, item_size, comm=node_handler.comm)
         # Get the buffer on the local rank 0
