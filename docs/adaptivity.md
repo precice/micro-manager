@@ -55,7 +55,6 @@ The coarsening tolerance $$ tol_c $$ is calculated by
 
 $$ tol_c = C_c C_r \displaystyle\max_{x_{1},x_{2} \in N(t_{n})} {D(x_{1},x_{2}; t_{n})} $$
 
-
 The refining tolerance $$ tol_r $$ is calculated by
 
 $$ tol_r = C_r \displaystyle\max_{x_{1},x_{2} \in N(t_{n})} {D(x_{1},x_{2}; t_{n})} $$
