@@ -1,4 +1,5 @@
 from .micro_simulation import MicroSimulationInterface
+from .tools.mpi_handler import MPIHandler
 
 from typing import Optional, Any, List, Dict, Set, Iterable, Tuple
 import numpy as np
@@ -20,14 +21,15 @@ class SimulationContainer:
         np.ndarray,
     ]
 
-    def __init__(self):
+    def __init__(self, mpi_handler: MPIHandler):
         """
         Constructs SimulationContainer.
         When model adaptivity is active, state storage must capture the states of all models.
 
         Parameters
         ----------
-
+        mpi_handler : MPIHandler
+            MPI handler object
         """
         self._sims: List[Optional[MicroSimulationInterface]] = []
         # we store one state for each potential model, associated by its name
@@ -36,6 +38,7 @@ class SimulationContainer:
         self._sim_gids_set: Set[int] = set()
         self._sim_coords: List[np.ndarray] = []
         self._global_num_sims: int = 0
+        self._mpi: MPIHandler = mpi_handler
 
     def initialize(
         self,
@@ -80,6 +83,17 @@ class SimulationContainer:
             True if simulation on this rank
         """
         return gid in self._sim_gids_set
+
+    def get_ranks_of_sims(self) -> Dict[int, int]:
+        """
+        Gets the ranks of all simulations.
+
+        Returns
+        -------
+        ranks_of_sims : Dict[int, int]
+            Associates GIDs with their respective ranks
+        """
+        return self._mpi.get_ranks_of_objects(self.local_gids)
 
     @property
     def global_num_sims(self) -> int:

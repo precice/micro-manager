@@ -16,7 +16,7 @@ from micro_manager.tools.projection import (
     STDProjector,
     IdentityProjector,
 )
-from mpi4py import MPI
+from micro_manager.tools.mpi_handler import MPIHandler, MPI, MPIHandlerRankLocal
 
 
 class TestInterpolation(TestCase):
@@ -486,7 +486,7 @@ class TestHilberDirect(TestCase):
 
 class TestProjector(TestCase):
     def test_std_proj(self):
-        proj: Projector = STDProjector(1, MPI.COMM_SELF)
+        proj: Projector = STDProjector(1, MPIHandlerRankLocal)
         data = np.array(
             [
                 [0.1, 0],
@@ -574,10 +574,8 @@ reordering_q = np.array([0, 2, 4, 6, 1, 3, 5, 7])
 
 class TestInterleavedDomain(TestCase):
     def setUp(self):
-        self._comm = MPI.COMM_WORLD
-        self._rank = self._comm.Get_rank()
-        self._size = self._comm.Get_size()
-        self._domain = InterleavedDomain(self._comm)
+        self._mpi = MPIHandler(MPI.COMM_WORLD)
+        self._domain = InterleavedDomain(self._mpi)
         self._domain.configure(rbf_config["domain_config"])
         self._ordered_global_x = ordered_global_x
         self._ordered_global_f = ordered_global_f
@@ -588,39 +586,16 @@ class TestInterleavedDomain(TestCase):
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
     )
-    def test_p2p_comm(self):
-        send_map = {0: [], 1: []}
-        if self._rank == 0:
-            send_map[0].extend([0, 1, 2])
-            send_map[1].extend([3, 4, 5])
-        else:
-            send_map[0].extend([6, 7, 8])
-            send_map[1].extend([9, 10, 11])
-
-        local_result, inv_map = self._domain._communicate(send_map, True)
-
-        if self._rank == 0:
-            self.assertListEqual(sorted(local_result), [0, 1, 2, 6, 7, 8])
-            self.assertListEqual(sorted(inv_map[0]), [0, 1, 2])
-            self.assertListEqual(sorted(inv_map[1]), [6, 7, 8])
-        else:
-            self.assertListEqual(sorted(local_result), [3, 4, 5, 9, 10, 11])
-            self.assertListEqual(sorted(inv_map[0]), [3, 4, 5])
-            self.assertListEqual(sorted(inv_map[1]), [9, 10, 11])
-
-    @unittest.skipUnless(
-        MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
-    )
     def test_normalize(self):
         self._domain.set_local_data(
             self._ordered_global_x[self._reordering][
-                10 * self._rank : 10 * self._rank + 10
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
             ],
             self._ordered_global_xq[self._reordering_q][
-                4 * self._rank : 4 * self._rank + 4
+                4 * self._mpi.rank : 4 * self._mpi.rank + 4
             ],
             self._ordered_global_f[self._reordering][
-                10 * self._rank : 10 * self._rank + 10
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
             ],
         )
 
@@ -643,13 +618,13 @@ class TestInterleavedDomain(TestCase):
     def test_gen_trees(self):
         self._domain.set_local_data(
             self._ordered_global_x[self._reordering][
-                10 * self._rank : 10 * self._rank + 10
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
             ],
             self._ordered_global_xq[self._reordering_q][
-                4 * self._rank : 4 * self._rank + 4
+                4 * self._mpi.rank : 4 * self._mpi.rank + 4
             ],
             self._ordered_global_f[self._reordering][
-                10 * self._rank : 10 * self._rank + 10
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
             ],
         )
 
@@ -670,19 +645,19 @@ class TestInterleavedDomain(TestCase):
     def test_create_partitions(self):
         self._domain.set_local_data(
             self._ordered_global_x[self._reordering][
-                10 * self._rank : 10 * self._rank + 10
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
             ],
             self._ordered_global_xq[self._reordering_q][
-                4 * self._rank : 4 * self._rank + 4
+                4 * self._mpi.rank : 4 * self._mpi.rank + 4
             ],
             self._ordered_global_f[self._reordering][
-                10 * self._rank : 10 * self._rank + 10
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
             ],
         )
         self._domain._generate_trees()
         x, xq, f = self._domain._create_partitions()
 
-        if self._rank == 0:
+        if self._mpi.rank == 0:
             expected_xq = self._ordered_global_xq / self._domain._normalization[None, :]
             expected_xq_set = set()
             for i in range(len(expected_xq)):
@@ -693,21 +668,25 @@ class TestInterleavedDomain(TestCase):
 
 class TestRBF(TestCase):
     def setUp(self):
-        self._comm = MPI.COMM_WORLD
-        self._rank = self._comm.Get_rank()
-        self._size = self._comm.Get_size()
-        self._rbf = RBF_PU(MagicMock(), self._comm, self._rank, self._size)
+        self._mpi = MPIHandler(MPI.COMM_WORLD)
+        self._rbf = RBF_PU(MagicMock(), self._mpi)
         self._rbf.configure(rbf_config)
 
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
     )
     def test_interpolation(self):
-        xq = ordered_global_xq[reordering_q][4 * self._rank : 4 * self._rank + 4]
+        xq = ordered_global_xq[reordering_q][
+            4 * self._mpi.rank : 4 * self._mpi.rank + 4
+        ]
         self._rbf.set_local_data(
-            ordered_global_x[reordering][10 * self._rank : 10 * self._rank + 10],
+            ordered_global_x[reordering][
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
+            ],
             xq,
-            ordered_global_f[reordering][10 * self._rank : 10 * self._rank + 10],
+            ordered_global_f[reordering][
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
+            ],
         )
 
         fq = self._rbf.interpolate()

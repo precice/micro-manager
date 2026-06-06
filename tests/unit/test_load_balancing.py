@@ -3,12 +3,11 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 
 import numpy as np
-from mpi4py import MPI
 
 from micro_manager.load_balancing import LoadBalancer, ActiveBalancer
 from micro_manager.micro_simulation import create_simulation_class
-from micro_manager.tools.p2p import get_ranks_of_sims
 from micro_manager.simulation_container import SimulationContainer
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 
 
 class MicroSimulation:
@@ -46,9 +45,7 @@ class ModelManager:
 
 class TestLBTime(TestCase):
     def setUp(self):
-        self._comm = MPI.COMM_WORLD
-        self._rank = self._comm.Get_rank()
-        self._size = self._comm.Get_size()
+        self._mpi = MPIHandler(MPI.COMM_WORLD)
 
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
@@ -61,13 +58,13 @@ class TestLBTime(TestCase):
         global_number_of_sims = 8
 
         # assume lpt partitioning
-        if self._rank == 0:
+        if self._mpi.rank == 0:
             global_ids = [2, 3]
             expected_global_ids = [1, 3, 5, 7]
         else:
             global_ids = [0, 1, 4, 5, 6, 7]
             expected_global_ids = [0, 2, 4, 6]
-        expected_ranks_of_sims = [1, 0, 1, 0, 1, 0, 1, 0]
+        expected_ranks_of_sims = {0: 1, 1: 0, 2: 1, 3: 0, 4: 1, 5: 0, 6: 1, 7: 0}
 
         sim_cls = create_simulation_class(
             MagicMock(),
@@ -77,7 +74,7 @@ class TestLBTime(TestCase):
             None,
         )
 
-        container = SimulationContainer()
+        container = SimulationContainer(self._mpi)
         container.initialize(
             global_number_of_sims,
             len(global_ids),
@@ -97,8 +94,7 @@ class TestLBTime(TestCase):
             container,
             MagicMock(),
             config,
-            self._comm,
-            self._rank,
+            self._mpi,
         )
 
         load_balancer.balance()
@@ -109,10 +105,8 @@ class TestLBTime(TestCase):
             actual_global_ids.append(sim.get_global_id())
         self.assertListEqual(sorted(actual_global_ids), expected_global_ids)
 
-        actual_ranks_of_sims = get_ranks_of_sims(
-            container.local_gids, self._rank, self._comm, container.global_num_sims
-        )
-        self.assertListEqual(list(expected_ranks_of_sims), list(actual_ranks_of_sims))
+        actual_ranks_of_sims = container.get_ranks_of_sims()
+        self.assertDictEqual(expected_ranks_of_sims, actual_ranks_of_sims)
 
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
@@ -135,7 +129,7 @@ class TestLBTime(TestCase):
                 pass
 
         # assume lpt partitioning
-        if self._rank == 0:
+        if self._mpi.rank == 0:
             global_ids = [2, 3]
             expected_global_ids = [1, 3, 5, 7]
             adaptivity = GlobalAdaptivityCalculator([1])
@@ -143,7 +137,7 @@ class TestLBTime(TestCase):
             global_ids = [0, 1, 4, 5, 6, 7]
             expected_global_ids = [0, 2, 4, 6]
             adaptivity = GlobalAdaptivityCalculator([1, 2, 3, 4, 5])
-        expected_ranks_of_sims = [1, 0, 1, 0, 1, 0, 1, 0]
+        expected_ranks_of_sims = {0: 1, 1: 0, 2: 1, 3: 0, 4: 1, 5: 0, 6: 1, 7: 0}
 
         sim_cls = create_simulation_class(
             MagicMock(),
@@ -153,7 +147,7 @@ class TestLBTime(TestCase):
             None,
         )
 
-        container = SimulationContainer()
+        container = SimulationContainer(self._mpi)
         container.initialize(
             global_number_of_sims,
             len(global_ids),
@@ -176,18 +170,15 @@ class TestLBTime(TestCase):
             container,
             MagicMock(),
             config,
-            self._comm,
-            self._rank,
+            self._mpi,
         )
 
         load_balancer.balance()
 
         self.assertListEqual(sorted(container.local_gids), expected_global_ids)
 
-        actual_ranks_of_sims = get_ranks_of_sims(
-            container.local_gids, self._rank, self._comm, container.global_num_sims
-        )
-        self.assertListEqual(list(expected_ranks_of_sims), list(actual_ranks_of_sims))
+        actual_ranks_of_sims = container.get_ranks_of_sims()
+        self.assertDictEqual(expected_ranks_of_sims, actual_ranks_of_sims)
 
 
 class GlobalAdaptivityCalculator:
@@ -206,9 +197,7 @@ class GlobalAdaptivityCalculator:
 
 class TestLBActive(TestCase):
     def setUp(self):
-        self._comm = MPI.COMM_WORLD
-        self._rank = self._comm.Get_rank()
-        self._size = self._comm.Get_size()
+        self._mpi = MPIHandler(MPI.COMM_WORLD)
 
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
@@ -226,17 +215,17 @@ class TestLBActive(TestCase):
 
         global_number_of_sims = 8
 
-        if self._rank == 0:
+        if self._mpi.rank == 0:
             global_ids = [0, 1, 2, 3]
             expected_global_ids = [2, 3]
             active_lids = [0, 1, 2, 3]
             active_gids = [0, 1, 2, 3]
-        elif self._rank == 1:
+        elif self._mpi.rank == 1:
             global_ids = [4, 5, 6, 7]
             expected_global_ids = [4, 5, 6, 7, 0, 1]
             active_lids = []
             active_gids = []
-        expected_ranks_of_sims = [1, 1, 0, 0, 1, 1, 1, 1]
+        expected_ranks_of_sims = {0: 1, 1: 1, 2: 0, 3: 0, 4: 1, 5: 1, 6: 1, 7: 1}
 
         adaptivity_controller = GlobalAdaptivityCalculator(
             np.array([True, True, True, True, False, False, False, False]),
@@ -253,7 +242,7 @@ class TestLBActive(TestCase):
             None,
         )
 
-        container = SimulationContainer()
+        container = SimulationContainer(self._mpi)
         container.initialize(
             global_number_of_sims,
             len(global_ids),
@@ -270,8 +259,7 @@ class TestLBActive(TestCase):
             container,
             MagicMock(),
             config,
-            self._comm,
-            self._rank,
+            self._mpi,
         )
 
         load_balancer.balance()
@@ -282,10 +270,8 @@ class TestLBActive(TestCase):
             actual_global_ids.append(sim.get_global_id())
         self.assertListEqual(actual_global_ids, expected_global_ids)
 
-        actual_ranks_of_sims = get_ranks_of_sims(
-            container.local_gids, self._rank, self._comm, container.global_num_sims
-        )
-        self.assertListEqual(expected_ranks_of_sims, list(actual_ranks_of_sims))
+        actual_ranks_of_sims = container.get_ranks_of_sims()
+        self.assertDictEqual(expected_ranks_of_sims, actual_ranks_of_sims)
 
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
@@ -302,17 +288,17 @@ class TestLBActive(TestCase):
         config.load_balancing_partitioning = MagicMock(return_value="lpt")
         global_number_of_sims = 5
 
-        if self._rank == 0:
+        if self._mpi.rank == 0:
             global_ids = [0, 2]
             expected_global_ids = [0, 2, 4]
             active_lids = [0]
             active_gids = [0]
-        elif self._rank == 1:
+        elif self._mpi.rank == 1:
             global_ids = [1, 3, 4]
             expected_global_ids = [1, 3]
             active_lids = [0]
             active_gids = [1]
-        expected_ranks_of_sims = [0, 1, 0, 1, 0]
+        expected_ranks_of_sims = {0: 0, 1: 1, 2: 0, 3: 1, 4: 0}
 
         adaptivity_controller = GlobalAdaptivityCalculator(
             np.array([True, True, False, False, False]),
@@ -329,7 +315,7 @@ class TestLBActive(TestCase):
             None,
         )
 
-        container = SimulationContainer()
+        container = SimulationContainer(self._mpi)
         container.initialize(
             global_number_of_sims,
             len(global_ids),
@@ -346,8 +332,7 @@ class TestLBActive(TestCase):
             container,
             MagicMock(),
             config,
-            self._comm,
-            self._rank,
+            self._mpi,
         )
         load_balancer._bypass_skip = True
         load_balancer._bypass_active = True
@@ -355,11 +340,9 @@ class TestLBActive(TestCase):
         load_balancer.balance()
 
         self.assertListEqual(container.local_gids, expected_global_ids)
-        actual_ranks_of_sims = get_ranks_of_sims(
-            container.local_gids, self._rank, self._comm, container.global_num_sims
-        )
 
-        self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
+        actual_ranks_of_sims = container.get_ranks_of_sims()
+        self.assertDictEqual(expected_ranks_of_sims, actual_ranks_of_sims)
 
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 4, "This test only works with 4 ranks."
@@ -378,27 +361,30 @@ class TestLBActive(TestCase):
         global_number_of_sims = 15
 
         # active_gids_global = [0, 1, 2, 8, 12, 13, 14]
-        if self._rank == 0:
+        if self._mpi.rank == 0:
             global_ids = [0, 1, 2, 3]
             expected_global_ids = [1, 2, 3]
             active_lids = [0, 1, 2]
             active_gids = [0, 1, 2]
-        elif self._rank == 1:
+        elif self._mpi.rank == 1:
             global_ids = [4, 5, 6, 7]
             expected_global_ids = [4, 5, 6, 7, 0]
             active_lids = []
             active_gids = []
-        elif self._rank == 2:
+        elif self._mpi.rank == 2:
             global_ids = [8, 9, 10, 11]
             expected_global_ids = [8, 9, 10, 11, 12]
             active_lids = [0]
             active_gids = [8]
-        elif self._rank == 3:
+        elif self._mpi.rank == 3:
             global_ids = [12, 13, 14]
             expected_global_ids = [13, 14]
             active_lids = [0, 1, 2]
             active_gids = [12, 13, 14]
         expected_ranks_of_sims = [1, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3]
+        expected_ranks_of_sims = {
+            gid: rnk for gid, rnk in enumerate(expected_ranks_of_sims)
+        }
 
         adaptivity_controller = GlobalAdaptivityCalculator(
             np.array(
@@ -433,7 +419,7 @@ class TestLBActive(TestCase):
             None,
         )
 
-        container = SimulationContainer()
+        container = SimulationContainer(self._mpi)
         container.initialize(
             global_number_of_sims,
             len(global_ids),
@@ -450,8 +436,7 @@ class TestLBActive(TestCase):
             container,
             MagicMock(),
             config,
-            self._comm,
-            self._rank,
+            self._mpi,
         )
 
         load_balancer.balance()
@@ -462,10 +447,8 @@ class TestLBActive(TestCase):
             actual_global_ids.append(sim.get_global_id())
         self.assertListEqual(actual_global_ids, expected_global_ids)
 
-        actual_ranks_of_sims = get_ranks_of_sims(
-            container.local_gids, self._rank, self._comm, container.global_num_sims
-        )
-        self.assertListEqual(expected_ranks_of_sims, list(actual_ranks_of_sims))
+        actual_ranks_of_sims = container.get_ranks_of_sims()
+        self.assertDictEqual(expected_ranks_of_sims, actual_ranks_of_sims)
 
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 4, "This test only works with 4 ranks."
@@ -483,27 +466,30 @@ class TestLBActive(TestCase):
         global_number_of_sims = 15
 
         # global_active_gids = [0, 1, 2, 8, 12, 13, 14]
-        if self._rank == 0:
+        if self._mpi.rank == 0:
             global_ids = [1, 2, 3]
             expected_global_ids = [1, 2, 4, 9, 10]
             active_lids = [0, 1]
             active_gids = [1, 2]
-        elif self._rank == 1:
+        elif self._mpi.rank == 1:
             global_ids = [4, 5, 6, 7, 12]
             expected_global_ids = [6, 7, 12]
             active_lids = [4]
             active_gids = [12]
-        elif self._rank == 2:
+        elif self._mpi.rank == 2:
             global_ids = [0, 8, 9, 10, 11]
             expected_global_ids = [0, 8, 11, 3]
             active_lids = [0, 1]
             active_gids = [0, 8]
-        elif self._rank == 3:
+        elif self._mpi.rank == 3:
             global_ids = [13, 14]
             expected_global_ids = [13, 14, 5]
             active_lids = [0, 1]
             active_gids = [13, 14]
         expected_ranks_of_sims = [2, 0, 0, 2, 0, 3, 1, 1, 2, 0, 0, 2, 1, 3, 3]
+        expected_ranks_of_sims = {
+            gid: rnk for gid, rnk in enumerate(expected_ranks_of_sims)
+        }
 
         adaptivity_controller = GlobalAdaptivityCalculator(
             np.array(
@@ -538,7 +524,7 @@ class TestLBActive(TestCase):
             None,
         )
 
-        container = SimulationContainer()
+        container = SimulationContainer(self._mpi)
         container.initialize(
             global_number_of_sims,
             len(global_ids),
@@ -555,8 +541,7 @@ class TestLBActive(TestCase):
             container,
             MagicMock(),
             config,
-            self._comm,
-            self._rank,
+            self._mpi,
         )
         load_balancer._bypass_skip = True
         load_balancer._bypass_active = True
@@ -564,8 +549,6 @@ class TestLBActive(TestCase):
         load_balancer.balance()
 
         self.assertListEqual(container.local_gids, expected_global_ids)
-        actual_ranks_of_sims = get_ranks_of_sims(
-            container.local_gids, self._rank, self._comm, container.global_num_sims
-        )
 
-        self.assertTrue(np.array_equal(expected_ranks_of_sims, actual_ranks_of_sims))
+        actual_ranks_of_sims = container.get_ranks_of_sims()
+        self.assertDictEqual(expected_ranks_of_sims, actual_ranks_of_sims)

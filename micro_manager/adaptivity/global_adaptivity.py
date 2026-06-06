@@ -6,19 +6,17 @@ on each rank is done.
 Note: All ID variables used in the methods of this class are global IDs, unless they have *local* in their name.
 """
 from copy import deepcopy
-from typing import Dict
+from typing import Dict, List, Any
 import numpy as np
-from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
 from micro_manager.config import Config
 from micro_manager.tools.logging_wrapper import Logger
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.model_manager import ModelManager
 from micro_manager.interpolation import RBF_PU
 from micro_manager.simulation_container import SimulationContainer
-
-from micro_manager.tools.p2p import p2p_comm, get_ranks_of_sims
 
 
 class GlobalAdaptivityCalculator(AdaptivityCalculator):
@@ -28,8 +26,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         sim_container: SimulationContainer,
         participant,
         base_logger: Logger,
-        rank: int,
-        comm: MPI.Comm,
+        mpi: MPIHandler,
         micro_problem_cls: MicroSimulationClass,
         model_manager: ModelManager,
     ) -> None:
@@ -46,10 +43,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Object of the class Participant using which the preCICE API is called.
         base_logger : object of class Logger
             Logger object to log messages.
-        rank : int
-            MPI rank.
-        comm : MPI.Comm
-            Communicator for MPI.
+        mpi : MPIHandler
+            MPIHandler object.
         micro_problem_cls : callable
             Class of micro problem.
         model_manager : object of class ModelManager
@@ -62,43 +57,15 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             micro_problem_cls,
             model_manager,
             base_logger,
-            rank,
+            mpi,
         )
-        self._comm = comm
 
-        self._interpolation = RBF_PU(
-            base_logger, comm, self._rank, self._comm.Get_size()
-        )
+        self._interpolation = RBF_PU(base_logger, mpi)
         self._precice_participant = participant
 
-        self._comm_node = comm.Split_type(MPI.COMM_TYPE_SHARED)
-
-        self._MPI_local_rank = self._comm_node.Get_rank()
-
-        # Size of data type
-        itemsize = MPI.FLOAT.Get_size()
-
-        if (
-            self._MPI_local_rank == 0
-        ):  # Only the first rank in the node allocates the shared memory
-            nbytes = (
-                self._sim_container.global_num_sims
-                * self._sim_container.global_num_sims
-                * itemsize
-            )
-        else:
-            nbytes = 0
-
-        win = MPI.Win.Allocate_shared(nbytes, itemsize, comm=self._comm_node)
-
-        # Get the buffer on the local rank 0
-        buffer, itemsize = win.Shared_query(0)
-
-        if itemsize != MPI.FLOAT.Get_size():
-            raise RuntimeError("Item size mismatch in shared memory.")
-
-        # Create a numpy array from the buffer
-        array_buffer = np.array(buffer, dtype="B", copy=False)
+        buffer_size = self._sim_container.global_num_sims**2
+        array_buffer, mpi_node = self._mpi.create_node_buffer(MPI.FLOAT, buffer_size)
+        self._mpi_node = mpi_node
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
@@ -111,7 +78,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             ),
         )
 
-        if self._MPI_local_rank == 0:
+        if self._mpi_node.rank == 0:
             # Initialize the similarity distances to zero
             self._similarity_dists.fill(0.0)
 
@@ -143,8 +110,10 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         # Gather adaptivity data from all ranks
         global_data_for_adaptivity = dict()
         for name in data_for_adaptivity.keys():
-            data_as_list = self._comm.allgather(data_for_adaptivity[name])
-            global_ids_as_list = self._comm.allgather(self._sim_container.local_gids)
+            data_as_list = self._mpi.comm.allgather(data_for_adaptivity[name])
+            global_ids_as_list = self._mpi.comm.allgather(
+                self._sim_container.local_gids
+            )
             global_data_for_adaptivity[name] = [0] * self._sim_container.global_num_sims
             for i, gids_list in enumerate(global_ids_as_list):
                 count = 0
@@ -160,11 +129,11 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             # global_data_for_adaptivity[name] = np.concatenate((data_as_list[:]), axis=0)
 
         if (
-            self._MPI_local_rank == 0
+            self._mpi_node.rank == 0
         ):  # Only the first rank in the node updates the similarity distances
             self._update_similarity_dists(dt, global_data_for_adaptivity)
 
-        self._comm_node.Barrier()  # Wait for the similarity distances to be updated on all ranks of the node
+        self._mpi_node.comm.Barrier()  # Wait for the similarity distances to be updated on all ranks of the node
 
         self._max_similarity_dist = np.amax(self._similarity_dists)
 
@@ -313,12 +282,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             self._adaptivity_output_type == "all"
             or self._adaptivity_output_type == "local"
         ):
-            ranks_of_sims = get_ranks_of_sims(
-                self._sim_container.local_gids,
-                self._rank,
-                self._comm,
-                self._sim_container.global_num_sims,
-            )
+            ranks_of_sims = self._sim_container.get_ranks_of_sims()
 
             assoc_ranks = []  # Ranks to which inactive sims on this rank are associated
             for gid in self._sim_container.local_gids:
@@ -340,13 +304,15 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             self._adaptivity_output_type == "all"
             or self._adaptivity_output_type == "global"
         ):
-            active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
-            inactive_sims_rankwise = self._comm.gather(
+            active_sims_rankwise = self._mpi.comm.gather(
+                active_sims_on_this_rank, root=0
+            )
+            inactive_sims_rankwise = self._mpi.comm.gather(
                 inactive_sims_on_this_rank, root=0
             )
 
-            if self._rank == 0:
-                size = self._comm.Get_size()
+            if self._mpi.rank == 0:
+                size = self._mpi.size
 
                 self._global_metrics_logger.log_info(
                     "{}|{}|{}|{}|{}|{}|{}|{}|{}".format(
@@ -373,7 +339,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         active_gids_this_rank = self.get_active_sim_global_ids()
         # Gather global ids of active sims from all ranks
-        active_gids_all_ranks = self._comm.allgather(active_gids_this_rank.tolist())
+        active_gids_all_ranks = self._mpi.comm.allgather(active_gids_this_rank.tolist())
 
         active_gids_to_iterate = []
         # Iterate over global ids of active sims in a round-robin fashion across ranks
@@ -431,21 +397,20 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         assoc_active_gids = list(active_to_inactive_map.keys())
 
-        recv_reqs = p2p_comm(
-            self._sim_container.local_gids,
-            self._rank,
-            self._comm,
-            self._sim_container.global_num_sims,
+        send_map = self._create_send_map(
             assoc_active_gids,
-            micro_output,
+            [
+                (self._sim_container.local_gids[lid], micro_output[lid])
+                for lid in self._sim_container.range_lid
+            ],
         )
+        recv_data = self._mpi.exchange(send_map)
 
         # Add received output of active sims to inactive sims on this rank
-        for count, req in enumerate(recv_reqs):
-            output = req.wait()
-            for gid in active_to_inactive_map[assoc_active_gids[count]]:
-                lid = self._sim_container.local_gids.index(gid)
-                micro_output[lid] = deepcopy(output)
+        for active_gid, data in recv_data:
+            for inactive_gid in active_to_inactive_map[active_gid]:
+                inactive_lid = self._sim_container.local_gids.index(inactive_gid)
+                micro_output[inactive_lid] = deepcopy(data)
 
     def _update_inactive_sims(self) -> None:
         """
@@ -519,18 +484,13 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     (self._sim_container.get_sim_state(lid), gid)
                 )
 
-        recv_reqs = p2p_comm(
-            self._sim_container.local_gids,
-            self._rank,
-            self._comm,
-            self._sim_container.global_num_sims,
-            list(to_be_activated_map.keys()),
-            sim_states_and_global_ids,
+        send_map = self._create_send_map(
+            list(to_be_activated_map.keys()), sim_states_and_global_ids
         )
+        recv_data = self._mpi.exchange(send_map)
 
         # Use received micro sims to activate the required simulations
-        for req in recv_reqs:
-            state, gid = req.wait()
+        for state, gid in recv_data:
             local_ids = to_be_activated_map[gid]
             for lid in local_ids:
                 # Create the micro simulation object and set its state
@@ -555,3 +515,17 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self._precice_participant.stop_last_profiling_section()
 
         self._sim_is_associated_to = np.copy(_sim_is_associated_to_updated)
+
+    def _create_send_map(
+        self, requested_gids: List[int], lid_range_data: List[Any]
+    ) -> Dict[int, List[Any]]:
+        send_map_local = {gid: self._mpi.rank for gid in requested_gids}
+        send_map_global = self._mpi.comm.allgather(send_map_local)
+        send_map = self._mpi.create_empty_exchange_map()
+        for map in send_map_global:
+            for gid, rnk in map.items():
+                if not self._sim_container.is_sim_on_rank(gid):
+                    continue
+                lid = self._sim_container.local_gids.index(gid)
+                send_map[rnk].append(lid_range_data[lid])
+        return send_map

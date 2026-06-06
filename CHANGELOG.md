@@ -2,6 +2,7 @@
 
 ## latest
 
+- Refactored and generalized the methods in `p2p.py`. Added `MPIHandler` to manage all MPI related aspects. [#287](https://github.com/precice/micro-manager/pull/287)
 - Applied fixes for previously missed test cases due to #290 [#291](https://github.com/precice/micro-manager/pull/291)
 - Fixed non-visible CI test cases on PR interface [#290](https://github.com/precice/micro-manager/pull/290)
 - Moved Simulation Class ownership and loading to Model Manager [#286](https://github.com/precice/micro-manager/pull/286)

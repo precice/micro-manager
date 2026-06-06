@@ -11,11 +11,11 @@ from micro_manager.micro_simulation import (
 )
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.misc import clamp_in_range
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 from micro_manager.model_manager import ModelManager
 from micro_manager.tasking.connection import Connection
 from micro_manager.simulation_container import SimulationContainer
 
-from mpi4py import MPI
 import numpy as np
 import importlib
 
@@ -26,8 +26,7 @@ class ModelAdaptivity:
         model_manager: ModelManager,
         sim_container: SimulationContainer,
         config: Config,
-        comm: MPI.Comm,
-        rank: int,
+        mpi: MPIHandler,
         log_file: str,
     ) -> None:
         """
@@ -41,16 +40,14 @@ class ModelAdaptivity:
             SimulationContainer instance
         config : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
-        comm: MPI.Comm
-            MPI communicator
-        rank : int
-            Rank of the MPI communicator.
+        mpi: MPIHandler
+            MPIHandler object
         log_file : str
             Path to the log file to write to.
         """
-        self._logger = Logger(__name__, log_file, rank)
+        self._logger = Logger(__name__, log_file, mpi.rank)
 
-        self._comm = comm
+        self._mpi = mpi
         self._model_manager = model_manager
         self._sim_container = sim_container
         self._switching_func_name = config.model_adaptivity_switching_function()
@@ -219,7 +216,7 @@ class ModelAdaptivity:
             resolutions, locations, t, inputs, prev_output, active_sims
         )
         local_num_changes = np.sum(target_resolutions != resolutions)
-        global_num_changes = self._comm.allreduce(local_num_changes, op=MPI.SUM)
+        global_num_changes = self._mpi.comm.allreduce(local_num_changes, op=MPI.SUM)
         self._converged = global_num_changes == 0
 
     def get_num_resolutions(self) -> int:

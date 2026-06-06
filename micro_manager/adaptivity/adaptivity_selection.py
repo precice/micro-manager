@@ -8,8 +8,7 @@ def create_adaptivity_calculator(
     sim_container,
     participant,
     logger,
-    rank,
-    comm,
+    mpi,
     micro_problem_cls,
     model_manager,
 ) -> AdaptivityCalculator:
@@ -20,8 +19,7 @@ def create_adaptivity_calculator(
             config,
             sim_container,
             logger,
-            rank,
-            comm,
+            mpi,
             micro_problem_cls,
             model_manager,
         )
@@ -32,8 +30,7 @@ def create_adaptivity_calculator(
             sim_container,
             participant,
             logger,
-            rank,
-            comm,
+            mpi,
             micro_problem_cls,
             model_manager,
         )

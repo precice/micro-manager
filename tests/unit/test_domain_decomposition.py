@@ -34,7 +34,10 @@ class TestDomainDecomposition(TestCase):
         )
         self._configuration_mock.ranks_per_axis.return_value = [2, 2]
 
-        domain_decomposer = DomainDecomposer(self._configuration_mock, rank=2, size=4)
+        mpi = MagicMock()
+        mpi.rank = 2
+        mpi.size = 4
+        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [0, 0.5, 1, 2]))
@@ -49,7 +52,10 @@ class TestDomainDecomposition(TestCase):
         )
         self._configuration_mock.ranks_per_axis.return_value = [2, 2, 1]
 
-        domain_decomposer = DomainDecomposer(self._configuration_mock, rank=1, size=4)
+        mpi = MagicMock()
+        mpi.rank = 1
+        mpi.size = 4
+        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [0.0, 1, -2, 0.0, -2, 8]))
@@ -64,7 +70,10 @@ class TestDomainDecomposition(TestCase):
         )
         self._configuration_mock.ranks_per_axis.return_value = [1, 2, 5]
 
-        domain_decomposer = DomainDecomposer(self._configuration_mock, rank=5, size=10)
+        mpi = MagicMock()
+        mpi.rank = 5
+        mpi.size = 10
+        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [-1, 1, 0, 2, 2, 4]))
@@ -79,7 +88,10 @@ class TestDomainDecomposition(TestCase):
         )
         self._configuration_mock.ranks_per_axis.return_value = [4, 1, 8]
 
-        domain_decomposer = DomainDecomposer(self._configuration_mock, rank=10, size=32)
+        mpi = MagicMock()
+        mpi.rank = 10
+        mpi.size = 32
+        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [0, 0.5, -2, 2, 0.5, 1.75]))
@@ -94,7 +106,10 @@ class TestDomainDecomposition(TestCase):
         )
         self._configuration_mock.ranks_per_axis.return_value = [8, 2, 1]
 
-        domain_decomposer = DomainDecomposer(self._configuration_mock, rank=7, size=16)
+        mpi = MagicMock()
+        mpi.rank = 7
+        mpi.size = 16
+        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [0.75, 1, -2, 0, -2, 8]))
@@ -131,7 +146,10 @@ class TestNonUniformDomainDecomposition(TestCase):
         self._configuration_mock.ranks_per_axis.return_value = [2, 2]
         self._configuration_mock.minimum_access_region_size.return_value = []
 
-        domain_decomposer = DomainDecomposer(self._configuration_mock, rank=2, size=4)
+        mpi = MagicMock()
+        mpi.rank = 2
+        mpi.size = 4
+        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [0.0, 1.0 / 3.0, 2.0 / 3.0, 2.0]))
@@ -150,9 +168,10 @@ class TestNonUniformDomainDecomposition(TestCase):
         ]
 
         # In a 16 x 8 grid, rank 15 is in the lower right corner.
-        domain_decomposer = DomainDecomposer(
-            self._configuration_mock, rank=15, size=128
-        )
+        mpi = MagicMock()
+        mpi.rank = 15
+        mpi.size = 128
+        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
         self.assertTrue(
@@ -160,9 +179,10 @@ class TestNonUniformDomainDecomposition(TestCase):
         )
 
         # In a 16 x 8 grid, rank 112 is in the lower right corner.
-        domain_decomposer = DomainDecomposer(
-            self._configuration_mock, rank=112, size=128
-        )
+        mpi = MagicMock()
+        mpi.rank = 112
+        mpi.size = 128
+        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
         self.assertTrue(
@@ -180,7 +200,10 @@ class TestNonUniformDomainDecomposition(TestCase):
         self._configuration_mock.ranks_per_axis.return_value = [2, 2, 1]
         self._configuration_mock.minimum_access_region_size.return_value = []
 
-        domain_decomposer = DomainDecomposer(self._configuration_mock, rank=1, size=4)
+        mpi = MagicMock()
+        mpi.rank = 1
+        mpi.size = 4
+        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
         mesh_bounds = domain_decomposer.get_local_mesh_bounds()
 
         self.assertTrue(
@@ -193,7 +216,10 @@ class TestNonUniformDomainDecomposition(TestCase):
         """
         self._configuration_mock.decomposition_type.return_value = "nonuniform"
 
-        domain_decomposer = DomainDecomposer(self._configuration_mock, rank=0, size=4)
+        mpi = MagicMock()
+        mpi.rank = 0
+        mpi.size = 4
+        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
 
         with self.assertRaises(ValueError):
             domain_decomposer.get_local_mesh_bounds()
@@ -220,13 +246,19 @@ class TestDuplicateCoordFiltering(TestCase):
 
         self._configuration_mock.decomposition_type.return_value = "uniform"
 
+        mpi = MagicMock()
+        mpi.rank = 0
+        mpi.size = 2
         coords, ids = DomainDecomposer(
-            self._configuration_mock, rank=0, size=2
+            self._configuration_mock, mpi
         ).filter_duplicate_coords(all_coords, all_ids)
         self.assertEqual(len(coords), 2)
 
+        mpi = MagicMock()
+        mpi.rank = 1
+        mpi.size = 2
         coords, ids = DomainDecomposer(
-            self._configuration_mock, rank=1, size=2
+            self._configuration_mock, mpi
         ).filter_duplicate_coords(all_coords, all_ids)
         self.assertEqual(len(coords), 2)
 
@@ -245,15 +277,21 @@ class TestDuplicateCoordFiltering(TestCase):
         self._configuration_mock.decomposition_type.return_value = "uniform"
 
         # Rank 0 should keep both its coords
+        mpi = MagicMock()
+        mpi.rank = 0
+        mpi.size = 2
         coords0, ids0 = DomainDecomposer(
-            self._configuration_mock, rank=0, size=2
+            self._configuration_mock, mpi
         ).filter_duplicate_coords(all_coords, all_ids)
         self.assertEqual(len(coords0), 2)
         self.assertTrue(np.allclose(coords0[1], shared))
 
         # Rank 1 should drop the shared coord
+        mpi = MagicMock()
+        mpi.rank = 1
+        mpi.size = 2
         coords1, ids1 = DomainDecomposer(
-            self._configuration_mock, rank=1, size=2
+            self._configuration_mock, mpi
         ).filter_duplicate_coords(all_coords, all_ids)
         self.assertEqual(len(coords1), 1)
         self.assertTrue(np.allclose(coords1[0], [1.0, 0.0]))
@@ -272,19 +310,28 @@ class TestDuplicateCoordFiltering(TestCase):
 
         self._configuration_mock.decomposition_type.return_value = "uniform"
 
+        mpi = MagicMock()
+        mpi.rank = 0
+        mpi.size = 3
         coords0, _ = DomainDecomposer(
-            self._configuration_mock, rank=0, size=3
+            self._configuration_mock, mpi
         ).filter_duplicate_coords(all_coords, all_ids)
         self.assertEqual(len(coords0), 2)
 
+        mpi = MagicMock()
+        mpi.rank = 1
+        mpi.size = 3
         coords1, _ = DomainDecomposer(
-            self._configuration_mock, rank=1, size=3
+            self._configuration_mock, mpi
         ).filter_duplicate_coords(all_coords, all_ids)
         self.assertEqual(len(coords1), 1)
         self.assertTrue(np.allclose(coords1[0], [1.0, 0.0]))
 
+        mpi = MagicMock()
+        mpi.rank = 2
+        mpi.size = 3
         coords2, _ = DomainDecomposer(
-            self._configuration_mock, rank=2, size=3
+            self._configuration_mock, mpi
         ).filter_duplicate_coords(all_coords, all_ids)
         self.assertEqual(len(coords2), 1)
         self.assertTrue(np.allclose(coords2[0], [2.0, 0.0]))

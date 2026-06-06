@@ -5,12 +5,12 @@ each other. A global comparison is not done.
 """
 import numpy as np
 from copy import deepcopy
-from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
 from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.tools.logging_wrapper import Logger
+from micro_manager.tools.mpi_handler import MPIHandler, MPI, MPIHandlerRankLocal
 from micro_manager.model_manager import ModelManager
 from micro_manager.interpolation import RBF_PU
 from micro_manager.simulation_container import SimulationContainer
@@ -22,8 +22,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         config: Config,
         sim_container: SimulationContainer,
         base_logger: Logger,
-        rank: int,
-        comm: MPI.Comm,
+        mpi: MPIHandler,
         micro_problem_cls: MicroSimulationClass,
         model_manager: ModelManager,
     ) -> None:
@@ -38,10 +37,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             Simulation container object.
         base_logger : object of class Logger
             Logger object to log messages.
-        rank : int
-            Rank of the current MPI process.
-        comm : MPI.Comm
-            Communicator for MPI.
+        mpi : MPIHandler
+            MPI handler object.
         micro_problem_cls : callable
             Class of micro problem.
         model_manager : object of class ModelManager
@@ -54,14 +51,12 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             micro_problem_cls,
             model_manager,
             base_logger,
-            rank,
+            mpi,
         )
-        self._comm = comm
+        # using local handler to only perform local interpolation
         self._interpolation = RBF_PU(
             base_logger,
-            MPI.COMM_SELF,
-            MPI.COMM_SELF.Get_rank(),
-            MPI.COMM_SELF.Get_size(),
+            MPIHandlerRankLocal,
         )
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
@@ -99,7 +94,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._local_max_similarity_dist = np.amax(self._similarity_dists)
 
         # Gather maximum similarity distance from every rank, and use the global maximum distance
-        self._max_similarity_dist = self._comm.allreduce(
+        self._max_similarity_dist = self._mpi.comm.allreduce(
             self._local_max_similarity_dist, op=MPI.MAX
         )
 
@@ -236,13 +231,15 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             self._adaptivity_output_type == "global"
             or self._adaptivity_output_type == "all"
         ):
-            active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
-            inactive_sims_rankwise = self._comm.gather(
+            active_sims_rankwise = self._mpi.comm.gather(
+                active_sims_on_this_rank, root=0
+            )
+            inactive_sims_rankwise = self._mpi.comm.gather(
                 inactive_sims_on_this_rank, root=0
             )
 
-            if self._rank == 0:
-                size = self._comm.Get_size()
+            if self._mpi.rank == 0:
+                size = self._mpi.size
 
                 self._global_metrics_logger.log_info(
                     "{}|{}|{}|{}|{}|{}|{}|{}|{}".format(

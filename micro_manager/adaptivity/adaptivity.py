@@ -9,6 +9,7 @@ from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.model_manager import ModelManager
 from micro_manager.simulation_container import SimulationContainer
+from micro_manager.tools.mpi_handler import MPIHandler
 
 import numpy as np
 
@@ -22,7 +23,7 @@ class AdaptivityCalculator:
         micro_problem_cls: MicroSimulationClass,
         model_manager: ModelManager,
         base_logger: Logger,
-        rank: int,
+        mpi: MPIHandler,
     ) -> None:
         """
         Class constructor.
@@ -41,8 +42,8 @@ class AdaptivityCalculator:
             Handles instantiation of micro simulation.
         base_logger : object of class Logger
             Logger object to log messages.
-        rank : int
-            Rank of the MPI communicator.
+        mpi : MPIHandler
+            mpi handler object
         """
         self._refine_const = config.adaptivity_refining_constant()
         self._coarse_const = config.adaptivity_coarsening_constant()
@@ -58,7 +59,7 @@ class AdaptivityCalculator:
         self._coarse_tol = 0.0
         self._ref_tol = 0.0
 
-        self._rank = rank
+        self._mpi = mpi
         self._base_logger = base_logger
 
         self._max_similarity_dist = 0.0
@@ -93,14 +94,14 @@ class AdaptivityCalculator:
         else:
             metrics_output_dir = "adaptivity-metrics"
 
-        if self._rank == 0 and (
+        if self._mpi.rank == 0 and (
             self._adaptivity_output_type == "global"
             or self._adaptivity_output_type == "all"
         ):
             self._global_metrics_logger = Logger(
                 "global-metrics-logger",
                 metrics_output_dir + "-global.csv",
-                rank,
+                self._mpi.rank,
                 csv_logger=True,
             )
 
@@ -114,8 +115,8 @@ class AdaptivityCalculator:
         ):
             self._metrics_logger = Logger(
                 "metrics-logger",
-                metrics_output_dir + "-" + str(rank) + ".csv",
-                rank,
+                metrics_output_dir + "-" + str(self._mpi.rank) + ".csv",
+                self._mpi.rank,
                 csv_logger=True,
             )
 

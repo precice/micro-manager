@@ -86,7 +86,7 @@ class TestFunctionCalls(TestCase):
         Test if the internal functions _read_data_from_precice and _write_data_to_precice work as expected.
         """
         manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
-        container = SimulationContainer()
+        container = SimulationContainer(manager._mpi)
         container.initialize(
             4, 4, [0, 1, 2, 3], np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]])
         )
@@ -111,7 +111,7 @@ class TestFunctionCalls(TestCase):
         manager.initialize()
 
         # manually initialize container
-        container = SimulationContainer()
+        container = SimulationContainer(manager._mpi)
         container.initialize(
             4, 4, [0, 1, 2, 3], np.array([[0, 0, 0], [0, 0, 0], [0, 0, 0], [0, 0, 0]])
         )

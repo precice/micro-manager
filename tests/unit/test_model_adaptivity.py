@@ -2,11 +2,11 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 
 import numpy as np
-from mpi4py import MPI
 
 from micro_manager.simulation_container import SimulationContainer
 from micro_manager.adaptivity.model_adaptivity import ModelAdaptivity
 from micro_manager.micro_manager import MicroManagerCoupling
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 
 
 class DummyModelClass:
@@ -74,12 +74,12 @@ class DummyModelManager:
 
 
 class TestModelAdaptivity(TestCase):
-    def _make_controller(self, container, switching_func):
+    def _make_controller(self, mpi, container, switching_func):
         controller = ModelAdaptivity.__new__(ModelAdaptivity)
         controller._switching_func = switching_func
         controller._sim_container = container
         controller._model_manager = DummyModelManager()
-        controller._comm = MPI.COMM_SELF
+        controller._mpi = mpi
         controller._logger = MagicMock()
         controller._converged = False
         return controller
@@ -91,10 +91,11 @@ class TestModelAdaptivity(TestCase):
         resolution. Such an out-of-range request should be clamped to the
         current resolution and treated as no model change.
         """
-        container = SimulationContainer()
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
         container.initialize(1, 1, [0], [np.array([0.0, 0.0, 0.0])])
         container[0] = DummySimulation("fine")
-        controller = self._make_controller(container, lambda resolution, *_: -1)
+        controller = self._make_controller(mpi, container, lambda resolution, *_: -1)
 
         controller.check_convergence(
             1.0,
@@ -111,10 +112,11 @@ class TestModelAdaptivity(TestCase):
         available resolution. This guards against endless iterations caused by
         repeated out-of-range coarsening requests.
         """
-        container = SimulationContainer()
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
         container.initialize(1, 1, [0], [np.array([0.0, 0.0, 0.0])])
         container[0] = DummySimulation("coarse")
-        controller = self._make_controller(container, lambda resolution, *_: 1)
+        controller = self._make_controller(mpi, container, lambda resolution, *_: 1)
 
         controller.check_convergence(
             1.0,
@@ -131,10 +133,11 @@ class TestModelAdaptivity(TestCase):
         adaptivity loop must continue in this case so the requested switch can
         be applied.
         """
-        container = SimulationContainer()
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
         container.initialize(1, 1, [0], [np.array([0.0, 0.0, 0.0])])
         container[0] = DummySimulation("fine")
-        controller = self._make_controller(container, lambda resolution, *_: 1)
+        controller = self._make_controller(mpi, container, lambda resolution, *_: 1)
 
         controller.check_convergence(
             1.0,
@@ -158,11 +161,13 @@ class TestModelAdaptivity(TestCase):
                 return 0
             return 1
 
-        container = SimulationContainer()
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
         container.initialize(1, 1, [0], [np.array([0.0, 0.0, 0.0])])
         container[0] = DummySimulation("fine", global_id=0)
-        controller = self._make_controller(container, switching_function)
+        controller = self._make_controller(mpi, container, switching_function)
         manager = MicroManagerCoupling.__new__(MicroManagerCoupling)
+        manager._mpi = mpi
         manager._model_adaptivity_controller = controller
         manager._is_adaptivity_on = False
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
@@ -210,11 +215,13 @@ class TestModelAdaptivity(TestCase):
         requesting an even coarser model. The loop should perform one solve,
         recognize that no valid model change remains, and return normally.
         """
-        container = SimulationContainer()
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
         container.initialize(1, 1, [0], [np.array([0.0, 0.0, 0.0])])
         container[0] = DummySimulation("coarse")
-        controller = self._make_controller(container, lambda resolution, *_: 1)
+        controller = self._make_controller(mpi, container, lambda resolution, *_: 1)
         manager = MicroManagerCoupling.__new__(MicroManagerCoupling)
+        manager._mpi = mpi
         manager._model_adaptivity_controller = controller
         manager._is_adaptivity_on = False
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])

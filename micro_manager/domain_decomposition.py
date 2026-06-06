@@ -7,9 +7,11 @@ from scipy.optimize import brentq
 from micro_manager.config import Config
 from typing import Callable
 
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
+
 
 class DomainDecomposer:
-    def __init__(self, configurator: Config, rank: int, size: int) -> None:
+    def __init__(self, configurator: Config, mpi: MPIHandler) -> None:
         """
         Class constructor.
 
@@ -17,13 +19,10 @@ class DomainDecomposer:
         ----------
         configurator : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
-        rank : int
-            MPI rank.
-        size : int
-            Total number of MPI processes.
+        mpi : MPIHandler
+            MPIHandler object.
         """
-        self._rank = rank
-        self._size = size
+        self._mpi = mpi
 
         self._ranks_per_axis = (
             configurator.ranks_per_axis()
@@ -67,7 +66,7 @@ class DomainDecomposer:
             List containing the upper and lower bounds of the domain pertaining to this rank.
             Format is same as input parameter macro_bounds.
         """
-        if np.prod(self._ranks_per_axis) != self._size:
+        if np.prod(self._ranks_per_axis) != self._mpi.size:
             raise ValueError(
                 "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
             )
@@ -81,13 +80,13 @@ class DomainDecomposer:
                             + y * self._ranks_per_axis[0]
                             + z * self._ranks_per_axis[0] * self._ranks_per_axis[1]
                         )
-                        if n == self._rank:
+                        if n == self._mpi.rank:
                             rank_in_axis = [x, y, z]
         elif self._dims == 2:
             for y in range(self._ranks_per_axis[1]):
                 for x in range(self._ranks_per_axis[0]):
                     n = x + y * self._ranks_per_axis[0]
-                    if n == self._rank:
+                    if n == self._mpi.rank:
                         rank_in_axis = [x, y]
         else:
             raise ValueError("Domain decomposition only supports 2D and 3D cases.")
@@ -126,7 +125,7 @@ class DomainDecomposer:
             List containing the upper and lower bounds of the domain pertaining to this rank.
             Format is same as input parameter macro_bounds.
         """
-        if np.prod(self._ranks_per_axis) != self._size:
+        if np.prod(self._ranks_per_axis) != self._mpi.size:
             raise ValueError(
                 "Total number of processors provided in the Micro Manager configuration and in the MPI execution command do not match."
             )
@@ -140,13 +139,13 @@ class DomainDecomposer:
                             + y * self._ranks_per_axis[0]
                             + z * self._ranks_per_axis[0] * self._ranks_per_axis[1]
                         )
-                        if n == self._rank:
+                        if n == self._mpi.rank:
                             rank_in_axis = [x, y, z]
         elif self._dims == 2:
             for y in range(self._ranks_per_axis[1]):
                 for x in range(self._ranks_per_axis[0]):
                     n = x + y * self._ranks_per_axis[0]
-                    if n == self._rank:
+                    if n == self._mpi.rank:
                         rank_in_axis = [x, y]
         else:
             raise ValueError("Domain decomposition only supports 2D and 3D cases.")
@@ -289,19 +288,19 @@ class DomainDecomposer:
         filtered_ids : numpy.ndarray
             preCICE vertex IDs corresponding to the filtered coordinates.
         """
-        mesh_vertex_coords = np.array(all_coords[self._rank])
-        mesh_vertex_ids = np.array(all_ids[self._rank])
+        mesh_vertex_coords = np.array(all_coords[self._mpi.rank])
+        mesh_vertex_ids = np.array(all_ids[self._mpi.rank])
 
         seen_coords = set()
         keep_mask = np.ones(len(mesh_vertex_coords), dtype=bool)
 
-        for rank in range(self._size):
+        for rank in range(self._mpi.size):
             for i, coord in enumerate(all_coords[rank]):
                 coord_key = tuple(np.round(coord, decimals=10))
-                if rank < self._rank:
+                if rank < self._mpi.rank:
                     # Mark coords already claimed by earlier ranks
                     seen_coords.add(coord_key)
-                elif rank == self._rank:
+                elif rank == self._mpi.rank:
                     # Only keep coords not already claimed by earlier ranks
                     if coord_key in seen_coords:
                         keep_mask[i] = False

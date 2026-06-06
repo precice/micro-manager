@@ -1,11 +1,6 @@
-from abc import ABC, abstractmethod
-from copy import deepcopy
-from enum import Enum
 from functools import partial
-from typing import Optional, Tuple, Union
-import sys
+from typing import Tuple
 
-from mpi4py import MPI
 import numpy as np
 
 try:
@@ -24,6 +19,7 @@ except ImportError:
 
     NearestNeighbors = Dummy
 
+from micro_manager.tools.mpi_handler import MPIHandler
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.spatial_methods import InterleavedDomain
 
@@ -123,7 +119,7 @@ class RBF_PU:
     The approach here does not require a support radius as data is normalized.
     """
 
-    def __init__(self, logger: Logger, comm: MPI.Comm, rank: int, size: int):
+    def __init__(self, logger: Logger, mpi: MPIHandler):
         """
         Constructs the RBF_PU interpolator.
         For rank local interpolation provide MPI.COMM_SELF as comm with according rank and size.
@@ -132,19 +128,13 @@ class RBF_PU:
         ----------
         logger : Logger
             Logger object.
-        comm : MPI.Comm
-            MPI communicator.
-        rank : int
-            Rank within the provided MPI communicator.
-        size : int
-            Size within the provided MPI communicator.
+        mpi : MPIHandler
+            mpi handler object
         """
         self._logger = logger
-        self._comm = comm
-        self._rank = rank
-        self._size = size
+        self._mpi = mpi
 
-        self._domain = InterleavedDomain(comm)
+        self._domain = InterleavedDomain(mpi)
         self._use_pu = False
         self._pu_overlap = 0.1
         self._pu_cluster_size = 50
