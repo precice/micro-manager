@@ -232,7 +232,9 @@ class CouplingHandler:
         read_data: Dict[str, List[Any]] = read_buffer or {}
         read_data.clear()
         read_data.update({name: [] for name in self._read_data_names})
-        read_vertex_ids: List[int] = [self._gid_to_vertex_id[gid] for gid in self._sim_container.local_gids]
+        read_vertex_ids: List[int] = [
+            self._gid_to_vertex_id[gid] for gid in self._sim_container.local_gids
+        ]
         dt = dt or self.dt
 
         for name in self._read_data_names:
@@ -255,7 +257,9 @@ class CouplingHandler:
         data : list
             List of dicts in which keys are names of data and the values are the data to be written to preCICE.
         """
-        write_vertex_ids: List[int] = [self._gid_to_vertex_id[gid] for gid in self._sim_container.local_gids]
+        write_vertex_ids: List[int] = [
+            self._gid_to_vertex_id[gid] for gid in self._sim_container.local_gids
+        ]
         data_dict: Dict[str, List[Any]] = {
             dname: [] for dname in self._write_data_names
         }
@@ -275,7 +279,12 @@ class CouplingHandler:
                 data_dict[dname],
             )
 
-    def generate_gids(self, local_vertex_coords: List[np.ndarray], local_vertex_ids: List[int], sims_per_rank: List[int]) -> List[int]:
+    def generate_gids(
+        self,
+        local_vertex_coords: List[np.ndarray],
+        local_vertex_ids: List[int],
+        sims_per_rank: List[int],
+    ) -> List[int]:
         """
         Creates GIDs for the provided vertex coordinates and sets up internal lookup maps between GIDs and vertex IDs.
 
@@ -293,16 +302,17 @@ class CouplingHandler:
         local_gids : List[int]
             List of local GIDs.
         """
-        has_global_access = np.all(np.array(self._global_region) == np.array(self._access_region))
+        has_global_access = np.all(
+            np.array(self._global_region) == np.array(self._access_region)
+        )
         if not has_global_access:
             self._mesh_vertex_ids = local_vertex_ids
             self._mesh_vertex_coords = local_vertex_coords
 
-
-        local_vertex_ids_set : Set[int] = set(local_vertex_ids)
-        local_gids : List[int] = []
+        local_vertex_ids_set: Set[int] = set(local_vertex_ids)
+        local_gids: List[int] = []
         self._gid_to_vertex_id.clear()
-        gid = 0 if has_global_access else np.sum(sims_per_rank[:self._mpi.rank])
+        gid = 0 if has_global_access else np.sum(sims_per_rank[: self._mpi.rank])
         for v_id in self._mesh_vertex_ids:
             self._gid_to_vertex_id[gid] = v_id
             if v_id in local_vertex_ids_set:

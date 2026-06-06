@@ -371,7 +371,9 @@ class MicroManagerCoupling(MicroManager):
         """
         with self._profiler.measure("micro_manager.initialize.direct_access"):
             # Decompose the macro-domain and set the mesh access region for each partition in preCICE
-            domain_decomposer : DomainDecomposer = create_domain_decomposer(self._config, self._mpi, self._logger)
+            domain_decomposer: DomainDecomposer = create_domain_decomposer(
+                self._config, self._mpi, self._logger
+            )
             access_region = self._config.macro_domain_bounds()
             if not self._is_load_balancing:
                 access_region = domain_decomposer.get_mesh_bounds()
@@ -386,9 +388,11 @@ class MicroManagerCoupling(MicroManager):
         local_macro_coords, local_macro_ids = domain_decomposer.partition(
             self._coupling.registered_vertex_coords,
             self._coupling.registered_vertex_ids,
-            access_region
+            access_region,
         )
-        local_num_sims, global_num_sims, sims_per_rank = domain_decomposer.finalize(local_macro_coords)
+        local_num_sims, global_num_sims, sims_per_rank = domain_decomposer.finalize(
+            local_macro_coords
+        )
 
         if local_num_sims == 0:
             if self._mpi.is_parallel():

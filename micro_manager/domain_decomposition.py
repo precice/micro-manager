@@ -10,13 +10,14 @@ from micro_manager.config import Config
 from micro_manager.tools.mpi_handler import MPIHandler, MPI
 from micro_manager.tools.logging_wrapper import Logger
 
+
 class DomainDecomposer(ABC):
     def __init__(self, config: Config, mpi: MPIHandler, log: Logger) -> None:
-        self._mpi : MPIHandler = mpi
-        self._log : Logger = log
+        self._mpi: MPIHandler = mpi
+        self._log: Logger = log
         # Check if ranks per axis is provided in the configuration file for parallel runs
-        self._ranks_per_axis : List[int] = config.ranks_per_axis()
-        self._dims : int = len(self._ranks_per_axis)
+        self._ranks_per_axis: List[int] = config.ranks_per_axis()
+        self._dims: int = len(self._ranks_per_axis)
         self._macro_bounds: List[float] = config.macro_domain_bounds()
 
         # initial checks
@@ -46,10 +47,10 @@ class DomainDecomposer(ABC):
 
     @abstractmethod
     def partition(
-            self,
-            vertex_coords: List[np.ndarray],
-            vertex_ids: List[int],
-            access_region: List[float],
+        self,
+        vertex_coords: List[np.ndarray],
+        vertex_ids: List[int],
+        access_region: List[float],
     ) -> Tuple[List[np.ndarray], List[int]]:
         """
         Decompose the micro simulations among all ranks based on their positions in the macro domain.
@@ -72,7 +73,11 @@ class DomainDecomposer(ABC):
         """
         pass
 
-    def filter_duplicates(self, global_vertex_coords: List[List[np.ndarray]], global_vertex_ids: List[List[int]]) -> Tuple[List[np.ndarray], List[int]]:
+    def filter_duplicates(
+        self,
+        global_vertex_coords: List[List[np.ndarray]],
+        global_vertex_ids: List[List[int]],
+    ) -> Tuple[List[np.ndarray], List[int]]:
         """
         Filter out vertex coordinates that are already owned by a lower-ranked rank.
 
@@ -116,7 +121,9 @@ class DomainDecomposer(ABC):
 
         return mesh_vertex_coords[keep_mask], mesh_vertex_ids[keep_mask]
 
-    def finalize(self, local_vertex_coords: List[np.ndarray]) -> Tuple[int, int, List[int]]:
+    def finalize(
+        self, local_vertex_coords: List[np.ndarray]
+    ) -> Tuple[int, int, List[int]]:
         """
         Prints decomposition statistics of all ranks and computes local and global counts.
 
@@ -175,19 +182,21 @@ class NoOpDecomp(DomainDecomposer):
 
     def __init__(self, config: Config, mpi: MPIHandler, log: Logger) -> None:
         super().__init__(config, mpi, log)
-        self._bounds : List[float] = config.macro_domain_bounds()
+        self._bounds: List[float] = config.macro_domain_bounds()
 
     def get_mesh_bounds(self) -> List[float]:
         return self._bounds
 
     def partition(
-            self,
-            vertex_coords: List[np.ndarray],
-            vertex_ids: List[int],
-            access_region: List[float],
+        self,
+        vertex_coords: List[np.ndarray],
+        vertex_ids: List[int],
+        access_region: List[float],
     ) -> Tuple[List[np.ndarray], List[int]]:
         if len(vertex_ids) == 0:
-            raise RuntimeError("The macro mesh has no vertices in the specified access region.")
+            raise RuntimeError(
+                "The macro mesh has no vertices in the specified access region."
+            )
 
         return vertex_coords, vertex_ids
 
@@ -197,12 +206,12 @@ class GridDecomp(DomainDecomposer, ABC):
         super().__init__(config, mpi, log)
 
     def partition(
-            self,
-            vertex_coords: List[np.ndarray],
-            vertex_ids: List[int],
-            access_region: List[float],
+        self,
+        vertex_coords: List[np.ndarray],
+        vertex_ids: List[int],
+        access_region: List[float],
     ) -> Tuple[List[np.ndarray], List[int]]:
-        mesh_bounds : List[float] = self.get_mesh_bounds()
+        mesh_bounds: List[float] = self.get_mesh_bounds()
 
         # Apply filtering if the access region is equal to the local mesh bounds
         # Filtering is required as in this case duplicates can arise due to numerical issues.
@@ -211,9 +220,13 @@ class GridDecomp(DomainDecomposer, ABC):
             # filter out coords already claimed by lower-ranked ranks.
             # When load balancing, all ranks receive all coords. No duplicates can arise.
             # TODO: Avoid the allgather by smartly selecting the relevant coordinates
-            global_vertex_coords : List[List[np.ndarray]] = self._mpi.comm.allgather(vertex_coords)
-            global_vertex_ids : List[List[int]] = self._mpi.comm.allgather(vertex_ids)
-            vertex_coords, vertex_ids = self.filter_duplicates(global_vertex_coords, global_vertex_ids)
+            global_vertex_coords: List[List[np.ndarray]] = self._mpi.comm.allgather(
+                vertex_coords
+            )
+            global_vertex_ids: List[List[int]] = self._mpi.comm.allgather(vertex_ids)
+            vertex_coords, vertex_ids = self.filter_duplicates(
+                global_vertex_coords, global_vertex_ids
+            )
 
         if len(vertex_ids) == 0:
             self._log.log_warning(
@@ -230,8 +243,8 @@ class GridDecomp(DomainDecomposer, ABC):
             inside = True
             for d in range(self._dims):
                 if not (
-                        coord[d] >= mesh_bounds[d * 2]
-                        and coord[d] <= mesh_bounds[d * 2 + 1]
+                    coord[d] >= mesh_bounds[d * 2]
+                    and coord[d] <= mesh_bounds[d * 2 + 1]
                 ):
                     inside = False
                     break
@@ -248,7 +261,7 @@ class GridDecomp(DomainDecomposer, ABC):
                 "configuration and in the MPI execution command do not match."
             )
 
-        rank_in_axis : Optional[List[int]] = None
+        rank_in_axis: Optional[List[int]] = None
         # force ranks_per_axis to be 3D for 2D case with value 0
         if self._dims == 2:
             self._ranks_per_axis.append(0)
@@ -257,9 +270,9 @@ class GridDecomp(DomainDecomposer, ABC):
             for y in range(self._ranks_per_axis[1]):
                 for x in range(self._ranks_per_axis[0]):
                     n = (
-                            x
-                            + y * self._ranks_per_axis[0]
-                            + z * self._ranks_per_axis[0] * self._ranks_per_axis[1]
+                        x
+                        + y * self._ranks_per_axis[0]
+                        + z * self._ranks_per_axis[0] * self._ranks_per_axis[1]
                     )
                     if n == self._mpi.rank:
                         rank_in_axis = [x, y, z]
@@ -288,13 +301,13 @@ class UniformGridDecomp(GridDecomp):
             List containing the upper and lower bounds of the domain pertaining to this rank.
             Format is same as input parameter macro_bounds.
         """
-        rank_in_axis : List[int] = self._calc_rank_in_axis()
+        rank_in_axis: List[int] = self._calc_rank_in_axis()
 
-        mesh_bounds : List[int] = []
+        mesh_bounds: List[int] = []
         for d in range(self._dims):
             dx = (
-                    abs(self._macro_bounds[d * 2 + 1] - self._macro_bounds[d * 2])
-                    / self._ranks_per_axis[d]
+                abs(self._macro_bounds[d * 2 + 1] - self._macro_bounds[d * 2])
+                / self._ranks_per_axis[d]
             )
 
             if rank_in_axis[d] > 0:
@@ -317,7 +330,9 @@ class NonUniformGridDecomp(GridDecomp):
     def __init__(self, config: Config, mpi: MPIHandler, log: Logger) -> None:
         super().__init__(config, mpi, log)
 
-        self._minimum_access_region_size: List[int] = config.minimum_access_region_size()
+        self._minimum_access_region_size: List[
+            int
+        ] = config.minimum_access_region_size()
         self._has_minimum_access_region_size = len(self._minimum_access_region_size) > 0
 
     def get_mesh_bounds(self) -> List[float]:
@@ -332,7 +347,7 @@ class NonUniformGridDecomp(GridDecomp):
             List containing the upper and lower bounds of the domain pertaining to this rank.
             Format is same as input parameter macro_bounds.
         """
-        rank_in_axis : List[int] = self._calc_rank_in_axis()
+        rank_in_axis: List[int] = self._calc_rank_in_axis()
 
         mesh_bounds = []
         multiplier = 2  # factor by which the local mesh bounds increase in each rank. 2 means geometric progression.
@@ -342,9 +357,9 @@ class NonUniformGridDecomp(GridDecomp):
             )
 
             dx0 = (
-                    macro_bounds_diff
-                    * (multiplier - 1)
-                    / (multiplier ** self._ranks_per_axis[d] - 1)
+                macro_bounds_diff
+                * (multiplier - 1)
+                / (multiplier ** self._ranks_per_axis[d] - 1)
             )
 
             if self._has_minimum_access_region_size:
@@ -353,7 +368,7 @@ class NonUniformGridDecomp(GridDecomp):
                     n_ranks = self._ranks_per_axis[d]
 
                     def _geom_sum_residual(r):
-                        return dx0 * (r ** n_ranks - 1) / (r - 1) - macro_bounds_diff
+                        return dx0 * (r**n_ranks - 1) / (r - 1) - macro_bounds_diff
 
                     # Find upper bracket where residual is positive
                     r_upper = 2.0
@@ -391,7 +406,9 @@ class NonUniformGridDecomp(GridDecomp):
         return mesh_bounds
 
 
-def create_domain_decomposer(config: Config, mpi: MPIHandler, log: Logger) -> DomainDecomposer:
+def create_domain_decomposer(
+    config: Config, mpi: MPIHandler, log: Logger
+) -> DomainDecomposer:
     """
     Creates a decomposition object according to the current configuration.
 
