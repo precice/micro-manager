@@ -1,10 +1,10 @@
 from micro_manager.config import Config
 from micro_manager.simulation_container import SimulationContainer
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 
 import precice as p
 import numpy as np
-from typing import List, Dict, Any, Optional
-from mpi4py import MPI
+from typing import List, Dict, Any, Optional, Set
 
 
 class CouplingHandler:
@@ -16,9 +16,7 @@ class CouplingHandler:
     def __init__(
         self,
         config: Config,
-        rank: int,
-        size: int,
-        comm: MPI.Comm,
+        mpi: MPIHandler,
         simulation_container: SimulationContainer,
     ):
         """
@@ -28,18 +26,12 @@ class CouplingHandler:
         ----------
         config : Config
             configuration object
-        rank : int
-            rank within the communicator
-        size : int
-            size within the communicator
-        comm : MPI.Comm
-            MPI communicator object
+        mpi : MPIHandler
+            MPIHandler object
         simulation_container : SimulationContainer
             Simulation container object.
         """
-        self._rank: int = rank
-        self._size: int = size
-        self._comm: MPI.Comm = comm
+        self._mpi: MPIHandler = mpi
 
         self._micro_dt: float = config.micro_dt()
         self._macro_mesh_name: str = config.macro_mesh_name()
@@ -52,20 +44,25 @@ class CouplingHandler:
         self._participant: p.Participant = p.Participant(
             "Micro-Manager",
             config.precice_config_file_name(),
-            rank,
-            size,
+            mpi.rank,
+            mpi.size,
         )
         self._sim_container: SimulationContainer = simulation_container
 
-        self._access_region: List[List[float]] = []
+        self._access_region: List[float] = []
+        self._global_region: List[float] = config.macro_domain_bounds()
         # Based on the access region, this rank is associated with a subset of
         # IDs and coordinates of the global macro mesh within preCICE.
         self._mesh_vertex_ids: List[int] = []
         self._mesh_vertex_coords: List[np.ndarray] = []
-        self._global_mesh_vertex_coords: List[np.ndarray] = []
         self._mesh_dims: int = self._participant.get_mesh_dimensions(
             self._macro_mesh_name
         )
+        self._gid_to_vertex_id: Dict[int, int] = {}
+
+    # =========================
+    #        PROPERTIES
+    # =========================
 
     @property
     def write_data_names(self) -> List[str]:
@@ -86,10 +83,6 @@ class CouplingHandler:
     @property
     def registered_vertex_coords(self) -> List[np.ndarray]:
         return self._mesh_vertex_coords
-
-    @property
-    def global_vertex_coords(self) -> List[np.ndarray]:
-        return self._global_mesh_vertex_coords
 
     @property
     def dt(self) -> float:
@@ -113,60 +106,9 @@ class CouplingHandler:
     def num_registered_vertices(self) -> int:
         return len(self._mesh_vertex_coords)
 
-    def set_access_region(self, access_bounds: List[List[float]]) -> None:
-        """
-        Sets the region in which the local rank accesses the mesh.
-
-        Parameters
-        ----------
-        access_bounds : List[List[float]]
-            List of lower and upper bound.
-        """
-        self._access_region.clear()
-        self._access_region.extend(access_bounds)
-
-        self._participant.set_mesh_access_region(
-            self._macro_mesh_name,
-            self._access_region,
-        )
-
-    def override_registered_vertices(
-        self, coords: List[np.ndarray], ids: List[int]
-    ) -> None:
-        """
-        Sets the registered vertex IDs and coordinates to the provided parameters. Used for example
-        after some postprocessing (filtering).
-
-        Parameters
-        ----------
-        coords : List[np.ndarray]
-            List of coordinates.
-        ids : List[int]
-            List of IDs
-        """
-        self._mesh_vertex_coords.clear()
-        self._mesh_vertex_coords.extend(coords)
-        self._mesh_vertex_ids.clear()
-        self._mesh_vertex_ids.extend(ids)
-
-    def load_global_vertex_coords(self) -> None:
-        """
-        Broadcasts all coordinates between all ranks.
-        """
-        glob_coords = self._comm.allgather(self._mesh_vertex_coords)
-        self._global_mesh_vertex_coords.extend(
-            np.array(glob_coords).reshape((-1, self.mesh_dims))
-        )
-
-    def apply_access_region(self) -> None:
-        """
-        Reads the IDs and coordinates defined by the access region.
-        """
-        ids, coords = self._participant.get_mesh_vertex_ids_and_coordinates(
-            self._macro_mesh_name
-        )
-        self._mesh_vertex_ids.extend(ids)
-        self._mesh_vertex_coords.extend(coords)
+    # =========================
+    #      preCICE METHODS
+    # =========================
 
     def initialize(self) -> None:
         """
@@ -236,6 +178,37 @@ class CouplingHandler:
         dt = dt or self.dt
         self._participant.advance(dt)
 
+    # =========================
+    #        API METHODS
+    # =========================
+
+    def set_access_region(self, access_region: List[float]) -> None:
+        """
+        Sets the region in which the local rank accesses the mesh.
+
+        Parameters
+        ----------
+        access_region : List[float]
+            List of lower and upper bound.
+        """
+        self._access_region.clear()
+        self._access_region.extend(access_region)
+
+        self._participant.set_mesh_access_region(
+            self._macro_mesh_name,
+            self._access_region,
+        )
+
+    def load_access_region(self) -> None:
+        """
+        Reads the IDs and coordinates defined by the access region.
+        """
+        ids, coords = self._participant.get_mesh_vertex_ids_and_coordinates(
+            self._macro_mesh_name
+        )
+        self._mesh_vertex_ids.extend(ids)
+        self._mesh_vertex_coords.extend(coords)
+
     def read_from_precice(
         self,
         dt: Optional[float] = None,
@@ -259,7 +232,7 @@ class CouplingHandler:
         read_data: Dict[str, List[Any]] = read_buffer or {}
         read_data.clear()
         read_data.update({name: [] for name in self._read_data_names})
-        read_vertex_ids: List[int] = self._sim_container.local_gids
+        read_vertex_ids: List[int] = [self._gid_to_vertex_id[gid] for gid in self._sim_container.local_gids]
         dt = dt or self.dt
 
         for name in self._read_data_names:
@@ -282,7 +255,7 @@ class CouplingHandler:
         data : list
             List of dicts in which keys are names of data and the values are the data to be written to preCICE.
         """
-        write_vertex_ids: List[int] = self._sim_container.local_gids
+        write_vertex_ids: List[int] = [self._gid_to_vertex_id[gid] for gid in self._sim_container.local_gids]
         data_dict: Dict[str, List[Any]] = {
             dname: [] for dname in self._write_data_names
         }
@@ -301,3 +274,40 @@ class CouplingHandler:
                 write_vertex_ids,
                 data_dict[dname],
             )
+
+    def generate_gids(self, local_vertex_coords: List[np.ndarray], local_vertex_ids: List[int], sims_per_rank: List[int]) -> List[int]:
+        """
+        Creates GIDs for the provided vertex coordinates and sets up internal lookup maps between GIDs and vertex IDs.
+
+        Parameters
+        ----------
+        local_vertex_coords : List[np.ndarray]
+            vertex coordinates after domain decomposition.
+        local_vertex_ids : List[int]
+            vertex IDs after domain decomposition.
+        sims_per_rank : List[int]
+            Number of simulations per rank.
+
+        Returns
+        -------
+        local_gids : List[int]
+            List of local GIDs.
+        """
+        has_global_access = np.all(np.array(self._global_region) == np.array(self._access_region))
+        if not has_global_access:
+            self._mesh_vertex_ids = local_vertex_ids
+            self._mesh_vertex_coords = local_vertex_coords
+
+
+        local_vertex_ids_set : Set[int] = set(local_vertex_ids)
+        local_gids : List[int] = []
+        self._gid_to_vertex_id.clear()
+        gid = 0 if has_global_access else np.sum(sims_per_rank[:self._mpi.rank])
+        for v_id in self._mesh_vertex_ids:
+            self._gid_to_vertex_id[gid] = v_id
+            if v_id in local_vertex_ids_set:
+                local_gids.append(gid)
+
+            gid += 1
+
+        return local_gids

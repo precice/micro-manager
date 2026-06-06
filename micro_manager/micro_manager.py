@@ -21,8 +21,6 @@ import csv
 import subprocess
 from functools import partial
 
-import precice
-
 from .simulation_container import SimulationContainer
 from .model_manager import ModelManager
 from .micro_manager_base import MicroManager
@@ -30,9 +28,8 @@ from .micro_manager_base import MicroManager
 from .adaptivity.model_adaptivity import ModelAdaptivity
 from .adaptivity.adaptivity_selection import create_adaptivity_calculator
 
-from .domain_decomposition import DomainDecomposer
+from .domain_decomposition import DomainDecomposer, create_domain_decomposer
 from .tasking.connection import spawn_local_workers
-from .micro_simulation import create_simulation_class, load_backend_class
 from .tools.logging_wrapper import Logger
 from .load_balancing import create_load_balancer
 from .tools.mpi_handler import MPIHandler, MPI
@@ -374,54 +371,27 @@ class MicroManagerCoupling(MicroManager):
         """
         with self._profiler.measure("micro_manager.initialize.direct_access"):
             # Decompose the macro-domain and set the mesh access region for each partition in preCICE
-            if (
-                not len(self._config.macro_domain_bounds()) / 2
-                == self._coupling.mesh_dims
-            ):
-                raise Exception("Provided macro mesh bounds are of incorrect dimension")
-
-            if self._mpi.is_parallel():
-                if not len(self._config.ranks_per_axis()) == self._coupling.mesh_dims:
-                    raise Exception(
-                        "Provided ranks combination is of incorrect dimension"
-                        " and does not match the dimensions of the macro mesh."
-                    )
-
-            domain_decomposer = DomainDecomposer(self._config, self._mpi)
-
-            if self._mpi.is_parallel() and not self._is_load_balancing:
-                coupling_mesh_bounds = domain_decomposer.get_local_mesh_bounds()
-            else:  # When serial or load balancing, the whole macro domain is assigned to one/each rank
-                coupling_mesh_bounds = self._config.macro_domain_bounds()
-            self._coupling.set_access_region(coupling_mesh_bounds)
+            domain_decomposer : DomainDecomposer = create_domain_decomposer(self._config, self._mpi, self._logger)
+            access_region = self._config.macro_domain_bounds()
+            if not self._is_load_balancing:
+                access_region = domain_decomposer.get_mesh_bounds()
+            self._coupling.set_access_region(access_region)
 
         # initialize preCICE
         self._coupling.initialize()
 
         self._profiler.begin("micro_manager.initialize.initialize_micro_sims")
-        self._coupling.apply_access_region()
+        self._coupling.load_access_region()
 
-        if self._mpi.is_parallel() and not self._is_load_balancing:
-            # Gather all vertex coords and IDs from all ranks onto all ranks,
-            # filter out coords already claimed by lower-ranked ranks.
-            # When load balancing, all ranks receive all coords. No duplicates can arise.
-            # TODO: Avoid the allgather by smartly selecting the relevant coordinates
-            all_coords = self._mpi.comm.allgather(self._coupling.registered_vertex_coords)
-            all_ids = self._mpi.comm.allgather(self._coupling.registered_vertex_ids)
+        local_macro_coords, local_macro_ids = domain_decomposer.partition(
+            self._coupling.registered_vertex_coords,
+            self._coupling.registered_vertex_ids,
+            access_region
+        )
+        local_num_sims, global_num_sims, sims_per_rank = domain_decomposer.finalize(local_macro_coords)
 
-            coords, ids = domain_decomposer.filter_duplicate_coords(all_coords, all_ids)
-            self._coupling.override_registered_vertices(coords, ids)
-
-        # Global coordinates that are necessary for model adaptivity
-        self._coupling.load_global_vertex_coords()
-
-        if self._coupling.num_registered_vertices == 0:
+        if local_num_sims == 0:
             if self._mpi.is_parallel():
-                self._logger.log_warning(
-                    "The access region of this rank has no macro-scale vertices. "
-                    "This rank will not have any micro simulations. "
-                    "To avoid this, change the domain decomposition"
-                )
                 if self._lazy_init:
                     raise Exception(
                         "The macro mesh has no vertices in the specified access region, "
@@ -429,86 +399,22 @@ class MicroManagerCoupling(MicroManager):
                         "if there are no vertices in the access region, as there would be no data to compute "
                         "the adaptivity and determine which simulations to initialize."
                     )
-            else:
-                raise Exception(
-                    "The macro mesh has no vertices in the specified access region."
-                )
-
-        if self._is_load_balancing and self._mpi.is_parallel():
-            (
-                local_number_of_sims,
-                local_macro_coords,
-            ) = domain_decomposer.get_local_sims_and_macro_coords(
-                self._coupling.registered_vertex_coords
-            )
-        else:
-            local_number_of_sims = self._coupling.num_registered_vertices
-            local_macro_coords = self._coupling.registered_vertex_coords
-
-        nms_all_ranks = np.zeros(self._mpi.size, dtype=np.int64)
-        # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
-        # simulations have been created by previous ranks, so that it can set
-        # the correct global IDs
-        self._mpi.comm.Allgatherv(np.array(local_number_of_sims), nms_all_ranks)
-
-        max_nms = np.max(nms_all_ranks)
-        min_nms = np.min(nms_all_ranks)
-
-        if (
-            max_nms != min_nms
-        ):  # if the number of maximum and minimum micro simulations per rank are different
-            self._logger.log_info_rank_zero(
-                "The following ranks have the maximum number of micro simulations ({}): {}".format(
-                    max_nms, np.where(nms_all_ranks == max_nms)[0]
-                )
-            )
-            self._logger.log_info_rank_zero(
-                "The following ranks have the minimum number of micro simulations ({}): {}".format(
-                    min_nms, np.where(nms_all_ranks == min_nms)[0]
-                )
-            )
-        else:  # if the number of maximum and minimum micro simulations per rank are the same
-            self._logger.log_info_rank_zero(
-                "All ranks have the same number of micro simulations: {}".format(
-                    max_nms
-                )
-            )
-
-        # Get global number of micro simulations
-        global_number_of_sims = np.sum(nms_all_ranks)
-
-        self._logger.log_info_rank_zero(
-            "Total number of micro simulations: {}".format(global_number_of_sims)
-        )
 
         if self._is_adaptivity_on:
             for name in self._adaptivity_data_names:
-                self._data_for_adaptivity[name] = [0] * local_number_of_sims
+                self._data_for_adaptivity[name] = [0] * local_num_sims
 
         # Create lists of global IDs
-        global_ids_of_local_sims = []  # DECLARATION
-
-        if self._is_load_balancing:
-            # Create a set of global coordinate indices for faster lookup
-            coord_to_index = {
-                tuple(coord): i
-                for i, coord in enumerate(self._coupling.registered_vertex_coords)
-            }
-
-            # Set global IDs based on the coordinate ordering in preCICE to be consistent with the scenario without load balancing
-            for coords in local_macro_coords:
-                coord_tuple = tuple(coords)
-                global_ids_of_local_sims.append(coord_to_index[coord_tuple])
-        else:
-            sim_id = np.sum(nms_all_ranks[: self._mpi.rank])
-            for i in range(local_number_of_sims):
-                global_ids_of_local_sims.append(sim_id)
-                sim_id += 1
+        local_gids = self._coupling.generate_gids(
+            local_macro_coords,
+            local_macro_ids,
+            sims_per_rank,
+        )
 
         self._sim_container.initialize(
-            glob_num_sims=global_number_of_sims,
-            local_num_sims=local_number_of_sims,
-            local_gids=global_ids_of_local_sims,
+            glob_num_sims=global_num_sims,
+            local_num_sims=local_num_sims,
+            local_gids=local_gids,
             local_coords=local_macro_coords,
         )
 
