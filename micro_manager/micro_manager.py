@@ -394,15 +394,13 @@ class MicroManagerCoupling(MicroManager):
             local_macro_coords
         )
 
-        if local_num_sims == 0:
-            if self._mpi.is_parallel():
-                if self._lazy_init:
-                    raise Exception(
-                        "The macro mesh has no vertices in the specified access region, "
-                        "but lazy initialization is turned on. Lazy initialization cannot be used "
-                        "if there are no vertices in the access region, as there would be no data to compute "
-                        "the adaptivity and determine which simulations to initialize."
-                    )
+        if local_num_sims == 0 and self._mpi.is_parallel() and self._lazy_init:
+            raise Exception(
+                "The macro mesh has no vertices in the specified access region, "
+                "but lazy initialization is turned on. Lazy initialization cannot be used "
+                "if there are no vertices in the access region, as there would be no data to compute "
+                "the adaptivity and determine which simulations to initialize."
+            )
 
         if self._is_adaptivity_on:
             for name in self._adaptivity_data_names:
