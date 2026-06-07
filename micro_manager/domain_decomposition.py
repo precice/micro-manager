@@ -264,7 +264,7 @@ class GridDecomp(DomainDecomposer, ABC):
         rank_in_axis: Optional[List[int]] = None
         # force ranks_per_axis to be 3D for 2D case with value 0
         if self._dims == 2:
-            self._ranks_per_axis.append(0)
+            self._ranks_per_axis.append(1)
 
         for z in range(self._ranks_per_axis[2]):
             for y in range(self._ranks_per_axis[1]):
