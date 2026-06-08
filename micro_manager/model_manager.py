@@ -70,7 +70,7 @@ class ModelManager:
         n_workers: int
             Number of workers to be used for the micro simulations, used for initialization of the micro simulation classes.
         conn_workers: Optional[Any]
-            Connection workers to be used for the micro simulations, used for initialization of the micro simulation classes.
+            Connection to workers, used for initialization of the micro simulation classes.
         """
         stateless_flags = config.micro_stateless_flags()
         for idx, model_file in enumerate(config.micro_file_names()):
