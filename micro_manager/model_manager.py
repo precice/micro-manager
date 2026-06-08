@@ -46,12 +46,32 @@ class ModelManager:
     """
 
     def __init__(self, logger: Logger):
+        """
+        Constructor for the ModelManager.
+
+        Parameters
+        ----------
+        logger: Logger
+            Logger to be used by the ModelManager and the created micro simulation classes.
+        """
         self._registered_classes: list[MicroSimulationClass] = []
         self._stateless_map: dict[MicroSimulationClass, bool] = dict()
         self._backend_map: dict[MicroSimulationClass, MicroSimulationInterface] = dict()
         self._logger: Logger = logger
 
     def load_models(self, config: Config, n_workers: int, conn_workers: Optional[Any]):
+        """
+        Loads the micro simulation classes specified in the config.
+
+        Parameters
+        ----------
+        config: Config
+            Config object.
+        n_workers: int
+            Number of workers to be used for the micro simulations, used for initialization of the micro simulation classes.
+        conn_workers: Optional[Any]
+            Connection workers to be used for the micro simulations, used for initialization of the micro simulation classes.
+        """
         stateless_flags = config.micro_stateless_flags()
         for idx, model_file in enumerate(config.micro_file_names()):
             try:
@@ -74,6 +94,7 @@ class ModelManager:
     def register(self, micro_sim_cls: MicroSimulationClass, stateless: bool):
         """
         Register a micro simulation class to create an instance of it later.
+        If a model is stateless, it will be initialized once and stored in the backend map, so that all instances of this model will delegate to the same compute instance.
 
         Parameters
         ----------
@@ -95,6 +116,14 @@ class ModelManager:
 
     @property
     def num_models(self) -> int:
+        """
+        Returns the number of registered micro simulation classes.
+
+        Returns
+        -------
+        num_models: int
+            Number of registered micro simulation classes.
+        """
         return len(self._registered_classes)
 
     def get_cls_by_name(self, name: str) -> MicroSimulationClass:
