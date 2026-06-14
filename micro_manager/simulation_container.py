@@ -1,7 +1,7 @@
 from .micro_simulation import MicroSimulationInterface
 from .tools.mpi_handler import MPIHandler
 
-from typing import Optional, Any, List, Dict, Set, Iterable, Tuple
+from typing import Optional, Any, List, Dict, Set, Iterable, Tuple, Collection
 import numpy as np
 
 
@@ -146,25 +146,25 @@ class SimulationContainer:
         return self._sim_coords
 
     @property
-    def range_lid(self) -> Iterable[int]:
+    def range_lid(self) -> Collection[int]:
         """
         Returns an iterator that yields all current local IDs.
 
         Returns
         -------
-        lid_range : Iterable[int]
+        lid_range : Collection[int]
             lid iterator
         """
         return range(self.local_num_sims)
 
     @property
-    def range_gid(self) -> Iterable[int]:
+    def range_gid(self) -> Collection[int]:
         """
         Returns an iterator that yields all global IDs.
 
         Returns
         -------
-        gid_range : Iterable[int]
+        gid_range : Collection[int]
             gid iterator
         """
         return range(self.global_num_sims)

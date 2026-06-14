@@ -115,6 +115,7 @@ class TestLocalAdaptivity(TestCase):
             configurator,
             nsims=self._number_of_sims,
             sim_container=container,
+            profiler=MagicMock(),
             micro_problem_cls=MicroSimulation,
             model_manager=ModelManager(),
             base_logger=MagicMock(),
@@ -172,6 +173,7 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
             sim_container=container,
+            profiler=MagicMock(),
             base_logger=MagicMock(),
             mpi=mpi,
             micro_problem_cls=MicroSimulation,
@@ -217,6 +219,7 @@ class TestLocalAdaptivity(TestCase):
             configurator,
             nsims=self._number_of_sims,
             sim_container=container,
+            profiler=MagicMock(),
             base_logger=MagicMock(),
             mpi=mpi,
             micro_problem_cls=MicroSimulation,
@@ -326,6 +329,7 @@ class TestLocalAdaptivity(TestCase):
             configurator,
             nsims=3,
             sim_container=container,
+            profiler=MagicMock(),
             base_logger=MagicMock(),
             mpi=mpi,
             micro_problem_cls=MicroSimulation,
@@ -342,6 +346,7 @@ class TestLocalAdaptivity(TestCase):
             configurator_l1,
             nsims=3,
             sim_container=container,
+            profiler=MagicMock(),
             base_logger=MagicMock(),
             mpi=mpi,
             micro_problem_cls=MicroSimulation,
@@ -390,6 +395,7 @@ class TestLocalAdaptivity(TestCase):
             configurator,
             nsims=self._number_of_sims,
             sim_container=container,
+            profiler=MagicMock(),
             base_logger=MagicMock(),
             mpi=mpi,
             micro_problem_cls=MicroSimulation,
@@ -408,15 +414,11 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller._is_sim_active = np.array(
             [True, False, False, True, False]
         )
-        expected_sim_is_associated_to = np.array([-2, 0, 0, -2, 3])
+        expected_sim_is_associated_to = {1: 0, 2: 0, 4: 3}
 
         adaptivity_controller._associate_inactive_to_active()
-
-        self.assertTrue(
-            np.array_equal(
-                expected_sim_is_associated_to,
-                adaptivity_controller._sim_is_associated_to,
-            )
+        self.assertDictEqual(
+            expected_sim_is_associated_to, adaptivity_controller.get_associated_map()
         )
 
     def test_update_inactive_sims_local_adaptivity(self):
@@ -440,6 +442,7 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
             sim_container=container,
+            profiler=MagicMock(),
             base_logger=MagicMock(),
             mpi=mpi,
             micro_problem_cls=MicroSimulation,
@@ -454,13 +457,13 @@ class TestLocalAdaptivity(TestCase):
 
         # Third and fifth micro sim are active, rest are deactivate
         expected_is_sim_active = np.array([True, False, False, True, False])
-        expected_sim_is_associated_to = np.array([-2, 0, 0, -2, 3])
+        expected_sim_is_associated_to = {1: 0, 2: 0, 4: 3}
 
         adaptivity_controller._similarity_dists = self._similarity_dists
         adaptivity_controller._is_sim_active = np.array(
             [True, False, False, False, False]
         )
-        adaptivity_controller._sim_is_associated_to = np.array([-2, 0, 0, 0, 3])
+        adaptivity_controller._sim_is_associated_to = expected_sim_is_associated_to
 
         for i in range(self._number_of_sims):
             container[i] = MicroSimulation(i)
@@ -470,9 +473,6 @@ class TestLocalAdaptivity(TestCase):
         self.assertTrue(
             np.array_equal(expected_is_sim_active, adaptivity_controller._is_sim_active)
         )
-        self.assertTrue(
-            np.array_equal(
-                expected_sim_is_associated_to,
-                adaptivity_controller._sim_is_associated_to,
-            )
+        self.assertDictEqual(
+            expected_sim_is_associated_to, adaptivity_controller.get_associated_map()
         )

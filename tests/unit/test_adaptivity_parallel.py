@@ -53,7 +53,7 @@ class TestGlobalAdaptivity(TestCase):
             global_ids = [3, 4]
 
         expected_is_sim_active = np.array([True, False, True, True, True])
-        expected_sim_is_associated_to = [-2, 3, -2, -2, -2]
+        expected_sim_is_associated_to = {1: 3}
 
         self._configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
 
@@ -82,7 +82,7 @@ class TestGlobalAdaptivity(TestCase):
         adaptivity_controller._is_sim_active = np.array(
             [False, False, True, True, False]
         )
-        adaptivity_controller._sim_is_associated_to = [3, 3, -2, -2, 2]
+        adaptivity_controller._sim_is_associated_to = {0: 3, 1: 3, 4: 2}
 
         # Force the activation of sim #0 and #4
         def check_for_activation(i, active):
@@ -101,11 +101,8 @@ class TestGlobalAdaptivity(TestCase):
         self.assertTrue(
             np.array_equal(expected_is_sim_active, adaptivity_controller._is_sim_active)
         )
-        self.assertTrue(
-            np.array_equal(
-                expected_sim_is_associated_to,
-                adaptivity_controller._sim_is_associated_to,
-            )
+        self.assertDictEqual(
+            expected_sim_is_associated_to, adaptivity_controller.get_associated_map()
         )
 
         if self._mpi.rank == 0:
@@ -132,7 +129,7 @@ class TestGlobalAdaptivity(TestCase):
             }
 
         expected_is_sim_active = np.array([False, False, True, False, True])
-        expected_sim_is_associated_to = [4, 2, -2, 2, -2]
+        expected_sim_is_associated_to = {0: 4, 1: 2, 3: 2}
 
         self._configurator.adaptivity_history_param = MagicMock(return_value=0.1)
         self._configurator.adaptivity_refining_constant = MagicMock(return_value=0.5)
@@ -172,20 +169,13 @@ class TestGlobalAdaptivity(TestCase):
         for lid, gid in enumerate(container.local_gids):
             container[lid] = sim_cls(gid)
 
-        adaptivity_controller.compute_adaptivity(
-            0.1,
-            data_for_adaptivity,
-        )
+        adaptivity_controller.compute(0.1)
 
         self.assertTrue(
             np.array_equal(expected_is_sim_active, adaptivity_controller._is_sim_active)
         )
-
-        self.assertTrue(
-            np.array_equal(
-                expected_sim_is_associated_to,
-                adaptivity_controller._sim_is_associated_to,
-            )
+        self.assertDictEqual(
+            expected_sim_is_associated_to, adaptivity_controller.get_associated_map()
         )
 
     def test_communicate_micro_output(self):
@@ -239,7 +229,7 @@ class TestGlobalAdaptivity(TestCase):
         adaptivity_controller._is_sim_active = np.array(
             [False, False, True, True, False]
         )
-        adaptivity_controller._sim_is_associated_to = [3, 3, -2, -2, 2]
+        adaptivity_controller._sim_is_associated_to = {0: 3, 1: 3, 4: 2}
 
         adaptivity_controller._communicate_micro_output(sim_output)
 

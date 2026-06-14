@@ -3,6 +3,7 @@ from unittest import TestCase
 import numpy as np
 
 import micro_manager
+from adaptivity.adaptivity import NoOpAdaptivity
 from micro_manager.simulation_container import SimulationContainer
 from micro_manager.tools.mpi_handler import MPIHandler, MPI
 
@@ -59,9 +60,8 @@ class TestSimulationCrashHandling(TestCase):
         )
         manager._has_sim_crashed = [False] * 4
         manager._coupling._mesh_vertex_coords = container.local_coords
-        manager._is_adaptivity_on = (
-            False  # make sure adaptivity is off overriding config
-        )
+        # make sure adaptivity is off overriding config
+        manager._adaptivity_controller = NoOpAdaptivity(container)
         for lid in container.range_lid:
             container[lid] = MicroSimulation(lid)
         manager._sim_container = container
@@ -118,17 +118,13 @@ class TestSimulationCrashHandling(TestCase):
             container[lid] = MicroSimulation(lid)
         manager._sim_container = container
 
-        manager._adaptivity_controller._similarity_dists = np.array([0, 0, 0, 0, 0])
+        manager._adaptivity_controller._similarity_dists = np.zeros(shape=(5, 5))
         manager._adaptivity_controller._is_sim_active = np.array(
             [True, True, True, True, False]
         )
-        manager._adaptivity_controller._sim_is_associated_to = np.array(
-            [-2, -2, -2, -2, 2]
-        )
+        manager._adaptivity_controller._sim_is_associated_to = {4: 2}
 
-        micro_sims_output = manager._solve_micro_simulations_with_adaptivity(
-            macro_data, 1.0
-        )
+        micro_sims_output = manager._solve_micro_simulations(macro_data, 1.0)
 
         # Crashed simulation has interpolated value
         data_crashed = micro_sims_output[2]
