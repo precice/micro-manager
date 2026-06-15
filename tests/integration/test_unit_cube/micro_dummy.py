@@ -15,13 +15,13 @@ class MicroSimulation:
         self._sim_id = sim_id
 
         match sim_id:
-            case 0, 4:
+            case 0 | 4:
                 self._this_sim_type = 1
-            case 1, 5:
+            case 1 | 5:
                 self._this_sim_type = 3
-            case 2, 6:
+            case 2 | 6:
                 self._this_sim_type = 6
-            case 3, 7:
+            case 3 | 7:
                 self._this_sim_type = 9
             case _:
                 self._this_sim_type = -1
