@@ -278,10 +278,14 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
 
         # writing loops explicitly to avoid branching within
         if invert:
+            if len(data.keys()) == 0:
+                return
             for name in names:
                 for lid in self._sim_container.range_lid:
                     self._data_for_adaptivity[name][lid] = data[name][lid]
         else:
+            if len(data) == 0:
+                return
             for lid in self._sim_container.range_lid:
                 for name in names:
                     self._data_for_adaptivity[name][lid] = data[lid][name]
