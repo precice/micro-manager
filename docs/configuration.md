@@ -262,6 +262,7 @@ The following parameters can be set
 
 ## Tasking / Workers
 
+See the [tasking](tooling-micro-manager-nested-parallelization.html) documentation for a detailed explanation of the implementation.
 The usage of workers can be enabled by configuring the tasking parameters to values other than the default.
 When using workers, a separate MPI process group is started per Micro Manager rank. This should allow for parallel
 micro simulation computation.
