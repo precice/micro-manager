@@ -74,6 +74,7 @@ The key `tasks` contains all possible task classes, that may be encountered duri
 `load_function` contains a function capable of loading a Micro Simulation class.
 
 Afterwards, the main execution loop is entered:
+
 ```python
 def handle_task(state_data, task_descriptor):
     name, args, kwargs = task_descriptor
@@ -91,6 +92,7 @@ while True:
         break
 conn.close()
 ```
+
 After receiving a `task_descriptor`, that was created by `Task.send_args`, `handle_task` creates an instance of the task and attempts to handle the request.
 The resulting output is then sent back to the Micro Manager parent rank.
 
