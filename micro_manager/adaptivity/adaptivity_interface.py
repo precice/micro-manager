@@ -47,7 +47,9 @@ class AdaptivityInterface(ABC):
         """
         return
 
-    def postprocess_inactive_output(self, micro_output: Dict[str, Any], gid: int) -> None:
+    def postprocess_inactive_output(
+        self, micro_output: Dict[str, Any], gid: int
+    ) -> None:
         """
         Attached adaptivity data to the given micro simulation output.
 
@@ -83,11 +85,11 @@ class AdaptivityInterface(ABC):
         return
 
     def update_buffers(
-            self,
-            micro_data: Optional[Union[List[Dict[str, Any]], Dict[str, List[Any]]]]=None,
-            macro_data: Optional[Union[List[Dict[str, Any]], Dict[str, List[Any]]]]=None,
-            invert: bool=False,
-            alloc: bool=False,
+        self,
+        micro_data: Optional[Union[List[Dict[str, Any]], Dict[str, List[Any]]]] = None,
+        macro_data: Optional[Union[List[Dict[str, Any]], Dict[str, List[Any]]]] = None,
+        invert: bool = False,
+        alloc: bool = False,
     ) -> None:
         """
         Updates the rank local computation buffer with the provided data.
@@ -205,9 +207,9 @@ class AdaptivityInterface(ABC):
 
     @abstractmethod
     def get_full_field_micro_output(
-            self,
-            micro_input: List[Dict[str, Any]],
-            micro_output: List[Optional[Dict[str, Any]]]
+        self,
+        micro_input: List[Dict[str, Any]],
+        micro_output: List[Optional[Dict[str, Any]]],
     ) -> List[Dict[str, Any]]:
         """
         Constructs the simulation outputs for all inactive simulations (given by missing output data).
@@ -252,9 +254,7 @@ class AdaptivityInterface(ABC):
         ...
 
     def check_micro_simulation_initialize(
-            self,
-            logger: Logger,
-            micro_init_return_value: Optional[Dict[str, Any]]
+        self, logger: Logger, micro_init_return_value: Optional[Dict[str, Any]]
     ) -> None:
         """
         Performs an initial check on the keys of the micro simulation output. (used during initialization)
@@ -286,7 +286,3 @@ class AdaptivityInterface(ABC):
             logger.log_warning_rank_zero(
                 f'The initialize() method of the Micro simulation returns extra initial data which isn\'t used by the adaptivity: {", ".join(extra)}'
             )
-
-
-
-
