@@ -20,7 +20,7 @@ Each of those, receive the request and solve the specified simulation in paralle
 
 ## Tasks
 
-In accordance with the Micro Simulation Interface, each interface method has its corresponding Task implementation. 
+In accordance with the Micro Simulation Interface, each interface method has its corresponding Task implementation.
 During operation no task objects are pickled (serialized) and transferred between the Micro Manager and its workers. Instead, only a string representation of the respective task class and the required data is transferred.
 This is done for performance reasons. The task classes are only transferred once during worker initialization and are stored under the key "tasks" in each workers persistent storage.
 
@@ -33,7 +33,7 @@ class Task:
 
     def __call__(self, state_data: dict):
         return self.fn(*self.args, state_data=state_data, **self.kwargs)
-    
+
     @classmethod
     def send_args(cls, *args, **kwargs):
         return cls.__name__, args, kwargs
@@ -48,7 +48,7 @@ class SolveTask(Task):
         return sim_output
 ```
 
-The code snippet above showcases the "Solve-Task" alongside the "Task" interface. 
+The code snippet above showcases the "Solve-Task" alongside the "Task" interface.
 The Micro Manager only calls the `send_args` method to transfer the required data.
 Workers call the constructor, which registers the to-be-called method with the required parameters.
 When the task is called via `__call__`, the registered method receives the previous parameters in addition to the persistent storage of the worker (`state_data`).
@@ -68,7 +68,7 @@ state_data["sim_instances"] = dict()
 state_data["load_function"] = load_function
 ```
 
-The key `tasks` contains all possible task classes, that may be encountered during simulation. 
+The key `tasks` contains all possible task classes, that may be encountered during simulation.
 `sim_classes` is a dictionary mapping class names to loaded Micro Simulation classes.
 `sim_instances` is a dictionary mapping Micro Simulation GIDs to their respective Micro Simulation instance.
 `load_function` contains a function capable of loading a Micro Simulation class.
@@ -110,7 +110,7 @@ The socket based version (`SocketConnection`) manually creates a sub-process gro
 
 ### Pinning
 
-During the creation of the worker processes, pinning is specified. 
+During the creation of the worker processes, pinning is specified.
 When each Micro Manager (MM) rank $n \in N$ creates its $M$ workers, it is assumed that each MM rank $n$ is pinned to a contiguous domain of size $M$ CPU cores.
 Subsequently, the created workers (W) of rank $n$ are pinned to distinct cores within this region. In the following example $N=8$, $M=2$ and 2 nodes are used.
 
@@ -128,9 +128,6 @@ Node 1:
 ╰──────────socket 0─────────╯  ╰──────────socket 1─────────╯
 ```
 
-__IMPORTANT__: For this to function correctly, the user must pin the Micro Manager ranks as described. 
+__IMPORTANT__: For this to function correctly, the user must pin the Micro Manager ranks as described.
 Additionally, when multiple nodes are used, then it is assumed that the Micro Manager ranks are distributed in an incrementing fashion per node first (as shown in the sketch).
 The used nodes must be provided in a hostfile, otherwise all worker processes are created on the same node.
-
-
-
