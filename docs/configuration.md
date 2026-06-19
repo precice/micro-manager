@@ -263,11 +263,11 @@ The following parameters can be set
 ## Tasking / Workers
 
 See the [tasking](tooling-micro-manager-nested-parallelization.html) documentation for a detailed explanation of the implementation.
-The usage of workers can be enabled by configuring the tasking parameters to values other than the default.
+The usage of workers can be enabled by configuring the tasking parameters.
 When using workers, a separate MPI process group is started per Micro Manager rank. This should allow for parallel
 micro simulation computation.
 With `backend`, the communication between the Micro Manager rank and its workers can be set to use either a
-socket based or MPI based approach. For system with SLURM: By setting `is_slurm` to true the worker process is
+socket-based or MPI-based approach. For a SLURM system, by setting `is_slurm` to true, the worker process is
 attempted to be started with `srun` instead of `mpiexec`. In this case, `backend` must be set to `"socket"`.
 `num_workers` controls the amount of workers per Micro Manager rank. When `num_workers` is less or equal than `1`, then
 local execution is assumed, thus no worker processes are created.
@@ -280,7 +280,7 @@ local execution is assumed, thus no worker processes are created.
 | `"num_workers"` | Number of workers pre Micro Manager rank.              | `1`        |
 | `"mpi_impl"`    | Implementation type of MPI. Options: ["intel", "open"] | `"open"`   |
 
-The following configuration block should be provided on the same level as the `"simulation_param"`.
+The following configuration block should be provided on the same level as the simulation parameters.
 The given example uses socket based communication, launches with `mpiexec`, uses 4 workers per rank and
 assumes Intel MPI.
 

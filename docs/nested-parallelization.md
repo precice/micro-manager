@@ -1,28 +1,28 @@
 ---
 title: Running with multi-level parallelization
-permalink: tooling-micro-manager-nested-parallelization.html
-keywords: tooling, macro-micro, parallelization, workers, tasking
-summary: Micro Manager supports MPI parallelized micro solvers with nested parallelization.
+permalink: tooling-micro-manager-multi-level-parallelization.html
+keywords: tooling, macro-micro, parallelization, multi-level parallelization, workers, tasking
+summary: Micro Manager supports MPI parallelized micro solvers with multi-level parallelization.
 ---
 
 ## Overview
 
-With default configurations, running the Micro Manager in parallel with MPI results in $N$ ranks within the same MPI communicator.
-In this approach, each operates under the assumption, that Micro Simulations are either solved in serial or use shared memory parallelization.
-If one attempts to solve the Micro Simulation with MPI, this will result in incorrect behavior, as different Micro Simulation instances communicate with each other. Further, this will likely lead to race conditions or deadlocks.
+By default, running the Micro Manager in parallel with MPI results in $N$ ranks within the same MPI communicator.
+In this approach, each Micro Manager instance assumes, that micro simulations are either solved in serial or use shared-memory parallelization.
+If one attempts to run individual micro simulations with MPI, incorrect behavior occurs because different micro simulation instances communicate with each other. Further, this will likely lead to race conditions or deadlocks.
 
-To support MPI parallelization for Micro Simulations, multi-level parallelization is introduced. In this execution mode, each Micro Manager rank $n\in [N]$ creates its own sub-process group of $M$ ranks with MPI.
-This results in a total of $N\cdot M$ processes. The sub-process groups are launched to run a "worker" process, and will be henceforth called workers. The worker executable is a generic task handler. Its sole task is to receive incoming tasks, decode them, solve the request and send back the results. Workers have a persistent storage, to which all incoming tasks have access.
+To support MPI parallelization for individual micro simulations, multi-level parallelization is introduced. In this execution mode, each Micro Manager rank $n\in [N]$ creates its own sub-process group of $M$ ranks with MPI.
+This results in a total of $N\cdot M$ processes. Each subprocess group consisting of $M$ processes run a "worker" process. The subprocess groups are henceforth referred to as workers. The worker executable is a generic task handler. It receives incoming tasks, decodes them, solves the request, and sends back the results. Workers have a persistent storage, to which all incoming tasks have access.
 
-The Micro Manager makes use of this, by first initializing the persistent storage with Micro Manager specific task-classes and loading the relevant Micro Simulation classes.
-When the Micro Manager attempts to solve a Micro Simulation, this results in a "Solve-Request" being emitted and transferred to its $M$ workers.
-Each of those, receive the request and solve the specified simulation in parallel. Upon completion, the results are transferred back to the Micro Manager rank. Other operations within the Micro Simulation Interface are handled similarly.
+The Micro Manager deploys this parallelization by first initializing the persistent storage with Micro Manager-specific task classes and loading the relevant micro simulation classes.
+Solving a micro simulation results in a "Solve-Request" being emitted and transferred to its $M$ workers.
+Each worker receives a request and solves the specified simulation in parallel. Upon completion, the results are transferred back to the Micro Manager rank. All micro simulation calls are parallelized in this manner.
 
 ## Tasks
 
-In accordance with the Micro Simulation Interface, each interface method has its corresponding Task implementation.
-During operation no task objects are pickled (serialized) and transferred between the Micro Manager and its workers. Instead, only a string representation of the respective task class and the required data is transferred.
-This is done for performance reasons. The task classes are only transferred once during worker initialization and are stored under the key "tasks" in each workers persistent storage.
+In accordance with the [Micro Simulation Interface](tooling-micro-manager-prepare-micro-simulation.html), each interface method has its corresponding Task implementation.
+During operation, no task objects are pickled (serialized) and transferred between the Micro Manager and its workers. Instead, only a string representation of the respective task class and the required data is transferred.
+This is done for performance reasons. The task classes are transferred only once during worker initialization and are stored under the key "tasks" in each worker's persistent storage.
 
 ```python
 class Task:
@@ -68,7 +68,7 @@ state_data["sim_instances"] = dict()
 state_data["load_function"] = load_function
 ```
 
-The key `tasks` contains all possible task classes, that may be encountered during simulation.
+The key `tasks` contains all possible task classes that may be encountered during simulation.
 `sim_classes` is a dictionary mapping class names to loaded Micro Simulation classes.
 `sim_instances` is a dictionary mapping Micro Simulation GIDs to their respective Micro Simulation instance.
 `load_function` contains a function capable of loading a Micro Simulation class.
@@ -93,14 +93,14 @@ while True:
 conn.close()
 ```
 
-After receiving a `task_descriptor`, that was created by `Task.send_args`, `handle_task` creates an instance of the task and attempts to handle the request.
+After receiving a `task_descriptor` created by `Task.send_args`, `handle_task` creates a task instance and attempts to handle the request.
 The resulting output is then sent back to the Micro Manager parent rank.
 
 ## Connection
 
-Connections between workers and Micro Manager ranks are realized as either MPI or socket based communication.
-The MPI version (`MPIConnection`) calls internally `MPI_Comm_spawn`, which launches a separate process group and yields a MPI communicator between the Micro Manager parent and the newly create process group.
-This approach is known to be more error-prone and required the definition of the following environment variables:
+Connections between workers and Micro Manager ranks are realized as either MPI- or socket-based communication.
+The MPI version (`MPIConnection`) internally calls  `MPI_Comm_spawn`, which launches a separate process group and yields an MPI communicator between the Micro Manager parent and the newly created process group.
+This approach is known to be more error-prone and requires the definition of the following environment variables:
 
 ```bash
 export OMPI_MCA_btl=self,vader,tcp
