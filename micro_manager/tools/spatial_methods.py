@@ -880,9 +880,9 @@ class InterleavedDomain:
 
     def decompose(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Decomposes the domain, by conceptually merging all support and query points across all rank
-        and splitting the query points, s.t. each rank will have approx the same amount of query points.
-        Support points alongside their function values are distributed to the respective ranks, that query points
+        Decomposes the domain by conceptually merging all support and query points across all ranks
+        and splitting the query points such that each rank will have approximately the same amount of query points.
+        Support points alongside their function values are distributed to the respective ranks, so that query points
         are surrounded by sufficient support points.
 
         Returns

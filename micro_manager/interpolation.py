@@ -320,7 +320,7 @@ class RBF_PU:
         dst_size = f.shape[-1]
 
         r = np.linalg.norm(x[None, :, :] - x[:, None, :], ord=2, axis=-1)
-        # compute lin and const term
+        # compute linear and constant terms
         b = np.zeros((src_size + 1, dst_size))
         p = np.zeros((n_points, src_size + 1))
         p[:, 0] = 1
