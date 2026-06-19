@@ -9,8 +9,8 @@ from typing import List, Dict, Any, Optional, Set
 
 class CouplingHandler:
     """
-    Manages all coupling aspects. Acts as an interface to preCICE and contains
-    all preCICE relevant data.
+    CouplingHandler manages all aspects of coupling with preCICE.
+    All preCICE API calls are wrapped, and preCICE-relevant data is hosted.
     """
 
     def __init__(
@@ -34,9 +34,11 @@ class CouplingHandler:
         self._mpi: MPIHandler = mpi
 
         self._micro_dt: float = config.micro_dt()
+
         self._macro_mesh_name: str = config.macro_mesh_name()
         # Data names of data to output to the snapshot database
         self._write_data_names: List[str] = config.write_data_names()
+
         # Data names of data to read as input parameter to the simulations
         self._read_data_names: List[str] = config.read_data_names()
 
@@ -49,8 +51,8 @@ class CouplingHandler:
         )
         self._sim_container: SimulationContainer = simulation_container
 
-        self._access_region: List[float] = []
-        self._global_region: List[float] = config.macro_domain_bounds()
+        self._access_region_bounds: List[float] = []
+        self._global_region_bounds: List[float] = config.macro_domain_bounds()
         # Based on the access region, this rank is associated with a subset of
         # IDs and coordinates of the global macro mesh within preCICE.
         self._mesh_vertex_ids: List[int] = []
@@ -191,12 +193,12 @@ class CouplingHandler:
         access_region : List[float]
             List of lower and upper bound.
         """
-        self._access_region.clear()
-        self._access_region.extend(access_region)
+        self._access_region_bounds.clear()
+        self._access_region_bounds.extend(access_region)
 
         self._participant.set_mesh_access_region(
             self._macro_mesh_name,
-            self._access_region,
+            self._access_region_bounds,
         )
 
     def load_access_region(self) -> None:
@@ -209,7 +211,7 @@ class CouplingHandler:
         self._mesh_vertex_ids.extend(ids)
         self._mesh_vertex_coords.extend(coords)
 
-    def read_from_precice(
+    def read_data_from_precice(
         self,
         dt: Optional[float] = None,
         read_buffer: Optional[Dict[str, List[Any]]] = None,
@@ -287,6 +289,7 @@ class CouplingHandler:
     ) -> List[int]:
         """
         Creates GIDs for the provided vertex coordinates and sets up internal lookup maps between GIDs and vertex IDs.
+        Here, vertex IDs are the IDs as defined by preCICE.
 
         Parameters
         ----------
@@ -303,7 +306,7 @@ class CouplingHandler:
             List of local GIDs.
         """
         has_global_access = np.all(
-            np.array(self._global_region) == np.array(self._access_region)
+            np.array(self._global_region_bounds) == np.array(self._access_region_bounds)
         )
         if not has_global_access:
             self._mesh_vertex_ids = local_vertex_ids

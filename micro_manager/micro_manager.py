@@ -216,7 +216,9 @@ class MicroManagerCoupling(MicroManager):
                 self._sim_container.write_checkpoints()
 
             read_buffer = {} if self._is_adaptivity_on else None
-            micro_sims_input = self._coupling.read_from_precice(read_buffer=read_buffer)
+            micro_sims_input = self._coupling.read_data_from_precice(
+                read_buffer=read_buffer
+            )
             # TODO: will be removed in adaptivity refactoring
             if self._is_adaptivity_on and read_buffer is not None:
                 for name in read_buffer.keys():
@@ -477,7 +479,7 @@ class MicroManagerCoupling(MicroManager):
 
         # Read initial data from preCICE, if it is available
         read_buffer = {} if self._is_adaptivity_on else None
-        initial_macro_data = self._coupling.read_from_precice(0, read_buffer)
+        initial_macro_data = self._coupling.read_data_from_precice(0, read_buffer)
         # TODO: will be removed in adaptivity refactoring
         if self._is_adaptivity_on and read_buffer is not None:
             for name in read_buffer.keys():

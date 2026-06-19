@@ -22,7 +22,7 @@ class ProfilingContext:
         name : str
             profiling name
         """
-        self._part: p.Participant = participant
+        self._participant: p.Participant = participant
         self._name: str = name
 
     def __enter__(self) -> "ProfilingContext":
@@ -33,7 +33,7 @@ class ProfilingContext:
         assert not self.CONTEXT_ACTIVE
         self.CONTEXT_ACTIVE = True
 
-        self._part.start_profiling_section(self._name)
+        self._participant.start_profiling_section(self._name)
         return self
 
     def __exit__(self, *args) -> None:
@@ -41,7 +41,7 @@ class ProfilingContext:
         Called when exiting the context in:
            with obj: ...
         """
-        self._part.stop_last_profiling_section()
+        self._participant.stop_last_profiling_section()
         self.CONTEXT_ACTIVE = False
 
 
@@ -59,7 +59,7 @@ class Profiler:
         participant : p.Participant
             preCICE participant
         """
-        self._part: p.Participant = participant
+        self._participant: p.Participant = participant
 
     def measure(self, name: str) -> ProfilingContext:
         """
@@ -80,7 +80,7 @@ class Profiler:
         ctx : ProfilingContext
             profiling context
         """
-        return ProfilingContext(self._part, name)
+        return ProfilingContext(self._participant, name)
 
     def begin(self, name: str) -> None:
         """
@@ -92,11 +92,11 @@ class Profiler:
             profiling name
         """
         assert not ProfilingContext.CONTEXT_ACTIVE
-        self._part.start_profiling_section(name)
+        self._participant.start_profiling_section(name)
 
     def end(self):
         """
         Ends manual profiling.
         """
-        self._part.stop_last_profiling_section()
+        self._participant.stop_last_profiling_section()
         ProfilingContext.CONTEXT_ACTIVE = False
