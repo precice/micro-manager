@@ -165,7 +165,9 @@ class MicroManagerCoupling(MicroManager):
                 self._sim_container.write_checkpoints()
 
             read_buffer = self._adaptivity_controller.get_read_buffer()
-            micro_sims_input = self._coupling.read_data_from_precice(read_buffer=read_buffer)
+            micro_sims_input = self._coupling.read_data_from_precice(
+                read_buffer=read_buffer
+            )
             self._adaptivity_controller.update_buffers(None, read_buffer, invert=True)
 
             with self._profiler.measure("micro_manager.solve.solve_micro_simulations"):
