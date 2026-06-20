@@ -13,6 +13,7 @@ from .adaptivity import AdaptivityCalculator
 from micro_manager.config import Config
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.mpi_handler import MPIHandler, MPI
+from micro_manager.tools.profiling import Profiler
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.model_manager import ModelManager
 from micro_manager.interpolation import RBF_PU
@@ -24,7 +25,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         self,
         config: Config,
         sim_container: SimulationContainer,
-        participant,
+        profiler: Profiler,
         base_logger: Logger,
         mpi: MPIHandler,
         micro_problem_cls: MicroSimulationClass,
@@ -39,8 +40,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             Object which has getter functions to get parameters defined in the configuration file.
         sim_container : SimulationContainer
             Simulation container object.
-        participant : object of class Participant
-            Object of the class Participant using which the preCICE API is called.
+        profiler : Profiler
+            Profiling object.
         base_logger : object of class Logger
             Logger object to log messages.
         mpi : MPIHandler
@@ -61,7 +62,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         )
 
         self._interpolation = RBF_PU(base_logger, mpi)
-        self._precice_participant = participant
+        self._profiler = profiler
 
         buffer_size = self._sim_container.global_num_sims**2
         array_buffer, mpi_node = self._mpi.create_node_buffer(MPI.FLOAT, buffer_size)
@@ -225,24 +226,19 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         micro_output : list
             List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
         """
-        self._precice_participant.start_profiling_section(
+        with self._profiler.measure(
             "micro_manager.global_adaptivity.get_full_field_micro_output"
-        )
+        ):
+            micro_sims_output = deepcopy(micro_output)
+            num_active = np.sum(self._is_sim_active)
+            if num_active == self._is_sim_active.shape[0]:
+                return micro_sims_output
 
-        micro_sims_output = deepcopy(micro_output)
-        num_active = np.sum(self._is_sim_active)
-        if num_active == self._is_sim_active.shape[0]:
-            self._precice_participant.stop_last_profiling_section()
-            return micro_sims_output
+            self._communicate_micro_output(micro_sims_output)
+            if num_active <= self._interp_min:
+                return micro_sims_output
 
-        self._communicate_micro_output(micro_sims_output)
-        if num_active <= self._interp_min:
-            self._precice_participant.stop_last_profiling_section()
-            return micro_sims_output
-
-        self._interpolate_output(micro_input, micro_sims_output)
-
-        self._precice_participant.stop_last_profiling_section()
+            self._interpolate_output(micro_input, micro_sims_output)
 
         return micro_sims_output
 
@@ -469,7 +465,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 else:
                     to_be_activated_map[assoc_active_gid] = [to_be_activated_lid]
 
-        self._precice_participant.start_profiling_section(
+        self._profiler.begin(
             "micro_manager.global_adaptivity.update_inactive_sims.communication"
         )
 
@@ -512,7 +508,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 self._sim_container[lid].destroy()
                 self._sim_container[lid] = None
 
-        self._precice_participant.stop_last_profiling_section()
+        self._profiler.end()
 
         self._sim_is_associated_to = np.copy(_sim_is_associated_to_updated)
 

@@ -11,6 +11,7 @@ from micro_manager.adaptivity.adaptivity import AdaptivityCalculator
 from micro_manager.model_manager import ModelManager
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.mpi_handler import MPIHandler
+from micro_manager.tools.profiling import Profiler
 from micro_manager.simulation_container import SimulationContainer
 
 
@@ -31,7 +32,7 @@ class LoadBalancerSimData:
 class LoadBalancer:
     def __init__(
         self,
-        precice_participant: Participant,
+        profiler: Profiler,
         model_manager: ModelManager,
         adaptivity_controller: Optional[AdaptivityCalculator],
         sim_container: SimulationContainer,
@@ -45,8 +46,8 @@ class LoadBalancer:
 
         Parameters
         ----------
-        precice_participant: Participant
-            preCICE participant object from coupling
+        profiler: Profiler
+            Profiling object
         model_manager: ModelManager
             model manager object to construct instances
         adaptivity_controller: Optional[AdaptivityCalculator]
@@ -59,7 +60,7 @@ class LoadBalancer:
             MPIHandler object.
         """
         self._enabled = config.enable_load_balancing()
-        self._precice_participant = precice_participant
+        self._profiler = profiler
         self._model_manager = model_manager
         self._adaptivity_controller = adaptivity_controller
         self._sim_container = sim_container
@@ -90,11 +91,9 @@ class LoadBalancer:
         if not self._enabled:
             return
 
-        # self._precice_participant.start_profiling_section("micro_manager.solve.load_balancing.redistribute")
         if np.allclose(self._balance_metric_global, 0):
             self._balance_metric_global = self._balance_metric_global + 1
         self._redistribute()
-        # self._precice_participant.stop_last_profiling_section()
 
     def pre_sim_solve(self, gid: int):
         """
@@ -216,27 +215,19 @@ class LoadBalancer:
         Main implementation of load balancing. First computes the new partitioning.
         Then send/receives micro simulations accordingly.
         """
-        self._precice_participant.start_profiling_section(
-            "micro_manager.solve.load_balancing.init"
-        )
-        current_partitioning = self._sim_container.get_ranks_of_sims()
-        # self._precice_participant.start_profiling_section("micro_manager.solve.load_balancing.init.partition")
-        target_partitioning, work_loads = self._partition_impl(
-            self._mpi.comm.size, current_partitioning
-        )
-        # self._precice_participant.stop_last_profiling_section()
-        active_gids = self._get_global_active_gids()
-        inactive_gids = self._get_global_inactive_gids(active_gids)
-        send_map = self._get_communication_map(
-            current_partitioning, target_partitioning, active_gids, inactive_gids
-        )
-        self._precice_participant.stop_last_profiling_section()
+        with self._profiler.measure("micro_manager.solve.load_balancing.init"):
+            current_partitioning = self._sim_container.get_ranks_of_sims()
+            target_partitioning, work_loads = self._partition_impl(
+                self._mpi.comm.size, current_partitioning
+            )
+            active_gids = self._get_global_active_gids()
+            inactive_gids = self._get_global_inactive_gids(active_gids)
+            send_map = self._get_communication_map(
+                current_partitioning, target_partitioning, active_gids, inactive_gids
+            )
 
-        self._precice_participant.start_profiling_section(
-            "micro_manager.solve.load_balancing.comm"
-        )
-        self._exchange_sims(send_map)
-        self._precice_participant.stop_last_profiling_section()
+        with self._profiler.measure("micro_manager.solve.load_balancing.comm"):
+            self._exchange_sims(send_map)
 
         sims_per_rank = self._mpi.comm.gather(len(self._sim_container), 0)
         self._log.log_info_rank_zero(
@@ -408,7 +399,7 @@ class ActiveBalancer(LoadBalancer):
 
     def __init__(
         self,
-        precice_participant: Participant,
+        profiler: Profiler,
         model_manager: ModelManager,
         adaptivity_controller: Optional[AdaptivityCalculator],
         sim_container: SimulationContainer,
@@ -417,7 +408,7 @@ class ActiveBalancer(LoadBalancer):
         mpi: MPIHandler,
     ):
         super().__init__(
-            precice_participant,
+            profiler,
             model_manager,
             adaptivity_controller,
             sim_container,
@@ -701,7 +692,7 @@ class ActiveBalancer(LoadBalancer):
 
 
 def create_load_balancer(
-    precice_participant: Participant,
+    profiler: Profiler,
     model_manager: ModelManager,
     adaptivity_controller: Optional[AdaptivityCalculator],
     sim_container: SimulationContainer,
@@ -719,7 +710,7 @@ def create_load_balancer(
         raise RuntimeError(f"Unknown load balancing type: {lb_type}")
 
     return lb_cls(
-        precice_participant,
+        profiler,
         model_manager,
         adaptivity_controller,
         sim_container,
