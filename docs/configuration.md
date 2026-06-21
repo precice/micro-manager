@@ -269,8 +269,8 @@ micro simulation computation.
 With `backend`, the communication between the Micro Manager rank and its workers can be set to use either a
 socket-based or MPI-based approach. For a SLURM system, by setting `is_slurm` to true, the worker process is
 attempted to be started with `srun` instead of `mpiexec`. In this case, `backend` must be set to `"socket"`.
-`num_workers` controls the amount of workers per Micro Manager rank. When `num_workers` is less or equal than `1`, then
-local execution is assumed, thus no worker processes are created.
+`num_workers` controls the amount of workers per Micro Manager rank. When `num_workers` is `1`, then
+local execution is assumed, thus no worker processes are created. Only values greater `0` are accepted.
 `mpi_impl` should be set to the underlying MPI implementation, as this is required for pinning.
 
 | Parameter       | Description                                            | Default    |
