@@ -170,7 +170,9 @@ class TestGlobalAdaptivity(TestCase):
         for lid, gid in enumerate(container.local_gids):
             container[lid] = sim_cls(gid)
 
-        adaptivity_controller.update_buffers(data_for_adaptivity, None, invert=True, alloc=True)
+        adaptivity_controller.update_buffers(
+            data_for_adaptivity, None, invert=True, alloc=True
+        )
         adaptivity_controller.compute(0.1)
 
         self.assertTrue(
