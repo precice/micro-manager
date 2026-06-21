@@ -118,11 +118,13 @@ class TestSimulationCrashHandling(TestCase):
             container[lid] = MicroSimulation(lid)
         manager._sim_container = container
 
+        manager._adaptivity_controller._sim_container = container
         manager._adaptivity_controller._similarity_dists = np.zeros(shape=(5, 5))
         manager._adaptivity_controller._is_sim_active = np.array(
             [True, True, True, True, False]
         )
         manager._adaptivity_controller._sim_is_associated_to = {4: 2}
+        manager._adaptivity_controller.update_buffers(alloc=True)
 
         micro_sims_output = manager._solve_micro_simulations(macro_data, 1.0)
 

@@ -164,11 +164,13 @@ class TestGlobalAdaptivity(TestCase):
             model_manager=ModelManager(),
         )
 
-        adaptivity_controller._adaptivity_data_names = ["data1", "data2"]
+        adaptivity_controller._data_names = ["data1", "data2"]
+        adaptivity_controller._micro_data_names = adaptivity_controller._data_names
 
         for lid, gid in enumerate(container.local_gids):
             container[lid] = sim_cls(gid)
 
+        adaptivity_controller.update_buffers(data_for_adaptivity, None, invert=True)
         adaptivity_controller.compute(0.1)
 
         self.assertTrue(
