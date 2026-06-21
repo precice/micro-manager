@@ -260,6 +260,39 @@ The following parameters can be set
 }
 ```
 
+## Tasking / Workers
+
+See the [tasking](tooling-micro-manager-nested-parallelization.html) documentation for a detailed explanation of the implementation.
+The usage of workers can be enabled by configuring the tasking parameters.
+When using workers, a separate MPI process group is started per Micro Manager rank. This should allow for parallel
+micro simulation computation.
+With `backend`, the communication between the Micro Manager rank and its workers can be set to use either a
+socket-based or MPI-based approach. For a SLURM system, by setting `is_slurm` to true, the worker process is
+attempted to be started with `srun` instead of `mpiexec`. In this case, `backend` must be set to `"socket"`.
+`num_workers` controls the amount of workers per Micro Manager rank. When `num_workers` is `1`, then
+local execution is assumed, thus no worker processes are created. Only values greater `0` are accepted.
+`mpi_impl` should be set to the underlying MPI implementation, as this is required for pinning.
+
+| Parameter       | Description                                            | Default    |
+|-----------------|--------------------------------------------------------|------------|
+| `backend`       | Communication backend. Options: ["socket", "mpi"]      | `"socket"` |
+| `is_slurm`      | Launch worker with `srun`?                             | `"False"`  |
+| `"num_workers"` | Number of workers pre Micro Manager rank.              | `1`        |
+| `"mpi_impl"`    | Implementation type of MPI. Options: ["intel", "open"] | `"open"`   |
+
+The following configuration block should be provided on the same level as the simulation parameters.
+The given example uses socket based communication, launches with `mpiexec`, uses 4 workers per rank and
+assumes Intel MPI.
+
+```json
+"tasking": {
+        "backend": "socket",
+        "is_slurm": false,
+        "num_workers": 4,
+        "mpi_impl": "intel"
+    }
+```
+
 ## Interpolate a crashed micro simulation
 
 If the optional dependency `sklearn` is installed, the Micro Manager will derive the output of a crashed micro simulation by interpolating outputs from similar simulations. To enable this, set
