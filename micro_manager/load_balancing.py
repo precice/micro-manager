@@ -314,7 +314,7 @@ class LoadBalancer:
             if current_partitioning[gid] == target_rank:
                 continue
             if current_partitioning[gid] == self._mpi.rank:
-                entry = self._gather_send_data(gid, inactive_set)
+                entry = self._gather_send_data(int(gid), inactive_set)
                 send_map[target_rank].append(entry)
                 continue
 

@@ -124,6 +124,9 @@ class TestSimulationCrashHandling(TestCase):
             [True, True, True, True, False]
         )
         manager._adaptivity_controller._sim_is_associated_to = {4: 2}
+        manager._adaptivity_controller._sim_active_steps = {
+            gid: 0 for gid in container.local_gids
+        }
         manager._adaptivity_controller.update_buffers(alloc=True)
 
         micro_sims_output = manager._solve_micro_simulations(macro_data, 1.0)

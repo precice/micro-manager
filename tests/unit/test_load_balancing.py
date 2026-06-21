@@ -48,7 +48,7 @@ class ModelManager:
         return self._cls(gid, late_init=late_init)
 
 
-class GlobalAdaptivityDummy(AdaptivityInterface):
+class GlobalAdaptivityCalculator(AdaptivityInterface):
     def __init__(
         self,
         active_gids: List[int],
@@ -220,7 +220,7 @@ class TestLBTime(TestCase):
                 sim = sim_cls(gid)
             container[lid] = sim
 
-        adaptivity = GlobalAdaptivityDummy(
+        adaptivity = GlobalAdaptivityCalculator(
             active_gids,
             container,
             assoc_map,
@@ -296,7 +296,7 @@ class TestLBActive(TestCase):
         for lid, gid in enumerate(container.local_gids):
             container[lid] = sim_cls(gid)
 
-        adaptivity_controller = GlobalAdaptivityDummy(
+        adaptivity_controller = GlobalAdaptivityCalculator(
             active_gids,
             container,
             {4: 0, 5: 1, 6: 2, 7: 3},
@@ -368,7 +368,7 @@ class TestLBActive(TestCase):
         for lid, gid in enumerate(container.local_gids):
             container[lid] = sim_cls(gid)
 
-        adaptivity_controller = GlobalAdaptivityDummy(
+        adaptivity_controller = GlobalAdaptivityCalculator(
             active_gids,
             container,
             assoc_map,
@@ -451,7 +451,7 @@ class TestLBActive(TestCase):
         for lid, gid in enumerate(container.local_gids):
             container[lid] = sim_cls(gid)
 
-        adaptivity_controller = GlobalAdaptivityDummy(
+        adaptivity_controller = GlobalAdaptivityCalculator(
             active_gids,
             container,
             assoc_map,
@@ -535,7 +535,7 @@ class TestLBActive(TestCase):
         for lid, gid in enumerate(container.local_gids):
             container[lid] = sim_cls(gid)
 
-        adaptivity_controller = GlobalAdaptivityDummy(
+        adaptivity_controller = GlobalAdaptivityCalculator(
             active_gids,
             container,
             assoc_map,
