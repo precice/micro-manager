@@ -466,7 +466,7 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller._is_sim_active = np.array(
             [True, False, False, False, False]
         )
-        adaptivity_controller._sim_is_associated_to = expected_sim_is_associated_to
+        adaptivity_controller._sim_is_associated_to = {1: 0, 2: 0, 3: 0, 4: 3}
 
         for i in range(self._number_of_sims):
             container[i] = MicroSimulation(i)
