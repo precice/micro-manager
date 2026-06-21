@@ -427,7 +427,7 @@ class TestLBActive(TestCase):
             global_ids = [12, 13, 14]
             expected_global_ids = [13, 14]
             active_gids = [12, 13, 14]
-        assoc_map = defaultdict(lambda: 0)
+        assoc_map = {gid: 0 for gid in [3, 4, 5, 6, 7, 9, 10, 11]}
         expected_ranks_of_sims = [1, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3]
         expected_ranks_of_sims = {
             gid: rnk for gid, rnk in enumerate(expected_ranks_of_sims)
@@ -511,7 +511,7 @@ class TestLBActive(TestCase):
             global_ids = [13, 14]
             expected_global_ids = [13, 14, 5]
             active_gids = [13, 14]
-        assoc_map = defaultdict(lambda: 0)
+        assoc_map = {3: 0, 4: 1, 5: 13, 6: 12, 7: 12, 9: 1, 10: 2, 11: 8}
         expected_ranks_of_sims = [2, 0, 0, 2, 0, 3, 1, 1, 2, 0, 0, 2, 1, 3, 3]
         expected_ranks_of_sims = {
             gid: rnk for gid, rnk in enumerate(expected_ranks_of_sims)
