@@ -261,8 +261,9 @@ class LoadBalancer:
         cls_name = None
         is_stateless = None
         state = None
-        active_steps = self._adaptivity_controller.get_active_steps()[gid]
-        del self._adaptivity_controller.get_active_steps()[gid]
+        active_dict = self._adaptivity_controller.get_active_steps()
+        active_steps = active_dict[gid]
+        del active_dict[gid]
         assoc_gid = None
 
         if not is_inactive:
@@ -447,11 +448,7 @@ class ActiveBalancer(LoadBalancer):
         pass
 
     def _get_active_exchange_counts(self):
-        # TODO find other solution for this
-        avg_active_sims = (
-            np.count_nonzero(self._adaptivity_controller._is_sim_active)
-            / self._mpi.comm.size
-        )
+        avg_active_sims = len(self._get_global_active_gids()) / self._mpi.comm.size
         f_avg_active_sims = np.floor(avg_active_sims - self._threshold)
         c_avg_active_sims = np.ceil(avg_active_sims + self._threshold)
 

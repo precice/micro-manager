@@ -347,7 +347,7 @@ class TestLBActive(TestCase):
             global_ids = [1, 3, 4]
             expected_global_ids = [1, 3]
             active_gids = [1]
-        assoc_map = {2: 0, 3: 0, 4: 1}
+        assoc_map = {2: 0, 3: 1, 4: 0}
         expected_ranks_of_sims = {0: 0, 1: 1, 2: 0, 3: 1, 4: 0}
 
         sim_cls = create_simulation_class(
