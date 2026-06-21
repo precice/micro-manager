@@ -1,7 +1,11 @@
 from unittest import TestCase, skip
 from unittest.mock import MagicMock
 import numpy as np
-from micro_manager.domain_decomposition import DomainDecomposer
+from micro_manager.domain_decomposition import (
+    DomainDecomposer,
+    NonUniformGridDecomp,
+    UniformGridDecomp,
+)
 
 
 class TestDomainDecomposition(TestCase):
@@ -37,8 +41,10 @@ class TestDomainDecomposition(TestCase):
         mpi = MagicMock()
         mpi.rank = 2
         mpi.size = 4
-        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds()
+        domain_decomposer = UniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        )
+        mesh_bounds = domain_decomposer.get_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [0, 0.5, 1, 2]))
 
@@ -55,8 +61,10 @@ class TestDomainDecomposition(TestCase):
         mpi = MagicMock()
         mpi.rank = 1
         mpi.size = 4
-        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds()
+        domain_decomposer = UniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        )
+        mesh_bounds = domain_decomposer.get_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [0.0, 1, -2, 0.0, -2, 8]))
 
@@ -73,8 +81,10 @@ class TestDomainDecomposition(TestCase):
         mpi = MagicMock()
         mpi.rank = 5
         mpi.size = 10
-        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds()
+        domain_decomposer = UniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        )
+        mesh_bounds = domain_decomposer.get_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [-1, 1, 0, 2, 2, 4]))
 
@@ -91,8 +101,10 @@ class TestDomainDecomposition(TestCase):
         mpi = MagicMock()
         mpi.rank = 10
         mpi.size = 32
-        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds()
+        domain_decomposer = UniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        )
+        mesh_bounds = domain_decomposer.get_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [0, 0.5, -2, 2, 0.5, 1.75]))
 
@@ -109,8 +121,10 @@ class TestDomainDecomposition(TestCase):
         mpi = MagicMock()
         mpi.rank = 7
         mpi.size = 16
-        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds()
+        domain_decomposer = UniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        )
+        mesh_bounds = domain_decomposer.get_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [0.75, 1, -2, 0, -2, 8]))
 
@@ -149,8 +163,10 @@ class TestNonUniformDomainDecomposition(TestCase):
         mpi = MagicMock()
         mpi.rank = 2
         mpi.size = 4
-        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds()
+        domain_decomposer = NonUniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        )
+        mesh_bounds = domain_decomposer.get_mesh_bounds()
 
         self.assertTrue(np.allclose(mesh_bounds, [0.0, 1.0 / 3.0, 2.0 / 3.0, 2.0]))
 
@@ -171,8 +187,10 @@ class TestNonUniformDomainDecomposition(TestCase):
         mpi = MagicMock()
         mpi.rank = 15
         mpi.size = 128
-        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds()
+        domain_decomposer = NonUniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        )
+        mesh_bounds = domain_decomposer.get_mesh_bounds()
 
         self.assertTrue(
             np.allclose(mesh_bounds, [0.756153, 1.0, 0.0, 0.019664], atol=1e-5)
@@ -182,8 +200,10 @@ class TestNonUniformDomainDecomposition(TestCase):
         mpi = MagicMock()
         mpi.rank = 112
         mpi.size = 128
-        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds()
+        domain_decomposer = NonUniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        )
+        mesh_bounds = domain_decomposer.get_mesh_bounds()
 
         self.assertTrue(
             np.allclose(mesh_bounds, [0.0, 1.0 / 256.0, 0.364631, 0.5], atol=1e-5)
@@ -203,8 +223,10 @@ class TestNonUniformDomainDecomposition(TestCase):
         mpi = MagicMock()
         mpi.rank = 1
         mpi.size = 4
-        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
-        mesh_bounds = domain_decomposer.get_local_mesh_bounds()
+        domain_decomposer = NonUniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        )
+        mesh_bounds = domain_decomposer.get_mesh_bounds()
 
         self.assertTrue(
             np.allclose(mesh_bounds, [-1.0 / 3.0, 1.0, -2.0, -2.0 / 3.0, -2.0, 8.0])
@@ -219,10 +241,12 @@ class TestNonUniformDomainDecomposition(TestCase):
         mpi = MagicMock()
         mpi.rank = 0
         mpi.size = 4
-        domain_decomposer = DomainDecomposer(self._configuration_mock, mpi)
 
         with self.assertRaises(ValueError):
-            domain_decomposer.get_local_mesh_bounds()
+            domain_decomposer = NonUniformGridDecomp(
+                self._configuration_mock, mpi, MagicMock()
+            )
+            domain_decomposer.get_mesh_bounds()
 
 
 class TestDuplicateCoordFiltering(TestCase):
@@ -245,21 +269,23 @@ class TestDuplicateCoordFiltering(TestCase):
         all_ids = [[0, 1], [2, 3]]
 
         self._configuration_mock.decomposition_type.return_value = "uniform"
+        self._configuration_mock.ranks_per_axis.return_value = [2, 1]
+        self._configuration_mock.macro_domain_bounds.return_value = [-2, -2, 2, 2]
 
         mpi = MagicMock()
         mpi.rank = 0
         mpi.size = 2
-        coords, ids = DomainDecomposer(
-            self._configuration_mock, mpi
-        ).filter_duplicate_coords(all_coords, all_ids)
+        coords, ids = UniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        ).filter_duplicates(all_coords, all_ids)
         self.assertEqual(len(coords), 2)
 
         mpi = MagicMock()
         mpi.rank = 1
         mpi.size = 2
-        coords, ids = DomainDecomposer(
-            self._configuration_mock, mpi
-        ).filter_duplicate_coords(all_coords, all_ids)
+        coords, ids = UniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        ).filter_duplicates(all_coords, all_ids)
         self.assertEqual(len(coords), 2)
 
     def test_duplicate_on_boundary_rank0_keeps(self):
@@ -275,14 +301,16 @@ class TestDuplicateCoordFiltering(TestCase):
         all_ids = [[0, 1], [1, 2]]
 
         self._configuration_mock.decomposition_type.return_value = "uniform"
+        self._configuration_mock.ranks_per_axis.return_value = [2, 1]
+        self._configuration_mock.macro_domain_bounds.return_value = [-2, -2, 2, 2]
 
         # Rank 0 should keep both its coords
         mpi = MagicMock()
         mpi.rank = 0
         mpi.size = 2
-        coords0, ids0 = DomainDecomposer(
-            self._configuration_mock, mpi
-        ).filter_duplicate_coords(all_coords, all_ids)
+        coords0, ids0 = UniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        ).filter_duplicates(all_coords, all_ids)
         self.assertEqual(len(coords0), 2)
         self.assertTrue(np.allclose(coords0[1], shared))
 
@@ -290,9 +318,9 @@ class TestDuplicateCoordFiltering(TestCase):
         mpi = MagicMock()
         mpi.rank = 1
         mpi.size = 2
-        coords1, ids1 = DomainDecomposer(
-            self._configuration_mock, mpi
-        ).filter_duplicate_coords(all_coords, all_ids)
+        coords1, ids1 = UniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        ).filter_duplicates(all_coords, all_ids)
         self.assertEqual(len(coords1), 1)
         self.assertTrue(np.allclose(coords1[0], [1.0, 0.0]))
 
@@ -309,29 +337,31 @@ class TestDuplicateCoordFiltering(TestCase):
         all_ids = [[0, 1], [0, 2], [0, 3]]
 
         self._configuration_mock.decomposition_type.return_value = "uniform"
+        self._configuration_mock.ranks_per_axis.return_value = [3, 1]
+        self._configuration_mock.macro_domain_bounds.return_value = [-3, -3, 3, 3]
 
         mpi = MagicMock()
         mpi.rank = 0
         mpi.size = 3
-        coords0, _ = DomainDecomposer(
-            self._configuration_mock, mpi
-        ).filter_duplicate_coords(all_coords, all_ids)
+        coords0, _ = UniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        ).filter_duplicates(all_coords, all_ids)
         self.assertEqual(len(coords0), 2)
 
         mpi = MagicMock()
         mpi.rank = 1
         mpi.size = 3
-        coords1, _ = DomainDecomposer(
-            self._configuration_mock, mpi
-        ).filter_duplicate_coords(all_coords, all_ids)
+        coords1, _ = UniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        ).filter_duplicates(all_coords, all_ids)
         self.assertEqual(len(coords1), 1)
         self.assertTrue(np.allclose(coords1[0], [1.0, 0.0]))
 
         mpi = MagicMock()
         mpi.rank = 2
         mpi.size = 3
-        coords2, _ = DomainDecomposer(
-            self._configuration_mock, mpi
-        ).filter_duplicate_coords(all_coords, all_ids)
+        coords2, _ = UniformGridDecomp(
+            self._configuration_mock, mpi, MagicMock()
+        ).filter_duplicates(all_coords, all_ids)
         self.assertEqual(len(coords2), 1)
         self.assertTrue(np.allclose(coords2[0], [2.0, 0.0]))

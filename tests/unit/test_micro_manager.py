@@ -60,8 +60,12 @@ class TestFunctionCalls(TestCase):
         """
         manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
 
-        self.assertListEqual(manager._read_data_names, self.fake_read_data_names)
-        self.assertListEqual(self.fake_write_data_names, manager._write_data_names)
+        self.assertListEqual(
+            manager._coupling.read_data_names, self.fake_read_data_names
+        )
+        self.assertListEqual(
+            self.fake_write_data_names, manager._coupling.write_data_names
+        )
         self.assertEqual(manager._micro_n_out, 10)
 
     def test_initialization(self):
@@ -71,15 +75,19 @@ class TestFunctionCalls(TestCase):
         manager = micro_manager.MicroManagerCoupling("micro-manager-config.json")
         manager.initialize()
 
-        self.assertEqual(manager._micro_dt, 0.1)  # from Interface.initialize
+        self.assertEqual(manager._coupling.micro_dt, 0.1)  # from Interface.initialize
         self.assertEqual(manager._sim_container.global_num_sims, 4)
-        self.assertListEqual(manager._mesh_vertex_ids.tolist(), [0, 1, 2, 3])
+        self.assertListEqual(manager._coupling.registered_vertex_ids, [0, 1, 2, 3])
         self.assertEqual(len(manager._sim_container), 4)
         self.assertEqual(
             manager._sim_container[0].very_important_value, 0
         )  # test inheritance
-        self.assertListEqual(manager._read_data_names, self.fake_read_data_names)
-        self.assertListEqual(self.fake_write_data_names, manager._write_data_names)
+        self.assertListEqual(
+            manager._coupling.read_data_names, self.fake_read_data_names
+        )
+        self.assertListEqual(
+            self.fake_write_data_names, manager._coupling.write_data_names
+        )
 
     def test_read_write_data_from_precice(self):
         """
@@ -93,8 +101,8 @@ class TestFunctionCalls(TestCase):
         manager._sim_container = container
         manager._mesh_vertex_ids = container.local_coords
 
-        manager._write_data_to_precice(self.fake_write_data)
-        read_data = manager._read_data_from_precice(1.0)
+        manager._coupling.write_to_precice(self.fake_write_data)
+        read_data = manager._coupling.read_data_from_precice(1.0)
 
         for data, fake_data in zip(read_data, self.fake_read_data):
             self.assertEqual(data["Macro-Scalar-Data"], 1)

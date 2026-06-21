@@ -58,7 +58,7 @@ class TestSimulationCrashHandling(TestCase):
             4, 4, [0, 1, 2, 3], np.array([[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0]])
         )
         manager._has_sim_crashed = [False] * 4
-        manager._mesh_vertex_coords = container.local_coords
+        manager._coupling._mesh_vertex_coords = container.local_coords
         manager._is_adaptivity_on = (
             False  # make sure adaptivity is off overriding config
         )
@@ -113,7 +113,7 @@ class TestSimulationCrashHandling(TestCase):
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
         manager._micro_sims_active_steps = np.zeros(5, dtype=np.int32)
         manager._has_sim_crashed = [False] * 5
-        manager._mesh_vertex_coords = container.local_coords
+        manager._coupling._mesh_vertex_coords = container.local_coords
         for lid in container.range_lid:
             container[lid] = MicroSimulation(lid)
         manager._sim_container = container

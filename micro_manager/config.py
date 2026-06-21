@@ -1049,7 +1049,7 @@ class Config:
         pass
 
     @config_entry
-    def macro_domain_bounds(self) -> List[List[float]]:
+    def macro_domain_bounds(self) -> List[float]:
         """
         Get the upper and lower bounds of the macro domain.
 
