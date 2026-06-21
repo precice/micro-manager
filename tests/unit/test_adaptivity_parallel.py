@@ -174,7 +174,6 @@ class TestGlobalAdaptivity(TestCase):
             data_for_adaptivity, None, invert=True, alloc=True
         )
         adaptivity_controller.compute(0.1)
-        # dummy change to trigger CI
 
         self.assertTrue(
             np.array_equal(expected_is_sim_active, adaptivity_controller._is_sim_active)
