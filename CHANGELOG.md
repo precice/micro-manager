@@ -2,6 +2,7 @@
 
 ## latest
 
+- Added check for number of workers and renamed method in `coupling.py` [#295](https://github.com/precice/micro-manager/pull/295)
 - Refactored interaction with preCICE and domain decomposition into `CouplingHandler`, `Profiler` and `DomainDecomposition` hierarchy [#289](https://github.com/precice/micro-manager/pull/289)
 - Refactored and generalized the methods in `p2p.py`. Added `MPIHandler` to manage all MPI related aspects. [#287](https://github.com/precice/micro-manager/pull/287)
 - Applied fixes for previously missed test cases due to #290 [#291](https://github.com/precice/micro-manager/pull/291)
