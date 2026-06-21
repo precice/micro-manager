@@ -4,7 +4,6 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 
 import numpy as np
-from mpi4py import MPI
 
 from micro_manager.adaptivity.adaptivity import AdaptivityCalculator
 from micro_manager.adaptivity.local_adaptivity import LocalAdaptivityCalculator

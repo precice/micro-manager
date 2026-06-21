@@ -3,7 +3,7 @@ from unittest import TestCase
 import numpy as np
 
 import micro_manager
-from adaptivity.adaptivity import NoOpAdaptivity
+from micro_manager.adaptivity.adaptivity import NoOpAdaptivity
 from micro_manager.simulation_container import SimulationContainer
 from micro_manager.tools.mpi_handler import MPIHandler, MPI
 

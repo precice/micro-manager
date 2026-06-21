@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
-from adaptivity.adaptivity_interface import AdaptivityInterface
+from micro_manager.adaptivity.adaptivity_interface import AdaptivityInterface
 from micro_manager.adaptivity.adaptivity import NoOpAdaptivity
 from micro_manager.load_balancing import LoadBalancer, ActiveBalancer
 from micro_manager.micro_simulation import create_simulation_class
