@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
-from adaptivity.adaptivity import NoOpAdaptivity
+from micro_manager.adaptivity.adaptivity import NoOpAdaptivity
 from micro_manager.simulation_container import SimulationContainer
 from micro_manager.adaptivity.model_adaptivity import ModelAdaptivity
 from micro_manager.micro_manager import MicroManagerCoupling
