@@ -526,8 +526,9 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
                     ]
                     offset += arg_sizes[dst_arg]
 
+    @staticmethod
     def _get_similarity_measure(
-        self, similarity_measure: str
+        similarity_measure: str,
     ) -> Callable[[np.ndarray], np.ndarray]:
         """
         Get similarity measure to be used for similarity calculation
@@ -543,19 +544,20 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
             Function to be used for similarity calculation. Takes data as input and returns similarity measure
         """
         if similarity_measure == "L1":
-            return self._l1
+            return AdaptivityCalculator._l1
         elif similarity_measure == "L2":
-            return self._l2
+            return AdaptivityCalculator._l2
         elif similarity_measure == "L1rel":
-            return self._l1rel
+            return AdaptivityCalculator._l1rel
         elif similarity_measure == "L2rel":
-            return self._l2rel
+            return AdaptivityCalculator._l2rel
         else:
             raise ValueError(
                 'Similarity measure not supported. Currently supported similarity measures are "L1", "L2", "L1rel", "L2rel".'
             )
 
-    def _l1(self, data: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def _l1(data: np.ndarray) -> np.ndarray:
         """
         Calculate L1 norm of data
 
@@ -571,7 +573,8 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
         """
         return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
 
-    def _l2(self, data: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def _l2(data: np.ndarray) -> np.ndarray:
         """
         Calculate L2 norm of data
 
@@ -587,7 +590,8 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
         """
         return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=2, axis=-1)
 
-    def _l1rel(self, data: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def _l1rel(data: np.ndarray) -> np.ndarray:
         """
         Calculate L1 norm of relative difference of data.
         The relative difference is calculated by dividing the difference of two data points by the maximum of the absolute value of the two data points.
@@ -612,7 +616,8 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
             axis=-1,
         )
 
-    def _l2rel(self, data: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def _l2rel(data: np.ndarray) -> np.ndarray:
         """
         Calculate L2 norm of relative difference of data.
         The relative difference is calculated by dividing the difference of two data points by the maximum of the absolute value of the two data points.
