@@ -250,7 +250,7 @@ class CouplingHandler:
 
         return [dict(zip(read_data, t)) for t in zip(*read_data.values())]
 
-    def write_to_precice(self, data: List[Dict[str, Any]]) -> None:
+    def write_data_to_precice(self, data: List[Dict[str, Any]]) -> None:
         """
         Write data to preCICE.
 

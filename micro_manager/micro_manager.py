@@ -257,7 +257,7 @@ class MicroManagerCoupling(MicroManager):
                     )
                     sys.exit()
 
-            self._coupling.write_to_precice(micro_sims_output)
+            self._coupling.write_data_to_precice(micro_sims_output)
             self._coupling.advance(dt)
 
             # Revert micro simulations to their last checkpoints if required

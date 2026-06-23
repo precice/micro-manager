@@ -628,6 +628,9 @@ class Config:
                 "Tasking will use {data} workers",
                 "No tasking worker count defined. Using 1 worker per rank.",
             )
+            if self.tasking_num_workers() < 1:
+                raise RuntimeError("Invalid number of workers. Must be >= 1.")
+
             self.mpi_impl.set = self.json["tasking"]["mpi_impl"].get_with_default(
                 "open",
                 "Tasking using mpi implementation: {data}",

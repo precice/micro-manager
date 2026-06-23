@@ -101,7 +101,7 @@ class TestFunctionCalls(TestCase):
         manager._sim_container = container
         manager._mesh_vertex_ids = container.local_coords
 
-        manager._coupling.write_to_precice(self.fake_write_data)
+        manager._coupling.write_data_to_precice(self.fake_write_data)
         read_data = manager._coupling.read_data_from_precice(1.0)
 
         for data, fake_data in zip(read_data, self.fake_read_data):
