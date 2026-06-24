@@ -1,7 +1,12 @@
+from abc import ABC, abstractmethod
 from functools import partial
-from typing import Tuple
+from typing import Tuple, Dict, Any, Optional, Hashable, Callable, List
 
 import numpy as np
+
+# handle compatibility issue between np version 1 and 2
+if int(np.version.version.split(".")[0]) > 1:
+    np.alltrue = np.all
 
 try:
     from sklearn.neighbors import NearestNeighbors
@@ -19,22 +24,200 @@ except ImportError:
 
     NearestNeighbors = Dummy
 
-from micro_manager.tools.mpi_handler import MPIHandler
+from micro_manager.config import Config
+from micro_manager.tools.mpi_handler import MPIHandler, MPIHandlerRankLocal
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.spatial_methods import InterleavedDomain
 
 
-# handle compat issue between np version 1 and 2
-if int(np.version.version.split(".")[0]) > 1:
-    np.alltrue = np.all
+class Interpolator(ABC):
+    # Associates Interpolator configuration IDs with the according config
+    _registered_configs: Dict[Hashable, Tuple[str, Dict[str, Any]]] = dict()
+    # Associates the respective class names of the used Interpolator implementations with their instances
+    _instances: Dict[str, "Interpolator"]
+    # Associates the respective class names of the Interpolator implementations with their classes
+    _implementations: Dict[str, Callable[[Logger, MPIHandler], "Interpolator"]] = dict()
+
+    def __init__(self, logger: Logger, mpi: MPIHandler):
+        """
+        Constructs the base interpolator.
+
+        Parameters
+        ----------
+        logger : Logger
+            Logger object.
+        mpi : MPIHandler
+            MPI handler object.
+        """
+        self._logger: Logger = logger
+        self._mpi: MPIHandler = mpi
+
+    def configure(self, interp_config: Dict[str, Any]) -> None:
+        """
+        Configures the current state of the interpolator to the specified settings.
+
+        Parameters
+        ----------
+        interp_config : Dict[str, Any]
+            Dict containing settings for interpolation.
+        """
+        pass
+
+    def set_local_data(self, x: np.ndarray, x_: np.ndarray, f: np.ndarray) -> None:
+        """
+        Sets the rank local data for the next interpolation.
+
+        Parameters
+        ----------
+        x : np.ndarray
+            Support points.
+        x_ : np.ndarray
+            Query points.
+        f : np.ndarray
+            Support point function values.
+        """
+        pass
+
+    def interpolate(self) -> np.ndarray:
+        """
+        Interpolates the function values at the set query points.
+
+        Returns
+        -------
+        interp_result : np.ndarray
+            Interpolated function values.
+        """
+        pass
+
+    @abstractmethod
+    def get_min_support_size(self) -> int:
+        pass
+
+    @abstractmethod
+    def is_local(self) -> bool:
+        pass
+
+    @classmethod
+    @abstractmethod
+    def load_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
+        pass
+
+    @staticmethod
+    def initialize(config: Config, logger: Logger, mpi: MPIHandler):
+        interp_configs: List[Dict[str, Any]] = config.interpolation_configs()
+
+        for interp_config in interp_configs:
+            if "type" not in interp_config:
+                logger.log_error("Interpolation type is missing.")
+                raise ValueError("Provide interpolation type in configuration.")
+
+            cls_name = interp_config["type"]
+            if cls_name not in Interpolator._implementations.keys():
+                logger.log_error(
+                    f"Unknown Implementation type {cls_name}.\n"
+                    f"Valid options are: {list(Interpolator._implementations.keys())}"
+                )
+                raise ValueError("Invalid Implementation type.")
+
+            if "id" not in interp_config:
+                logger.log_error("Interpolation config id is missing.")
+                raise ValueError("Provide interpolation config id in configuration.")
+
+            cls = Interpolator._implementations[cls_name]
+            config_id = interp_config["id"]
+
+            if config_id in Interpolator._registered_configs:
+                logger.log_error(f"Interpolation config id:{config_id} already exists.")
+                raise ValueError(
+                    "Provide distinct interpolation config ids in configuration."
+                )
+
+            Interpolator._registered_configs[config_id] = cls.__name__, cls.load_config(
+                interp_config
+            )
+
+            if cls_name in Interpolator._instances:
+                continue
+
+            Interpolator._instances[cls_name] = cls(logger, mpi)
+
+    @staticmethod
+    def is_id_valid(config_id: Hashable) -> bool:
+        return config_id in Interpolator._registered_configs
+
+    @staticmethod
+    def get_interp_config(id: Hashable) -> Dict[str, Any]:
+        return Interpolator._registered_configs[id]
+
+    @staticmethod
+    def get_instance(id: Hashable) -> "Interpolator":
+        cls_name, config = Interpolator._registered_configs[id]
+        inst = Interpolator._instances[cls_name]
+        inst.configure(config)
+        return inst
+
+    @staticmethod
+    def register_impl(cls):
+        Interpolator._implementations[cls.__name__] = cls
 
 
-class Interpolation:
-    def __init__(self, logger):
+@Interpolator.register_impl
+class KNN(Interpolator):
+    def __init__(self, logger: Logger, mpi: MPIHandler):
+        super().__init__(logger, mpi)
 
-        self._logger = logger
+        self._k = 1
+        self._x: Optional[np.ndarray] = None
+        self._x_query: Optional[np.ndarray] = None
+        self._f: Optional[np.ndarray] = None
 
-    def get_nearest_neighbor_indices(
+    def configure(self, interp_config: Dict[str, Any]) -> None:
+        self._k = 1 if "k" not in interp_config else interp_config["k"]
+
+    def get_min_support_size(self) -> int:
+        return 1
+
+    def is_local(self) -> bool:
+        return True
+
+    def set_local_data(self, x: np.ndarray, x_: np.ndarray, f: np.ndarray) -> None:
+        assert x.shape[:-1] == x_.shape[:-1]
+        assert x.shape[0] == f.shape[0]
+
+        self._x = x
+        self._x_query = x_
+        self._f = f
+
+    def interpolate(self) -> np.ndarray:
+        assert self._x is not None
+        assert self._x_query is not None
+        assert self._f is not None
+
+        f_query = np.zeros(shape=(self._x_query.shape[0], self._f.shape[-1]))
+        for idx_query in range(self._x_query.shape[0]):
+            inter_point = self._x_query[idx_query]
+            nearest_neighbors = self._get_nearest_neighbor_indices(
+                self._x,
+                inter_point,
+                self._k,
+            )
+            f_query[idx_query, :] = self._interpolate_impl(
+                self._x[nearest_neighbors, :],
+                self._x_query[idx_query, :],
+                self._f[nearest_neighbors, :],
+            )
+        return f_query
+
+    @classmethod
+    def load_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
+        conf = config.copy()
+        if "type" in conf:
+            del conf["type"]
+        if "id" in conf:
+            del conf["id"]
+        return conf
+
+    def _get_nearest_neighbor_indices(
         self,
         coords: np.ndarray,
         inter_point: np.ndarray,
@@ -74,7 +257,8 @@ class Interpolation:
 
         return neighbor_indices
 
-    def interpolate(self, neighbors: np.ndarray, point: np.ndarray, values):
+    @staticmethod
+    def _interpolate_impl(neighbors: np.ndarray, point: np.ndarray, values):
         r"""
             Interpolate a value at a point using inverse distance weighting. (https://en.wikipedia.org/wiki/Inverse_distance_weighting)
             .. math::
@@ -112,7 +296,8 @@ class Interpolation:
         return interpol_val / summed_weights
 
 
-class RBF_PU:
+@Interpolator.register_impl
+class RBF_PU(Interpolator):
     """
     Interpolates f(x) for f: R^n -> R^m using partition of unity RBF interpolant.
 
@@ -131,8 +316,7 @@ class RBF_PU:
         mpi : MPIHandler
             mpi handler object
         """
-        self._logger = logger
-        self._mpi = mpi
+        super().__init__(logger, mpi)
 
         self._domain = InterleavedDomain(mpi)
         self._use_pu = False
@@ -154,10 +338,14 @@ class RBF_PU:
         interp_config : dict
             Interpolator configuration.
         """
+        if "mpi" in interp_config:
+            self._mpi = interp_config["mpi"]
+
         self._domain.configure(
             {}
             if "domain_config" not in interp_config
-            else interp_config["domain_config"]
+            else interp_config["domain_config"],
+            self._mpi,
         )
         self._use_pu = (
             False if "use_pu" not in interp_config else interp_config["use_pu"]
@@ -192,6 +380,12 @@ class RBF_PU:
                 )
                 self._phi = partial(RBF_PU.basis_gauss, eps=eps)
 
+    def get_min_support_size(self) -> int:
+        return self._domain.get_group_size()
+
+    def is_local(self) -> bool:
+        return self._mpi.size == 1
+
     def set_local_data(self, x: np.ndarray, x_: np.ndarray, f: np.ndarray) -> None:
         """
         Sets local data for interleaved domain.
@@ -224,6 +418,43 @@ class RBF_PU:
         fq_local = self._domain.reassemble(xq, fq)
 
         return fq_local
+
+    @classmethod
+    def load_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
+        conf: Dict[str, Any] = dict()
+        if "use_pu" in config["rbf_config"]:
+            conf["use_pu"] = config["rbf_config"]["use_pu"]
+        if "pu_overlap" in config["rbf_config"]:
+            conf["pu_overlap"] = config["rbf_config"]["pu_overlap"]
+        conf["pu_cluster_size"] = config["rbf_config"]["n_neighbors"]
+        if "basis" in config["rbf_config"]:
+            if "type" in config["rbf_config"]["basis"]:
+                conf["basis"] = config["rbf_config"]["basis"]["type"]
+            if config["basis"] == "gauss" and "eps" in config["rbf_config"]["basis"]:
+                conf["gauss_eps"] = config["rbf_config"]["basis"]["eps"]
+
+        dom_config = {}
+        dom_config["n_neighbors"] = config["rbf_config"]["n_neighbors"]
+        if "local" == config["domain_config"]:
+            conf["mpi"] = MPIHandlerRankLocal
+        if "max_filling" in config["domain_config"]:
+            dom_config["max_filling"] = config["domain_config"]["max_filling"]
+        if "coarsening_factor" in config["domain_config"]:
+            dom_config["coarsening_factor"] = config["domain_config"][
+                "coarsening_factor"
+            ]
+        if "projection" in config["domain_config"]:
+            if "type" in config["domain_config"]["projection"]:
+                dom_config["projection_type"] = config["domain_config"]["projection"][
+                    "type"
+                ]
+            if "target_dims" in config["domain_config"]["projection"]:
+                dom_config["projection_std_dims"] = config["domain_config"][
+                    "projection"
+                ]["target_dims"]
+
+        conf["domain_config"] = dom_config
+        return conf
 
     # ================================
     #              RBF

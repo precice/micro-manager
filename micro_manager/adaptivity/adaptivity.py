@@ -3,7 +3,7 @@ Functionality for adaptive initialization and control of micro simulations
 """
 from collections import defaultdict
 from math import exp
-from typing import Callable, Dict, Optional, List, Any, Union, Tuple
+from typing import Callable, Dict, Optional, List, Any, Union, Tuple, Hashable
 from abc import ABC
 
 from micro_manager.config import Config
@@ -11,6 +11,7 @@ from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.model_manager import ModelManager
 from micro_manager.simulation_container import SimulationContainer
 from micro_manager.adaptivity.adaptivity_interface import AdaptivityInterface
+from micro_manager.interpolation import Interpolator
 from micro_manager.tools.profiling import Profiler
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.mpi_handler import MPIHandler
@@ -105,12 +106,9 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
         self._base_logger: Logger = base_logger
         self._logger_global_metrics: Optional[Logger] = None
         self._logger_local_metrics: Optional[Logger] = None
-        self._interpolation = (
-            None  # to be init by inheriting class (TODO needs interface)
-        )
-        self._interp_min: int = -1
+        self._interp_min: Optional[int] = None
+        self._interp_ids: List[Hashable] = []
         self._mappings: List[Tuple[List[str], List[str]]] = []
-        self._mapping_configs: List[Dict[str, Any]] = []
 
         self._refine_const: float = config.adaptivity_refining_constant()
         self._coarse_const: float = config.adaptivity_coarsening_constant()
@@ -326,48 +324,17 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
         for mapping in mappings:
             src_fields = mapping["src_fields"]
             dst_fields = mapping["dst_fields"]
-            n_neighbors = mapping["n_neighbors"]
-            if self._interp_min == -1:
-                self._interp_min = n_neighbors
-            else:
-                self._interp_min = min(n_neighbors, self._interp_min)
-
             self._mappings.append((src_fields, dst_fields))
-            config = {}
-            if "use_pu" in mapping["rbf_config"]:
-                config["use_pu"] = mapping["rbf_config"]["use_pu"]
-            if "pu_overlap" in mapping["rbf_config"]:
-                config["pu_overlap"] = mapping["rbf_config"]["pu_overlap"]
-            config["pu_cluster_size"] = n_neighbors
-            if "basis" in mapping["rbf_config"]:
-                if "type" in mapping["rbf_config"]["basis"]:
-                    config["basis"] = mapping["rbf_config"]["basis"]["type"]
-                if (
-                    config["basis"] == "gauss"
-                    and "eps" in mapping["rbf_config"]["basis"]
-                ):
-                    config["gauss_eps"] = mapping["rbf_config"]["basis"]["eps"]
 
-            dom_config = {}
-            dom_config["n_neighbors"] = n_neighbors
-            if "max_filling" in mapping["domain_config"]:
-                dom_config["max_filling"] = mapping["domain_config"]["max_filling"]
-            if "coarsening_factor" in mapping["domain_config"]:
-                dom_config["coarsening_factor"] = mapping["domain_config"][
-                    "coarsening_factor"
-                ]
-            if "projection" in mapping["domain_config"]:
-                if "type" in mapping["domain_config"]["projection"]:
-                    dom_config["projection_type"] = mapping["domain_config"][
-                        "projection"
-                    ]["type"]
-                if "target_dims" in mapping["domain_config"]["projection"]:
-                    dom_config["projection_std_dims"] = mapping["domain_config"][
-                        "projection"
-                    ]["target_dims"]
+            interp_id = mapping["interp_id"]
+            self._interp_ids.append(interp_id)
+            if not Interpolator.is_id_valid(interp_id):
+                raise ValueError(f"Unknown Interpolation config ID: {interp_id}")
+            interp = Interpolator.get_instance(interp_id)
+            interp_min = interp.get_min_support_size()
 
-            config["domain_config"] = dom_config
-            self._mapping_configs.append(config)
+            self._interp_min = self._interp_min or interp_min
+            self._interp_min = min(interp_min, self._interp_min)
 
     def _update_similarity_dists(self, dt: float, data: dict) -> None:
         """
@@ -532,11 +499,9 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
                     offset += arg_sizes[src_arg]
 
             # use interpolant
-            self._interpolation.configure(self._mappings[m_idx])
-            self._interpolation.set_local_data(
-                input_data, input_data_inactive, output_data
-            )
-            output_data_inactive = self._interpolation.interpolate()
+            interp = Interpolator.get_instance(self._interp_ids[m_idx])
+            interp.set_local_data(input_data, input_data_inactive, output_data)
+            output_data_inactive = interp.interpolate()
 
             for idx, lid in enumerate(inactive_lids):
                 offset = 0

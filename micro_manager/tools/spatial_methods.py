@@ -820,7 +820,7 @@ class InterleavedDomain:
 
         self._query_rank_mapping = None
 
-    def configure(self, domain_config: dict) -> None:
+    def configure(self, domain_config: dict, mpi: Optional[MPIHandler] = None) -> None:
         """
         Configures InterleavedDomain object to the provided settings.
 
@@ -828,7 +828,12 @@ class InterleavedDomain:
         ----------
         domain_config : dict
             Target configuration.
+        mpi : Optional[MPIHandler]
+            MPIHandler object.
         """
+        if mpi is not None:
+            self._mpi = mpi
+
         self._max_filling = (
             8 if "max_filling" not in domain_config else domain_config["max_filling"]
         )
@@ -913,6 +918,9 @@ class InterleavedDomain:
             Maximum filling of the tree.
         """
         return self._max_depth, self._max_filling
+
+    def get_group_size(self) -> int:
+        return self._n_neighbors
 
     def reassemble(self, x_query: np.ndarray, f_query: np.ndarray) -> np.ndarray:
         """

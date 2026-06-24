@@ -21,6 +21,8 @@ import csv
 import subprocess
 from functools import partial
 
+from crash_handler import CrashHandler
+from interpolation import Interpolator
 from .simulation_container import SimulationContainer
 from .model_manager import ModelManager
 from .micro_manager_base import MicroManager
@@ -85,17 +87,11 @@ class MicroManagerCoupling(MicroManager):
         self._profiler: Profiler = Profiler(self._coupling.participant)
 
         # Parameter for interpolation in case of a simulation crash
-        self._interpolate_crashed_sims = self._config.enable_crashed_sim_interpolation()
-        if self._interpolate_crashed_sims:
-            if Interpolation is None:
-                self._logger.log_info_rank_zero(
-                    "Interpolation is turned off as the required package is not installed."
-                )
-                self._interpolate_crashed_sims = False
-            else:
-                # TODO: Make these parameters configurable
-                self._crash_threshold = 0.2
-                self._number_of_nearest_neighbors = 4
+        self._crash_handler: CrashHandler = CrashHandler(
+            self._logger,
+            self._mpi,
+            self._sim_container,
+        )
 
         self._lazy_init = self._config.enable_adaptivity_lazy_init()
 
@@ -156,7 +152,7 @@ class MicroManagerCoupling(MicroManager):
                 self._sim_container.clear_checkpoints()
                 self._adaptivity_controller.update_buffers(alloc=True)
                 # Reset simulation crash state information after load balancing
-                self._has_sim_crashed = [False] * self._sim_container.local_num_sims
+                self._crash_handler.reset()
                 # self._participant.stop_last_profiling_section()
                 performed_lb = True
             lb_counter += 1
@@ -179,28 +175,7 @@ class MicroManagerCoupling(MicroManager):
                     micro_sims_output[i]["rank_of_sim"] = self._mpi.rank
 
             # Check if more than a certain percentage of the micro simulations have crashed and terminate if threshold is exceeded
-            if self._interpolate_crashed_sims:
-                crashed_sims_on_all_ranks = np.zeros(self._mpi.size, dtype=np.int64)
-                self._mpi.comm.Allgather(
-                    np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
-                )
-
-                if self._mpi.is_parallel():
-                    crash_ratio = (
-                        np.sum(crashed_sims_on_all_ranks)
-                        / self._sim_container.global_num_sims
-                    )
-                else:
-                    crash_ratio = np.sum(self._has_sim_crashed) / len(
-                        self._has_sim_crashed
-                    )
-
-                if crash_ratio > self._crash_threshold:
-                    self._logger.log_info(
-                        "{:.1%} of the micro simulations have crashed exceeding the threshold of {:.1%}. "
-                        "Exiting simulation.".format(crash_ratio, self._crash_threshold)
-                    )
-                    sys.exit()
+            self._crash_handler.check_crash_ratio()
 
             self._coupling.write_data_to_precice(micro_sims_output)
             self._coupling.advance(dt)
@@ -353,10 +328,14 @@ class MicroManagerCoupling(MicroManager):
             local_coords=local_macro_coords,
         )
 
+        Interpolator.initialize(
+            config=self._config,
+            logger=self._logger,
+            mpi=self._mpi,
+        )
+
         # Setup for simulation crashes
-        self._has_sim_crashed = [False] * self._sim_container.local_num_sims
-        if self._interpolate_crashed_sims:
-            self._interpolant = Interpolation(self._logger)
+        self._crash_handler.initialize(self._config)
 
         # Setup remote workers
         base_dir = os.path.dirname(os.path.abspath(__file__))
@@ -546,59 +525,33 @@ class MicroManagerCoupling(MicroManager):
                 continue
 
             # If micro simulation has not crashed in a previous iteration, attempt to solve it
-            if not self._has_sim_crashed[lid]:
-                try:
-                    self.load_balancing.pre_sim_solve(gid)
-                    micro_sims_output[lid] = self._sim_container[lid].solve(
-                        micro_sims_input[lid], dt
-                    )
-                    self.load_balancing.post_sim_solve(gid)
-                    self._adaptivity_controller.postprocess_active_output(
-                        micro_sims_output[lid], gid
-                    )
-
-                # If simulation crashes, log the error and keep the output constant at the previous iteration's output
-                except Exception as error_message:
-                    self._logger.log_error(
-                        "Micro simulation at macro coordinates {} has experienced an error. "
-                        "See next entry on this rank for error message.".format(
-                            self._sim_container.local_coords[lid]
-                        )
-                    )
-                    self._logger.log_error(error_message)
-                    self._has_sim_crashed[lid] = True
-
-        # If interpolate is off, terminate after crash
-        if not self._interpolate_crashed_sims:
-            crashed_sims_on_all_ranks = np.zeros(self._mpi.size, dtype=np.int64)
-            self._mpi.comm.Allgather(
-                np.sum(self._has_sim_crashed), crashed_sims_on_all_ranks
-            )
-            if sum(crashed_sims_on_all_ranks) > 0:
-                self._logger.log_error(
-                    "Exiting simulation after micro simulation crash."
+            if not self._crash_handler.has_sim_crashed(gid):
+                self.load_balancing.pre_sim_solve(gid)
+                micro_sims_output[lid] = self._crash_handler.solve_micro_safe(
+                    lid,
+                    self._sim_container[lid],
+                    micro_sims_input[lid],
+                    dt,
                 )
-                sys.exit()
+                self.load_balancing.post_sim_solve(gid)
 
-        # Interpolate result for crashed simulation
-        unset_sims = []
+        # If interpolate is off, terminates after crash
+        unset_sims = [
+            lid_ for lid_ in active_sim_lids if micro_sims_output[lid_] is None
+        ]
+        self._crash_handler.interpolate_outputs(
+            unset_sims,
+            micro_sims_input,
+            micro_sims_output,
+        )
+        for lid in unset_sims:
+            gid = self._sim_container.local_gids[lid]
+            self.load_balancing.pre_sim_solve(gid)
+            self.load_balancing.post_sim_solve(gid)
         for lid in active_sim_lids:
-            if micro_sims_output[lid] is None:
-                unset_sims.append(lid)
-
-        # Iterate over all crashed simulations to interpolate output
-        if self._interpolate_crashed_sims:
-            for lid in unset_sims:
-                self._logger.log_info(
-                    "Interpolating output for crashed simulation at macro vertex {}.".format(
-                        self._sim_container.local_coords[lid]
-                    )
-                )
-                self.load_balancing.pre_sim_solve(self._sim_container.local_gids[lid])
-                micro_sims_output[lid] = self._interpolate_output_for_crashed_sim(
-                    micro_sims_input, micro_sims_output, lid, active_sim_lids
-                )
-                self.load_balancing.post_sim_solve(self._sim_container.local_gids[lid])
+            self._adaptivity_controller.postprocess_active_output(
+                micro_sims_output[lid] or {}, self._sim_container.local_gids[lid]
+            )
 
         micro_sims_output: List[
             Dict[str, Any]
@@ -607,16 +560,11 @@ class MicroManagerCoupling(MicroManager):
         )
 
         inactive_sim_lids = self._adaptivity_controller.get_inactive_lids()
-
         # Resolve micro sim output data for inactive simulations
         for inactive_lid in inactive_sim_lids:
-            self.load_balancing.pre_sim_solve(
-                self._sim_container.local_gids[inactive_lid]
-            )
             gid = self._sim_container.local_gids[inactive_lid]
-            self.load_balancing.post_sim_solve(
-                self._sim_container.local_gids[inactive_lid]
-            )
+            self.load_balancing.pre_sim_solve(gid)
+            self.load_balancing.post_sim_solve(gid)
             self._adaptivity_controller.postprocess_inactive_output(
                 micro_sims_output[inactive_lid], gid
             )
@@ -684,96 +632,3 @@ class MicroManagerCoupling(MicroManager):
             )
         else:
             return self._solve_micro_simulations
-
-    def _interpolate_output_for_crashed_sim(
-        self,
-        micro_sims_input: list,
-        micro_sims_output: list,
-        unset_sim_lid: int,
-        active_sim_ids: List[int],
-    ) -> dict:
-        """
-        Using the output of neighboring simulations, interpolate the output for a crashed simulation.
-
-        Parameters
-        ----------
-        micro_sims_input : list
-            List of dicts in which keys are names of data and the values are the data which are required inputs to
-            solve a micro simulation.
-        micro_sims_output : list
-            List dicts containing output of local micro simulations.
-        unset_sim_lid : int
-            Index of the crashed simulation in the list of all local simulations currently interpolating.
-        active_sim_ids : List[int]
-            Array of active simulation IDs.
-
-        Returns
-        -------
-        output_interpol : dict
-            Result of the interpolation in which keys are names of data and the values are the data.
-        """
-        # Find neighbors of the crashed simulation in active and non-crashed simulations
-        # Set iteration length to only iterate over active simulations
-        iter_length = active_sim_ids
-        micro_sims_active_input_lists = []
-        micro_sims_active_values = []
-        # Turn crashed simulation macro parameters into list to use as coordinate for interpolation
-        crashed_position = []
-        for value in micro_sims_input[unset_sim_lid].values():
-            if isinstance(value, np.ndarray) or isinstance(value, list):
-                crashed_position.extend(value)
-            else:
-                crashed_position.append(value)
-        # Turn active simulation macro parameters into lists to use as coordinates for interpolation based on parameters
-        for i in iter_length:
-            if not self._has_sim_crashed[i]:
-                # Collect macro data at one macro vertex
-                intermediate_list = []
-                for value in micro_sims_input[i].values():
-                    if isinstance(value, np.ndarray) or isinstance(value, list):
-                        intermediate_list.extend(value)
-                    else:
-                        intermediate_list.append(value)
-                # Create lists of macro data for interpolation
-                micro_sims_active_input_lists.append(intermediate_list)
-                micro_sims_active_values.append(micro_sims_output[i].copy())
-        # Find nearest neighbors
-        if len(micro_sims_active_input_lists) == 0:
-            self._logger.log_error(
-                "No active neighbors available for interpolation at macro vertex {}. Value cannot be interpolated".format(
-                    self._sim_container.local_coords[unset_sim_lid]
-                )
-            )
-            return None
-        else:
-            nearest_neighbors = self._interpolant.get_nearest_neighbor_indices(
-                micro_sims_active_input_lists,
-                crashed_position,
-                self._number_of_nearest_neighbors,
-            )
-        # Interpolate
-        interpol_space = []
-        interpol_values = []
-        # Collect neighbor vertices for interpolation
-        for neighbor in nearest_neighbors:
-            # Remove data not required for interpolation from values
-            interpol_space.append(micro_sims_active_input_lists[neighbor].copy())
-            interpol_values.append(micro_sims_active_values[neighbor].copy())
-            self._adaptivity_controller.postprocess_remove(interpol_values[-1])
-
-        # Interpolate for each parameter
-        output_interpol = dict()
-        for key in interpol_values[0].keys():
-            key_values = []  # DECLARATION
-            # Collect values of current parameter from neighboring simulations
-            for elems in range(len(interpol_values)):
-                key_values.append(interpol_values[elems][key])
-            output_interpol[key] = self._interpolant.interpolate(
-                interpol_space, crashed_position, key_values
-            )
-        # Reintroduce removed information
-        self._adaptivity_controller.postprocess_active_output(
-            output_interpol,
-            self._sim_container.local_gids[unset_sim_lid],
-        )
-        return output_interpol

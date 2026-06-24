@@ -230,7 +230,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                 return micro_sims_output
 
             self._communicate_micro_output(micro_sims_output)
-            if num_active <= self._interp_min:
+            if self._interp_min is not None and num_active <= self._interp_min:
                 return micro_sims_output
 
             self._interpolate_output(micro_input, micro_sims_output)

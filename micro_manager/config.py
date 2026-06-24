@@ -8,7 +8,7 @@ import os
 import importlib.metadata
 import string
 from collections import defaultdict
-from typing import Optional, Type, List, Dict, Any, Callable
+from typing import Optional, Type, List, Dict, Any, Callable, Hashable
 import inspect
 from .tools.logging_wrapper import Logger
 
@@ -916,8 +916,15 @@ class Config:
             ]["model_adaptivity_settings"]["switching_function"].get_or_raise()
 
         # ======================================================
-        #          Crash Interpolation and Diagnostics
+        #              Interpolation and Diagnostics
         # ======================================================
+        self.interpolation_configs.set = self.json["simulation_params"][
+            "interpolation_configs"
+        ].get_with_default(
+            [],
+            None,
+            "Failed to load interpolation configs.",
+        )
 
         self.enable_crashed_sim_interpolation.set = self.json["simulation_params"][
             "interpolate_crash"
@@ -925,6 +932,28 @@ class Config:
         if self.enable_crashed_sim_interpolation():
             self._logger.log_info_rank_zero(
                 "Micro Manager will interpolate output of crashed micro simulations from its neighbors."
+            )
+        if (
+            self.enable_crashed_sim_interpolation()
+            and not self.json["simulation_params"]["interpolate_crash_params"].exists()
+        ):
+            self.enable_crashed_sim_interpolation.set = False
+            self._logger.log_info_rank_zero(
+                "Crash Interpolation is turned on but no settings are provided."
+            )
+        with self.show_log_if(self.enable_crashed_sim_interpolation()):
+            self.crashed_sim_interpolation_id.set = self.json["simulation_params"][
+                "interpolate_crash_params"
+            ]["interp_id"].get_with_default(
+                None,
+                "Crash Interpolation interpolates with config {data}.",
+                "No interpolation config provided for Crash Interpolation.",
+            )
+            self.crashed_sim_interpolation_threshold.set = self.json[
+                "simulation_params"
+            ]["interpolate_crash_params"]["threshold"].get_with_default(
+                0.2,
+                "Crash Interpolation threshold: {data}.",
             )
 
         # TODO what? this is not being saved nor used
@@ -1422,6 +1451,17 @@ class Config:
         pass
 
     @config_entry
+    def interpolation_configs(self) -> List[Dict[str, Any]]:
+        """
+        Gets the provided interpolation configurations.
+
+        Returns
+        interp_configs : List[Dict[str, Any]]
+            Interpolation configurations.
+        """
+        pass
+
+    @config_entry
     def enable_crashed_sim_interpolation(self) -> bool:
         """
         Check if user wants crashed micro simulations to be interpolated.
@@ -1430,6 +1470,30 @@ class Config:
         -------
         interpolate_crash : bool
             True if crashed micro simulations need to be interpolated, False otherwise.
+        """
+        pass
+
+    @config_entry
+    def crashed_sim_interpolation_id(self) -> Hashable:
+        """
+        Gets the associated interpolation config id used for crash interpolation.
+
+        Returns
+        -------
+        interp_id : Hashable
+            Interpolation config id.
+        """
+        pass
+
+    @config_entry
+    def crashed_sim_interpolation_threshold(self) -> float:
+        """
+        Gets the crash interpolation threshold.
+
+        Returns
+        -------
+        threshold : float
+            Threshold beyond which crashes are not recovered.
         """
         pass
 
