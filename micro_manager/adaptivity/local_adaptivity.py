@@ -12,10 +12,10 @@ from .adaptivity import AdaptivityCalculator
 from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.tools.logging_wrapper import Logger
-from micro_manager.tools.mpi_handler import MPIHandler, MPI, MPIHandlerRankLocal
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 from micro_manager.tools.profiling import Profiler
 from micro_manager.model_manager import ModelManager
-from micro_manager.interpolation import RBF_PU, Interpolator
+from micro_manager.interpolation import Interpolator
 from micro_manager.simulation_container import SimulationContainer
 
 
@@ -59,11 +59,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             model_manager,
             base_logger,
             mpi,
-        )
-        # using local handler to only perform local interpolation
-        self._interpolation = RBF_PU(
-            base_logger,
-            MPIHandlerRankLocal,
         )
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair

@@ -17,7 +17,6 @@ from micro_manager.tools.mpi_handler import MPIHandler, MPI
 from micro_manager.tools.profiling import Profiler
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.model_manager import ModelManager
-from micro_manager.interpolation import RBF_PU
 from micro_manager.simulation_container import SimulationContainer
 
 
@@ -62,8 +61,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             base_logger,
             mpi,
         )
-
-        self._interpolation = RBF_PU(base_logger, mpi)
 
         buffer_size = self._sim_container.global_num_sims**2
         array_buffer, mpi_node = self._mpi.create_node_buffer(MPI.FLOAT, buffer_size)
