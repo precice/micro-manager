@@ -126,7 +126,9 @@ class TestFunctionCalls(TestCase):
         manager._sim_container = container
         for lid in container.range_lid:
             container[lid] = MicroSimulation(lid)
-        manager._micro_sims_active_steps = np.zeros(4, dtype=np.int32)
+        manager._adaptivity_controller._sim_active_steps = {
+            gid: 0 for gid in container.local_gids
+        }
 
         micro_sims_output = manager._solve_micro_simulations(self.fake_read_data, 1.0)
 

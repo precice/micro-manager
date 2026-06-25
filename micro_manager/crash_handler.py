@@ -209,7 +209,9 @@ class CrashHandler:
             Global number of simulation crashes.
         """
         crashed_sims_on_all_ranks = np.zeros(self._mpi.size, dtype=np.int64)
-        self._mpi.comm.Allgather(len(self._crashed_sims), crashed_sims_on_all_ranks)
+        self._mpi.comm.Allgather(
+            np.int64(len(self._crashed_sims)), crashed_sims_on_all_ranks
+        )
         return np.sum(crashed_sims_on_all_ranks)
 
     def check_crash_ratio(self) -> None:
