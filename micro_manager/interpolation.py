@@ -91,19 +91,55 @@ class Interpolator(ABC):
 
     @abstractmethod
     def get_min_support_size(self) -> int:
+        """
+        Gets the minimum number of support points for interpolation to be possible.
+
+        Returns
+        -------
+        min_support_size : int
+            Minimum number of support points.
+        """
         pass
 
     @abstractmethod
     def is_local(self) -> bool:
+        """
+        Checks if the interpolation scheme is local or global.
+
+        Returns
+        -------
+        Returns True if interpolation operates locally, else False.
+        """
         pass
 
     @classmethod
     @abstractmethod
     def load_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Loads and optionally transforms the configuration dict as provided in the input file.
+
+        Returns
+        -------
+        config_dict : Dict[str, Any]
+            Configuration dict for this interpolation class.
+        """
         pass
 
     @staticmethod
-    def initialize(config: Config, logger: Logger, mpi: MPIHandler):
+    def initialize(config: Config, logger: Logger, mpi: MPIHandler) -> None:
+        """
+        Initializes all interpolation schemes.
+        Loads the required configurations and constructs instances for all specified interpolation types.
+
+        Parameters
+        ----------
+        config : Config
+            Configuration object.
+        logger : Logger
+            Logger object.
+        mpi : MPIHandler
+            MPIHandler object.
+        """
         interp_configs: List[Dict[str, Any]] = config.interpolation_configs()
 
         for interp_config in interp_configs:
@@ -143,14 +179,37 @@ class Interpolator(ABC):
 
     @staticmethod
     def is_id_valid(config_id: Hashable) -> bool:
+        """
+        Checks if the provided interpolation config ID is valid.
+
+        Parameters
+        ----------
+        config_id : Hashable
+            ID to be checked.
+
+        Returns
+        -------
+        is_valid : bool
+            True if the ID is known, else False.
+        """
         return config_id in Interpolator._registered_configs
 
     @staticmethod
-    def get_interp_config(id: Hashable) -> Dict[str, Any]:
-        return Interpolator._registered_configs[id]
-
-    @staticmethod
     def get_instance(id: Hashable) -> "Interpolator":
+        """
+        Gets a configured interpolation instance.
+        The configuration is determined by the provided interpolation configuration ID.
+
+        Parameters
+        ----------
+        id : Hashable
+            Interpolation Configuration ID.
+
+        Returns
+        -------
+        interp : Interpolator
+            Configured interpolation instance.
+        """
         cls_name, config = Interpolator._registered_configs[id]
         inst = Interpolator._instances[cls_name]
         inst.configure(config)
@@ -158,11 +217,19 @@ class Interpolator(ABC):
 
     @staticmethod
     def register_impl(cls):
+        """
+        Registers an implementation of the Interpolator interface.
+        Note: should be used as a class annotation.
+        """
         Interpolator._implementations[cls.__name__] = cls
 
 
 @Interpolator.register_impl
 class KNN(Interpolator):
+    """
+    Implements a k-Nearest-Neighbors interpolation scheme using sklearn.
+    """
+
     def __init__(self, logger: Logger, mpi: MPIHandler):
         super().__init__(logger, mpi)
 

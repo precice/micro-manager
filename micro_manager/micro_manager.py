@@ -536,13 +536,14 @@ class MicroManagerCoupling(MicroManager):
                 self.load_balancing.post_sim_solve(gid)
 
         # If interpolate is off, terminates after crash
-        unset_sims = [
-            lid_ for lid_ in active_sim_lids if micro_sims_output[lid_] is None
-        ]
+        unset_sims = set(
+            [lid_ for lid_ in active_sim_lids if micro_sims_output[lid_] is None]
+        )
         self._crash_handler.interpolate_outputs(
-            unset_sims,
-            micro_sims_input,
-            micro_sims_output,
+            selected_lids=active_sim_lids,
+            query_lids=unset_sims,
+            sim_inputs=micro_sims_input,
+            sim_outputs=micro_sims_output,
         )
         for lid in unset_sims:
             gid = self._sim_container.local_gids[lid]
