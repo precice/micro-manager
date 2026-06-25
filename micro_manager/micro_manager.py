@@ -21,8 +21,8 @@ import csv
 import subprocess
 from functools import partial
 
-from crash_handler import CrashHandler
-from interpolation import Interpolator
+from .crash_handler import CrashHandler
+from .interpolation import Interpolator
 from .simulation_container import SimulationContainer
 from .model_manager import ModelManager
 from .micro_manager_base import MicroManager
@@ -39,11 +39,6 @@ from .load_balancing import create_load_balancer
 from .tools.mpi_handler import MPIHandler, MPI
 from .tools.coupling import CouplingHandler
 from .tools.profiling import Profiler
-
-try:
-    from .interpolation import Interpolation
-except ImportError:
-    Interpolation = None
 
 sys.path.append(os.getcwd())
 
