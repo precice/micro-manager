@@ -267,7 +267,7 @@ class KNN(Interpolator):
         return True
 
     def set_local_data(self, x: np.ndarray, x_: np.ndarray, f: np.ndarray) -> None:
-        assert x.shape[:-1] == x_.shape[:-1]
+        assert x.shape[1:] == x_.shape[1:]
         assert x.shape[0] == f.shape[0]
 
         self._x = x
