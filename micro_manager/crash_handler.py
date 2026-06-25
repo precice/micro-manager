@@ -10,6 +10,7 @@ from micro_manager.config import Config
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.mpi_handler import MPIHandler, MPI
 
+
 class CrashHandler:
     """
     CrashHandler manages and tracks simulation crashes.
@@ -120,7 +121,7 @@ class CrashHandler:
             offset = 0
             for val in entry.values():
                 size = self._load_size(val)
-                buffer[d_idx, offset:offset + size] = val
+                buffer[d_idx, offset : offset + size] = val
                 offset += size
         return buffer
 
