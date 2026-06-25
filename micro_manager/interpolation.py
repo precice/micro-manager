@@ -504,21 +504,22 @@ class RBF_PU(Interpolator):
         dom_config["n_neighbors"] = config["rbf_config"]["n_neighbors"]
         if "local" == config["domain_config"]:
             conf["mpi"] = MPIHandlerRankLocal
-        if "max_filling" in config["domain_config"]:
-            dom_config["max_filling"] = config["domain_config"]["max_filling"]
-        if "coarsening_factor" in config["domain_config"]:
-            dom_config["coarsening_factor"] = config["domain_config"][
-                "coarsening_factor"
-            ]
-        if "projection" in config["domain_config"]:
-            if "type" in config["domain_config"]["projection"]:
-                dom_config["projection_type"] = config["domain_config"]["projection"][
-                    "type"
+        else:
+            if "max_filling" in config["domain_config"]:
+                dom_config["max_filling"] = config["domain_config"]["max_filling"]
+            if "coarsening_factor" in config["domain_config"]:
+                dom_config["coarsening_factor"] = config["domain_config"][
+                    "coarsening_factor"
                 ]
-            if "target_dims" in config["domain_config"]["projection"]:
-                dom_config["projection_std_dims"] = config["domain_config"][
-                    "projection"
-                ]["target_dims"]
+            if "projection" in config["domain_config"]:
+                if "type" in config["domain_config"]["projection"]:
+                    dom_config["projection_type"] = config["domain_config"][
+                        "projection"
+                    ]["type"]
+                if "target_dims" in config["domain_config"]["projection"]:
+                    dom_config["projection_std_dims"] = config["domain_config"][
+                        "projection"
+                    ]["target_dims"]
 
         conf["domain_config"] = dom_config
         return conf
