@@ -8,7 +8,7 @@ from micro_manager.micro_simulation import MicroSimulationInterface
 from micro_manager.interpolation import Interpolator
 from micro_manager.config import Config
 from micro_manager.tools.logging_wrapper import Logger
-from micro_manager.tools.mpi_handler import MPIHandler, MPI
+from micro_manager.tools.mpi_handler import MPIHandler
 
 
 class CrashHandler:
@@ -100,30 +100,6 @@ class CrashHandler:
             self.register_sim_crash(self._sim_container.local_gids[lid])
 
         return result
-
-    def _load_size(self, val):
-        if isinstance(val, np.ndarray) or isinstance(val, list):
-            return len(val)
-        return 1
-
-    def _conv_to_ndarray(self, data_list: List[Optional[Dict[str, Any]]]) -> np.ndarray:
-        # collect output dimensions, assuming each dict follows the same structure
-        entry : Dict[str, Any] = next(d for d in data_list if d is not None)
-        entry_size = sum([self._load_size(val) for val in entry.values()])
-        entry_count = len(data_list)
-
-        # alloc buffer and populate
-        buffer = np.zeros(shape=(entry_count, entry_size), dtype=np.float64)
-        for d_idx in range(entry_count):
-            if data_list[d_idx] is None:
-                continue
-            entry = data_list[d_idx]
-            offset = 0
-            for val in entry.values():
-                size = self._load_size(val)
-                buffer[d_idx, offset : offset + size] = val
-                offset += size
-        return buffer
 
     def interpolate_outputs(
         self,
