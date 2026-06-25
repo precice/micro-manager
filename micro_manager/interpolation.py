@@ -34,7 +34,7 @@ class Interpolator(ABC):
     # Associates Interpolator configuration IDs with the according config
     _registered_configs: Dict[Hashable, Tuple[str, Dict[str, Any]]] = dict()
     # Associates the respective class names of the used Interpolator implementations with their instances
-    _instances: Dict[str, "Interpolator"]
+    _instances: Dict[str, "Interpolator"] = dict()
     # Associates the respective class names of the Interpolator implementations with their classes
     _implementations: Dict[str, Callable[[Logger, MPIHandler], "Interpolator"]] = dict()
 
