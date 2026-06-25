@@ -152,13 +152,15 @@ class CrashHandler:
         )
         interp_outputs = interp.interpolate()
 
-        for lid in query_lids:
+        for interp_idx, lid in enumerate(query_lids):
             result = deepcopy(sim_outputs[support_lids[0]])
             offset = 0
             for key, val in result.items():
                 size = self._load_size(val)
-                extracted_val = interp_outputs[lid, offset : offset + size]
-                if size == 1:
+                extracted_val = interp_outputs[interp_idx, offset : offset + size]
+                if size == 1 and not (
+                    isinstance(val, np.ndarray) or isinstance(val, list)
+                ):
                     extracted_val = type(val)(extracted_val[0])
                 result[key] = extracted_val
                 offset += size
