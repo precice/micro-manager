@@ -10,17 +10,20 @@ from micro_manager.config import Config
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.mpi_handler import MPIHandler, MPI
 
+
 class CrashHandler:
-    def __init__(self, logger: Logger, mpi: MPIHandler, sim_container: SimulationContainer):
-        self._logger : Logger = logger
-        self._mpi : MPIHandler = mpi
-        self._sim_container : SimulationContainer = sim_container
-        self._interp_id : Hashable = 0
+    def __init__(
+        self, logger: Logger, mpi: MPIHandler, sim_container: SimulationContainer
+    ):
+        self._logger: Logger = logger
+        self._mpi: MPIHandler = mpi
+        self._sim_container: SimulationContainer = sim_container
+        self._interp_id: Hashable = 0
 
-        self._enable_interp : bool = False
-        self._crashed_sims : Set[int] = set()
+        self._enable_interp: bool = False
+        self._crashed_sims: Set[int] = set()
 
-        self._crash_threshold : float = 0.2
+        self._crash_threshold: float = 0.2
 
     def initialize(self, config: Config) -> None:
         self._interp_id = config.crashed_sim_interpolation_id()
@@ -32,13 +35,13 @@ class CrashHandler:
                 raise ValueError("Invalid interpolation id in CrashHandler.")
 
     def solve_micro_safe(
-            self,
-            lid: int,
-            sim: MicroSimulationInterface,
-            micro_input: Dict[str, Any],
-            dt: float,
+        self,
+        lid: int,
+        sim: MicroSimulationInterface,
+        micro_input: Dict[str, Any],
+        dt: float,
     ) -> Optional[Dict[str, Any]]:
-        result : Optional[Dict[str, Any]] = None
+        result: Optional[Dict[str, Any]] = None
 
         try:
             result = sim.solve(micro_input, dt)
@@ -61,7 +64,7 @@ class CrashHandler:
 
     def _conv_to_ndarray(self, data_list: List[Optional[Dict[str, Any]]]) -> np.ndarray:
         # collect output dimensions, assuming each dict follows the same structure
-        entry : Dict[str, Any] = next(d for d in data_list if d is not None)
+        entry: Dict[str, Any] = next(d for d in data_list if d is not None)
         entry_size = sum([self._load_size(val) for val in entry.values()])
         entry_count = len(data_list)
 
@@ -74,15 +77,15 @@ class CrashHandler:
             offset = 0
             for val in entry.values():
                 size = self._load_size(val)
-                buffer[d_idx, offset:offset + size] = val
+                buffer[d_idx, offset : offset + size] = val
                 offset += size
         return buffer
 
     def interpolate_outputs(
-            self,
-            unset_output_lids: List[int],
-            sim_inputs: List[Dict[str, Any]],
-            sim_outputs: List[Optional[Dict[str, Any]]],
+        self,
+        unset_output_lids: List[int],
+        sim_inputs: List[Dict[str, Any]],
+        sim_outputs: List[Optional[Dict[str, Any]]],
     ) -> None:
         if not self._enable_interp:
             if self.get_glob_num_crashes() > 0:
@@ -103,7 +106,9 @@ class CrashHandler:
 
         np_inputs = self._conv_to_ndarray(sim_inputs)
         np_outputs = self._conv_to_ndarray(sim_outputs)
-        set_output_lids = list(set(self._sim_container.range_lid).difference(unset_output_lids))
+        set_output_lids = list(
+            set(self._sim_container.range_lid).difference(unset_output_lids)
+        )
         interp.set_local_data(
             np_inputs[set_output_lids, :],
             np_inputs[unset_output_lids, :],
@@ -116,7 +121,7 @@ class CrashHandler:
             offset = 0
             for key, val in result.items():
                 size = self._load_size(val)
-                extracted_val = interp_outputs[lid, offset:offset + size]
+                extracted_val = interp_outputs[lid, offset : offset + size]
                 if size == 1:
                     extracted_val = type(val)(extracted_val[0])
                 result[key] = extracted_val
@@ -135,9 +140,7 @@ class CrashHandler:
 
     def get_glob_num_crashes(self) -> int:
         crashed_sims_on_all_ranks = np.zeros(self._mpi.size, dtype=np.int64)
-        self._mpi.comm.Allgather(
-            len(self._crashed_sims), crashed_sims_on_all_ranks
-        )
+        self._mpi.comm.Allgather(len(self._crashed_sims), crashed_sims_on_all_ranks)
         return np.sum(crashed_sims_on_all_ranks)
 
     def check_crash_ratio(self):
