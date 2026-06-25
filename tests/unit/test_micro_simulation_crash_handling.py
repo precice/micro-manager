@@ -53,7 +53,7 @@ class TestSimulationCrashHandling(TestCase):
         manager = micro_manager.MicroManagerCoupling("micro-manager-config_crash.json")
         manager.initialize()
 
-        manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
+        Interpolator.get_config("crash")["k"] = 3  # reduce number of neighbors to 3
         container = SimulationContainer(manager._mpi)
         container.initialize(
             4, 4, [0, 1, 2, 3], np.array([[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0]])

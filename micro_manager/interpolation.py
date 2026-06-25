@@ -295,12 +295,12 @@ class KNN(Interpolator):
 
     @classmethod
     def load_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
-        conf = config.copy()
-        if "type" in conf:
-            del conf["type"]
-        if "id" in conf:
-            del conf["id"]
-        return conf
+        internal_config = config.copy()
+        if "type" in internal_config:
+            del internal_config["type"]
+        if "id" in internal_config:
+            del internal_config["id"]
+        return internal_config
 
     def _get_nearest_neighbor_indices(
         self,
@@ -504,22 +504,25 @@ class RBF_PU(Interpolator):
 
     @classmethod
     def load_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
-        conf: Dict[str, Any] = dict()
+        internal_config: Dict[str, Any] = dict()
         if "use_pu" in config["rbf_config"]:
-            conf["use_pu"] = config["rbf_config"]["use_pu"]
+            internal_config["use_pu"] = config["rbf_config"]["use_pu"]
         if "pu_overlap" in config["rbf_config"]:
-            conf["pu_overlap"] = config["rbf_config"]["pu_overlap"]
-        conf["pu_cluster_size"] = config["rbf_config"]["n_neighbors"]
+            internal_config["pu_overlap"] = config["rbf_config"]["pu_overlap"]
+        internal_config["pu_cluster_size"] = config["rbf_config"]["n_neighbors"]
         if "basis" in config["rbf_config"]:
             if "type" in config["rbf_config"]["basis"]:
-                conf["basis"] = config["rbf_config"]["basis"]["type"]
-            if config["basis"] == "gauss" and "eps" in config["rbf_config"]["basis"]:
-                conf["gauss_eps"] = config["rbf_config"]["basis"]["eps"]
+                internal_config["basis"] = config["rbf_config"]["basis"]["type"]
+            if (
+                internal_config["basis"] == "gauss"
+                and "eps" in config["rbf_config"]["basis"]
+            ):
+                internal_config["gauss_eps"] = config["rbf_config"]["basis"]["eps"]
 
         dom_config = {}
         dom_config["n_neighbors"] = config["rbf_config"]["n_neighbors"]
         if "local" == config["domain_config"]:
-            conf["mpi"] = MPIHandlerRankLocal
+            internal_config["mpi"] = MPIHandlerRankLocal
         else:
             if "max_filling" in config["domain_config"]:
                 dom_config["max_filling"] = config["domain_config"]["max_filling"]
@@ -537,8 +540,8 @@ class RBF_PU(Interpolator):
                         "projection"
                     ]["target_dims"]
 
-        conf["domain_config"] = dom_config
-        return conf
+        internal_config["domain_config"] = dom_config
+        return internal_config
 
     # ================================
     #              RBF
