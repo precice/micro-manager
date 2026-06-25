@@ -216,6 +216,24 @@ class Interpolator(ABC):
         return inst
 
     @staticmethod
+    def get_config(id: Hashable) -> Dict[str, Any]:
+        """
+        Gets an interpolation configuration by its ID.
+
+        Parameters
+        ----------
+        id : Hashable
+            Interpolation Configuration ID.
+
+        Returns
+        -------
+        config : Dict[str, Any]
+            Interpolation configuration dict.
+        """
+        _, config = Interpolator._registered_configs[id]
+        return config
+
+    @staticmethod
     def register_impl(cls):
         """
         Registers an implementation of the Interpolator interface.
@@ -288,7 +306,6 @@ class KNN(Interpolator):
         self,
         coords: np.ndarray,
         inter_point: np.ndarray,
-        k: int,
     ) -> np.ndarray:
         """
         Get local indices of the k nearest neighbors of a point.
@@ -299,14 +316,13 @@ class KNN(Interpolator):
             List of coordinates of all points.
         inter_point : list | np.ndarray
             Coordinates of the point for which the neighbors are to be found.
-        k : int
-            Number of neighbors to consider.
 
         Returns
         ------
         neighbor_indices : np.ndarray
             Local indices of the k nearest neighbors in all local points.
         """
+        k = self._k
         if len(coords) < k:
             self._logger.log_info(
                 "Number of desired neighbors k = {} is larger than the number of available neighbors {}. Resetting k = {}.".format(

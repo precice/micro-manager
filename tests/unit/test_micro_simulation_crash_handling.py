@@ -5,7 +5,7 @@ import numpy as np
 import micro_manager
 from micro_manager.adaptivity.adaptivity import NoOpAdaptivity
 from micro_manager.simulation_container import SimulationContainer
-from micro_manager.tools.mpi_handler import MPIHandler, MPI
+from micro_manager.interpolation import Interpolator
 
 
 class MicroSimulation:
@@ -58,7 +58,6 @@ class TestSimulationCrashHandling(TestCase):
         container.initialize(
             4, 4, [0, 1, 2, 3], np.array([[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0]])
         )
-        manager._has_sim_crashed = [False] * 4
         manager._coupling._mesh_vertex_coords = container.local_coords
         # make sure adaptivity is off overriding config
         manager._adaptivity_controller = NoOpAdaptivity(container)
@@ -110,9 +109,8 @@ class TestSimulationCrashHandling(TestCase):
             [0, 1, 2, 3, 4],
             np.array([[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0], [1, 1, 0]]),
         )
-        manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
-        manager._micro_sims_active_steps = np.zeros(5, dtype=np.int32)
-        manager._has_sim_crashed = [False] * 5
+        Interpolator.get_config("crash")["k"] = 3  # reduce number of neighbors to 3
+        manager._crash_handler.reset()
         manager._coupling._mesh_vertex_coords = container.local_coords
         for lid in container.range_lid:
             container[lid] = MicroSimulation(lid)
