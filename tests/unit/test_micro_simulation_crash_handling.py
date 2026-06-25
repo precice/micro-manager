@@ -35,6 +35,9 @@ class MicroSimulation:
 
 
 class TestSimulationCrashHandling(TestCase):
+    def setUp(self):
+        Interpolator._registered_configs.clear()
+
     def test_crash_handling(self):
         """
         Test if the Micro Manager catches a simulation crash and handles it adequately.
