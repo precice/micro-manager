@@ -285,7 +285,6 @@ class KNN(Interpolator):
             nearest_neighbors = self._get_nearest_neighbor_indices(
                 self._x,
                 inter_point,
-                self._k,
             )
             f_query[idx_query, :] = self._interpolate_impl(
                 self._x[nearest_neighbors, :],
