@@ -40,6 +40,7 @@ class TestInterpolator(TestCase):
         def is_local(self) -> bool:
             return True
 
+        @classmethod
         def load_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
             return {"val": config["val"]}
 

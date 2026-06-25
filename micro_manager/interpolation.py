@@ -240,6 +240,7 @@ class Interpolator(ABC):
         Note: should be used as a class annotation.
         """
         Interpolator._implementations[cls.__name__] = cls
+        return cls
 
 
 @Interpolator.register_impl
