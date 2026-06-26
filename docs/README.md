@@ -1,6 +1,8 @@
 ---
 title: The Micro Manager
 permalink: tooling-micro-manager-overview.html
+aliases:
+  - /tooling-micro-manager-overview.html
 keywords: tooling, macro-micro, two-scale
 summary: A tool to manage many micro simulations and couple them to a macro simulation via preCICE.
 ---

@@ -1,6 +1,8 @@
 ---
 title: Run the Micro Manager
 permalink: tooling-micro-manager-running.html
+aliases:
+  - /tooling-micro-manager-running.html
 keywords: tooling, macro-micro, two-scale
 summary: Run the Micro Manager from the terminal with a configuration file as input argument or from a Python script.
 ---

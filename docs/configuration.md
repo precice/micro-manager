@@ -1,6 +1,8 @@
 ---
 title: Configure the Micro Manager
 permalink: tooling-micro-manager-configuration.html
+aliases:
+  - /tooling-micro-manager-configuration.html
 keywords: tooling, macro-micro, two-scale
 summary: Provide a JSON file to configure the Micro Manager.
 ---
