@@ -14,6 +14,7 @@ class DiagnosticModule(ABC):
     """
     Interface for all diagnostic modules.
     """
+
     def __init__(self, logger: Logger, mpi: MPIHandler, output_dir: str):
         """
         Base Constructor.
@@ -27,8 +28,8 @@ class DiagnosticModule(ABC):
         output_dir : str
             Output directory.
         """
-        self._logger : Logger = logger
-        self._mpi : MPIHandler = mpi
+        self._logger: Logger = logger
+        self._mpi: MPIHandler = mpi
         self._output_dir = output_dir
 
     @abstractmethod
@@ -57,12 +58,12 @@ class DiagnosticModule(ABC):
 
 class MemoryUsage(DiagnosticModule):
     def __init__(
-            self,
-            logger: Logger,
-            mpi: MPIHandler,
-            output_dir: str,
-            is_global: bool,
-            output_n: int,
+        self,
+        logger: Logger,
+        mpi: MPIHandler,
+        output_dir: str,
+        is_global: bool,
+        output_n: int,
     ):
         """
         Constructs a MemoryUsage object.
@@ -83,14 +84,15 @@ class MemoryUsage(DiagnosticModule):
         """
         super().__init__(logger, mpi, output_dir)
 
-        self._process : Process = Process()
-        self._is_global : bool = is_global
-        self._output_n : int = output_n
-        self._output_file : str = (
-            f"{output_dir}global_avg_peak_mem_usage.csv" if is_global
+        self._process: Process = Process()
+        self._is_global: bool = is_global
+        self._output_n: int = output_n
+        self._output_file: str = (
+            f"{output_dir}global_avg_peak_mem_usage.csv"
+            if is_global
             else f"{output_dir}peak_mem_usage_{self._mpi.rank}.csv"
         )
-        self._mem_usage : List[Tuple[int, int]] = []
+        self._mem_usage: List[Tuple[int, int]] = []
 
     def log(self, n: int, force_log: bool) -> None:
         should_log = n % self._output_n == 0 or n == 1
@@ -99,12 +101,12 @@ class MemoryUsage(DiagnosticModule):
         if force_log and n % self._output_n == 0:
             return
 
-        self._mem_usage.append(
-            (n, self._process.memory_info().rss / 1024 ** 2)
-        )
+        self._mem_usage.append((n, self._process.memory_info().rss / 1024**2))
 
     def output(self) -> None:
-        output_data: Optional[List[Tuple[int, int]]] = self._collect_usage(self._mem_usage)
+        output_data: Optional[List[Tuple[int, int]]] = self._collect_usage(
+            self._mem_usage
+        )
         if output_data is None:
             return
 
@@ -114,8 +116,9 @@ class MemoryUsage(DiagnosticModule):
             for n, rss_mb in output_data:
                 writer.writerow([n, rss_mb])
 
-
-    def _collect_usage(self, output_data: List[Tuple[int, int]]) -> Optional[List[Tuple[int, int]]]:
+    def _collect_usage(
+        self, output_data: List[Tuple[int, int]]
+    ) -> Optional[List[Tuple[int, int]]]:
         """
         Gathers the data to be written into CSV file.
         For local memory usage tracking, the rank local data is passed through.
@@ -137,8 +140,9 @@ class MemoryUsage(DiagnosticModule):
         local_usage = np.array([m for _, m in output_data])
         num_data = len(local_usage)
         global_usage = (
-            None if self._mpi.rank != 0 else
-            np.empty([self._mpi.size, num_data], dtype=np.float64)
+            None
+            if self._mpi.rank != 0
+            else np.empty([self._mpi.size, num_data], dtype=np.float64)
         )
         self._mpi.comm.Gather(local_usage, global_usage, root=0)
 
@@ -155,9 +159,10 @@ class Diagnostics:
     Manages enabled diagnostics modules.
     Handles initialization and requests statistics tracking and writing.
     """
+
     def __init__(self, output_dir: str):
-        self._modules : List[DiagnosticModule] = []
-        self._output_dir : str = output_dir
+        self._modules: List[DiagnosticModule] = []
+        self._output_dir: str = output_dir
 
     def initialize(self, config: Config, logger: Logger, mpi: MPIHandler) -> None:
         """
@@ -176,22 +181,26 @@ class Diagnostics:
         memory_usage_type = config.memory_usage_output_type()
         memory_output_n = config.memory_usage_output_n()
         if memory_usage_type in ["all", "local"]:
-            self._modules.append(MemoryUsage(
-                logger=logger,
-                mpi=mpi,
-                output_dir=self._output_dir,
-                is_global=False,
-                output_n=memory_output_n
-            ))
+            self._modules.append(
+                MemoryUsage(
+                    logger=logger,
+                    mpi=mpi,
+                    output_dir=self._output_dir,
+                    is_global=False,
+                    output_n=memory_output_n,
+                )
+            )
 
         if memory_usage_type in ["all", "global"]:
-            self._modules.append(MemoryUsage(
-                logger=logger,
-                mpi=mpi,
-                output_dir=self._output_dir,
-                is_global=True,
-                output_n=memory_output_n
-            ))
+            self._modules.append(
+                MemoryUsage(
+                    logger=logger,
+                    mpi=mpi,
+                    output_dir=self._output_dir,
+                    is_global=True,
+                    output_n=memory_output_n,
+                )
+            )
 
         # OTHER MODULES
         # ...
