@@ -18,7 +18,6 @@ from typing import Callable, Dict, List, Any, Optional, Collection
 import subprocess
 from functools import partial
 
-from tools.diagnostics import Diagnostics
 from .crash_handler import CrashHandler
 from .interpolation import Interpolator
 from .simulation_container import SimulationContainer
@@ -37,6 +36,7 @@ from .load_balancing import create_load_balancer
 from .tools.mpi_handler import MPIHandler, MPI
 from .tools.coupling import CouplingHandler
 from .tools.profiling import Profiler
+from .tools.diagnostics import Diagnostics
 
 sys.path.append(os.getcwd())
 
