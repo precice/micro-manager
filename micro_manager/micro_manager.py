@@ -14,13 +14,11 @@ Detailed documentation: https://precice.org/tooling-micro-manager-overview.html
 
 import os
 import sys
-from typing import Callable, Dict, List, Any, Optional, Iterable, Collection
-import numpy as np
-from psutil import Process
-import csv
+from typing import Callable, Dict, List, Any, Optional, Collection
 import subprocess
 from functools import partial
 
+from tools.diagnostics import Diagnostics
 from .crash_handler import CrashHandler
 from .interpolation import Interpolator
 from .simulation_container import SimulationContainer
@@ -62,9 +60,6 @@ class MicroManagerCoupling(MicroManager):
         self._config.set_logger(self._logger)
         self._config.read_json_micro_manager()
 
-        self._memory_usage_output_type = self._config.memory_usage_output_type()
-        self._memory_usage_output_n = self._config.memory_usage_output_n()
-
         self._micro_n_out = self._config.micro_output_n()
         self._output_dir = self._config.output_dir()
         if self._output_dir is not None:
@@ -72,6 +67,7 @@ class MicroManagerCoupling(MicroManager):
             subprocess.run(["mkdir", "-p", self._output_dir])  # Create output directory
         else:
             self._output_dir = os.path.abspath(os.getcwd()) + "/"
+        self._diagnostics = Diagnostics(self._output_dir)
 
         self._sim_container = SimulationContainer(self._mpi)
         self._coupling: CouplingHandler = CouplingHandler(
@@ -118,10 +114,6 @@ class MicroManagerCoupling(MicroManager):
         - If adaptivity is on, compute micro simulations adaptively.
         """
         self._t = self._n = 0
-        mem_usage: list = []
-        mem_usage_n = []
-
-        process = Process()
 
         micro_sim_solve = self._get_solve_variant()
         # call _solve_micro_simulations or _solve_micro_simulations_with_adaptivity internally
@@ -193,13 +185,7 @@ class MicroManagerCoupling(MicroManager):
                                 sim.output()
 
                 self._adaptivity_controller.log_metrics(self._n)
-
-                if self._memory_usage_output_type and (
-                    self._n % self._memory_usage_output_n == 0 or self._n == 1
-                ):
-                    mem_usage.append(process.memory_info().rss / 1024**2)
-                    mem_usage_n.append(self._n)
-
+                self._diagnostics.log(self._n, False)
                 self._logger.log_info_rank_zero(
                     "Time window {} converged.".format(self._n)
                 )
@@ -208,60 +194,10 @@ class MicroManagerCoupling(MicroManager):
                 first_iteration = True
 
         # Final memory usage logging at the end of the simulation if not already logged at the end of the last time window
-        if (
-            self._memory_usage_output_type
-            and self._n % self._memory_usage_output_n != 0
-        ):
-            mem_usage.append(process.memory_info().rss / 1024**2)
-            mem_usage_n.append(self._n)
-
+        self._diagnostics.log(self._n, True)
+        self._diagnostics.output()
         # Final adaptivity metrics logging at the end of the simulation if not already logged at the end of the last time window
         self._adaptivity_controller.log_metrics(self._n)
-
-        if (
-            self._memory_usage_output_type == "all"
-            or self._memory_usage_output_type == "local"
-        ):
-            mem_usage_output_file = (
-                self._output_dir + "peak_mem_usage_" + str(self._mpi.rank) + ".csv"
-            )
-            with open(mem_usage_output_file, mode="w", newline="") as file:
-                writer = csv.writer(file)
-                writer.writerow(["Time window", "RSS (MB)"])
-                for i, rss_mb in enumerate(mem_usage):
-                    writer.writerow([mem_usage_n[i], rss_mb])
-
-        if (
-            self._memory_usage_output_type == "all"
-            or self._memory_usage_output_type == "global"
-        ):
-            mem_usage = np.array(
-                mem_usage
-            )  # Convert to numpy array for collective Gather operation
-            global_mem_usage = None
-            if self._mpi.rank == 0:
-                global_mem_usage = np.empty(
-                    [self._mpi.size, len(mem_usage)], dtype=np.float64
-                )
-
-            self._mpi.comm.Gather(mem_usage, global_mem_usage, root=0)
-
-            if self._mpi.rank == 0:
-                avg_mem_usage = np.zeros((len(mem_usage)))
-                for t in range(len(mem_usage)):
-                    rank_wise_mem_usage = 0
-                    for r in range(self._mpi.size):
-                        rank_wise_mem_usage += global_mem_usage[r][t]
-                    avg_mem_usage[t] = rank_wise_mem_usage / self._mpi.size
-
-                mem_usage_output_file = (
-                    self._output_dir + "global_avg_peak_mem_usage.csv"
-                )
-                with open(mem_usage_output_file, mode="w", newline="") as file:
-                    writer = csv.writer(file)
-                    writer.writerow(["Time window", "RSS (MB)"])
-                    for i, rss_mb in enumerate(avg_mem_usage):
-                        writer.writerow([mem_usage_n[i], rss_mb])
 
         if self._conn is not None:
             self._conn.close()
@@ -324,6 +260,12 @@ class MicroManagerCoupling(MicroManager):
         )
 
         Interpolator.initialize(
+            config=self._config,
+            logger=self._logger,
+            mpi=self._mpi,
+        )
+
+        self._diagnostics.initialize(
             config=self._config,
             logger=self._logger,
             mpi=self._mpi,
