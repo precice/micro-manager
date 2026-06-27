@@ -9,7 +9,12 @@ import numpy as np
 
 from micro_manager.adaptivity.adaptivity_interface import AdaptivityInterface
 from micro_manager.adaptivity.adaptivity import NoOpAdaptivity
-from micro_manager.load_balancing import LoadBalancer, ActiveBalancer
+from micro_manager.load_balancing import (
+    LoadBalancer,
+    TimeBalancer,
+    ActiveBalancer,
+    NoOpBalancer,
+)
 from micro_manager.micro_simulation import create_simulation_class
 from micro_manager.simulation_container import SimulationContainer
 from micro_manager.tools.mpi_handler import MPIHandler, MPI
@@ -156,17 +161,17 @@ class TestLBTime(TestCase):
         config = MagicMock()
         config.enable_load_balancing = MagicMock(return_value=True)
         config.load_balancing_partitioning = MagicMock(return_value="lpt")
-        load_balancer = LoadBalancer(
-            MagicMock(),
+        config.load_balancing_n = MagicMock(return_value=1)
+        load_balancer = TimeBalancer(
             ModelManager(sim_cls),
-            NoOpAdaptivity(container),
             container,
             MagicMock(),
-            config,
             self._mpi,
+            config,
         )
+        load_balancer.initialize(MagicMock(), NoOpAdaptivity(container))
 
-        load_balancer.balance()
+        load_balancer.balance(0)
 
         actual_global_ids = []
         for lid in container.range_lid:
@@ -230,17 +235,17 @@ class TestLBTime(TestCase):
         config = MagicMock()
         config.enable_load_balancing = MagicMock(return_value=True)
         config.load_balancing_partitioning = MagicMock(return_value="lpt")
-        load_balancer = LoadBalancer(
-            MagicMock(),
+        config.load_balancing_n = MagicMock(return_value=1)
+        load_balancer = TimeBalancer(
             ModelManager(sim_cls),
-            adaptivity,
             container,
             MagicMock(),
-            config,
             self._mpi,
+            config,
         )
+        load_balancer.initialize(MagicMock(), adaptivity)
 
-        load_balancer.balance()
+        load_balancer.balance(0)
 
         self.assertListEqual(sorted(container.local_gids), expected_global_ids)
 
@@ -261,6 +266,7 @@ class TestLBActive(TestCase):
         Run this test in parallel using MPI with 2 ranks.
         """
         config = MagicMock()
+        config.load_balancing_n = MagicMock(return_value=1)
         config.load_balancing_threshold = MagicMock(return_value=0)
         config.enable_load_balancing_inactive = MagicMock(return_value=False)
         config.enable_load_balancing = MagicMock(return_value=True)
@@ -304,16 +310,15 @@ class TestLBActive(TestCase):
         )
 
         load_balancer = ActiveBalancer(
-            MagicMock(),
             ModelManager(sim_cls),
-            adaptivity_controller,
             container,
             MagicMock(),
-            config,
             self._mpi,
+            config,
         )
+        load_balancer.initialize(MagicMock(), adaptivity_controller)
 
-        load_balancer.balance()
+        load_balancer.balance(0)
 
         actual_global_ids = []  #
         for lid, gid in enumerate(container.local_gids):
@@ -333,6 +338,7 @@ class TestLBActive(TestCase):
         Run this test in parallel using MPI with 2 ranks.
         """
         config = MagicMock()
+        config.load_balancing_n = MagicMock(return_value=1)
         config.load_balancing_threshold = MagicMock(return_value=0)
         config.enable_load_balancing_inactive = MagicMock(return_value=True)
         config.enable_load_balancing = MagicMock(return_value=True)
@@ -376,18 +382,18 @@ class TestLBActive(TestCase):
         )
 
         load_balancer = ActiveBalancer(
-            MagicMock(),
             ModelManager(sim_cls),
-            adaptivity_controller,
             container,
             MagicMock(),
-            config,
             self._mpi,
+            config,
         )
+        load_balancer.initialize(MagicMock(), adaptivity_controller)
+
         load_balancer._bypass_skip = True
         load_balancer._bypass_active = True
 
-        load_balancer.balance()
+        load_balancer.balance(0)
 
         self.assertListEqual(container.local_gids, expected_global_ids)
 
@@ -403,6 +409,7 @@ class TestLBActive(TestCase):
         Run this test in parallel using MPI with 4 ranks.
         """
         config = MagicMock()
+        config.load_balancing_n = MagicMock(return_value=1)
         config.load_balancing_threshold = MagicMock(return_value=0)
         config.enable_load_balancing_inactive = MagicMock(return_value=False)
         config.enable_load_balancing = MagicMock(return_value=True)
@@ -459,16 +466,15 @@ class TestLBActive(TestCase):
         )
 
         load_balancer = ActiveBalancer(
-            MagicMock(),
             ModelManager(sim_cls),
-            adaptivity_controller,
             container,
             MagicMock(),
-            config,
             self._mpi,
+            config,
         )
+        load_balancer.initialize(MagicMock(), adaptivity_controller)
 
-        load_balancer.balance()
+        load_balancer.balance(0)
 
         actual_global_ids = []
         for lid, gid in enumerate(container.local_gids):
@@ -488,6 +494,7 @@ class TestLBActive(TestCase):
         Run this test in parallel using MPI with 4 ranks.
         """
         config = MagicMock()
+        config.load_balancing_n = MagicMock(return_value=1)
         config.load_balancing_threshold = MagicMock(return_value=0)
         config.enable_load_balancing_inactive = MagicMock(return_value=True)
         config.enable_load_balancing = MagicMock(return_value=True)
@@ -543,18 +550,17 @@ class TestLBActive(TestCase):
         )
 
         load_balancer = ActiveBalancer(
-            MagicMock(),
             ModelManager(sim_cls),
-            adaptivity_controller,
             container,
             MagicMock(),
-            config,
             self._mpi,
+            config,
         )
+        load_balancer.initialize(MagicMock(), adaptivity_controller)
         load_balancer._bypass_skip = True
         load_balancer._bypass_active = True
 
-        load_balancer.balance()
+        load_balancer.balance(0)
 
         self.assertListEqual(container.local_gids, expected_global_ids)
 
