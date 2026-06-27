@@ -18,6 +18,7 @@ from typing import Callable, Dict, List, Any, Optional, Collection
 import subprocess
 from functools import partial
 
+from tools.diagnostics import Diagnostics
 from .crash_handler import CrashHandler
 from .interpolation import Interpolator
 from .simulation_container import SimulationContainer
