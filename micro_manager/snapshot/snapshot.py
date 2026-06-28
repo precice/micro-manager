@@ -15,6 +15,7 @@ import sys
 import subprocess
 import numpy as np
 
+from micro_manager.tasking.connection import spawn_local_workers
 from micro_manager.micro_manager import MicroManager
 from .dataset import ReadWriteHDF
 from micro_manager.micro_simulation import create_simulation_class, load_backend_class
@@ -73,6 +74,19 @@ class MicroManagerSnapshot(MicroManager):
         # Collect crashed indices
         self._crashed_snapshots: list[int] = []  # Declaration
 
+        # Setup remote workers
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        worker_exec = os.path.join(base_dir, "tasking", "worker_main.py")
+        self._conn_n_workers = self._config.tasking_num_workers()
+        self._conn = spawn_local_workers(
+            worker_exec,
+            self._conn_n_workers,
+            self._config.tasking_backend(),
+            self._config.enable_tasking_slurm(),
+            self._config.mpi_impl(),
+            self._config.tasking_hostfile(),
+        )
+
     # **************
     # Public methods
     # **************
@@ -90,8 +104,8 @@ class MicroManagerSnapshot(MicroManager):
             self._logger,
             self._micro_problem,
             self._config.micro_file_names()[0],
-            1,
-            None,
+            self._conn_n_workers,
+            self._conn,
         )
 
         # Loop over all macro parameters
@@ -101,6 +115,7 @@ class MicroManagerSnapshot(MicroManager):
                 self._micro_sims = micro_problem_cls(self._global_ids_of_local_sims[0])
             else:
                 if not self._initialize_once:
+                    self._micro_sims.destroy()
                     self._micro_sims = micro_problem_cls(
                         self._global_ids_of_local_sims[elems]
                     )
