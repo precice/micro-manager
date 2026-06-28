@@ -21,6 +21,7 @@ import numpy as np
 class NoOpAdaptivity(AdaptivityInterface):
     """
     Adaptivity implementation that does not perform any adaptivity.
+    All micro problems are active in all time windows.
     """
 
     def __init__(self, container: SimulationContainer) -> None:
@@ -46,7 +47,8 @@ class NoOpAdaptivity(AdaptivityInterface):
         micro_input: List[Dict[str, Any]],
         micro_output: List[Optional[Dict[str, Any]]],
     ) -> List[Dict[str, Any]]:
-        assert all([entry is not None for entry in micro_output])
+        if any([entry is None for entry in micro_output]):
+            raise RuntimeError("Some micro outputs are None. NoOpAdaptivity requires fully populated micro output.")
         return micro_output
 
     def get_adaptivity_buffer(self) -> Dict[str, List[Any]]:
@@ -151,9 +153,11 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
         #      Member Initialization
         # ===============================
         self.update_buffers(alloc=True)
+
         # initialize mappings
         mappings = config.adaptivity_mapping_configs()
         self._load_mappings(mappings)
+
         # initialize read/write names
         coupling_read_names = config.read_data_names()
         coupling_write_names = config.write_data_names()
@@ -162,12 +166,14 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
                 self._macro_data_names.append(name)
             if name in coupling_write_names:
                 self._micro_data_names.append(name)
+        
         # initialize output
         output_dir = config.output_dir()
         metrics_output_dir = "adaptivity-metrics"
         if output_dir is not None:
             metrics_output_dir = f"{output_dir}/{metrics_output_dir}"
         output_type = config.adaptivity_output_type()
+
         # initialize global logging
         if self._mpi.rank == 0 and output_type in ["global", "all"]:
             self._logger_global_metrics = Logger(
@@ -179,6 +185,7 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
             self._logger_global_metrics.log_info(
                 "n|n active|n inactive|avg active|avg inactive|max active|rank of max active|max inactive|rank of max inactive"
             )
+
         # initialize local logging
         if output_type in ["local", "all"]:
             self._logger_local_metrics = Logger(
@@ -190,6 +197,7 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
             self._logger_local_metrics.log_info("n|n active|n inactive|assoc ranks")
 
     def compute_step(self, n: int, first_iteration: bool, dt: float):
+        # See AdaptivityInterface for docstring
         if n % self._n != 0:
             return
         if not (self._run_every_step or first_iteration):
@@ -201,6 +209,7 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
 
             # update counters
             active_gids = self.get_active_gids()
+    
             for gid in active_gids:
                 self._sim_active_steps[gid] += 1
             # Write a checkpoint if a simulation is just activated.
@@ -208,35 +217,44 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
             self._sim_container.write_checkpoints(only_none=True)
 
     def get_active_steps(self) -> Dict[int, int]:
+        # See AdaptivityInterface for docstring
         return self._sim_active_steps
 
     def get_macro_data_names(self) -> Optional[List[str]]:
+        # See AdaptivityInterface for docstring
         return self._macro_data_names
 
     def get_micro_data_names(self) -> Optional[List[str]]:
+        # See AdaptivityInterface for docstring
         return self._micro_data_names
 
     def postprocess_active_output(self, micro_output: Dict[str, Any], gid: int) -> None:
+        # See AdaptivityInterface for docstring
         micro_output["Active-State"] = 1
         micro_output["Active-Steps"] = self._sim_active_steps[gid]
 
     def postprocess_inactive_output(
         self, micro_output: Dict[str, Any], gid: int
     ) -> None:
+        # See AdaptivityInterface for docstring
         micro_output["Active-State"] = 0
         micro_output["Active-Steps"] = self._sim_active_steps[gid]
 
     def postprocess_remove(self, micro_output: Dict[str, Any]) -> None:
+        # See AdaptivityInterface for docstring
         del micro_output["Active-State"]
         del micro_output["Active-Steps"]
 
     def get_associated_map(self) -> Dict[int, int]:
+        # See AdaptivityInterface for docstring
         return self._sim_is_associated_to
 
     def get_adaptivity_buffer(self) -> Dict[str, List[Any]]:
+        # See AdaptivityInterface for docstring
         return self._data_for_adaptivity
 
     def get_read_buffer(self) -> Optional[Dict[str, List[Any]]]:
+        # See AdaptivityInterface for docstring
         return {}
 
     def update_buffers(
@@ -246,6 +264,7 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
         invert: bool = False,
         alloc: bool = False,
     ) -> None:
+        # See AdaptivityInterface for docstring
         if alloc:
             for name in self._data_names:
                 self._data_for_adaptivity[name] = [
