@@ -82,7 +82,7 @@ class LoadBalancer:
             "NoOpAdaptivity",
         ]:
             raise NotImplementedError(
-                "Adaptivity must be GlobalAdaptivity for Load Balancing or deactivated."
+                "To use load balancing, adaptivity must be turned off, or the global variant must be used."
             )
 
     def balance(self):

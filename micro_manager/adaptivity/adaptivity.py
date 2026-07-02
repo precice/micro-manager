@@ -48,7 +48,9 @@ class NoOpAdaptivity(AdaptivityInterface):
         micro_output: List[Optional[Dict[str, Any]]],
     ) -> List[Dict[str, Any]]:
         if any([entry is None for entry in micro_output]):
-            raise RuntimeError("Some micro outputs are None. NoOpAdaptivity requires fully populated micro output.")
+            raise RuntimeError(
+                "Some micro outputs are None. NoOpAdaptivity requires fully populated micro output."
+            )
         return micro_output
 
     def get_adaptivity_buffer(self) -> Dict[str, List[Any]]:
@@ -166,7 +168,7 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
                 self._macro_data_names.append(name)
             if name in coupling_write_names:
                 self._micro_data_names.append(name)
-        
+
         # initialize output
         output_dir = config.output_dir()
         metrics_output_dir = "adaptivity-metrics"
@@ -209,7 +211,7 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
 
             # update counters
             active_gids = self.get_active_gids()
-    
+
             for gid in active_gids:
                 self._sim_active_steps[gid] += 1
             # Write a checkpoint if a simulation is just activated.

@@ -484,20 +484,20 @@ class MicroManagerCoupling(MicroManager):
 
         # If lazy initialization is on, initial states of inactive simulations need to be determined
         if self._lazy_init:
-            initial_micro_data_list: List[Optional[Dict[str, Any]]] = [
-                None
-            ] * self._sim_container.local_num_sims
+            initial_micro_data_list: List[Dict[str, Any]] = [dict()]
             # If there is initial micro data, and if this rank has sims to init, then the data is to be gathered
             if initial_micro_data and len(micro_sims_to_init) > 0:
-                initial_micro_data_list: List[Dict[str, Any]] = [
+                initial_micro_data_list = [
                     dict(zip(initial_micro_data.keys(), t))
                     for t in zip(*initial_micro_data.values())
                 ]
+            else:
+                initial_micro_data_list *= self._sim_container.local_num_sims
 
-            initial_micro_data_list: List[
-                Dict[str, Any]
-            ] = self._adaptivity_controller.get_full_field_micro_output(
-                initial_macro_data, initial_micro_data_list
+            initial_micro_data_list = (
+                self._adaptivity_controller.get_full_field_micro_output(
+                    initial_macro_data, initial_micro_data_list
+                )
             )
 
             self._adaptivity_controller.update_buffers(initial_micro_data_list)
