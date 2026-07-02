@@ -124,9 +124,10 @@ class CrashHandler:
             List of simulation outputs. (of all local simulations)
         """
         if not self._enable_interp:
-            if self.get_glob_num_crashes() > 0:
+            glob_crashes: int = self.get_glob_num_crashes()
+            if glob_crashes > 0:
                 self._logger.log_error(
-                    "Exiting simulation after micro simulation crash."
+                    f"Exiting simulation because {glob_crashes} simulations have crashed."
                 )
                 sys.exit()
             return

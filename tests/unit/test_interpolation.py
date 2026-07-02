@@ -7,7 +7,7 @@ from unittest.mock import MagicMock
 from micro_manager.interpolation import (
     Interpolator,
     KNN,
-    RBF_PU,
+    RBF,
 )
 from micro_manager.tools.spatial_methods import (
     NDtree,
@@ -524,7 +524,7 @@ def f_ana(x):
 
 
 rbf_input_config = {
-    "type": "RBF_PU",
+    "type": "RBF",
     "id": 0,
     "domain_config": {
         "max_filling": 8,
@@ -585,7 +585,7 @@ class TestInterleavedDomain(TestCase):
     def setUp(self):
         self._mpi = MPIHandler(MPI.COMM_WORLD)
         self._domain = InterleavedDomain(self._mpi)
-        self._domain.configure(RBF_PU.load_config(rbf_input_config)["domain_config"])
+        self._domain.configure(RBF.load_config(rbf_input_config)["domain_config"])
         self._ordered_global_x = ordered_global_x
         self._ordered_global_f = ordered_global_f
         self._reordering = reordering
@@ -785,8 +785,8 @@ class TestKNN(TestCase):
 class TestRBF(TestCase):
     def setUp(self):
         self._mpi = MPIHandler(MPI.COMM_WORLD)
-        self._rbf = RBF_PU(MagicMock(), self._mpi)
-        internal_config = RBF_PU.load_config(rbf_input_config)
+        self._rbf = RBF(MagicMock(), self._mpi)
+        internal_config = RBF.load_config(rbf_input_config)
         self._rbf.configure(internal_config)
 
     @unittest.skipUnless(

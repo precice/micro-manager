@@ -31,7 +31,7 @@
                 "k": 4
             },
             {
-                "type": "RBF_PU",
+                "type": "RBF",
                 "id": "dummy",
                 "rbf_config": {
                     "basis": {

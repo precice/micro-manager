@@ -246,7 +246,7 @@ class Interpolator(ABC):
 @Interpolator.register_impl
 class KNN(Interpolator):
     """
-    Implements a k-Nearest-Neighbors interpolation scheme using sklearn.
+    Implements a k-Nearest Neighbors interpolation scheme using sklearn.
     """
 
     def __init__(self, logger: Logger, mpi: MPIHandler):
@@ -380,7 +380,7 @@ class KNN(Interpolator):
 
 
 @Interpolator.register_impl
-class RBF_PU(Interpolator):
+class RBF(Interpolator):
     """
     Interpolates f(x) for f: R^n -> R^m using partition of unity RBF interpolant.
 
@@ -407,7 +407,7 @@ class RBF_PU(Interpolator):
         self._pu_cluster_size = 50
 
         # RBF data
-        self._phi = RBF_PU.basis_c6
+        self._phi = RBF.basis_c6
         self._x = None
         self._x_query = None
         self._f = None
@@ -448,20 +448,20 @@ class RBF_PU(Interpolator):
             return
         match interp_config["basis"]:
             case "c0":
-                self._phi = RBF_PU.basis_c0
+                self._phi = RBF.basis_c0
             case "c2":
-                self._phi = RBF_PU.basis_c2
+                self._phi = RBF.basis_c2
             case "c4":
-                self._phi = RBF_PU.basis_c4
+                self._phi = RBF.basis_c4
             case "c6":
-                self._phi = RBF_PU.basis_c6
+                self._phi = RBF.basis_c6
             case "gauss":
                 eps = (
                     1.0
                     if "gauss_eps" not in interp_config
                     else interp_config["gauss_eps"]
                 )
-                self._phi = partial(RBF_PU.basis_gauss, eps=eps)
+                self._phi = partial(RBF.basis_gauss, eps=eps)
 
     def get_min_support_size(self) -> int:
         return self._domain.get_group_size()
