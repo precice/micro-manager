@@ -177,7 +177,7 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
         output_type = config.adaptivity_output_type()
 
         # initialize global logging
-        if self._mpi.rank == 0 and output_type in ["global", "all"]:
+        if output_type in ["global", "all"]:
             self._logger_global_metrics = Logger(
                 "global-metrics-logger",
                 metrics_output_dir + "-global.csv",
