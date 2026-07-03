@@ -16,7 +16,7 @@ jobs:
 
       - name: Load Cache OpenMPI 5
         id: ompi-cache-load
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/openmpi
           key: openmpi-5.0.5-${{ runner.os }}-build
@@ -34,7 +34,7 @@ jobs:
 
       - name: Save OpenMPI 5 to cache
         if: steps.ompi-cache-load.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ~/openmpi
           key: openmpi-5.0.5-${{ runner.os }}-build
