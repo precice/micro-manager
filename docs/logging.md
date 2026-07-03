@@ -1,6 +1,8 @@
 ---
 title: Logging in the Micro Manager
 permalink: tooling-micro-manager-logging.html
+aliases:
+  - /tooling-micro-manager-logging.html
 keywords: tooling, macro-micro, two-scale
 summary: The Micro Manager logs relevant information and adaptivity metrics.
 ---

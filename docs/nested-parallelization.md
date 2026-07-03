@@ -1,6 +1,8 @@
 ---
 title: Running with multi-level parallelization
 permalink: tooling-micro-manager-multi-level-parallelization.html
+aliases:
+  - /tooling-micro-manager-multi-level-parallelization.html
 keywords: tooling, macro-micro, parallelization, multi-level parallelization, workers, tasking
 summary: Micro Manager supports MPI parallelized micro solvers with multi-level parallelization.
 ---

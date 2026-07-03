@@ -1,6 +1,8 @@
 ---
 title: Snapshot Computation
 permalink: tooling-micro-manager-snapshot-configuration.html
+aliases:
+  - /tooling-micro-manager-snapshot-configuration.html
 keywords: tooling, macro-micro, two-scale, snapshot
 summary: Set up the Micro Manager snapshot computation.
 ---
