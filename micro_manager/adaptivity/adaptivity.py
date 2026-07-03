@@ -184,7 +184,7 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
                 self._mpi.rank,
                 csv_logger=True,
             )
-            self._logger_global_metrics.log_info(
+            self._logger_global_metrics.log_info_rank_zero(
                 "n|n active|n inactive|avg active|avg inactive|max active|rank of max active|max inactive|rank of max inactive"
             )
 

@@ -218,7 +218,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         """
         if n % self._output_n != 0:
             return
-        if self._logger_local_metrics is None or self._logger_global_metrics is None:
+        if self._logger_local_metrics is None and self._logger_global_metrics is None:
             return
 
         active_sims_on_this_rank = 0
