@@ -5,25 +5,21 @@ from .adaptivity import AdaptivityCalculator
 
 def create_adaptivity_calculator(
     config,
-    local_number_of_sims,
-    global_number_of_sims,
-    global_ids_of_local_sims,
-    participant,
+    sim_container,
+    profiler,
     logger,
-    rank,
-    comm,
+    mpi,
     micro_problem_cls,
     model_manager,
 ) -> AdaptivityCalculator:
-    adaptivity_type = config.get_adaptivity_type()
+    adaptivity_type = config.adaptivity_type()
 
     if adaptivity_type == "local":
         return LocalAdaptivityCalculator(
             config,
-            local_number_of_sims,
+            sim_container,
             logger,
-            rank,
-            comm,
+            mpi,
             micro_problem_cls,
             model_manager,
         )
@@ -31,12 +27,10 @@ def create_adaptivity_calculator(
     if adaptivity_type == "global":
         return GlobalAdaptivityCalculator(
             config,
-            global_number_of_sims,
-            global_ids_of_local_sims,
-            participant,
+            sim_container,
+            profiler,
             logger,
-            rank,
-            comm,
+            mpi,
             micro_problem_cls,
             model_manager,
         )

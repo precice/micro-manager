@@ -2,6 +2,42 @@
 
 ## latest
 
+- Added support for workers in snapshot mode [#296](https://github.com/precice/micro-manager/pull/296)
+- Added check for number of workers and renamed method in `coupling.py` [#295](https://github.com/precice/micro-manager/pull/295)
+- Refactored interaction with preCICE and domain decomposition into `CouplingHandler`, `Profiler` and `DomainDecomposition` hierarchy [#289](https://github.com/precice/micro-manager/pull/289)
+- Refactored and generalized the methods in `p2p.py`. Added `MPIHandler` to manage all MPI related aspects. [#287](https://github.com/precice/micro-manager/pull/287)
+- Applied fixes for previously missed test cases due to #290 [#291](https://github.com/precice/micro-manager/pull/291)
+- Fixed non-visible CI test cases on PR interface [#290](https://github.com/precice/micro-manager/pull/290)
+- Moved Simulation Class ownership and loading to Model Manager [#286](https://github.com/precice/micro-manager/pull/286)
+- Added simulation container for more encapsulation [#284](https://github.com/precice/micro-manager/pull/284)
+- Redesigned configuration loading for enhanced clarity and standardization [#264](https://github.com/precice/micro-manager/pull/264)
+- Added RBF interpolation, currently used within adaptivity for output interpolation [#242](https://github.com/precice/micro-manager/pull/242)
+
+## v0.10.1
+
+- Fixed parameter inspection of the `initialize()` routine when micro simulation is pybind11 wrapped [#281](https://github.com/precice/micro-manager/pull/281)
+- Fixed passing of macro mesh coordinates when model adaptivity is run in parallel [#282](https://github.com/precice/micro-manager/pull/282)
+
+## v0.10.0
+
+- Fixed load balancing for case where number of sims to send and recv are not the same [#276](https://github.com/precice/micro-manager/pull/276)
+- Fixed CI OpenMPI cache miss by centralizing the MPI build into a dedicated workflow [#263](https://github.com/precice/micro-manager/pull/263)
+- Fixed naming of variables tracking active simulations in the `MicroManager` [#273](https://github.com/precice/micro-manager/pull/273)
+- Improved load balancing of inactive simulations by tracking a small amount of time [#272](https://github.com/precice/micro-manager/pull/272)
+- Added the exported field `model_resolution` when using model adaptivity [#271](https://github.com/precice/micro-manager/pull/271)
+- Fixed model adaptivity active simulation mask generation for 0 local simulations [#270](https://github.com/precice/micro-manager/pull/270)
+- Allow `initialize()` to return data that is not used by the adaptivity [#261](https://github.com/precice/micro-manager/pull/261)
+- Fixed `MicroSimulation` initialization requiring positional parameters [#255](https://github.com/precice/micro-manager/pull/255)
+- Fixed model adaptivity convergence at resolution boundaries to prevent infinite loops for out-of-range switching requests [#252](https://github.com/precice/micro-manager/pull/252)
+- Add function `set_global_id` to the dummies and the example in the integration test [#247](https://github.com/precice/micro-manager/pull/247)
+
+## v0.9.0
+
+- Refactored `DomainDecomposer` class and added a new variant of non-uniform decomposition [#243](https://github.com/precice/micro-manager/pull/243)
+- Fixed load balancing configuration `partitioning` parameter setting [#245](https://github.com/precice/micro-manager/pull/245)
+- Fixed comparison of zero values of type float32 and float64 in simulation deactivation [#244](https://github.com/precice/micro-manager/pull/244)
+- Optimized norm calculations and further fixed lazy initialization [#241](https://github.com/precice/micro-manager/pull/241)
+- Fixed lazy initialization for ranks without (active) micro simulations [#238](https://github.com/precice/micro-manager/pull/238)
 - Added coverage testing and simulation interface tests [#225](https://github.com/precice/micro-manager/pull/225)
 - Added `--test-dependencies` CLI flag to check if all required dependencies are correctly installed, with clear error messages listing missing packages and how to fix them [#221](https://github.com/precice/micro-manager/pull/221)
 - Added load balancing based on micro simulation solve timings [#228](https://github.com/precice/micro-manager/pull/228)

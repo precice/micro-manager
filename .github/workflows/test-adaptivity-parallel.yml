@@ -1,20 +1,15 @@
 name: Test adaptivity functionality in parallel
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - "*"
+  workflow_call:
+
 jobs:
   integration_tests:
-    name: Integration tests
+    name: Integration
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: micro-manager
 
@@ -50,25 +45,28 @@ jobs:
           python3 unit_cube.py 2
 
   unit_tests:
-    name: Unit tests
+    name: Unit
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: micro-manager
 
       - name: Load Cache OpenMPI 5
         id: ompi-cache-load
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/openmpi
-          key: openmpi-v5-${{ runner.os }}-build
-          # If this fails, cache gets built in run-unit-tests
+          key: openmpi-5.0.5-${{ runner.os }}-build
 
       - name: Configure OpenMPI
         run: |
+          if [ ! -d ~/openmpi ]; then
+            echo "::error::OpenMPI cache not found. The cache workflow may have failed."
+            exit 1
+          fi
           cp -r ~/openmpi/* /usr/local/
           ldconfig
           which mpiexec
@@ -109,3 +107,13 @@ jobs:
           . .venv/bin/activate
           cd tests/unit
           mpiexec -n 4 --oversubscribe --allow-run-as-root python3 -m unittest test_load_balancing.py
+
+      - name: Run interpolation unit tests with 2 ranks
+        timeout-minutes: 3
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          pip install .[sklearn]
+          pip uninstall -y pyprecice
+          cd tests/unit
+          mpiexec -n 2 --allow-run-as-root python3 -m unittest test_interpolation.py

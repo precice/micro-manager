@@ -3,26 +3,26 @@ Class LocalAdaptivityCalculator provides methods to adaptively control of micro 
 in a local way. If the Micro Manager is run in parallel, simulations on one rank are compared to
 each other. A global comparison is not done.
 """
-import sys
 import numpy as np
 from copy import deepcopy
-from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
 from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.tools.logging_wrapper import Logger
+from micro_manager.tools.mpi_handler import MPIHandler, MPI, MPIHandlerRankLocal
 from micro_manager.model_manager import ModelManager
+from micro_manager.interpolation import RBF_PU
+from micro_manager.simulation_container import SimulationContainer
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(
         self,
-        configurator: Config,
-        num_sims: int,
+        config: Config,
+        sim_container: SimulationContainer,
         base_logger: Logger,
-        rank: int,
-        comm: MPI.Comm,
+        mpi: MPIHandler,
         micro_problem_cls: MicroSimulationClass,
         model_manager: ModelManager,
     ) -> None:
@@ -31,34 +31,43 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         Parameters
         ----------
-        configurator : object of class Config
+        config : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
-        num_sims : int
-            Number of micro simulations.
+        sim_container : SimulationContainer
+            Simulation container object.
         base_logger : object of class Logger
             Logger object to log messages.
-        rank : int
-            Rank of the current MPI process.
-        comm : MPI.Comm
-            Communicator for MPI.
+        mpi : MPIHandler
+            MPI handler object.
         micro_problem_cls : callable
             Class of micro problem.
         model_manager : object of class ModelManager
             Handles instantiation of micro simulation.
         """
         super().__init__(
-            configurator, num_sims, micro_problem_cls, model_manager, base_logger, rank
+            config,
+            sim_container.local_num_sims,
+            sim_container,
+            micro_problem_cls,
+            model_manager,
+            base_logger,
+            mpi,
         )
-        self._comm = comm
+        # using local handler to only perform local interpolation
+        self._interpolation = RBF_PU(
+            base_logger,
+            MPIHandlerRankLocal,
+        )
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
-        self._similarity_dists = np.zeros((num_sims, num_sims))
+        self._similarity_dists = np.zeros(
+            (sim_container.local_num_sims, sim_container.local_num_sims)
+        )
 
     def compute_adaptivity(
         self,
         dt: float,
-        micro_sims: list,
         data_for_adaptivity: dict,
     ) -> None:
         """
@@ -68,8 +77,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         dt : float
             Current time step
-        micro_sims : list
-            List containing simulation objects
         data_for_adaptivity : dict
             A dictionary containing the names of the data to be used in adaptivity as keys and information on whether
             the data are scalar or vector as values.
@@ -87,13 +94,13 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._local_max_similarity_dist = np.amax(self._similarity_dists)
 
         # Gather maximum similarity distance from every rank, and use the global maximum distance
-        self._max_similarity_dist = self._comm.allreduce(
+        self._max_similarity_dist = self._mpi.comm.allreduce(
             self._local_max_similarity_dist, op=MPI.MAX
         )
 
         self._update_active_sims()
 
-        self._update_inactive_sims(micro_sims)
+        self._update_inactive_sims()
 
         self._associate_inactive_to_active()
 
@@ -147,12 +154,16 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         inactive_sim_ids = self.get_inactive_sim_local_ids()
         return inactive_sim_ids
 
-    def get_full_field_micro_output(self, micro_output: list) -> list:
+    def get_full_field_micro_output(
+        self, micro_input: list, micro_output: list
+    ) -> list:
         """
         Get the full field micro output from active simulations to inactive simulations.
 
         Parameters
         ----------
+        micro_input : list
+            List of dicts containing the input data for each simulation.
         micro_output : list
             List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
 
@@ -169,6 +180,7 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             micro_sims_output[inactive_id] = deepcopy(
                 micro_sims_output[self._sim_is_associated_to[inactive_id]]
             )
+        self._interpolate_output(micro_input, micro_sims_output)
 
         return micro_sims_output
 
@@ -219,13 +231,15 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             self._adaptivity_output_type == "global"
             or self._adaptivity_output_type == "all"
         ):
-            active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
-            inactive_sims_rankwise = self._comm.gather(
+            active_sims_rankwise = self._mpi.comm.gather(
+                active_sims_on_this_rank, root=0
+            )
+            inactive_sims_rankwise = self._mpi.comm.gather(
                 inactive_sims_on_this_rank, root=0
             )
 
-            if self._rank == 0:
-                size = self._comm.Get_size()
+            if self._mpi.rank == 0:
+                size = self._mpi.size
 
                 self._global_metrics_logger.log_info(
                     "{}|{}|{}|{}|{}|{}|{}|{}|{}".format(
@@ -246,15 +260,9 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         Update set of active micro simulations. Active micro simulations are compared to each other
         and if found similar, one of them is deactivated.
         """
-        if self._max_similarity_dist == 0.0:
-            self._base_logger.log_warning(
-                "All similarity distances are zero, which means all the data for adaptivity is the same. Coarsening tolerance will be manually set to minimum float number."
-            )
-            self._coarse_tol = sys.float_info.min
-        else:
-            self._coarse_tol = (
-                self._coarse_const * self._refine_const * self._max_similarity_dist
-            )
+        self._coarse_tol = (
+            self._coarse_const * self._refine_const * self._max_similarity_dist
+        )
 
         active_gids = self.get_active_sim_local_ids().tolist()
 
@@ -268,18 +276,13 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                 # Remove deactivated gid from further checks
                 active_gids_to_check.remove(gid)
 
-    def _update_inactive_sims(self, micro_sims: list) -> None:
+    def _update_inactive_sims(self) -> None:
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
         and if it is not similar to any of them, it is activated.
 
         If a micro simulation which has been inactive since the start of the simulation is activated for the
         first time, the simulation object is created and initialized.
-
-        Parameters
-        ----------
-        micro_sims : list
-            List containing micro simulation objects.
         """
         self._ref_tol = self._refine_const * self._max_similarity_dist
 
@@ -299,21 +302,22 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 
         # Update the set of inactive micro sims
-        for i in to_be_activated_ids:
-            associated_active_id = self._sim_is_associated_to[i]
-            micro_sims[i] = self._model_manager.get_instance(i, self._micro_problem_cls)
-            micro_sims[i].set_state(micro_sims[associated_active_id].get_state())
-            self._sim_is_associated_to[
-                i
-            ] = -2  # Active sim cannot have an associated sim
+        for lid in to_be_activated_ids:
+            associated_active_id = self._sim_is_associated_to[lid]
+            self._sim_container[lid] = self._model_manager.get_instance(
+                lid, self._micro_problem_cls
+            )
+            state = self._sim_container.get_sim_state(associated_active_id)
+            self._sim_container.set_sim_state(lid, state)
+            # Active sim cannot have an associated sim
+            self._sim_is_associated_to[lid] = -2
 
         # Delete the inactive micro simulations which have not been activated
-        for i in range(self._is_sim_active.size):
-            if not self._is_sim_active[i]:
+        for lid in range(self._is_sim_active.size):
+            if not self._is_sim_active[lid] and self._sim_container[lid] is not None:
                 # Release resources now, especially for remote simulation instance.
                 # If left to garbage collector this might lead to a race condition.
                 # Releasing with call to sim.destroy(), afterwards reference in sim
                 # sim list can be removed.
-                if type(micro_sims[i]).__name__ == "MicroSimulationWrapper":
-                    micro_sims[i].destroy()
-                micro_sims[i] = None
+                self._sim_container[lid].destroy()
+                self._sim_container[lid] = None

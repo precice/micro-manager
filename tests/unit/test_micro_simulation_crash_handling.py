@@ -3,6 +3,8 @@ from unittest import TestCase
 import numpy as np
 
 import micro_manager
+from micro_manager.simulation_container import SimulationContainer
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 
 
 class MicroSimulation:
@@ -51,15 +53,18 @@ class TestSimulationCrashHandling(TestCase):
         manager.initialize()
 
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
-        manager._local_number_of_sims = 4
-        manager._has_sim_crashed = [False] * 4
-        manager._mesh_vertex_coords = np.array(
-            [[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0]]
+        container = SimulationContainer(manager._mpi)
+        container.initialize(
+            4, 4, [0, 1, 2, 3], np.array([[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0]])
         )
+        manager._has_sim_crashed = [False] * 4
+        manager._coupling._mesh_vertex_coords = container.local_coords
         manager._is_adaptivity_on = (
             False  # make sure adaptivity is off overriding config
         )
-        manager._micro_sims = [MicroSimulation(i) for i in range(4)]
+        for lid in container.range_lid:
+            container[lid] = MicroSimulation(lid)
+        manager._sim_container = container
 
         micro_sims_output = manager._solve_micro_simulations(macro_data, 1.0)
 
@@ -98,15 +103,20 @@ class TestSimulationCrashHandling(TestCase):
         manager = micro_manager.MicroManagerCoupling("micro-manager-config_crash.json")
         manager.initialize()
 
-        manager._global_ids_of_local_sims = [0, 1, 2, 3, 4]
+        container = SimulationContainer(manager._mpi)
+        container.initialize(
+            5,
+            5,
+            [0, 1, 2, 3, 4],
+            np.array([[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0], [1, 1, 0]]),
+        )
         manager._number_of_nearest_neighbors = 3  # reduce number of neighbors to 3
-        manager._local_number_of_sims = 5
         manager._micro_sims_active_steps = np.zeros(5, dtype=np.int32)
         manager._has_sim_crashed = [False] * 5
-        manager._mesh_vertex_coords = np.array(
-            [[-2, 0, 0], [-1, 0, 0], [1, 0, 0], [2, 0, 0], [1, 1, 0]]
-        )
-        manager._micro_sims = [MicroSimulation(i) for i in range(5)]
+        manager._coupling._mesh_vertex_coords = container.local_coords
+        for lid in container.range_lid:
+            container[lid] = MicroSimulation(lid)
+        manager._sim_container = container
 
         manager._adaptivity_controller._similarity_dists = np.array([0, 0, 0, 0, 0])
         manager._adaptivity_controller._is_sim_active = np.array(

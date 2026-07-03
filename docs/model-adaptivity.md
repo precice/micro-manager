@@ -169,3 +169,5 @@ The output is expected to be an integer and is interpreted in the following mann
 | 0     | No resolution change                                  |
 | -1    | Increase model fidelity by one (go back one in list)  |
 | 1     | Decrease model fidelity by one (go one ahead in list) |
+
+If the switching function requests a change beyond the available resolution range, the request is clamped within the available range. Further requests beyond the range are ignored and do not trigger another model-adaptivity iteration.

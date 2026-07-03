@@ -1,7 +1,7 @@
 import time
-from typing import Optional
+from dataclasses import dataclass
+from typing import Optional, Dict, List, Any, Set
 
-from mpi4py import MPI
 import numpy as np
 
 from precice import Participant
@@ -10,24 +10,35 @@ from micro_manager.config import Config
 from micro_manager.adaptivity.adaptivity import AdaptivityCalculator
 from micro_manager.model_manager import ModelManager
 from micro_manager.tools.logging_wrapper import Logger
-from micro_manager.tools.p2p import create_tag, get_ranks_of_sims
+from micro_manager.tools.mpi_handler import MPIHandler
+from micro_manager.tools.profiling import Profiler
+from micro_manager.simulation_container import SimulationContainer
+
+
+@dataclass
+class LoadBalancerSimData:
+    """
+    Captures the full simulation state required to transfer between ranks.
+    """
+
+    is_inactive: bool
+    is_stateless: Optional[bool]
+    state: Optional[Any]
+    cls_name: Optional[str]
+    gid: int
+    coord: np.ndarray
 
 
 class LoadBalancer:
     def __init__(
         self,
-        precice_participant: Participant,
+        profiler: Profiler,
         model_manager: ModelManager,
         adaptivity_controller: Optional[AdaptivityCalculator],
-        state_loader: callable,
-        state_setter: callable,
+        sim_container: SimulationContainer,
         log: Logger,
         config: Config,
-        sim_list: list,
-        global_ids: list,
-        global_number_of_sims: int,
-        comm: MPI.Comm,
-        rank: int,
+        mpi: MPIHandler,
     ):
         """
         Constructs LoadBalancer. If load balancing is disabled, this will return a dummy instance
@@ -35,50 +46,33 @@ class LoadBalancer:
 
         Parameters
         ----------
-        precice_participant: Participant
-            preCICE participant object from coupling
+        profiler: Profiler
+            Profiling object
         model_manager: ModelManager
             model manager object to construct instances
         adaptivity_controller: Optional[AdaptivityCalculator]
             handles adaptivity calculation if provided
-        state_loader: callable
-            loads state from micro simulation
-        state_setter: callable
-            sets state of micro simulation
         log: Logger
             logger object
         config: Config
             configuration object
-        sim_list: list
-            list of simulation objects
-        global_ids: list
-            list of global ids on this rank
-        global_number_of_sims: int
-            total number of simulations in this run
-        comm: MPI.Comm
-            used MPI communicator
-        rank: int
-            local rank
+        mpi: MPIHandler
+            MPIHandler object.
         """
-        self._enabled = config.turn_on_load_balancing()
-        self._precice_participant = precice_participant
+        self._enabled = config.enable_load_balancing()
+        self._profiler = profiler
         self._model_manager = model_manager
         self._adaptivity_controller = adaptivity_controller
-        self._state_loader = state_loader
-        self._state_setter = state_setter
+        self._sim_container = sim_container
         self._log = log
         self._config = config
-        self._sim_list = sim_list
-        self._global_ids = global_ids
-        self._global_number_of_sims = global_number_of_sims
-        self._comm = comm
-        self._rank = rank
+        self._mpi = mpi
 
         self._threshold = None  # provided by sub-cls
         self._balance_metric_local = dict()
-        self._balance_metric_global = np.zeros(global_number_of_sims)
+        self._balance_metric_global = np.zeros(self._sim_container.global_num_sims)
         self._partition_impl = self.get_partition_impl(
-            config.get_load_balancing_partitioning()
+            config.load_balancing_partitioning()
         )
 
         if (
@@ -97,11 +91,9 @@ class LoadBalancer:
         if not self._enabled:
             return
 
-        # self._precice_participant.start_profiling_section("micro_manager.solve.load_balancing.redistribute")
         if np.allclose(self._balance_metric_global, 0):
             self._balance_metric_global = self._balance_metric_global + 1
         self._redistribute()
-        # self._precice_participant.stop_last_profiling_section()
 
     def pre_sim_solve(self, gid: int):
         """
@@ -123,7 +115,7 @@ class LoadBalancer:
 
         # used to distribute balancing metric
         self._balance_metric_global[:] = 0
-        tmp = self._comm.allgather(self._balance_metric_local)
+        tmp = self._mpi.comm.allgather(self._balance_metric_local)
         for d in tmp:
             for gid, val in d.items():
                 self._balance_metric_global[gid] = val
@@ -153,7 +145,7 @@ class LoadBalancer:
         else:
             return self.partition_dummy
 
-    def partition_lpt(self, n_parts: int, current_partitioning: np.ndarray):
+    def partition_lpt(self, n_parts: int, current_partitioning: Dict[int, int]):
         """
         Partitions the recorded workload using the Longest-processing-time-first scheduling algorithm.
         For more details see: https://en.wikipedia.org/wiki/Longest-processing-time-first_scheduling
@@ -162,12 +154,12 @@ class LoadBalancer:
         ----------
         n_parts: int
             number of partitions (number of ranks)
-        current_partitioning: np.ndarray
-            array of assignments of each work item to one partition < n_parts
+        current_partitioning: Dict[int, int]
+            mapping of each work item to one partition < n_parts
 
         Returns
         -------
-        partitioning: np.ndarray
+        partitioning: Dict[int, int]
             output of LPT algorithm
         workload: np.ndarray
             workload per partition
@@ -176,19 +168,19 @@ class LoadBalancer:
             ::-1
         ]  # descending
         workload_per_partition = np.zeros(n_parts)
-        assignment = np.zeros(self._global_number_of_sims, dtype=np.int32)
+        assignment = dict()
 
         for idx in sorted_workload_indices:
             # get current smallest partition
             p = np.argmin(workload_per_partition)
             # assign next largest work package
-            assignment[idx] = p
+            assignment[idx] = int(p)
             # update partition work load
             workload_per_partition[p] += self._balance_metric_global[idx]
 
         return assignment, workload_per_partition
 
-    def partition_dummy(self, n_parts: int, current_partitioning: np.ndarray):
+    def partition_dummy(self, n_parts: int, current_partitioning: Dict[int, int]):
         """
         WARNING: Do not use this! This is only a dummy implementation that sends
         the entire workload to the first partition. All others are empty.
@@ -197,12 +189,12 @@ class LoadBalancer:
         ----------
         n_parts: int
             number of partitions (number of ranks)
-        current_partitioning: np.ndarray
-            array of assignments of each work item to one partition < n_parts
+        current_partitioning: Dict[int, int]
+            mapping of each work item to one partition < n_parts
 
         Returns
         -------
-        partition: np.ndarray
+        partition: Dict[int, int]
             output of LPT algorithm
         workload: np.ndarray
             workload per partition
@@ -211,7 +203,7 @@ class LoadBalancer:
         workload_per_partition = np.zeros(n_parts)
         workload_per_partition[0] = np.sum(self._balance_metric_global)
         return (
-            np.zeros(self._global_number_of_sims, dtype=np.int32),
+            {gid: 0 for gid in self._sim_container.range_gid},
             workload_per_partition,
         )
 
@@ -223,186 +215,181 @@ class LoadBalancer:
         Main implementation of load balancing. First computes the new partitioning.
         Then send/receives micro simulations accordingly.
         """
-        self._precice_participant.start_profiling_section(
-            "micro_manager.solve.load_balancing.init"
-        )
-        current_partitioning = get_ranks_of_sims(
-            self._global_ids, self._rank, self._comm, self._global_number_of_sims
-        )
-        # self._precice_participant.start_profiling_section("micro_manager.solve.load_balancing.init.partition")
-        target_partitioning, work_loads = self._partition_impl(
-            self._comm.size, current_partitioning
-        )
-        # self._precice_participant.stop_last_profiling_section()
-        send_map, recv_map = self._get_communication_maps(
-            current_partitioning, target_partitioning
-        )
-        inactive_gids = self._get_global_inactive_gids()
-        self._precice_participant.stop_last_profiling_section()
+        with self._profiler.measure("micro_manager.solve.load_balancing.init"):
+            current_partitioning = self._sim_container.get_ranks_of_sims()
+            target_partitioning, work_loads = self._partition_impl(
+                self._mpi.comm.size, current_partitioning
+            )
+            active_gids = self._get_global_active_gids()
+            inactive_gids = self._get_global_inactive_gids(active_gids)
+            send_map = self._get_communication_map(
+                current_partitioning, target_partitioning, active_gids, inactive_gids
+            )
 
-        self._precice_participant.start_profiling_section(
-            "micro_manager.solve.load_balancing.comm"
-        )
-        self._exchange_sims(send_map, recv_map, {gid: True for gid in inactive_gids})
-        self._precice_participant.stop_last_profiling_section()
+        with self._profiler.measure("micro_manager.solve.load_balancing.comm"):
+            self._exchange_sims(send_map)
 
-        sims_per_rank = self._comm.gather(len(self._sim_list), 0)
+        sims_per_rank = self._mpi.comm.gather(len(self._sim_container), 0)
         self._log.log_info_rank_zero(
             f"Load Balancing Number of Simulations per Rank: {sims_per_rank}"
         )
 
-    def _get_communication_maps(
-        self, current_partitioning: np.ndarray, target_partitioning: np.ndarray
-    ) -> tuple:
+    def _gather_send_data(
+        self, gid: int, inactive_set: Set[int] = set()
+    ) -> LoadBalancerSimData:
+        """
+        Collects all required data to exchange simulations between ranks.
+
+        Parameters
+        ----------
+        gid: int
+            GID of simulation data should be gathered for.
+        inactive_set: Set[int]
+            Set of inactive simulations give by their GIDs
+
+        Returns
+        -------
+        entry: LoadBalancerSimData
+            exchange data
+        """
+        lid = self._sim_container.local_gids.index(gid)
+
+        # prepare send data
+        is_inactive = gid in inactive_set
+        coord = self._sim_container.local_coords[lid]
+        cls_name = None
+        is_stateless = None
+        state = None
+        if not is_inactive:
+            cls_name = self._sim_container[lid].name
+            is_stateless = self._model_manager.is_stateless(cls_name)
+            state = None if is_stateless else self._sim_container.get_sim_state(lid)
+
+        return LoadBalancerSimData(
+            is_inactive,
+            is_stateless,
+            state,
+            cls_name,
+            gid,
+            coord,
+        )
+
+    def _get_communication_map(
+        self,
+        current_partitioning: Dict[int, int],
+        target_partitioning: Dict[int, int],
+        active_set: Set[int],
+        inactive_set: Set[int],
+    ) -> Dict[int, List[LoadBalancerSimData]]:
         """
         Create dictionaries which map global IDs of simulations to ranks for sending and receiving.
 
         Parameters
         ----------
-        current_partitioning : np.ndarray
+        current_partitioning : Dict[int, int]
             Current assignment of simulations
-        target_partitioning : np.ndarray
+        target_partitioning : Dict[int, int]
             Target assignment of simulations
+        inactive_set: Set[int]
+            Set of inactive simulations give by their GIDs
 
         Returns
         -------
-        tuple of dicts
-            send_map : dict
-                keys are global IDs, values are target ranks
-            recv_map : dict
-                keys are global IDs, values are source ranks
+        send_map : Dict[int, List[LoadBalancerSimData]]
+            Keys are the target ranks. Values are lists of data entries to be transferred.
         """
-        send_map = dict()
-        recv_map = dict()
+        send_map = self._mpi.create_empty_exchange_map()
 
-        for gid, target_rank in enumerate(target_partitioning):
+        for gid, target_rank in target_partitioning.items():
             if current_partitioning[gid] == target_rank:
                 continue
-            if current_partitioning[gid] == self._rank:
-                send_map[gid] = target_rank
+            if current_partitioning[gid] == self._mpi.rank:
+                entry = self._gather_send_data(gid, inactive_set)
+                send_map[target_rank].append(entry)
                 continue
-            if target_rank == self._rank:
-                recv_map[gid] = current_partitioning[gid]
 
-        return send_map, recv_map
+        return send_map
 
-    def _get_global_active_gids(self):
+    def _get_global_active_gids(self) -> Set[int]:
         """
         Get global IDs of all active gids. This is based on local ids.
 
         Returns
         -------
-        active_gids: list[int]
-            list of global active gids
+        active_gids: Set[int]
+            set of global active gids
         """
         # local count
         active_gid_arr = None
         if self._adaptivity_controller is not None:
             active_gid_arr = [
-                self._global_ids[i]
-                for i in self._adaptivity_controller.get_active_sim_local_ids()
+                self._sim_container.local_gids[lid]
+                for lid in self._adaptivity_controller.get_active_sim_local_ids()
             ]
         else:
-            active_gid_arr = self._global_ids
+            active_gid_arr = self._sim_container.local_gids
 
         # bcast to all and merge
-        tmp = self._comm.allgather(active_gid_arr)
-        global_active_gids = []
+        tmp = self._mpi.comm.allgather(active_gid_arr)
+        global_active_gids = list()
         for l in tmp:
             global_active_gids.extend(l)
-        return global_active_gids
+        return set(global_active_gids)
 
-    def _get_global_inactive_gids(self):
+    def _get_global_inactive_gids(
+        self, active_gids: Optional[Set[int]] = None
+    ) -> Set[int]:
         """
         Get global IDs of all inactive gids. This is based on local ids.
 
+        Parameters
+        ----------
+        active_gids: Set[int]
+            set of global active gids, if omitted will be recomputed.
+
         Returns
         -------
-        inactive_gids: list[int]
-            list of global inactive gids
+        inactive_gids: Set[int]
+            set of global inactive gids
         """
-        global_active_gids = set(self._get_global_active_gids())
-        global_inactive_gids = set(np.arange(self._global_number_of_sims)).difference(
-            global_active_gids
+        global_active_gids = (
+            self._get_global_active_gids() if active_gids is None else active_gids
         )
-        return list(global_inactive_gids)
+        global_inactive_gids = set(
+            np.arange(self._sim_container.global_num_sims)
+        ).difference(global_active_gids)
+        return global_inactive_gids
 
-    def _exchange_sims(self, send_map, recv_map, inactive_map={}):
+    def _exchange_sims(self, send_map: Dict[int, List[LoadBalancerSimData]]) -> None:
         """
         Move active micro simulations between ranks.
         Sends state+gid if simulation is active, None+gid otherwise.
 
         Parameters
         ----------
-        send_map : dict
-            keys are global IDs of sim states to send, values are ranks to send the sims to
-        recv_map : dict
-            keys are global IDs of sim states to receive, values are ranks to receive from
-        inactive_map : dict
-            keys are global IDs of inactive sim states, values are bool
+        send_map : Dict[int, List[LoadBalancerSimData]]
+            keys are target ranks, values are lists of data entries to be sent
         """
-        # Asynchronous send operations
-        send_reqs = []
-        for gid, send_rank in send_map.items():
-            tag = create_tag(gid, self._rank, send_rank)
-            lid = self._global_ids.index(gid)
-
-            # prepare send data
-            is_inactive = inactive_map[gid] if gid in inactive_map else False
-            cls_name = None if is_inactive else self._sim_list[lid].name
-            is_stateless = (
-                None if is_inactive else self._model_manager.is_stateless(cls_name)
-            )
-            send_data = (
-                is_inactive,
-                is_stateless,
-                None
-                if is_stateless or is_inactive
-                else self._state_loader(self._sim_list[lid]),
-                cls_name,
-                gid,
-            )
-
-            req = self._comm.isend(send_data, dest=send_rank, tag=tag)
-            send_reqs.append(req)
-
-        # Asynchronous receive operations
-        recv_reqs = []
-        for gid, recv_rank in recv_map.items():
-            tag = create_tag(gid, recv_rank, self._rank)
-            bufsize = (
-                1 << 30
-            )  # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
-            req = self._comm.irecv(bufsize, source=recv_rank, tag=tag)
-            recv_reqs.append(req)
-
-        # Wait for all non-blocking communication to complete
-        MPI.Request.Waitall(send_reqs)
+        recv_sims: List[LoadBalancerSimData] = self._mpi.exchange(send_map)
 
         # Delete the simulations which no longer exist on this rank
-        for gid in send_map.keys():
-            lid = self._global_ids.index(gid)
-            is_active = gid not in inactive_map
-            if is_active:
-                self._sim_list[lid].destroy()
-            del self._sim_list[lid]
-            self._global_ids.remove(gid)
-            if self._adaptivity_controller is not None:
-                self._adaptivity_controller.set_is_on_rank(gid, False)
+        for send_list in send_map.values():
+            for entry in send_list:
+                lid = self._sim_container.local_gids.index(entry.gid)
+                self._sim_container.remove_sim(lid)
 
         # Create simulations and set them to the received states
-        for req in recv_reqs:
-            is_inactive, is_stateless, state, cls_name, gid = req.wait()
-            self._sim_list.append(
-                None
-                if is_inactive
-                else self._model_manager.get_instance_by_name(gid, cls_name)
-            )
-            if not is_stateless and state is not None:
-                self._state_setter(self._sim_list[-1], state)
-            self._global_ids.append(gid)
-            if self._adaptivity_controller is not None:
-                self._adaptivity_controller.set_is_on_rank(gid, True)
+        for entry in recv_sims:
+            sim = None
+            if not entry.is_inactive:
+                assert entry.cls_name is not None
+                sim = self._model_manager.get_instance_by_name(
+                    entry.gid, entry.cls_name
+                )
+            lid = self._sim_container.add_sim(entry.gid, sim, entry.coord)
+
+            if not entry.is_stateless and entry.state is not None:
+                self._sim_container.set_sim_state(lid, entry.state)
 
 
 class ActiveBalancer(LoadBalancer):
@@ -412,36 +399,26 @@ class ActiveBalancer(LoadBalancer):
 
     def __init__(
         self,
-        precice_participant: Participant,
+        profiler: Profiler,
         model_manager: ModelManager,
         adaptivity_controller: Optional[AdaptivityCalculator],
-        state_loader: callable,
-        state_setter: callable,
+        sim_container: SimulationContainer,
         log: Logger,
         config: Config,
-        sim_list: list,
-        global_ids: list,
-        global_number_of_sims: int,
-        comm: MPI.Comm,
-        rank: int,
+        mpi: MPIHandler,
     ):
         super().__init__(
-            precice_participant,
+            profiler,
             model_manager,
             adaptivity_controller,
-            state_loader,
-            state_setter,
+            sim_container,
             log,
             config,
-            sim_list,
-            global_ids,
-            global_number_of_sims,
-            comm,
-            rank,
+            mpi,
         )
         self._partition_impl = lambda a, b: (None, None)
-        self._threshold = config.get_load_balancing_threshold()
-        self._balance_inactive_sims = config.turn_on_load_balancing_inactive()
+        self._threshold = config.load_balancing_threshold()
+        self._balance_inactive_sims = config.enable_load_balancing_inactive()
         self._bypass_skip = False  # used for testing
         self._bypass_active = False  # used for testing
 
@@ -462,7 +439,7 @@ class ActiveBalancer(LoadBalancer):
     def _get_active_exchange_counts(self):
         avg_active_sims = (
             np.count_nonzero(self._adaptivity_controller._is_sim_active)
-            / self._comm.size
+            / self._mpi.comm.size
         )
         f_avg_active_sims = np.floor(avg_active_sims - self._threshold)
         c_avg_active_sims = np.ceil(avg_active_sims + self._threshold)
@@ -488,8 +465,8 @@ class ActiveBalancer(LoadBalancer):
                 send_sims += 1
 
         # Number of active sims that each rank wants to send and receive
-        global_send_sims = self._comm.allgather(send_sims)
-        global_recv_sims = self._comm.allgather(recv_sims)
+        global_send_sims = self._mpi.comm.allgather(send_sims)
+        global_recv_sims = self._mpi.comm.allgather(recv_sims)
 
         n_global_send_sims = sum(global_send_sims)
         n_global_recv_sims = sum(global_recv_sims)
@@ -501,7 +478,11 @@ class ActiveBalancer(LoadBalancer):
             n_global_recv_sims,
         )
 
-    def _get_active_comm_maps(self, global_send_sims: list, global_recv_sims: list):
+    def _get_active_comm_maps(
+        self,
+        global_send_sims: list,
+        global_recv_sims: list,
+    ):
         """
         Create dictionaries which map global IDs of simulations to ranks for sending and receiving.
 
@@ -523,15 +504,15 @@ class ActiveBalancer(LoadBalancer):
         active_sims_global_ids = list(
             self._adaptivity_controller.get_active_sim_global_ids()
         )
-        rank_wise_global_ids_of_active_sims = self._comm.allgather(
+        rank_wise_global_ids_of_active_sims = self._mpi.comm.allgather(
             active_sims_global_ids
         )
 
         # Keys are ranks sending sims, values are lists of tuples: (list of global IDs to send, the rank to send them to)
-        global_send_map: dict[int, list] = dict()
+        global_send_map: Dict[int, List[int]] = dict()
 
         # Keys are ranks receiving sims, values are lists of tuples: (list of global IDs to receive, the rank to receive them from)
-        global_recv_map: dict[int, list] = dict()
+        global_recv_map: Dict[int, List[int]] = dict()
 
         for rank in [i for i, e in enumerate(global_send_sims) if e != 0]:
             global_send_map[rank] = []
@@ -600,36 +581,34 @@ class ActiveBalancer(LoadBalancer):
         # keys are global IDs of sim states to receive, values are ranks to receive from
         recv_map: dict[int, int] = dict()
 
-        if self._rank in global_send_map:
-            for send_info in global_send_map[self._rank]:
+        if self._mpi.rank in global_send_map:
+            for send_info in global_send_map[self._mpi.rank]:
                 send_rank = send_info[1]
                 for gid in send_info[0]:
                     send_map[gid] = send_rank
 
-        if self._rank in global_recv_map:
-            for recv_info in global_recv_map[self._rank]:
+        if self._mpi.rank in global_recv_map:
+            for recv_info in global_recv_map[self._mpi.rank]:
                 recv_rank = recv_info[1]
                 for gid in recv_info[0]:
                     recv_map[gid] = recv_rank
 
         return send_map, recv_map
 
-    def _get_inactive_comm_maps(self):
+    def _get_inactive_comm_maps(self, inactive_gids: set):
         send_map: dict[int, int] = dict()
         recv_map: dict[int, int] = dict()
-        ranks_of_sims = get_ranks_of_sims(
-            self._global_ids, self._rank, self._comm, self._global_number_of_sims
-        )
-        global_ids_of_inactive_sims = self._get_global_inactive_gids()
+        ranks_of_sims = self._sim_container.get_ranks_of_sims()
+        global_ids_of_inactive_sims = inactive_gids
 
         for gid in global_ids_of_inactive_sims:
             assoc_active_gid = self._adaptivity_controller._sim_is_associated_to[gid]
             rank_of_inactive_sim = ranks_of_sims[gid]
             rank_of_assoc_active_sim = ranks_of_sims[assoc_active_gid]
             if rank_of_inactive_sim != rank_of_assoc_active_sim:
-                if rank_of_inactive_sim == self._rank:
+                if rank_of_inactive_sim == self._mpi.rank:
                     send_map[gid] = rank_of_assoc_active_sim
-                if rank_of_assoc_active_sim == self._rank:
+                if rank_of_assoc_active_sim == self._mpi.rank:
                     recv_map[gid] = rank_of_inactive_sim
 
         return send_map, recv_map
@@ -661,7 +640,9 @@ class ActiveBalancer(LoadBalancer):
                     if excess_send_sims == 0:
                         break
 
-    def _get_communication_maps(self, *args, **kwargs):
+    def _get_communication_map(
+        self, stub0: Any, stub1: Any, active_set: Set[int], inactive_set: Set[int]
+    ):
         send_map: dict[int, int] = dict()
         recv_map: dict[int, int] = dict()
 
@@ -674,10 +655,8 @@ class ActiveBalancer(LoadBalancer):
             ) = self._get_active_exchange_counts()
 
             if (
-                n_global_send_sims == 0
-                and n_global_recv_sims == 0
-                and not self._bypass_skip
-            ):
+                n_global_send_sims == 0 or n_global_recv_sims == 0
+            ) and not self._bypass_skip:
                 self._log.log_warning_rank_zero(
                     "It appears that the micro simulations are already fairly balanced. No load balancing will be done. Try changing the threshold value to induce load balancing."
                 )
@@ -697,28 +676,31 @@ class ActiveBalancer(LoadBalancer):
 
         # if requested, also balance inactive simulations if there was a change in active simulations
         if self._balance_inactive_sims:
-            send_map_inactive, recv_map_inactive = self._get_inactive_comm_maps()
+            send_map_inactive, recv_map_inactive = self._get_inactive_comm_maps(
+                inactive_set
+            )
             send_map.update(send_map_inactive)
             recv_map.update(recv_map_inactive)
 
-        return send_map, recv_map
+        # translate to new format
+        adapted_send_map = self._mpi.create_empty_exchange_map()
+        for gid, target_rank in send_map.items():
+            entry = self._gather_send_data(gid, inactive_set)
+            adapted_send_map[target_rank].append(entry)
+
+        return adapted_send_map
 
 
 def create_load_balancer(
-    precice_participant: Participant,
+    profiler: Profiler,
     model_manager: ModelManager,
     adaptivity_controller: Optional[AdaptivityCalculator],
-    state_loader: callable,
-    state_setter: callable,
+    sim_container: SimulationContainer,
     log: Logger,
     config: Config,
-    sim_list: list,
-    global_ids: list,
-    global_number_of_sims: int,
-    comm: MPI.Comm,
-    rank: int,
+    mpi: MPIHandler,
 ) -> LoadBalancer:
-    lb_type = config.get_load_balancing_type()
+    lb_type = config.load_balancing_type()
 
     if lb_type == "time":
         lb_cls = LoadBalancer
@@ -728,16 +710,11 @@ def create_load_balancer(
         raise RuntimeError(f"Unknown load balancing type: {lb_type}")
 
     return lb_cls(
-        precice_participant,
+        profiler,
         model_manager,
         adaptivity_controller,
-        state_loader,
-        state_setter,
+        sim_container,
         log,
         config,
-        sim_list,
-        global_ids,
-        global_number_of_sims,
-        comm,
-        rank,
+        mpi,
     )

@@ -49,7 +49,9 @@ class Participant:
         pass
 
     def get_mesh_vertex_ids_and_coordinates(self, mesh_name):
-        return np.array([0, 1, 2, 3]), np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
+        return np.array([0, 1, 2, 3]), np.array(
+            [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]]
+        )
 
     def write_data(self, mesh_name, data_name, vertex_ids, data):
         if data_name == "Micro-Scalar-Data":

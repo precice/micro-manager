@@ -15,9 +15,11 @@ import sys
 import subprocess
 import numpy as np
 
+from micro_manager.tasking.connection import spawn_local_workers
 from micro_manager.micro_manager import MicroManager
 from .dataset import ReadWriteHDF
 from micro_manager.micro_simulation import create_simulation_class, load_backend_class
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 from micro_manager.tools.logging_wrapper import Logger
 
 
@@ -35,13 +37,14 @@ class MicroManagerSnapshot(MicroManager):
             Name of the JSON configuration file (provided by the user).
         """
         super().__init__(config_file)
+        self._mpi = MPIHandler(MPI.COMM_WORLD)
 
-        self._logger = Logger(__name__, log_file, self._rank)
+        self._logger = Logger(__name__, log_file, self._mpi.rank)
 
         self._config.set_logger(self._logger)
         self._config.read_json_snapshot()
 
-        self._output_dir = self._config.get_output_dir()
+        self._output_dir = self._config.output_dir()
 
         if self._output_dir is not None:
             self._output_dir = os.path.abspath(self._output_dir) + "/"
@@ -49,27 +52,40 @@ class MicroManagerSnapshot(MicroManager):
         else:
             self._output_dir = os.path.abspath(os.getcwd()) + "/"
 
-        self._output_file_name = self._config.get_output_file_name()
+        self._output_file_name = self._config.output_file_name()
 
         # Data names of data to output to the snapshot database
-        self._write_data_names = self._config.get_write_data_names()
+        self._write_data_names = self._config.write_data_names()
 
         # Data names of data to read as input parameter to the simulations
-        self._read_data_names = self._config.get_read_data_names()
+        self._read_data_names = self._config.read_data_names()
 
-        self._micro_dt = self._config.get_micro_dt()
+        self._micro_dt = self._config.micro_dt()
 
         # Path to the parameter file containing input parameters for micro simulations
-        self._parameter_file = self._config.get_parameter_file_name()
+        self._parameter_file = self._config.parameter_file_name()
 
         # Get name of pos-processing script
-        self._post_processing_file_name = self._config.get_postprocessing_file_name()
+        self._post_processing_file_name = self._config.postprocessing_file_name()
 
         # Check if simulation object can be re-used.
-        self._initialize_once = self._config.create_single_sim_object()
+        self._initialize_once = self._config.enable_single_sim_object()
 
         # Collect crashed indices
         self._crashed_snapshots: list[int] = []  # Declaration
+
+        # Setup remote workers
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+        worker_exec = os.path.join(base_dir, "tasking", "worker_main.py")
+        self._conn_n_workers = self._config.tasking_num_workers()
+        self._conn = spawn_local_workers(
+            worker_exec,
+            self._conn_n_workers,
+            self._config.tasking_backend(),
+            self._config.enable_tasking_slurm(),
+            self._config.mpi_impl(),
+            self._config.tasking_hostfile(),
+        )
 
     # **************
     # Public methods
@@ -87,9 +103,9 @@ class MicroManagerSnapshot(MicroManager):
         micro_problem_cls = create_simulation_class(
             self._logger,
             self._micro_problem,
-            self._config.get_micro_file_name(),
-            1,
-            None,
+            self._config.micro_file_names()[0],
+            self._conn_n_workers,
+            self._conn,
         )
 
         # Loop over all macro parameters
@@ -99,6 +115,7 @@ class MicroManagerSnapshot(MicroManager):
                 self._micro_sims = micro_problem_cls(self._global_ids_of_local_sims[0])
             else:
                 if not self._initialize_once:
+                    self._micro_sims.destroy()
                     self._micro_sims = micro_problem_cls(
                         self._global_ids_of_local_sims[elems]
                     )
@@ -165,13 +182,13 @@ class MicroManagerSnapshot(MicroManager):
             )
 
         # Merge output files
-        if self._is_parallel:
+        if self._mpi.is_parallel():
             self._logger.log_info_rank_zero(
                 "Snapshots have been computed and stored. Merging output files"
             )
             self._data_storage.set_status(self._output_file_path, "reading/deleting")
-            list_of_output_files = self._comm.gather(self._file_name, 0)
-            if self._rank == 0:
+            list_of_output_files = self._mpi.comm.gather(self._file_name, 0)
+            if self._mpi.rank == 0:
                 self._data_storage.collect_output_files(
                     self._output_dir,
                     list_of_output_files,
@@ -198,14 +215,14 @@ class MicroManagerSnapshot(MicroManager):
         )
         # Read macro parameters from the parameter file
         # Decompose parameters if the snapshot creation is executed in parallel
-        if self._is_parallel:
-            equal_partition = int(self._parameter_space_size / self._size)
-            rest = self._parameter_space_size % self._size
-            if self._rank < rest:
-                start = self._rank * (equal_partition + 1)
+        if self._mpi.is_parallel():
+            equal_partition = int(self._parameter_space_size / self._mpi.size)
+            rest = self._parameter_space_size % self._mpi.size
+            if self._mpi.rank < rest:
+                start = self._mpi.rank * (equal_partition + 1)
                 end = start + equal_partition + 1
             else:
-                start = self._rank * equal_partition + rest
+                start = self._mpi.rank * equal_partition + rest
                 end = start + equal_partition
             self._macro_parameters = self._data_storage.read_hdf(
                 self._parameter_file, self._read_data_names, start, end
@@ -219,8 +236,8 @@ class MicroManagerSnapshot(MicroManager):
             )
 
         # Create database file to store output from a rank in
-        if self._is_parallel:
-            self._file_name = self._output_file_name + "_{}.hdf5".format(self._rank)
+        if self._mpi.is_parallel():
+            self._file_name = self._output_file_name + "_{}.hdf5".format(self._mpi.rank)
         else:
             self._file_name = self._output_file_name + ".hdf5"
 
@@ -237,32 +254,31 @@ class MicroManagerSnapshot(MicroManager):
         )
 
         if self._local_number_of_sims == 0:
-            if self._is_parallel:
+            if self._mpi.is_parallel():
                 self._logger.log_info(
                     "Rank {} has no micro simulations and hence will not do any computation.".format(
-                        self._rank
+                        self._mpi.rank
                     )
                 )
-                self._is_rank_empty = True
             else:
                 raise Exception("Snapshot has no micro simulations.")
 
-        nms_all_ranks = np.zeros(self._size, dtype=np.int64)
+        nms_all_ranks = np.zeros(self._mpi.size, dtype=np.int64)
         # Gather number of micro simulations that each rank has, because this rank needs to know how many micro
         # simulations have been created by previous ranks, so that it can set
         # the correct global IDs
-        self._comm.Allgatherv(np.array(self._local_number_of_sims), nms_all_ranks)
+        self._mpi.comm.Allgatherv(np.array(self._local_number_of_sims), nms_all_ranks)
 
         # Get global number of micro simulations
         self._global_number_of_sims = np.sum(nms_all_ranks)
 
         # Create lists of local and global IDs
-        sim_id = np.sum(nms_all_ranks[: self._rank])
+        sim_id = np.sum(nms_all_ranks[: self._mpi.rank])
         self._global_ids_of_local_sims = []  # DECLARATION
         for i in range(self._local_number_of_sims):
             self._global_ids_of_local_sims.append(sim_id)
             sim_id += 1
-        self._micro_problem = load_backend_class(self._config.get_micro_file_name())
+        self._micro_problem = load_backend_class(self._config.micro_file_names()[0])
 
         self._micro_sims_have_output = False
         if hasattr(self._micro_problem, "output") and callable(

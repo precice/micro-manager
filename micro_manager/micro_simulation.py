@@ -183,10 +183,19 @@ class MicroSimulationInterface(ABC):
         """
         pass
 
+    @property
+    def name(self) -> str:
+        """
+        For normal operation, this does not need to be overridden.
+        The method should return a unique name for the model type.
+        """
+        return type(self).__name__
+
 
 class MicroSimulationLocal(MicroSimulationInterface):
-    def __init__(self, gid, late_init, sim_cls):
+    def __init__(self, gid, name, late_init, sim_cls):
         self._gid = gid
+        self._name = name
         self._instance = sim_cls(-1 if late_init else gid)
 
     def solve(self, micro_sim_input, dt):
@@ -222,11 +231,16 @@ class MicroSimulationLocal(MicroSimulationInterface):
     def destroy(self):
         self._instance = None
 
+    @property
+    def name(self):
+        return self._name
+
 
 class MicroSimulationRemote(MicroSimulationInterface):
-    def __init__(self, gid, late_init, num_ranks, conn, cls_path, sim_cls):
+    def __init__(self, gid, name, late_init, num_ranks, conn, cls_path, sim_cls):
         self._cls_path = cls_path
         self._gid = gid
+        self._name = name
         self._num_ranks = num_ranks
         self._conn = conn
         self._sim_cls = sim_cls
@@ -319,67 +333,6 @@ class MicroSimulationRemote(MicroSimulationInterface):
         for worker_id in range(self._num_ranks):
             self._conn.recv(worker_id)
 
-
-class MicroSimulationWrapper(MicroSimulationInterface):
-    """
-    If only a single rank is in use: will contain the micro sim instance.
-    Otherwise, it will delegate method calls to workers and not contain state.
-    """
-
-    def __init__(self, name, sim_cls, cls_path, global_id, late_init, num_ranks, conn):
-        self._impl = None
-
-        if num_ranks > 1 and conn is not None:
-            self._impl = MicroSimulationRemote(
-                global_id, late_init, num_ranks, conn, cls_path, sim_cls
-            )
-        else:
-            self._impl = MicroSimulationLocal(global_id, late_init, sim_cls)
-
-        self._external_data = dict()
-        self._name = name
-
-    def solve(self, micro_sim_input, dt):
-        return self._impl.solve(micro_sim_input, dt)
-
-    def get_state(self):
-        return self._impl.get_state()
-
-    def set_state(self, state):
-        return self._impl.set_state(state)
-
-    def get_global_id(self):
-        return self._impl.get_global_id()
-
-    def set_global_id(self, global_id):
-        return self._impl.set_global_id(global_id)
-
-    def initialize(self, *args, **kwargs):
-        return self._impl.initialize(*args, **kwargs)
-
-    def output(self):
-        return self._impl.output()
-
-    def requires_initialize(self) -> bool:
-        return self._impl.requires_initialize()
-
-    def requires_output(self) -> bool:
-        return self._impl.requires_output()
-
-    def destroy(self):
-        return self._impl.destroy()
-
-    def __getattr__(self, name):
-        return getattr(self._impl, name)
-
-    @property
-    def attachments(self):
-        return self._external_data
-
-    @attachments.setter
-    def attachments(self, value):
-        self._external_data = value
-
     @property
     def name(self):
         return self._name
@@ -399,15 +352,18 @@ class MicroSimulationClass:
         return self._name
 
     def __call__(self, gid, *, late_init=False):
-        return MicroSimulationWrapper(
-            self._name,
-            self._sim_cls,
-            self._cls_path,
-            gid,
-            late_init,
-            self._num_ranks,
-            self._conn,
-        )
+        if self._num_ranks > 1 and self._conn is not None:
+            return MicroSimulationRemote(
+                gid,
+                self._name,
+                late_init,
+                self._num_ranks,
+                self._conn,
+                self._cls_path,
+                self._sim_cls,
+            )
+        else:
+            return MicroSimulationLocal(gid, self._name, late_init, self._sim_cls)
 
     @property
     def backend_cls(self):
@@ -555,9 +511,30 @@ def __getattr__(self, name):
     # Only add initialize override if the wrapped class actually has it,
     # so that requires_initialize() returns True for those classes.
     if has_initialize:
-        class_body += """
-def initialize(self, *args, **kwargs):
-    return self._wrapped.initialize(*args, **kwargs)
+        try:
+            argspec = inspect.getfullargspec(cls.initialize)
+            # build args
+            params = f"{', '.join(argspec.args[1:])}"
+            if argspec.varargs is not None:
+                params += f", *args"
+            if argspec.varkw is not None:
+                params += f", **kwargs"
+        except TypeError:
+            # pybind11 methods do not expose Python-style argument specs
+            has_param = False
+            try:
+                test_instance = cls(-1)
+                test_instance.initialize()
+            except TypeError:
+                # calling without args failed, need to provide one
+                has_param = True
+
+            pos_arg = "input_data, " if has_param else ""
+            params = f"{pos_arg}*args, **kwargs"
+        init_args = f"self, {params}"
+        class_body += f"""
+def initialize({init_args}):
+    return self._wrapped.initialize({params})
 """
 
     # Only add output override if the wrapped class actually has it,
@@ -600,39 +577,47 @@ def load_backend_class(path_to_micro_file: str) -> type:
         A class inheriting from MicroSimulationInterface.
     """
 
-    def try_load(name):
-        try:
-            return getattr(ipl.import_module(path_to_micro_file, name), name)
-        except ImportError as ie:
-            return None
-        except AttributeError as ae:
-            return None
+    # try to load the module
+    try:
+        mod = ipl.import_module(path_to_micro_file)
+    except ModuleNotFoundError as ie:
+        if ie.name == path_to_micro_file:
+            raise RuntimeError(
+                f"Could not load the python module '{path_to_micro_file}' containing the micro simulation"
+            )
+        else:
+            raise RuntimeError(
+                f"Counld not load a dependency of the python module '{path_to_micro_file}' containing the micro simulation: {ie}"
+            )
+    except Exception as e:
+        raise RuntimeError(
+            f"Error loading python module '{path_to_micro_file}' containing the micro simulation: {e}"
+        )
 
-    def check_cls(cls):
-        try:
-            inherits = issubclass(cls, MicroSimulationInterface)
-        except TypeError:
-            # pybind11 extension types may not support issubclass — wrap them
-            inherits = False
-
-        if not inherits:
-            cls = _wrap_non_interface_class(cls, path_to_micro_file)
-        return cls
-
+    # try to load the class
     CLS_NAME = "MicroSimulation"
-    # attempt to load with base name
-    result = try_load(CLS_NAME)
-    if result is not None:
-        return check_cls(result)
+    suffixes = [""] + [str(i) for i in range(10)]
+    micro_cls = None
+    for suffix in suffixes:
+        if cls := getattr(mod, f"{CLS_NAME}{suffix}", None):
+            micro_cls = cls
+            break
+    if micro_cls is None:
+        raise RuntimeError(
+            f"Loaded module '{path_to_micro_file}' does not contain a MicroSimulation class"
+        )
 
-    # attempt to load with appended indices
-    for i in range(10):
-        result = try_load(f"{CLS_NAME}{i}")
-        if result is not None:
-            return check_cls(result)
+    # check loaded class
+    try:
+        inherits = issubclass(micro_cls, MicroSimulationInterface)
+    except TypeError:
+        # pybind11 extension types may not support issubclass — wrap them
+        inherits = False
 
-    # failed to load any class
-    raise RuntimeError(f"Could not load micro simulation from {path_to_micro_file}")
+    if inherits:
+        return micro_cls
+    else:
+        return _wrap_non_interface_class(micro_cls, path_to_micro_file)
 
 
 def create_simulation_class(

@@ -1,5 +1,5 @@
 {
-    "micro_file_name": "test_micro_simulation_crash_handling",
+    "micro_file_names": ["test_micro_simulation_crash_handling"],
     "coupling_params": {
         "precice_config_file_name": "dummy-config.xml",
         "macro_mesh_name": "Macro-Mesh",

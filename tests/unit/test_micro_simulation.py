@@ -3,14 +3,19 @@ Tests for micro_simulation.py covering MicroSimulationInterface,
 MicroSimulationLocal, MicroSimulationClass, and create_simulation_class.
 """
 
+import importlib
+import sys
+import tempfile
 import unittest
 import warnings
+from pathlib import Path
 from unittest.mock import MagicMock
 
 from micro_manager.micro_simulation import (
     MicroSimulationInterface,
     MicroSimulationLocal,
     create_simulation_class,
+    load_backend_class,
 )
 
 
@@ -74,44 +79,44 @@ class TestMicroSimulationInterface(unittest.TestCase):
 
 class TestMicroSimulationLocal(unittest.TestCase):
     def test_solve(self):
-        local = MicroSimulationLocal(0, False, MinimalSim)
+        local = MicroSimulationLocal(0, "MinimalSim", False, MinimalSim)
         result = local.solve({"in": 1}, 0.1)
         self.assertEqual(result, {"out": 1})
 
     def test_get_set_state(self):
-        local = MicroSimulationLocal(0, False, MinimalSim)
+        local = MicroSimulationLocal(0, "MinimalSim", False, MinimalSim)
         local.set_state(42)
         self.assertEqual(local.get_state(), 42)
 
     def test_get_set_global_id(self):
-        local = MicroSimulationLocal(5, False, MinimalSim)
+        local = MicroSimulationLocal(5, "MinimalSim", False, MinimalSim)
         self.assertEqual(local.get_global_id(), 5)
         local.set_global_id(99)
         self.assertEqual(local.get_global_id(), 99)
 
     def test_late_init_sets_instance_gid_to_minus_one(self):
         """When late_init=True, the wrapped instance should be constructed with gid=-1."""
-        local = MicroSimulationLocal(3, True, MinimalSim)
+        local = MicroSimulationLocal(3, "MinimalSim", True, MinimalSim)
         # The outer local gid should remain 3
         self.assertEqual(local.get_global_id(), 3)
         # The inner instance should have been constructed with -1
         self.assertEqual(local._instance.get_global_id(), -1)
 
     def test_initialize(self):
-        local = MicroSimulationLocal(0, False, SimWithInitialize)
+        local = MicroSimulationLocal(0, "SimWithInitialize", False, SimWithInitialize)
         result = local.initialize({"data": 1})
         self.assertEqual(result, {"init": True})
 
     def test_output(self):
-        local = MicroSimulationLocal(0, False, SimWithOutput)
+        local = MicroSimulationLocal(0, "SimWithOutput", False, SimWithOutput)
         self.assertIsNone(local.output())
 
     def test_requires_initialize(self):
-        local = MicroSimulationLocal(0, False, SimWithInitialize)
+        local = MicroSimulationLocal(0, "SimWithInitialize", False, SimWithInitialize)
         self.assertTrue(local.requires_initialize())
 
     def test_requires_output(self):
-        local = MicroSimulationLocal(0, False, SimWithOutput)
+        local = MicroSimulationLocal(0, "SimWithOutput", False, SimWithOutput)
         self.assertTrue(local.requires_output())
 
     def test_getattr_delegates_to_instance(self):
@@ -120,7 +125,7 @@ class TestMicroSimulationLocal(unittest.TestCase):
         class SimWithExtra(MinimalSim):
             extra_attr = "hello"
 
-        local = MicroSimulationLocal(7, False, SimWithExtra)
+        local = MicroSimulationLocal(7, "SimWithExtra", False, SimWithExtra)
         # extra_attr is not defined on MicroSimulationLocal — must come via __getattr__
         self.assertEqual(local.extra_attr, "hello")
 
@@ -134,6 +139,7 @@ class TestMicroSimulationRemote(unittest.TestCase):
         return (
             MicroSimulationRemote(
                 gid=0,
+                name="MinimalSim",
                 late_init=late_init,
                 num_ranks=1,
                 conn=conn,
@@ -191,6 +197,7 @@ class TestMicroSimulationRemote(unittest.TestCase):
         conn.recv.return_value = None
         remote = MicroSimulationRemote(
             gid=0,
+            name="SimWithInitialize",
             late_init=False,
             num_ranks=1,
             conn=conn,
@@ -210,6 +217,7 @@ class TestMicroSimulationRemote(unittest.TestCase):
         conn.recv.return_value = None
         remote = MicroSimulationRemote(
             gid=0,
+            name="SimWithOutput",
             late_init=False,
             num_ranks=1,
             conn=conn,
@@ -233,6 +241,7 @@ class TestMicroSimulationRemote(unittest.TestCase):
         conn.recv.return_value = None
         remote = MicroSimulationRemote(
             gid=5,
+            name="MinimalSim",
             late_init=True,
             num_ranks=1,
             conn=conn,
@@ -241,6 +250,123 @@ class TestMicroSimulationRemote(unittest.TestCase):
         )
         sent_task = conn.send.call_args_list[0][0][1]
         self.assertEqual(sent_task[0], "ConstructLateTask")
+
+
+class TestLoadBackendClass(unittest.TestCase):
+    def _write_module(self, directory, module_name, content):
+        module_path = Path(directory) / f"{module_name}.py"
+        module_path.write_text(content)
+        importlib.invalidate_caches()
+        return module_path
+
+    def test_missing_direct_dependency_raises_runtime_error(self):
+        """A direct ``import missing_pkg`` inside the micro sim should
+        raise RuntimeError with context about the missing dependency."""
+        module_name = "micro_sim_with_missing_dependency"
+        missing_dependency = "missing_dependency_for_micro_manager_test"
+
+        with tempfile.TemporaryDirectory() as directory:
+            self._write_module(
+                directory,
+                module_name,
+                f"import {missing_dependency}\n\nclass MicroSimulation:\n    pass\n",
+            )
+            sys.path.insert(0, directory)
+            self.addCleanup(sys.path.remove, directory)
+            self.addCleanup(sys.modules.pop, module_name, None)
+
+            with self.assertRaises(RuntimeError) as context:
+                load_backend_class(module_name)
+
+            msg = str(context.exception)
+            self.assertIn("load a dependency", msg)
+            self.assertIn(module_name, msg)
+            self.assertIn(missing_dependency, msg)
+
+    def test_transitive_missing_dependency_raises_runtime_error(self):
+        """A missing package imported *transitively* (helper -> missing_pkg)
+        should still surface as RuntimeError with the dependency name."""
+        module_name = "micro_sim_with_transitive_missing_dependency"
+        helper_module = "micro_sim_helper"
+        missing_dependency = "missing_dependency_for_transitive_import_test"
+
+        with tempfile.TemporaryDirectory() as directory:
+            self._write_module(
+                directory,
+                helper_module,
+                f"import {missing_dependency}\n\nVALUE = 1\n",
+            )
+            self._write_module(
+                directory,
+                module_name,
+                f"import {helper_module}\n\nclass MicroSimulation:\n    pass\n",
+            )
+            sys.path.insert(0, directory)
+            self.addCleanup(sys.path.remove, directory)
+            self.addCleanup(sys.modules.pop, module_name, None)
+            self.addCleanup(sys.modules.pop, helper_module, None)
+
+            with self.assertRaises(RuntimeError) as context:
+                load_backend_class(module_name)
+
+            msg = str(context.exception)
+            self.assertIn("load a dependency", msg)
+            self.assertIn(module_name, msg)
+            self.assertIn(missing_dependency, msg)
+
+    def test_module_not_found_raises_runtime_error(self):
+        """When the micro simulation file itself does not exist,
+        a RuntimeError should be raised indicating the module could not be loaded."""
+        module_name = "nonexistent_micro_simulation_module"
+
+        with self.assertRaises(RuntimeError) as context:
+            load_backend_class(module_name)
+
+        msg = str(context.exception)
+        self.assertIn("Could not load the python module", msg)
+        self.assertIn(module_name, msg)
+
+    def test_missing_micro_simulation_class_raises_runtime_error(self):
+        """A loadable module that lacks a MicroSimulation class should
+        raise RuntimeError with a descriptive message."""
+        module_name = "micro_sim_without_expected_class"
+
+        with tempfile.TemporaryDirectory() as directory:
+            self._write_module(
+                directory, module_name, "class OtherSimulation:\n    pass\n"
+            )
+            sys.path.insert(0, directory)
+            self.addCleanup(sys.path.remove, directory)
+            self.addCleanup(sys.modules.pop, module_name, None)
+
+            with self.assertRaises(RuntimeError) as context:
+                load_backend_class(module_name)
+
+            msg = str(context.exception)
+            self.assertIn("does not contain a MicroSimulation class", msg)
+            self.assertIn(module_name, msg)
+
+    def test_generic_import_error_raises_runtime_error(self):
+        """A non-ModuleNotFoundError exception during import (e.g. SyntaxError)
+        should be wrapped in RuntimeError with context."""
+        module_name = "micro_sim_with_syntax_error"
+
+        with tempfile.TemporaryDirectory() as directory:
+            self._write_module(
+                directory,
+                module_name,
+                "this is not valid python\n",
+            )
+            sys.path.insert(0, directory)
+            self.addCleanup(sys.path.remove, directory)
+            self.addCleanup(sys.modules.pop, module_name, None)
+
+            with self.assertRaises(RuntimeError) as context:
+                load_backend_class(module_name)
+
+            msg = str(context.exception)
+            self.assertIn("Error loading python module", msg)
+            self.assertIn(module_name, msg)
 
 
 class TestCreateSimulationClass(unittest.TestCase):

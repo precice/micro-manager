@@ -2,7 +2,7 @@
 A collection of miscellaneous functions that are used in various parts of the codebase.
 """
 
-from typing import Union, Optional
+from typing import Union
 import numpy as np
 
 
