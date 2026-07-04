@@ -231,7 +231,7 @@ class CouplingHandler:
         local_read_data : List[Dict[str, Any]]
             List of dicts in which keys are names of data being read and the values are the data from preCICE.
         """
-        read_data: Dict[str, List[Any]] = read_buffer or {}
+        read_data: Dict[str, List[Any]] = {} if read_buffer is None else read_buffer
         read_data.clear()
         read_data.update({name: [] for name in self._read_data_names})
         read_vertex_ids: List[int] = [
