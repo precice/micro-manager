@@ -160,8 +160,12 @@ class MPIHandler:
             if glob_send_counts[send_rank][_rank] == 0:
                 continue
             for d_idx in range(glob_send_counts[send_rank][_rank]):
+                # allocate and use a temporary 1 MiB buffer size https://github.com/mpi4py/mpi4py/issues/389
+                bufsize = 1 << 30
                 req = _comm.irecv(
-                    None, source=send_rank, tag=self.create_tag(d_idx, send_rank, _rank)
+                    bufsize,
+                    source=send_rank,
+                    tag=self.create_tag(d_idx, send_rank, _rank),
                 )
                 recv_reqs.append(tuple([send_rank, req]))
 

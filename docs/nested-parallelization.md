@@ -1,6 +1,8 @@
 ---
 title: Running with multi-level parallelization
 permalink: tooling-micro-manager-multi-level-parallelization.html
+aliases:
+  - /tooling-micro-manager-multi-level-parallelization.html
 keywords: tooling, macro-micro, parallelization, multi-level parallelization, workers, tasking
 summary: Micro Manager supports MPI parallelized micro solvers with multi-level parallelization.
 ---
@@ -116,7 +118,7 @@ During the creation of the worker processes, pinning is specified.
 When each Micro Manager (MM) rank $n \in N$ creates its $M$ workers, it is assumed that each MM rank $n$ is pinned to a contiguous domain of size $M$ CPU cores.
 Subsequently, the created workers (W) of rank $n$ are pinned to distinct cores within this region. In the following example $N=8$, $M=2$ and 2 nodes are used.
 
-```
+```text
 Node 0:       ╭─core─╮
 ┌──────┬──────┬──────┬──────┐  ┌──────┬──────┬──────┬──────┐
 │MM0 W0│MM0 W1│MM1 W0│MM1 W1│  │MM2 W0│MM2 W1│MM3 W0│MM3 W1│
