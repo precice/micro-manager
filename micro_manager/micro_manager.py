@@ -529,9 +529,9 @@ class MicroManagerCoupling(MicroManager):
                         )
 
                     first_id = active_sim_lids[0]  # First active simulation ID
-                    micro_sims_to_init = (
-                        active_sim_lids  # Only active simulations will be initialized
-                    )
+                    micro_sims_to_init = active_sim_lids[
+                        1:
+                    ]  # Only active simulations will be initialized, skip first as it is initialized separately
                     are_there_sims_to_init = True
 
         test_instance = self._model_manager.get_instance(
