@@ -447,9 +447,6 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         # Only handle activation of simulations on this rank
         for gid in to_be_activated_gids:
             to_be_activated_lid = self._sim_container.local_gids.index(gid)
-            self._sim_container[to_be_activated_lid] = self._model_manager.get_instance(
-                gid, self._micro_problem_cls
-            )
             assoc_active_gid = self._sim_is_associated_to[gid]
 
             # Associated active simulation is on the same rank
@@ -458,6 +455,9 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
                     assoc_active_gid
                 )
                 state = self._sim_container.get_sim_state(assoc_active_lid)
+                self._sim_container[
+                    to_be_activated_lid
+                ] = self._model_manager.get_instance(gid, self._micro_problem_cls)
                 self._sim_container.set_sim_state(to_be_activated_lid, state)
             else:  # Associated active simulation is not on this rank
                 if assoc_active_gid in to_be_activated_map:
