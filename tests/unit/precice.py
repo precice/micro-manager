@@ -8,8 +8,8 @@ class Participant:
     def __init__(
         self, solver_name, config_file_name, solver_process_index, solver_process_size
     ):
-        self.read_write_vector_buffer = []
-        self.read_write_scalar_buffer = []
+        self.read_write_vector_buffer = [0] * 4
+        self.read_write_scalar_buffer = [np.zeros(3) for _ in range(4)]
 
     def initialize(self):
         return 0.1  # dt
