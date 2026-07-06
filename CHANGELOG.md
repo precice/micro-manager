@@ -2,6 +2,7 @@
 
 ## latest
 
+- Skipped double initialization of sim with id 0 when lazy initialization is used [#307](https://github.com/precice/micro-manager/pull/307)
 - Fixed macro data not populating adaptivity buffers and MPI irecv buffer size [#306](https://github.com/precice/micro-manager/pull/306)
 - Added support for workers in snapshot mode [#296](https://github.com/precice/micro-manager/pull/296)
 - Added check for number of workers and renamed method in `coupling.py` [#295](https://github.com/precice/micro-manager/pull/295)
