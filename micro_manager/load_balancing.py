@@ -7,7 +7,7 @@ import numpy as np
 from precice import Participant
 
 from micro_manager.config import Config
-from micro_manager.adaptivity.adaptivity import AdaptivityCalculator
+from micro_manager.adaptivity.adaptivity_interface import AdaptivityInterface
 from micro_manager.model_manager import ModelManager
 from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.mpi_handler import MPIHandler
@@ -27,6 +27,8 @@ class LoadBalancerSimData:
     cls_name: Optional[str]
     gid: int
     coord: np.ndarray
+    active_steps: int
+    assoc_gid: Optional[int]
 
 
 class LoadBalancer:
@@ -34,7 +36,7 @@ class LoadBalancer:
         self,
         profiler: Profiler,
         model_manager: ModelManager,
-        adaptivity_controller: Optional[AdaptivityCalculator],
+        adaptivity_controller: AdaptivityInterface,
         sim_container: SimulationContainer,
         log: Logger,
         config: Config,
@@ -50,8 +52,8 @@ class LoadBalancer:
             Profiling object
         model_manager: ModelManager
             model manager object to construct instances
-        adaptivity_controller: Optional[AdaptivityCalculator]
-            handles adaptivity calculation if provided
+        adaptivity_controller: AdaptivityInterface
+            handles adaptivity calculation
         log: Logger
             logger object
         config: Config
@@ -75,13 +77,12 @@ class LoadBalancer:
             config.load_balancing_partitioning()
         )
 
-        if (
-            self._enabled
-            and adaptivity_controller is not None
-            and type(adaptivity_controller).__name__ != "GlobalAdaptivityCalculator"
-        ):
+        if self._enabled and type(adaptivity_controller).__name__ not in [
+            "GlobalAdaptivityCalculator",
+            "NoOpAdaptivity",
+        ]:
             raise NotImplementedError(
-                "Adaptivity must be GlobalAdaptivity for Load Balancing"
+                "To use load balancing, adaptivity must be turned off, or the global variant must be used."
             )
 
     def balance(self):
@@ -260,10 +261,18 @@ class LoadBalancer:
         cls_name = None
         is_stateless = None
         state = None
+        active_dict = self._adaptivity_controller.get_active_steps()
+        active_steps = active_dict[gid]
+        del active_dict[gid]
+        assoc_gid = None
+
         if not is_inactive:
             cls_name = self._sim_container[lid].name
             is_stateless = self._model_manager.is_stateless(cls_name)
             state = None if is_stateless else self._sim_container.get_sim_state(lid)
+        else:
+            assoc_gid = self._adaptivity_controller.get_associated_map()[gid]
+            del self._adaptivity_controller.get_associated_map()[gid]
 
         return LoadBalancerSimData(
             is_inactive,
@@ -272,6 +281,8 @@ class LoadBalancer:
             cls_name,
             gid,
             coord,
+            active_steps,
+            assoc_gid,
         )
 
     def _get_communication_map(
@@ -304,7 +315,7 @@ class LoadBalancer:
             if current_partitioning[gid] == target_rank:
                 continue
             if current_partitioning[gid] == self._mpi.rank:
-                entry = self._gather_send_data(gid, inactive_set)
+                entry = self._gather_send_data(int(gid), inactive_set)
                 send_map[target_rank].append(entry)
                 continue
 
@@ -320,17 +331,10 @@ class LoadBalancer:
             set of global active gids
         """
         # local count
-        active_gid_arr = None
-        if self._adaptivity_controller is not None:
-            active_gid_arr = [
-                self._sim_container.local_gids[lid]
-                for lid in self._adaptivity_controller.get_active_sim_local_ids()
-            ]
-        else:
-            active_gid_arr = self._sim_container.local_gids
+        active_gids = self._adaptivity_controller.get_active_gids()
 
         # bcast to all and merge
-        tmp = self._mpi.comm.allgather(active_gid_arr)
+        tmp = self._mpi.comm.allgather(active_gids)
         global_active_gids = list()
         for l in tmp:
             global_active_gids.extend(l)
@@ -386,6 +390,13 @@ class LoadBalancer:
                 sim = self._model_manager.get_instance_by_name(
                     entry.gid, entry.cls_name
                 )
+            else:
+                self._adaptivity_controller.get_associated_map()[
+                    entry.gid
+                ] = entry.assoc_gid
+            self._adaptivity_controller.get_active_steps()[
+                entry.gid
+            ] = entry.active_steps
             lid = self._sim_container.add_sim(entry.gid, sim, entry.coord)
 
             if not entry.is_stateless and entry.state is not None:
@@ -401,7 +412,7 @@ class ActiveBalancer(LoadBalancer):
         self,
         profiler: Profiler,
         model_manager: ModelManager,
-        adaptivity_controller: Optional[AdaptivityCalculator],
+        adaptivity_controller: AdaptivityInterface,
         sim_container: SimulationContainer,
         log: Logger,
         config: Config,
@@ -422,7 +433,7 @@ class ActiveBalancer(LoadBalancer):
         self._bypass_skip = False  # used for testing
         self._bypass_active = False  # used for testing
 
-        if adaptivity_controller is None:
+        if type(adaptivity_controller).__name__ != "GlobalAdaptivityCalculator":
             raise ValueError(
                 "Active Count balancing requires GlobalAdaptivityCalculator"
             )
@@ -437,14 +448,11 @@ class ActiveBalancer(LoadBalancer):
         pass
 
     def _get_active_exchange_counts(self):
-        avg_active_sims = (
-            np.count_nonzero(self._adaptivity_controller._is_sim_active)
-            / self._mpi.comm.size
-        )
+        avg_active_sims = len(self._get_global_active_gids()) / self._mpi.comm.size
         f_avg_active_sims = np.floor(avg_active_sims - self._threshold)
         c_avg_active_sims = np.ceil(avg_active_sims + self._threshold)
 
-        active_sims_local_ids = self._adaptivity_controller.get_active_sim_local_ids()
+        active_sims_local_ids = self._adaptivity_controller.get_active_lids()
         n_active_sims_local = len(active_sims_local_ids)
         send_sims = 0  # Sims that this rank wants to send
         recv_sims = 0  # Sims that this rank wants to receive
@@ -501,9 +509,7 @@ class ActiveBalancer(LoadBalancer):
             recv_map : dict
                 keys are global IDs of sim states to receive, values are ranks to receive from
         """
-        active_sims_global_ids = list(
-            self._adaptivity_controller.get_active_sim_global_ids()
-        )
+        active_sims_global_ids = self._adaptivity_controller.get_active_gids()
         rank_wise_global_ids_of_active_sims = self._mpi.comm.allgather(
             active_sims_global_ids
         )
@@ -602,7 +608,7 @@ class ActiveBalancer(LoadBalancer):
         global_ids_of_inactive_sims = inactive_gids
 
         for gid in global_ids_of_inactive_sims:
-            assoc_active_gid = self._adaptivity_controller._sim_is_associated_to[gid]
+            assoc_active_gid = self._adaptivity_controller.get_associated_map()[gid]
             rank_of_inactive_sim = ranks_of_sims[gid]
             rank_of_assoc_active_sim = ranks_of_sims[assoc_active_gid]
             if rank_of_inactive_sim != rank_of_assoc_active_sim:
@@ -694,7 +700,7 @@ class ActiveBalancer(LoadBalancer):
 def create_load_balancer(
     profiler: Profiler,
     model_manager: ModelManager,
-    adaptivity_controller: Optional[AdaptivityCalculator],
+    adaptivity_controller: AdaptivityInterface,
     sim_container: SimulationContainer,
     log: Logger,
     config: Config,

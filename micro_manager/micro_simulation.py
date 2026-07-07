@@ -7,6 +7,7 @@ created object is uniquely identifiable in a global setting.
 from abc import ABC, abstractmethod
 import inspect
 import importlib as ipl
+from typing import Optional, Dict, Any, Tuple, List
 
 from .tasking.task import (
     ConstructTask,
@@ -370,8 +371,10 @@ class MicroSimulationClass:
         return self._sim_cls
 
     def check_initialize(
-        self, test_instance: MicroSimulationInterface, test_input: dict
-    ) -> tuple[bool, bool]:
+        self,
+        test_instance: MicroSimulationInterface,
+        test_input: Optional[Dict[str, Any]],
+    ) -> Tuple[bool, bool, bool, Optional[Dict[str, Any]]]:
         """
         Check whether the micro simulation class implements ``initialize``.
 
@@ -381,56 +384,53 @@ class MicroSimulationClass:
 
         Parameters
         ----------
-        test_instance : object
+        test_instance : MicroSimulationInterface
             An instance of the micro simulation class used for signature probing.
-        test_input : dict
+        test_input : Optional[Dict[str, Any]]
             Sample input data used to probe whether ``initialize`` accepts arguments.
 
         Returns
         -------
-        check_result : tuple[bool, bool]
-            (has_initialize, requires_initial_data)
+        check_result : Tuple[bool, bool, bool, Optional[Dict[str, Any]]]
+            (has_initialize, requires_initial_data, has_return_value, return_value)
         """
         if not test_instance.requires_initialize():
-            return False, False
+            return False, False, False, None
 
         has_args = False
+        has_return_value = False
+        result = None
 
-        # Try to get the signature of the initialize() method, if it is written in Python
+        # Try to call the initialize() method without initial data
         try:
-            argspec = inspect.getfullargspec(self._sim_cls.initialize)
-            # The first argument in the signature is self
-            if len(argspec.args) == 1:
-                has_args = False
-            elif len(argspec.args) == 2:
+            result = test_instance.initialize()
+            has_args = False
+        except TypeError:
+            self._log.log_info_rank_zero(
+                "The initialize() method of the micro simulation has arguments. "
+                "Attempting to call it with initial data."
+            )
+
+            if test_input is None:
+                raise Exception(
+                    "The initialize() method of the Micro simulation requires initial data, "
+                    "but no initial macro data has been provided."
+                )
+
+            try:
+                result = test_instance.initialize(test_input)
                 has_args = True
-            else:
+            except TypeError:
                 raise Exception(
                     "The initialize() method of the Micro simulation has an incorrect number of arguments."
                 )
-        except TypeError:
-            self._log.log_info_rank_zero(
-                "The signature of initialize() method of the micro simulation cannot be determined. "
-                + "Trying to determine the signature by calling the method."
-            )
-            # Try to call the initialize() method without initial data
-            try:
-                test_instance.initialize()
-                has_args = False
-            except TypeError:
-                self._log.log_info_rank_zero(
-                    "The initialize() method of the micro simulation has arguments. "
-                    + "Attempting to call it again with initial data."
-                )
-                try:
-                    test_instance.initialize(test_input)
-                    has_args = True
-                except TypeError:
-                    raise Exception(
-                        "The initialize() method of the Micro simulation has an incorrect number of arguments."
-                    )
+        has_return_value = result is not None
 
-        return True, has_args
+        if has_return_value:
+            if type(result) != dict:
+                raise Exception("The initialize() method must return a dict.")
+
+        return True, has_args, has_return_value, result
 
     def check_output(self) -> bool:
         """

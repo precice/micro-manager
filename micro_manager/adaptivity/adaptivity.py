@@ -1,25 +1,72 @@
 """
 Functionality for adaptive initialization and control of micro simulations
 """
-
+from collections import defaultdict
 from math import exp
-from typing import Callable
-from micro_manager.tools.logging_wrapper import Logger
+from typing import Callable, Dict, Optional, List, Any, Union, Tuple
+from abc import ABC
+
 from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.model_manager import ModelManager
 from micro_manager.simulation_container import SimulationContainer
+from micro_manager.adaptivity.adaptivity_interface import AdaptivityInterface
+from micro_manager.tools.profiling import Profiler
+from micro_manager.tools.logging_wrapper import Logger
 from micro_manager.tools.mpi_handler import MPIHandler
 
 import numpy as np
 
 
-class AdaptivityCalculator:
+class NoOpAdaptivity(AdaptivityInterface):
+    """
+    Adaptivity implementation that does not perform any adaptivity.
+    All micro problems are active in all time windows.
+    """
+
+    def __init__(self, container: SimulationContainer) -> None:
+        self._container: SimulationContainer = container
+
+    def get_active_steps(self) -> Dict[int, int]:
+        return defaultdict(lambda: 0)
+
+    def get_active_lids(self) -> List[int]:
+        return list(self._container.range_lid)
+
+    def get_inactive_lids(self) -> List[int]:
+        return []
+
+    def get_active_gids(self) -> List[int]:
+        return self._container.local_gids
+
+    def get_inactive_gids(self) -> List[int]:
+        return []
+
+    def get_full_field_micro_output(
+        self,
+        micro_input: List[Dict[str, Any]],
+        micro_output: List[Optional[Dict[str, Any]]],
+    ) -> List[Dict[str, Any]]:
+        if any([entry is None for entry in micro_output]):
+            raise RuntimeError(
+                "Some micro outputs are None. NoOpAdaptivity requires fully populated micro output."
+            )
+        return micro_output
+
+    def get_adaptivity_buffer(self) -> Dict[str, List[Any]]:
+        return {}
+
+    def get_associated_map(self) -> Dict[int, int]:
+        return {}
+
+
+class AdaptivityCalculator(AdaptivityInterface, ABC):
     def __init__(
         self,
         config: Config,
         nsims: int,
         sim_container: SimulationContainer,
+        profiler: Profiler,
         micro_problem_cls: MicroSimulationClass,
         model_manager: ModelManager,
         base_logger: Logger,
@@ -33,9 +80,11 @@ class AdaptivityCalculator:
         config : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
         nsims : int
-            Number of micro simulations.
+            Initial number of micro simulations.
         sim_container : SimulationContainer
             Simulation container object.
+        profiler: Profiler
+            Profiler object
         micro_problem_cls : callable
             Class of micro problem.
         model_manager : object
@@ -45,84 +94,224 @@ class AdaptivityCalculator:
         mpi : MPIHandler
             mpi handler object
         """
-        self._refine_const = config.adaptivity_refining_constant()
-        self._coarse_const = config.adaptivity_coarsening_constant()
-        self._hist_param = config.adaptivity_history_param()
-        self._adaptivity_data_names = config.data_for_adaptivity()
-        self._adaptivity_type = config.adaptivity_type()
-        self._adaptivity_output_type = config.adaptivity_output_type()
-
-        self._micro_problem_cls = micro_problem_cls
-        self._model_manager = model_manager
+        # ===============================
+        # Other Modules and Configuration
+        # ===============================
+        self._micro_problem_cls: MicroSimulationClass = micro_problem_cls
+        self._model_manager: ModelManager = model_manager
         self._sim_container: SimulationContainer = sim_container
+        self._profiler: Profiler = profiler
+        self._mpi: MPIHandler = mpi
+        self._base_logger: Logger = base_logger
+        self._logger_global_metrics: Optional[Logger] = None
+        self._logger_local_metrics: Optional[Logger] = None
+        self._interpolation = (
+            None  # to be init by inheriting class (TODO needs interface)
+        )
+        self._interp_min: int = -1
+        self._mappings: List[Tuple[List[str], List[str]]] = []
+        self._mapping_configs: List[Dict[str, Any]] = []
 
-        self._coarse_tol = 0.0
-        self._ref_tol = 0.0
+        self._refine_const: float = config.adaptivity_refining_constant()
+        self._coarse_const: float = config.adaptivity_coarsening_constant()
+        self._hist_param: float = config.adaptivity_history_param()
 
-        self._mpi = mpi
-        self._base_logger = base_logger
+        self._coarse_tol: float = 0.0
+        self._ref_tol: float = 0.0
+        self._max_similarity_dist: float = 0.0
 
-        self._max_similarity_dist = 0.0
+        self._similarity_measure: Callable[
+            [np.ndarray], np.ndarray
+        ] = self._get_similarity_measure(config.adaptivity_similarity_measure())
 
-        self._interpolation = None
-        self._interp_min = -1
-        self._mappings = []
-        self._mapping_configs = []
-        mappings = config.adaptivity_mapping_configs()
-        self._load_mappings(mappings)
+        self._data_names: List[str] = config.data_for_adaptivity()
+        # Names of macro data to be used for adaptivity computation
+        self._macro_data_names: List[str] = []
+        # Names of micro data to be used for adaptivity computation
+        self._micro_data_names: List[str] = []
+        self._run_every_step: bool = config.enable_adaptivity_each_implicit_iteration()
+        self._n: int = config.adaptivity_n()
+        self._output_n: int = config.adaptivity_output_n()
 
+        # ===============================
+        #         Data Buffers
+        # ===============================
+        self._data_for_adaptivity: Dict[str, List[Any]] = dict()
         # is_sim_active: 1D array having state (active or inactive) of each micro simulation
         # Start adaptivity calculation with all sims active
         # This array is modified in place via the function update_active_sims and update_inactive_sims
-        self._is_sim_active = np.array([True] * nsims, dtype=np.bool_)
-
+        self._is_sim_active: np.ndarray = np.array([True] * nsims, dtype=np.bool_)
+        self._sim_active_steps: Dict[int, int] = {
+            gid: 0 for gid in self._sim_container.local_gids
+        }
         # sim_is_associated_to: 1D array with values of associated simulations of inactive simulations. Active simulations have None
         # Active sims do not have an associated sim
         # This array is modified in place via the function associate_inactive_to_active
-        self._sim_is_associated_to = np.full((nsims), -2, dtype=np.intc)
+        self._sim_is_associated_to: Dict[int, int] = {}
+        self._just_deactivated: List[int] = []
+        self._similarity_dists: np.ndarray = np.empty(shape=0)
 
-        self._just_deactivated: list[int] = []
+        # ===============================
+        #      Member Initialization
+        # ===============================
+        self.update_buffers(alloc=True)
 
-        self._similarity_measure = self._get_similarity_measure(
-            config.adaptivity_similarity_measure()
-        )
+        # initialize mappings
+        mappings = config.adaptivity_mapping_configs()
+        self._load_mappings(mappings)
 
+        # initialize read/write names
+        coupling_read_names = config.read_data_names()
+        coupling_write_names = config.write_data_names()
+        for name in self._data_names:
+            if name in coupling_read_names:
+                self._macro_data_names.append(name)
+            if name in coupling_write_names:
+                self._micro_data_names.append(name)
+
+        # initialize output
         output_dir = config.output_dir()
-
+        metrics_output_dir = "adaptivity-metrics"
         if output_dir is not None:
-            metrics_output_dir = output_dir + "/adaptivity-metrics"
-        else:
-            metrics_output_dir = "adaptivity-metrics"
+            metrics_output_dir = f"{output_dir}/{metrics_output_dir}"
+        output_type = config.adaptivity_output_type()
 
-        if self._mpi.rank == 0 and (
-            self._adaptivity_output_type == "global"
-            or self._adaptivity_output_type == "all"
-        ):
-            self._global_metrics_logger = Logger(
+        # initialize global logging
+        if output_type in ["global", "all"]:
+            self._logger_global_metrics = Logger(
                 "global-metrics-logger",
                 metrics_output_dir + "-global.csv",
                 self._mpi.rank,
                 csv_logger=True,
             )
-
-            self._global_metrics_logger.log_info(
+            self._logger_global_metrics.log_info_rank_zero(
                 "n|n active|n inactive|avg active|avg inactive|max active|rank of max active|max inactive|rank of max inactive"
             )
 
-        if (
-            self._adaptivity_output_type == "local"
-            or self._adaptivity_output_type == "all"
-        ):
-            self._metrics_logger = Logger(
+        # initialize local logging
+        if output_type in ["local", "all"]:
+            self._logger_local_metrics = Logger(
                 "metrics-logger",
                 metrics_output_dir + "-" + str(self._mpi.rank) + ".csv",
                 self._mpi.rank,
                 csv_logger=True,
             )
+            self._logger_local_metrics.log_info("n|n active|n inactive|assoc ranks")
 
-            self._metrics_logger.log_info("n|n active|n inactive|assoc ranks")
+    def compute_step(self, n: int, first_iteration: bool, dt: float):
+        # See AdaptivityInterface for docstring
+        if n % self._n != 0:
+            return
+        if not (self._run_every_step or first_iteration):
+            return
 
-    def _load_mappings(self, mappings: list) -> None:
+        with self._profiler.measure("micro_manager.solve.adaptivity_computation"):
+            # compute adaptivity
+            self.compute(dt)
+
+            # update counters
+            active_gids = self.get_active_gids()
+
+            for gid in active_gids:
+                self._sim_active_steps[gid] += 1
+            # Write a checkpoint if a simulation is just activated.
+            # This checkpoint will be asynchronous to the checkpoints written at the start of the time window.
+            self._sim_container.write_checkpoints(only_none=True)
+
+    def get_active_steps(self) -> Dict[int, int]:
+        # See AdaptivityInterface for docstring
+        return self._sim_active_steps
+
+    def get_macro_data_names(self) -> Optional[List[str]]:
+        # See AdaptivityInterface for docstring
+        return self._macro_data_names
+
+    def get_micro_data_names(self) -> Optional[List[str]]:
+        # See AdaptivityInterface for docstring
+        return self._micro_data_names
+
+    def postprocess_active_output(self, micro_output: Dict[str, Any], gid: int) -> None:
+        # See AdaptivityInterface for docstring
+        micro_output["Active-State"] = 1
+        micro_output["Active-Steps"] = self._sim_active_steps[gid]
+
+    def postprocess_inactive_output(
+        self, micro_output: Dict[str, Any], gid: int
+    ) -> None:
+        # See AdaptivityInterface for docstring
+        micro_output["Active-State"] = 0
+        micro_output["Active-Steps"] = self._sim_active_steps[gid]
+
+    def postprocess_remove(self, micro_output: Dict[str, Any]) -> None:
+        # See AdaptivityInterface for docstring
+        del micro_output["Active-State"]
+        del micro_output["Active-Steps"]
+
+    def get_associated_map(self) -> Dict[int, int]:
+        # See AdaptivityInterface for docstring
+        return self._sim_is_associated_to
+
+    def get_adaptivity_buffer(self) -> Dict[str, List[Any]]:
+        # See AdaptivityInterface for docstring
+        return self._data_for_adaptivity
+
+    def get_read_buffer(self) -> Optional[Dict[str, List[Any]]]:
+        # See AdaptivityInterface for docstring
+        return {}
+
+    def update_buffers(
+        self,
+        micro_data: Optional[Union[List[Dict[str, Any]], Dict[str, List[Any]]]] = None,
+        macro_data: Optional[Union[List[Dict[str, Any]], Dict[str, List[Any]]]] = None,
+        invert: bool = False,
+        alloc: bool = False,
+    ) -> None:
+        # See AdaptivityInterface for docstring
+        if alloc:
+            for name in self._data_names:
+                self._data_for_adaptivity[name] = [
+                    0
+                ] * self._sim_container.local_num_sims
+
+        self._update_data_buffers_impl(self._micro_data_names, micro_data, invert)
+        self._update_data_buffers_impl(self._macro_data_names, macro_data, invert)
+
+    def _update_data_buffers_impl(
+        self,
+        names: List[str],
+        data: Optional[Union[List[Dict[str, Any]], Dict[str, List[Any]]]] = None,
+        invert: bool = False,
+    ) -> None:
+        """
+        Copies data from the provided data buffer into the adaptivity buffer with the selected names.
+
+        Parameters
+        ----------
+        names : List[str]
+            Name selection.
+        data : Optional[Union[List[Dict[str, Any]], Dict[str, List[Any]]]]
+            Data to be copied.
+        invert : bool
+            If True, then the expected data format is a dictionary of lists.
+        """
+        if data is None:
+            return
+
+        # writing loops explicitly to avoid branching within
+        if invert:
+            if len(data.keys()) == 0:
+                return
+            for name in names:
+                for lid in self._sim_container.range_lid:
+                    self._data_for_adaptivity[name][lid] = data[name][lid]
+        else:
+            if len(data) == 0:
+                return
+            for lid in self._sim_container.range_lid:
+                for name in names:
+                    self._data_for_adaptivity[name][lid] = data[lid][name]
+
+    def _load_mappings(self, mappings: List[Dict[str, Any]]) -> None:
         """
         Translates the mapping information provided from the configuration file into a
         interpolation method parseable structure.
@@ -132,7 +321,7 @@ class AdaptivityCalculator:
 
         Parameters
         ----------
-        mappings : list
+        mappings : List[Dict[str, Any]]
             List of mappings as provided by the configuration file.
         """
         for mapping in mappings:
@@ -228,7 +417,7 @@ class AdaptivityCalculator:
 
             self._sim_is_associated_to[inactive_id] = associated_active_id
 
-    def _check_for_activation(self, inactive_id: int, active_ids: np.ndarray) -> bool:
+    def _check_for_activation(self, inactive_id: int, active_ids: List[int]) -> bool:
         """
         Check if an inactive simulation needs to be activated.
 
@@ -236,8 +425,8 @@ class AdaptivityCalculator:
         ----------
         inactive_id : int
             ID of inactive simulation which is checked for activation.
-        active_ids : numpy array
-            1D array having IDs of active micro simulations.
+        active_ids : List[int]
+            List containing IDs of active micro simulations.
         Return
         ------
         tag : bool
@@ -248,7 +437,7 @@ class AdaptivityCalculator:
         # If inactive sim is not similar to any active sim, activate it
         return min(dists) > self._ref_tol
 
-    def _check_for_deactivation(self, active_id: int, active_ids: list) -> bool:
+    def _check_for_deactivation(self, active_id: int, active_ids: List[int]) -> bool:
         """
         Check if an active simulation needs to be deactivated.
 
@@ -256,7 +445,7 @@ class AdaptivityCalculator:
         ----------
         active_id : int
             ID of active simulation which is checked for deactivation.
-        active_ids : list
+        active_ids : List[int]
             List having IDs of active micro simulations.
 
         Return
@@ -271,7 +460,11 @@ class AdaptivityCalculator:
                     return True
         return False
 
-    def _interpolate_output(self, micro_input, micro_sims_output) -> None:
+    def _interpolate_output(
+        self,
+        micro_input: List[Dict[str, Any]],
+        micro_sims_output: List[Dict[str, Any]],
+    ) -> None:
         """
         Interpolates the micro output based on the available inputs and outputs using the selected
         interpolation method and desired mappings.
@@ -284,10 +477,10 @@ class AdaptivityCalculator:
 
         Parameters
         ----------
-        micro_input : list
+        micro_input : List[Dict[str, Any]]
             List of all local micro simulation inputs.
 
-        micro_sims_output : list
+        micro_sims_output : List[Dict[str, Any]]
             List of all local micro simulation outputs. (current state)
         """
         targets = []
@@ -296,8 +489,8 @@ class AdaptivityCalculator:
         assert len(targets) == len(set(targets))
 
         # precompute arg sizes
-        active_lids = self.get_active_sim_local_ids()
-        inactive_lids = self.get_inactive_sim_local_ids()
+        active_lids = self.get_active_lids()
+        inactive_lids = self.get_inactive_lids()
         arg_sizes = {}
         for name, value in micro_input[-1].items():
             arg_sizes[name] = (
@@ -354,8 +547,9 @@ class AdaptivityCalculator:
                     ]
                     offset += arg_sizes[dst_arg]
 
+    @staticmethod
     def _get_similarity_measure(
-        self, similarity_measure: str
+        similarity_measure: str,
     ) -> Callable[[np.ndarray], np.ndarray]:
         """
         Get similarity measure to be used for similarity calculation
@@ -371,19 +565,20 @@ class AdaptivityCalculator:
             Function to be used for similarity calculation. Takes data as input and returns similarity measure
         """
         if similarity_measure == "L1":
-            return self._l1
+            return AdaptivityCalculator._l1
         elif similarity_measure == "L2":
-            return self._l2
+            return AdaptivityCalculator._l2
         elif similarity_measure == "L1rel":
-            return self._l1rel
+            return AdaptivityCalculator._l1rel
         elif similarity_measure == "L2rel":
-            return self._l2rel
+            return AdaptivityCalculator._l2rel
         else:
             raise ValueError(
                 'Similarity measure not supported. Currently supported similarity measures are "L1", "L2", "L1rel", "L2rel".'
             )
 
-    def _l1(self, data: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def _l1(data: np.ndarray) -> np.ndarray:
         """
         Calculate L1 norm of data
 
@@ -399,7 +594,8 @@ class AdaptivityCalculator:
         """
         return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=1, axis=-1)
 
-    def _l2(self, data: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def _l2(data: np.ndarray) -> np.ndarray:
         """
         Calculate L2 norm of data
 
@@ -415,7 +611,8 @@ class AdaptivityCalculator:
         """
         return np.linalg.norm(data[np.newaxis, :] - data[:, np.newaxis], ord=2, axis=-1)
 
-    def _l1rel(self, data: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def _l1rel(data: np.ndarray) -> np.ndarray:
         """
         Calculate L1 norm of relative difference of data.
         The relative difference is calculated by dividing the difference of two data points by the maximum of the absolute value of the two data points.
@@ -440,7 +637,8 @@ class AdaptivityCalculator:
             axis=-1,
         )
 
-    def _l2rel(self, data: np.ndarray) -> np.ndarray:
+    @staticmethod
+    def _l2rel(data: np.ndarray) -> np.ndarray:
         """
         Calculate L2 norm of relative difference of data.
         The relative difference is calculated by dividing the difference of two data points by the maximum of the absolute value of the two data points.

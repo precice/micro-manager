@@ -3,6 +3,7 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
+from micro_manager.adaptivity.adaptivity import NoOpAdaptivity
 from micro_manager.simulation_container import SimulationContainer
 from micro_manager.adaptivity.model_adaptivity import ModelAdaptivity
 from micro_manager.micro_manager import MicroManagerCoupling
@@ -169,7 +170,7 @@ class TestModelAdaptivity(TestCase):
         manager = MicroManagerCoupling.__new__(MicroManagerCoupling)
         manager._mpi = mpi
         manager._model_adaptivity_controller = controller
-        manager._is_adaptivity_on = False
+        manager._adaptivity_controller = NoOpAdaptivity(container)
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
         manager._t = 1.0
         manager._sim_container = container
@@ -223,7 +224,7 @@ class TestModelAdaptivity(TestCase):
         manager = MicroManagerCoupling.__new__(MicroManagerCoupling)
         manager._mpi = mpi
         manager._model_adaptivity_controller = controller
-        manager._is_adaptivity_on = False
+        manager._adaptivity_controller = NoOpAdaptivity(container)
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
         manager._t = 1.0
         manager._sim_container = container

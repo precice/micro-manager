@@ -43,6 +43,8 @@ class MinimalSim(MicroSimulationInterface):
 
 class SimWithInitialize(MinimalSim):
     def initialize(self, data=None):
+        if data is None:
+            raise TypeError("Init needs args!")
         return {"init": True}
 
 
@@ -469,9 +471,13 @@ class TestMicroSimulationClassMethods(unittest.TestCase):
 
     def test_check_initialize_false(self):
         instance = MinimalSim(0)
-        has_init, has_args = self.sim_cls.check_initialize(instance, {})
+        has_init, has_args, has_return, return_val = self.sim_cls.check_initialize(
+            instance, {}
+        )
         self.assertFalse(has_init)
         self.assertFalse(has_args)
+        self.assertFalse(has_return)
+        self.assertTrue(return_val is None)
 
     def test_check_initialize_true_no_args(self):
         class SimInitNoArgs(MinimalSim):
@@ -481,17 +487,26 @@ class TestMicroSimulationClassMethods(unittest.TestCase):
         log = MagicMock()
         sim_cls = create_simulation_class(log, SimInitNoArgs, "dummy", 1)
         instance = SimInitNoArgs(0)
-        has_init, has_args = sim_cls.check_initialize(instance, {})
+        has_init, has_args, has_return, return_val = sim_cls.check_initialize(
+            instance, {}
+        )
         self.assertTrue(has_init)
         self.assertFalse(has_args)
+        self.assertFalse(has_return)
+        self.assertTrue(return_val is None)
 
     def test_check_initialize_true_with_args(self):
         instance = SimWithInitialize(0)
-        has_init, has_args = self.sim_cls_with_init.check_initialize(
-            instance, {"data": 1}
-        )
+        (
+            has_init,
+            has_args,
+            has_return,
+            return_val,
+        ) = self.sim_cls_with_init.check_initialize(instance, {"data": 1})
         self.assertTrue(has_init)
         self.assertTrue(has_args)
+        self.assertTrue(has_return)
+        self.assertDictEqual(return_val, {"init": True})
 
     def test_call_creates_wrapper(self):
         wrapper = self.sim_cls(0)
