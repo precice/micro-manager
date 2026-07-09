@@ -509,6 +509,9 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
                     micro_sims_output[lid][dst_arg] = output_data_inactive[
                         idx, offset : offset + arg_sizes[dst_arg]
                     ]
+                    # unwrap array of size 1
+                    if arg_sizes[dst_arg] == 1:
+                        micro_sims_output[lid][dst_arg] = micro_sims_output[lid][dst_arg][0]
                     offset += arg_sizes[dst_arg]
 
     @staticmethod
