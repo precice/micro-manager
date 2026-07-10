@@ -209,6 +209,7 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
 
             # update counters
             active_gids = self.get_active_gids()
+
             for gid in active_gids:
                 self._sim_active_steps[gid] += 1
             # Write a checkpoint if a simulation is just activated.
