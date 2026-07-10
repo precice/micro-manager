@@ -78,14 +78,15 @@ class Interpolator(ABC):
         """
         pass
 
-    def interpolate(self) -> np.ndarray:
+    def interpolate(self) -> Optional[np.ndarray]:
         """
         Interpolates the function values at the set query points.
+        Returns None on interpolation failure.
 
         Returns
         -------
-        interp_result : np.ndarray
-            Interpolated function values.
+        interp_result : Optional[np.ndarray]
+            Interpolated function values. None, if unsuccessful.
         """
         pass
 
@@ -274,10 +275,13 @@ class KNN(Interpolator):
         self._x_query = x_
         self._f = f
 
-    def interpolate(self) -> np.ndarray:
+    def interpolate(self) -> Optional[np.ndarray]:
         assert self._x is not None
         assert self._x_query is not None
         assert self._f is not None
+
+        if self._x.shape[0] == 0:
+            return None
 
         f_query = np.zeros(shape=(self._x_query.shape[0], self._f.shape[-1]))
         for idx_query in range(self._x_query.shape[0]):
@@ -484,13 +488,13 @@ class RBF(Interpolator):
         """
         self._domain.set_local_data(x, x_, f)
 
-    def interpolate(self) -> np.ndarray:
+    def interpolate(self) -> Optional[np.ndarray]:
         """
         Interpolates the function values at the set query points.
 
         Returns
         -------
-        interp_result : np.ndarray
+        interp_result : Optional[np.ndarray]
             Interpolated function values.
         """
         self._x, self._x_query, self._f = self._domain.decompose()
@@ -499,7 +503,8 @@ class RBF(Interpolator):
         xq, fq = self.evaluate_interpolant(interp, self._x_query)
 
         fq_local = self._domain.reassemble(xq, fq)
-
+        if fq_local.shape[0] == 0:
+            return None
         return fq_local
 
     @classmethod

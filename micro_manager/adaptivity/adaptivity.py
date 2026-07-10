@@ -502,6 +502,8 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
             interp = Interpolator.get_instance(self._interp_ids[m_idx])
             interp.set_local_data(input_data, input_data_inactive, output_data)
             output_data_inactive = interp.interpolate()
+            if output_data_inactive is None:
+                continue
 
             for idx, lid in enumerate(inactive_lids):
                 offset = 0
@@ -511,7 +513,9 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
                     ]
                     # unwrap array of size 1
                     if arg_sizes[dst_arg] == 1:
-                        micro_sims_output[lid][dst_arg] = micro_sims_output[lid][dst_arg][0]
+                        micro_sims_output[lid][dst_arg] = micro_sims_output[lid][
+                            dst_arg
+                        ][0]
                     offset += arg_sizes[dst_arg]
 
     @staticmethod
