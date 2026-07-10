@@ -214,11 +214,11 @@ of `write_data_names` must be mutually disjunct. Mappings can be defined as:
 ]
 ```
 
-| Parameter       | Description                                      | Default |
-|-----------------|--------------------------------------------------|---------|
-| `src_fields`    | List of entries from `read_data_names`           | `None`  |
-| `dst_fields`    | List of entries from `write_data_names`          | `None`  |
-| `interp_id`     | ID referencing the interpolationo configuration. | `None`  |
+| Parameter       | Description                                     | Default |
+|-----------------|-------------------------------------------------|---------|
+| `src_fields`    | List of entries from `read_data_names`          | `None`  |
+| `dst_fields`    | List of entries from `write_data_names`         | `None`  |
+| `interp_id`     | ID referencing the interpolation configuration. | `None`  |
 
 Example of adaptivity configuration is
 
@@ -351,6 +351,7 @@ assumes Intel MPI.
 ## Interpolate a crashed micro simulation
 
 The Micro Manager can derive the output of a crashed micro simulation by interpolating outputs from similar simulations.
+
 To enable this, set`"interpolate_crash": true` in the `simulation_params` section of the configuration file.
 Further crash handling options can be specified under the `"interpolate_crash_params"` section using `interp_id` and `threshold`.
 
