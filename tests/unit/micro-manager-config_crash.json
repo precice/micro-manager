@@ -10,6 +10,10 @@
         "micro_dt": 1.0,
         "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
         "interpolate_crash": true,
+        "interpolate_crash_params": {
+            "interp_id": "crash",
+            "threshold": 0.2
+        },
         "adaptivity": true,
         "adaptivity_settings": {
             "type": "local",
@@ -19,7 +23,26 @@
             "refining_constant": 0.4,
             "every_implicit_iteration": false,
             "similarity_measure": "L1"
-        }
+        },
+        "interpolation_configs": [
+            {
+                "type": "KNN",
+                "id": "crash",
+                "k": 4
+            },
+            {
+                "type": "RBF",
+                "id": "dummy",
+                "rbf_config": {
+                    "basis": {
+                        "type": "gauss",
+                        "eps": 0.5
+                    },
+                    "n_neighbors": 10
+                },
+                "domain_config": "local"
+            }
+        ]
     },
     "diagnostics": {
         "output_micro_sim_solve_time": true,

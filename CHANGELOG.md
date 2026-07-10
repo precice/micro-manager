@@ -2,6 +2,7 @@
 
 ## latest
 
+- Refactored interpolation to uniform interface and moved crash handling to dedicated module. [#298](https://github.com/precice/micro-manager/pull/298)
 - Added uniform interface for Adaptivity for all cases [#294](https://github.com/precice/micro-manager/pull/294)
 - Fixed simulation activation issue of calling `get_state` prior to full initialization [#308](https://github.com/precice/micro-manager/pull/308)
 - Skipped double initialization of sim with id 0 when lazy initialization is used [#307](https://github.com/precice/micro-manager/pull/307)

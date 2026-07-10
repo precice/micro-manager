@@ -12,10 +12,10 @@ from .adaptivity import AdaptivityCalculator
 from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.tools.logging_wrapper import Logger
-from micro_manager.tools.mpi_handler import MPIHandler, MPI, MPIHandlerRankLocal
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 from micro_manager.tools.profiling import Profiler
 from micro_manager.model_manager import ModelManager
-from micro_manager.interpolation import RBF_PU
+from micro_manager.interpolation import Interpolator
 from micro_manager.simulation_container import SimulationContainer
 
 
@@ -60,11 +60,6 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             base_logger,
             mpi,
         )
-        # using local handler to only perform local interpolation
-        self._interpolation = RBF_PU(
-            base_logger,
-            MPIHandlerRankLocal,
-        )
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
@@ -72,6 +67,14 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             (sim_container.local_num_sims, sim_container.local_num_sims)
         )
         self._max_similarity_dist_local: float = 0.0
+
+        # make sure that the loaded interpolation schemes are local
+        for interp_id in self._interp_ids:
+            interp = Interpolator.get_instance(interp_id)
+            if not interp.is_local():
+                raise RuntimeError(
+                    f"Interpolation Config {interp_id} must be local for Local Adaptivity."
+                )
 
     def compute(self, dt: float) -> None:
         """
@@ -184,6 +187,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         micro_sims_output = deepcopy(micro_output)
 
         inactive_lids = self.get_inactive_lids()
+        if len(inactive_lids) == 0:
+            return micro_sims_output
 
         for inactive_lid in inactive_lids:
             micro_sims_output[inactive_lid] = deepcopy(

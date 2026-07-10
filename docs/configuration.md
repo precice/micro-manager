@@ -95,6 +95,89 @@ If the parameter `data_from_micro_sims` is set, the data to be output needs to b
 </participant>
 ```
 
+## Interpolation
+
+The Micro Manager allows configuring different interpolation profiles that can be reused by other modules such as adaptivity or crash interpolation.
+Each profile contains information on which interpolation method to use, a unique identifier, and the required parameters of the selected interpolation scheme.
+The profiles are referenced in other modules using the provided identifier.
+Profiles can be specified by providing `"interpolation_configs": []` in the `simulation_params`.
+
+This list provides interpolation configurations. Each configuration must contain a `type` and an `id`.
+Further parameters are `type` dependent. Currently, two types are supported: k-Nearest Neighbors (KNN) and Radial Basis Function (RBF) interpolation.
+The unique `id` is required to load the respective interpolation configuration. Other modules can specify such via the field `interp_id`.
+
+### k-Nearest Neighbors (KNN)
+
+KNN requires the optional dependency `sklearn`. If it is not installed, using KNN will raise errors.
+
+Example configuration:
+
+```json
+{
+    "type": "KNN",
+    "id": "test",
+    "k": 4
+}
+```
+
+Description:
+
+| Parameter | Description                                | Default |
+|-----------|--------------------------------------------|---------|
+| `type`    | Interpolation Method: Here KNN.            | `None`  |
+| `id`      | Unique Identifier, may be a string or int. | `None`  |
+| `k`       | Number of nearest neighbors.               | `1`     |
+
+### Radial Basis Function (RBF)
+
+Example configuration:
+
+```json
+{
+    "type": "RBF",
+    "id": "dummy",
+    "rbf_config": {
+        "basis": {
+            "type": "gauss",
+            "eps": 0.5
+        },
+        "n_neighbors": 10
+    },
+    "domain_config": {
+        "max_filling": 8,
+        "coarsening_factor": 2,
+        "projection": {
+          "type": "std",
+          "target_dims": 2
+        }
+    }
+}
+```
+
+Description:
+
+| Parameter       | Description                                                         | Default |
+|-----------------|---------------------------------------------------------------------|---------|
+| `type`          | Interpolation Method: Here RBF.                                     | `None`  |
+| `id`            | Unique Identifier, may be a string or int.                          | `None`  |
+| `rbf_config`    | RBF interpolation configuration.                                    | `None`  |
+| `domain_config` | Interpolation source domain. Either `"local"` or decomposed global. |         |
+
+A selection of basis functions is available: `c0`, `c2`, `c4`, `c6`, `gauss`.
+For rank local interpolation, `domain_config` can be set to `"local"`.
+If data should be shared across ranks for interpolation, then the domain must be further configured.
+To this end, spatial discretization techniques are used. For better performance, data can be projected to a lower-dimensional space
+using the fields with the highest standard deviation.
+
+| Parameter           | Description                                                               | Default    |
+|---------------------|---------------------------------------------------------------------------|------------|
+| `basis/type`        | RBF basis function: `c0`, `c2`, `c4`, `c6`, `gauss`                       | `None`     |
+| `basis/eps`         | Parameter if basis type is `gauss`                                        | `None`     |
+| `max_filling`       | Tunes maximum filling of tree nodes used during decomposition.            | `8`        |
+| `coarsening_factor` | Adjusts the fidelity of the discretized domain. Only integer values >= 1. | `2`        |
+| `projection`        | Either `std` or `identity`.                                               | `identity` |
+| `target_dims`       | Only if `std` is used. Denotes the target dimension after projection.     | `None`     |
+
 ## Adaptivity
 
 See the [adaptivity](tooling-micro-manager-adaptivity.html) documentation for a detailed explanation about the algorithm and variants.
@@ -126,46 +209,16 @@ of `write_data_names` must be mutually disjunct. Mappings can be defined as:
     {
         "src_fields": ["input1", "input2"],
         "dst_fields": ["output1", "output2"],
-        "n_neighbors": 50,
-        "rbf_config": {
-            "basis": {
-                "type": "c6"
-            }
-        },
-        "domain_config": {
-            "max_filling": 8,
-            "coarsening_factor": 2,
-            "projection": {
-                "type": "std",
-                "target_dims": 3
-            }
-        }
+        "interp_id": "id_used_in_interpolation_config"
     },
 ]
 ```
 
-| Parameter       | Description                             | Default |
-|-----------------|-----------------------------------------|---------|
-| `src_fields`    | List of entries from `read_data_names`  | `None`  |
-| `dst_fields`    | List of entries from `write_data_names` | `None`  |
-| `n_neighbours`  | The minimum amount of support points.   | `50`    |
-| `rbf_config`    | RBF interpolation configuration.        | `None`  |
-| `domain_config` | Function source domain description.     |         |
-
-A selection of basis functions is available: `c0`, `c2`, `c4`, `c6`.
-The domain must be described/further configured as input data is shared across ranks and must be redistributed for interpolation.
-Towards this, spatial discretization techniques are used. For better performance, data can be projected to a lower dimensional space
-using the fields with the highest standard deviation.
-
-| Parameter           | Description                                                               | Default    |
-|---------------------|---------------------------------------------------------------------------|------------|
-| `use_pu`            | Enables PU-RBF. (currently not supported)                                 | `False`    |
-| `pu_overlap`        | Controlls overlap radius for PU decomposition.                            | `0.1`      |
-| `basis`             | RBF basis function: `c0`, `c2`, `c4`, `c6`                                | `None`     |
-| `max_filling`       | Tunes maximum filling of tree nodes used during decomposition.            | `8`        |
-| `coarsening_factor` | Adjusts the fidelity of the discretized domain. Only integer values >= 1. | `2`        |
-| `projection`        | Either `std` or `identity`.                                               | `identity` |
-| `target_dims`       | Only if `std` is used. Denotes the target dimension after projection.     | `None`     |
+| Parameter       | Description                                     | Default |
+|-----------------|-------------------------------------------------|---------|
+| `src_fields`    | List of entries from `read_data_names`          | `None`  |
+| `dst_fields`    | List of entries from `write_data_names`         | `None`  |
+| `interp_id`     | ID referencing the interpolation configuration. | `None`  |
 
 Example of adaptivity configuration is
 
@@ -297,8 +350,15 @@ assumes Intel MPI.
 
 ## Interpolate a crashed micro simulation
 
-If the optional dependency `sklearn` is installed, the Micro Manager will derive the output of a crashed micro simulation by interpolating outputs from similar simulations. To enable this, set
-`"interpolate_crash": true` in the `simulation_params` section of the configuration file.
+The Micro Manager can derive the output of a crashed micro simulation by interpolating outputs from similar simulations.
+
+To enable this, set`"interpolate_crash": true` in the `simulation_params` section of the configuration file.
+Further crash handling options can be specified under the `"interpolate_crash_params"` section using `interp_id` and `threshold`.
+
+| Parameter   | Description                                                                    | Default |
+|-------------|--------------------------------------------------------------------------------|---------|
+| `interp_id` | ID referencing the interpolationo configuration.                               | `None`  |
+| `threshold` | Threshold of simulation crashes beyond which the Micro Manager will terminate. | `0.2`   |
 
 For more details on the interpolation see the [crash handling documentation](tooling-micro-manager-running.html#what-happens-when-a-micro-simulation-crashes).
 
