@@ -820,7 +820,7 @@ class ActiveBalancer(LoadBalancer):
                 self._log.log_warning_rank_zero(
                     "It appears that the micro simulations are already fairly balanced. No load balancing will be done. Try changing the threshold value to induce load balancing."
                 )
-                return send_map, recv_map
+                return self._mpi.create_empty_exchange_map()
             if n_global_send_sims != 0 or n_global_recv_sims != 0:
                 ActiveBalancer._correct_active_exchange_data(
                     global_send_sims,
