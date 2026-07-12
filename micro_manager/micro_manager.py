@@ -32,7 +32,7 @@ from .adaptivity.adaptivity_interface import AdaptivityInterface
 from .domain_decomposition import DomainDecomposer, create_domain_decomposer
 from .tasking.connection import spawn_local_workers
 from .tools.logging_wrapper import Logger
-from .load_balancing import create_load_balancer
+from .load_balancing import create_load_balancer, LoadBalancer
 from .tools.mpi_handler import MPIHandler, MPI
 from .tools.coupling import CouplingHandler
 from .tools.profiling import Profiler
@@ -96,11 +96,13 @@ class MicroManagerCoupling(MicroManager):
 
         self._model_manager = ModelManager(self._logger)
         self._conn = None
-        self._is_load_balancing = (
-            self._config.enable_load_balancing() and self._mpi.is_parallel()
+        self.load_balancing: LoadBalancer = create_load_balancer(
+            self._model_manager,
+            self._sim_container,
+            self._logger,
+            self._config,
+            self._mpi,
         )
-        self._load_balancing_n = self._config.load_balancing_n()
-        self.load_balancing = None
 
     # **************
     # Public methods
@@ -120,7 +122,6 @@ class MicroManagerCoupling(MicroManager):
         # should use ModelAdaptivity methods to coordinate
 
         first_iteration = True
-        lb_counter = -1
 
         # Log initial adaptivity metrics
         self._adaptivity_controller.log_metrics(self._n)
@@ -130,19 +131,13 @@ class MicroManagerCoupling(MicroManager):
             self._adaptivity_controller.compute_step(self._n, first_iteration, dt)
 
             # handle load balancing, in first iteration all sims are assumed to have same cost
-            performed_lb = False
-            if lb_counter % self._load_balancing_n == 0 or first_iteration:
-                # self._participant.start_profiling_section("micro_manager.solve.load_balancing")
-                self.load_balancing.balance()
-
+            performed_lb = self.load_balancing.balance(self._n)
+            if performed_lb:
                 # Reset simulation state checkpoints after load balancing
                 self._sim_container.clear_checkpoints()
                 self._adaptivity_controller.update_buffers(alloc=True)
                 # Reset simulation crash state information after load balancing
                 self._crash_handler.reset()
-                # self._participant.stop_last_profiling_section()
-                performed_lb = True
-            lb_counter += 1
 
             if self._coupling.requires_writing_checkpoint() or performed_lb:
                 self._sim_container.write_checkpoints()
@@ -156,10 +151,7 @@ class MicroManagerCoupling(MicroManager):
             with self._profiler.measure("micro_manager.solve.solve_micro_simulations"):
                 micro_sims_output = micro_sim_solve(micro_sims_input, dt)
                 self.load_balancing.update()
-
-            if self._is_load_balancing:
-                for i in range(self._sim_container.local_num_sims):
-                    micro_sims_output[i]["rank_of_sim"] = self._mpi.rank
+            self.load_balancing.postprocess_sims(micro_sims_output)
 
             # Check if more than a certain percentage of the micro simulations have crashed and terminate if threshold is exceeded
             self._crash_handler.check_crash_ratio()
@@ -218,7 +210,7 @@ class MicroManagerCoupling(MicroManager):
                 self._config, self._mpi, self._logger
             )
             access_region = self._config.macro_domain_bounds()
-            if not self._is_load_balancing:
+            if not (self._config.enable_load_balancing() and self._mpi.is_parallel()):
                 access_region = domain_decomposer.get_mesh_bounds()
             self._coupling.set_access_region(access_region)
 
@@ -310,15 +302,7 @@ class MicroManagerCoupling(MicroManager):
             self._model_manager,
         )
 
-        self.load_balancing = create_load_balancer(
-            self._profiler,
-            self._model_manager,
-            self._adaptivity_controller,
-            self._sim_container,
-            self._logger,
-            self._config,
-            self._mpi,
-        )
+        self.load_balancing.initialize(self._profiler, self._adaptivity_controller)
 
         # Read initial data from preCICE, if it is available
         read_buffer = self._adaptivity_controller.get_read_buffer()

@@ -2,6 +2,7 @@
 
 ## latest
 
+- Refactored LoadBalancing into an interface for more clarity [#300](https://github.com/precice/micro-manager/pull/300)
 - Added a general diagnostics interface and refactored memory usage accordingly [#299](https://github.com/precice/micro-manager/pull/299)
 - Refactored interpolation to uniform interface and moved crash handling to dedicated module. [#298](https://github.com/precice/micro-manager/pull/298)
 - Added uniform interface for Adaptivity for all cases [#294](https://github.com/precice/micro-manager/pull/294)
