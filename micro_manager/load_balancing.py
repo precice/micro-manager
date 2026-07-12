@@ -119,7 +119,10 @@ class LoadBalancer(ABC):
     def update(self):
         """
         Needs to be called after all micro simulations have finished their solve method.
-        Updates the load balancing metric and shares it globally.
+        Notifies the load balancing implementation that all micro simulations were solved
+        and were marked with pre_sim_solve and post_sim_solve.
+        If required, the internal state should be synchronized globally to prepare for a
+        subsequent load balancing call.
         """
         pass
 
@@ -139,7 +142,7 @@ class LoadBalancer(ABC):
         self, gid: int, inactive_set: Set[int] = set()
     ) -> LoadBalancerSimData:
         """
-        Collects all required data to exchange simulations between ranks.
+        Collects all required data to exchange the specified simulation between ranks.
 
         Parameters
         ----------
@@ -251,7 +254,7 @@ class LoadBalancer(ABC):
         Parameters
         ----------
         active_gids: Set[int]
-            set of global active gids, if omitted will be recomputed.
+            set of global active gids, if omitted, will be recomputed.
 
         Returns
         -------
