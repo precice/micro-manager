@@ -1,9 +1,9 @@
 ---
-title: Running with multi-level parallelization
-permalink: tooling-micro-manager-multi-level-parallelization.html
+title: Running with two-level parallelization
+permalink: tooling-micro-manager-two-level-parallelization.html
 aliases:
-  - /tooling-micro-manager-multi-level-parallelization.html
-keywords: tooling, macro-micro, parallelization, multi-level parallelization, workers, tasking
+  - /tooling-micro-manager-two-level-parallelization.html
+keywords: tooling, macro-micro, parallelization, two-level parallelization, workers, tasking
 summary: Micro Manager supports MPI parallelized micro solvers with multi-level parallelization.
 ---
 
@@ -13,7 +13,7 @@ By default, running the Micro Manager in parallel with MPI results in $N$ ranks 
 In this approach, each Micro Manager instance assumes, that micro simulations are either solved in serial or use shared-memory parallelization.
 If one attempts to run individual micro simulations with MPI, incorrect behavior occurs because different micro simulation instances communicate with each other. Further, this will likely lead to race conditions or deadlocks.
 
-To support MPI parallelization for individual micro simulations, multi-level parallelization is introduced. In this execution mode, each Micro Manager rank $n\in [N]$ creates its own sub-process group of $M$ ranks with MPI.
+To support MPI parallelization for individual micro simulations, two-level parallelization is introduced. In this execution mode, each Micro Manager rank $n\in [N]$ creates its own sub-process group of $M$ ranks with MPI.
 This results in a total of $N\cdot M$ processes. Each subprocess group consisting of $M$ processes run a "worker" process. The subprocess groups are henceforth referred to as workers. The worker executable is a generic task handler. It receives incoming tasks, decodes them, solves the request, and sends back the results. Workers have a persistent storage, to which all incoming tasks have access.
 
 The Micro Manager deploys this parallelization by first initializing the persistent storage with Micro Manager-specific task classes and loading the relevant micro simulation classes.
