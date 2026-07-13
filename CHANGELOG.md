@@ -1,6 +1,6 @@
 # Micro Manager changelog
 
-## latest
+## v0.11.0
 
 - Refactored LoadBalancing into an interface for more clarity [#300](https://github.com/precice/micro-manager/pull/300)
 - Added a general diagnostics interface and refactored memory usage accordingly [#299](https://github.com/precice/micro-manager/pull/299)
