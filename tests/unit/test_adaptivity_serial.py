@@ -1,17 +1,20 @@
 from math import exp
+from typing import List, Dict, Any, Optional
 from unittest import TestCase
 from unittest.mock import MagicMock
 
 import numpy as np
-from mpi4py import MPI
 
 from micro_manager.adaptivity.adaptivity import AdaptivityCalculator
 from micro_manager.adaptivity.local_adaptivity import LocalAdaptivityCalculator
+from micro_manager.simulation_container import SimulationContainer
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 
 
 class MicroSimulation:
     def __init__(self, global_id):
         self._global_id = global_id
+        self.name = MicroSimulation.__name__
 
     def get_global_id(self):
         return self._global_id
@@ -28,10 +31,41 @@ class MicroSimulation:
     def solve(self, micro_input, dt):
         pass
 
+    def destroy(self):
+        pass
+
 
 class ModelManager:
     def get_instance(self, gid, micro_problem_cls):
         return micro_problem_cls(gid)
+
+
+class AdaptivityCalculatorInstantiable(AdaptivityCalculator):
+    """
+    Workaround to bypass ABC instantiation limitations. Only used for testing internals.
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+    def get_active_lids(self) -> List[int]:
+        return []
+
+    def get_inactive_lids(self) -> List[int]:
+        return []
+
+    def get_active_gids(self) -> List[int]:
+        return []
+
+    def get_inactive_gids(self) -> List[int]:
+        return []
+
+    def get_full_field_micro_output(
+        self,
+        micro_input: List[Dict[str, Any]],
+        micro_output: List[Optional[Dict[str, Any]]],
+    ) -> List[Dict[str, Any]]:
+        return []
 
 
 class TestLocalAdaptivity(TestCase):
@@ -92,19 +126,28 @@ class TestLocalAdaptivity(TestCase):
         Test functionality of calculating the similarity distance matrix in class AdaptivityCalculator.
         """
         configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
+        configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.output_dir = MagicMock(return_value="output_dir")
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
+
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
+        container.initialize(
+            self._number_of_sims,
+            self._number_of_sims,
+            list(range(self._number_of_sims)),
+            [np.zeros(3) for _ in range(self._number_of_sims)],
         )
 
-        adaptivity_controller = AdaptivityCalculator(
+        adaptivity_controller = AdaptivityCalculatorInstantiable(
             configurator,
             nsims=self._number_of_sims,
+            sim_container=container,
+            profiler=MagicMock(),
             micro_problem_cls=MicroSimulation,
             model_manager=ModelManager(),
             base_logger=MagicMock(),
-            rank=0,
+            mpi=mpi,
         )
         adaptivity_controller._hist_param = 0.5
         adaptivity_controller._adaptivity_data_names = [
@@ -142,18 +185,25 @@ class TestLocalAdaptivity(TestCase):
         Test functionality of updating active simulations in class LocalAdaptivityCalculator.
         """
         configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
+        configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.output_dir = MagicMock(return_value="output_dir")
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
+
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
+        container.initialize(
+            self._number_of_sims,
+            self._number_of_sims,
+            list(range(self._number_of_sims)),
+            [np.zeros(3) for _ in range(self._number_of_sims)],
         )
 
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
-            self._number_of_sims,
+            sim_container=container,
+            profiler=MagicMock(),
             base_logger=MagicMock(),
-            rank=0,
-            comm=MagicMock(),
+            mpi=mpi,
             micro_problem_cls=MicroSimulation,
             model_manager=ModelManager(),
         )
@@ -179,45 +229,29 @@ class TestLocalAdaptivity(TestCase):
         """
         Test functionality for calculating similarity criteria between pairs of simulations using different norms in class AdaptivityCalculator.
         """
-        configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
-        )
-
-        adaptivity_controller = AdaptivityCalculator(
-            configurator,
-            nsims=self._number_of_sims,
-            base_logger=MagicMock(),
-            rank=0,
-            micro_problem_cls=MicroSimulation,
-            model_manager=ModelManager(),
-        )
-
         fake_data = np.array([[1], [2], [3]])
         self.assertTrue(
             np.allclose(
-                adaptivity_controller._l1(fake_data),
+                AdaptivityCalculator._l1(fake_data),
                 np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]]),
             )
         )
         # norm taken over last axis -> same as before
         self.assertTrue(
             np.allclose(
-                adaptivity_controller._l2(fake_data),
+                AdaptivityCalculator._l2(fake_data),
                 np.array([[0, 1, 2], [1, 0, 1], [2, 1, 0]]),
             )
         )
         self.assertTrue(
             np.allclose(
-                adaptivity_controller._l1rel(fake_data),
+                AdaptivityCalculator._l1rel(fake_data),
                 np.array([[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]]),
             )
         )
         self.assertTrue(
             np.allclose(
-                adaptivity_controller._l2rel(fake_data),
+                AdaptivityCalculator._l2rel(fake_data),
                 np.array([[0, 0.5, 2 / 3], [0.5, 0, 1 / 3], [2 / 3, 1 / 3, 0]]),
             )
         )
@@ -225,12 +259,12 @@ class TestLocalAdaptivity(TestCase):
         fake_2d_data = np.array([[1, 2], [3, 4]])
         self.assertTrue(
             np.allclose(
-                adaptivity_controller._l1(fake_2d_data), np.array([[0, 4], [4, 0]])
+                AdaptivityCalculator._l1(fake_2d_data), np.array([[0, 4], [4, 0]])
             )
         )
         self.assertTrue(
             np.allclose(
-                adaptivity_controller._l2(fake_2d_data),
+                AdaptivityCalculator._l2(fake_2d_data),
                 np.array(
                     [
                         [0, np.sqrt((1 - 3) ** 2 + (2 - 4) ** 2)],
@@ -241,7 +275,7 @@ class TestLocalAdaptivity(TestCase):
         )
         self.assertTrue(
             np.allclose(
-                adaptivity_controller._l1rel(fake_2d_data),
+                AdaptivityCalculator._l1rel(fake_2d_data),
                 np.array(
                     [
                         [0, abs((1 - 3) / max(1, 3) + (2 - 4) / max(2, 4))],
@@ -252,7 +286,7 @@ class TestLocalAdaptivity(TestCase):
         )
         self.assertTrue(
             np.allclose(
-                adaptivity_controller._l2rel(fake_2d_data),
+                AdaptivityCalculator._l2rel(fake_2d_data),
                 np.array(
                     [
                         [
@@ -281,34 +315,43 @@ class TestLocalAdaptivity(TestCase):
         """
         import warnings
 
-        configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L2rel")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
+        container.initialize(
+            self._number_of_sims,
+            self._number_of_sims,
+            list(range(self._number_of_sims)),
+            [np.zeros(3) for _ in range(self._number_of_sims)],
         )
-        adaptivity_l2rel = AdaptivityCalculator(
+
+        configurator = MagicMock()
+        configurator.adaptivity_similarity_measure = MagicMock(return_value="L2rel")
+        configurator.output_dir = MagicMock(return_value="output_dir")
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
+        adaptivity_l2rel = AdaptivityCalculatorInstantiable(
             configurator,
             nsims=3,
+            sim_container=container,
+            profiler=MagicMock(),
             base_logger=MagicMock(),
-            rank=0,
+            mpi=mpi,
             micro_problem_cls=MicroSimulation,
             model_manager=ModelManager(),
         )
 
         configurator_l1 = MagicMock()
-        configurator_l1.get_adaptivity_similarity_measure = MagicMock(
-            return_value="L1rel"
-        )
-        configurator_l1.get_output_dir = MagicMock(return_value="output_dir")
-        configurator_l1.get_micro_file_name = MagicMock(
+        configurator_l1.adaptivity_similarity_measure = MagicMock(return_value="L1rel")
+        configurator_l1.output_dir = MagicMock(return_value="output_dir")
+        configurator_l1.micro_file_name = MagicMock(
             return_value="test_adaptivity_serial"
         )
-        adaptivity_l1rel = AdaptivityCalculator(
+        adaptivity_l1rel = AdaptivityCalculatorInstantiable(
             configurator_l1,
             nsims=3,
+            sim_container=container,
+            profiler=MagicMock(),
             base_logger=MagicMock(),
-            rank=0,
+            mpi=mpi,
             micro_problem_cls=MicroSimulation,
             model_manager=ModelManager(),
         )
@@ -338,17 +381,26 @@ class TestLocalAdaptivity(TestCase):
         Test functionality to associate inactive sims to active ones, in the class AdaptivityCalculator.
         """
         configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
+        configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.output_dir = MagicMock(return_value="output_dir")
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
+
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
+        container.initialize(
+            self._number_of_sims,
+            self._number_of_sims,
+            list(range(self._number_of_sims)),
+            [np.zeros(3) for _ in range(self._number_of_sims)],
         )
 
-        adaptivity_controller = AdaptivityCalculator(
+        adaptivity_controller = AdaptivityCalculatorInstantiable(
             configurator,
             nsims=self._number_of_sims,
+            sim_container=container,
+            profiler=MagicMock(),
             base_logger=MagicMock(),
-            rank=0,
+            mpi=mpi,
             micro_problem_cls=MicroSimulation,
             model_manager=ModelManager(),
         )
@@ -365,15 +417,11 @@ class TestLocalAdaptivity(TestCase):
         adaptivity_controller._is_sim_active = np.array(
             [True, False, False, True, False]
         )
-        expected_sim_is_associated_to = np.array([-2, 0, 0, -2, 3])
+        expected_sim_is_associated_to = {1: 0, 2: 0, 4: 3}
 
         adaptivity_controller._associate_inactive_to_active()
-
-        self.assertTrue(
-            np.array_equal(
-                expected_sim_is_associated_to,
-                adaptivity_controller._sim_is_associated_to,
-            )
+        self.assertDictEqual(
+            expected_sim_is_associated_to, adaptivity_controller.get_associated_map()
         )
 
     def test_update_inactive_sims_local_adaptivity(self):
@@ -381,18 +429,25 @@ class TestLocalAdaptivity(TestCase):
         Test functionality to update inactive simulations in a particular setting, for a local adaptivity setting.
         """
         configurator = MagicMock()
-        configurator.get_adaptivity_similarity_measure = MagicMock(return_value="L1")
-        configurator.get_output_dir = MagicMock(return_value="output_dir")
-        configurator.get_micro_file_name = MagicMock(
-            return_value="test_adaptivity_serial"
+        configurator.adaptivity_similarity_measure = MagicMock(return_value="L1")
+        configurator.output_dir = MagicMock(return_value="output_dir")
+        configurator.micro_file_name = MagicMock(return_value="test_adaptivity_serial")
+
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
+        container.initialize(
+            self._number_of_sims,
+            self._number_of_sims,
+            list(range(self._number_of_sims)),
+            [np.zeros(3) for _ in range(self._number_of_sims)],
         )
 
         adaptivity_controller = LocalAdaptivityCalculator(
             configurator,
-            self._number_of_sims,
+            sim_container=container,
+            profiler=MagicMock(),
             base_logger=MagicMock(),
-            rank=0,
-            comm=MPI.COMM_WORLD,
+            mpi=mpi,
             micro_problem_cls=MicroSimulation,
             model_manager=ModelManager(),
         )
@@ -405,26 +460,22 @@ class TestLocalAdaptivity(TestCase):
 
         # Third and fifth micro sim are active, rest are deactivate
         expected_is_sim_active = np.array([True, False, False, True, False])
-        expected_sim_is_associated_to = np.array([-2, 0, 0, -2, 3])
+        expected_sim_is_associated_to = {1: 0, 2: 0, 4: 3}
 
         adaptivity_controller._similarity_dists = self._similarity_dists
         adaptivity_controller._is_sim_active = np.array(
             [True, False, False, False, False]
         )
-        adaptivity_controller._sim_is_associated_to = np.array([-2, 0, 0, 0, 3])
+        adaptivity_controller._sim_is_associated_to = {1: 0, 2: 0, 3: 0, 4: 3}
 
-        dummy_micro_sims = []
         for i in range(self._number_of_sims):
-            dummy_micro_sims.append(MicroSimulation(i))
+            container[i] = MicroSimulation(i)
 
-        adaptivity_controller._update_inactive_sims(dummy_micro_sims)
+        adaptivity_controller._update_inactive_sims()
 
         self.assertTrue(
             np.array_equal(expected_is_sim_active, adaptivity_controller._is_sim_active)
         )
-        self.assertTrue(
-            np.array_equal(
-                expected_sim_is_associated_to,
-                adaptivity_controller._sim_is_associated_to,
-            )
+        self.assertDictEqual(
+            expected_sim_is_associated_to, adaptivity_controller.get_associated_map()
         )

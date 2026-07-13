@@ -1,23 +1,18 @@
 name: Check test coverage
 
 on:
-  workflow_run:
-    workflows: [Build OpenMPI cache]
-    types:
-      - completed
+  workflow_call:
 
 jobs:
   coverage:
-    name: Run test coverage check
-    if: github.event.workflow_run.conclusion == 'success'
+    name: Evaluate
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: micro-manager
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Install dependencies
         run: |
@@ -26,7 +21,7 @@ jobs:
 
       - name: Load Cache OpenMPI 5
         id: ompi-cache-load
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/openmpi
           key: openmpi-5.0.5-${{ runner.os }}-build
@@ -83,6 +78,7 @@ jobs:
           . ../../.venv/bin/activate
           mpirun -n 2 --allow-run-as-root -x PYTHONPATH=. python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_adaptivity_parallel
           mpirun -n 2 --allow-run-as-root -x PYTHONPATH=. python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_load_balancing
+          mpirun -n 2 --allow-run-as-root -x PYTHONPATH=. python3 -m coverage run --parallel-mode --source=micro_manager -m unittest test_interpolation
 
       - name: Combine coverage data
         working-directory: micro-manager/tests/unit

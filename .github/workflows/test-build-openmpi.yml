@@ -1,18 +1,11 @@
 name: Build OpenMPI cache
 
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - "*"
-  workflow_dispatch:
+  workflow_call:
 
 jobs:
   build_cache:
-    name: Build and cache OpenMPI 5
+    name: OpenMPI 5
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
@@ -23,7 +16,7 @@ jobs:
 
       - name: Load Cache OpenMPI 5
         id: ompi-cache-load
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/openmpi
           key: openmpi-5.0.5-${{ runner.os }}-build
@@ -41,7 +34,7 @@ jobs:
 
       - name: Save OpenMPI 5 to cache
         if: steps.ompi-cache-load.outputs.cache-hit != 'true'
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: ~/openmpi
           key: openmpi-5.0.5-${{ runner.os }}-build

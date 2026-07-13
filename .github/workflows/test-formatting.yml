@@ -1,19 +1,14 @@
 name: Run checks for markdown, links, and pre-commit
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - "*"
+  workflow_call:
+
 jobs:
   check_links:
-    name: Check links in markdown files
+    name: Links
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Check links in markdown files (markdown-link-check)
         uses: gaurav-nelson/github-action-markdown-link-check@v1
         with:
@@ -22,10 +17,10 @@ jobs:
           config-file: '.markdown-link-check-config.json'
 
   precommit:
-    name: pre-commit checks
+    name: pre-commit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Setup python
         uses: actions/setup-python@v6
         with:

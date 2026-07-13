@@ -2,10 +2,12 @@ from unittest import TestCase
 from unittest.mock import MagicMock
 
 import numpy as np
-from mpi4py import MPI
 
+from micro_manager.adaptivity.adaptivity import NoOpAdaptivity
+from micro_manager.simulation_container import SimulationContainer
 from micro_manager.adaptivity.model_adaptivity import ModelAdaptivity
 from micro_manager.micro_manager import MicroManagerCoupling
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
 
 
 class DummyModelClass:
@@ -38,6 +40,15 @@ class DummySimulation:
 class DummyModelManager:
     def __init__(self):
         self.created_instances = []
+        self.num_models = 2
+        self.models = [
+            DummyModelClass("fine"),
+            DummyModelClass("coarse"),
+        ]
+        self.name_to_idx = {
+            "fine": 0,
+            "coarse": 1,
+        }
 
     def get_instance(self, gid, target_class, *, late_init=False):
         self.created_instances.append(
@@ -49,17 +60,27 @@ class DummyModelManager:
         )
         return DummySimulation(target_class.name, gid, late_init=late_init)
 
+    def get_idx_of_sim(self, sim):
+        if sim.name not in self.name_to_idx:
+            raise KeyError("unknown sim type")
+        return self.name_to_idx[sim.name]
+
+    def get_cls_by_idx(self, idx):
+        return self.models[idx]
+
+    def get_cls_by_name(self, name):
+        if name not in self.name_to_idx:
+            raise KeyError("unknown model name")
+        return self.models[self.name_to_idx[name]]
+
 
 class TestModelAdaptivity(TestCase):
-    def _make_controller(self, switching_func):
+    def _make_controller(self, mpi, container, switching_func):
         controller = ModelAdaptivity.__new__(ModelAdaptivity)
         controller._switching_func = switching_func
-        controller._model_classes = [
-            DummyModelClass("fine"),
-            DummyModelClass("coarse"),
-        ]
+        controller._sim_container = container
         controller._model_manager = DummyModelManager()
-        controller._comm = MPI.COMM_SELF
+        controller._mpi = mpi
         controller._logger = MagicMock()
         controller._converged = False
         return controller
@@ -71,14 +92,16 @@ class TestModelAdaptivity(TestCase):
         resolution. Such an out-of-range request should be clamped to the
         current resolution and treated as no model change.
         """
-        controller = self._make_controller(lambda resolution, *_: -1)
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
+        container.initialize(1, 1, [0], [np.array([0.0, 0.0, 0.0])])
+        container[0] = DummySimulation("fine")
+        controller = self._make_controller(mpi, container, lambda resolution, *_: -1)
 
         controller.check_convergence(
-            np.array([[0.0, 0.0, 0.0]]),
             1.0,
             [{}],
             None,
-            [DummySimulation("fine")],
         )
 
         self.assertTrue(controller._converged)
@@ -90,14 +113,16 @@ class TestModelAdaptivity(TestCase):
         available resolution. This guards against endless iterations caused by
         repeated out-of-range coarsening requests.
         """
-        controller = self._make_controller(lambda resolution, *_: 1)
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
+        container.initialize(1, 1, [0], [np.array([0.0, 0.0, 0.0])])
+        container[0] = DummySimulation("coarse")
+        controller = self._make_controller(mpi, container, lambda resolution, *_: 1)
 
         controller.check_convergence(
-            np.array([[0.0, 0.0, 0.0]]),
             1.0,
             [{}],
             None,
-            [DummySimulation("coarse")],
         )
 
         self.assertTrue(controller._converged)
@@ -109,14 +134,16 @@ class TestModelAdaptivity(TestCase):
         adaptivity loop must continue in this case so the requested switch can
         be applied.
         """
-        controller = self._make_controller(lambda resolution, *_: 1)
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
+        container.initialize(1, 1, [0], [np.array([0.0, 0.0, 0.0])])
+        container[0] = DummySimulation("fine")
+        controller = self._make_controller(mpi, container, lambda resolution, *_: 1)
 
         controller.check_convergence(
-            np.array([[0.0, 0.0, 0.0]]),
             1.0,
             [{}],
             None,
-            [DummySimulation("fine")],
         )
 
         self.assertFalse(controller._converged)
@@ -135,22 +162,26 @@ class TestModelAdaptivity(TestCase):
                 return 0
             return 1
 
-        controller = self._make_controller(switching_function)
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
+        container.initialize(1, 1, [0], [np.array([0.0, 0.0, 0.0])])
+        container[0] = DummySimulation("fine", global_id=0)
+        controller = self._make_controller(mpi, container, switching_function)
         manager = MicroManagerCoupling.__new__(MicroManagerCoupling)
+        manager._mpi = mpi
         manager._model_adaptivity_controller = controller
-        manager._is_adaptivity_on = False
+        manager._adaptivity_controller = NoOpAdaptivity(container)
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
-        manager._global_mesh_vertex_coords = manager._mesh_vertex_coords
-        manager._global_ids_of_local_sims = [0]
         manager._t = 1.0
-        manager._micro_sims = [DummySimulation("fine", global_id=0)]
+        manager._sim_container = container
+        manager._model_manager = controller._model_manager
 
         solve_calls = []
 
         def solve_variant(micro_sims_input, dt, computed_outputs):
             solve_calls.append(
                 {
-                    "sim_name": manager._micro_sims[0].name,
+                    "sim_name": manager._sim_container[0].name,
                     "computed_outputs": computed_outputs.copy(),
                 }
             )
@@ -174,7 +205,7 @@ class TestModelAdaptivity(TestCase):
             "Output from the previous resolution must not be reused after a model switch.",
         )
 
-        self.assertEqual(manager._micro_sims[0].name, "coarse")
+        self.assertEqual(manager._sim_container[0].name, "coarse")
         self.assertEqual(result, [{"result": 2, "model_resolution": 1}])
         self.assertTrue(controller._converged)
 
@@ -185,15 +216,19 @@ class TestModelAdaptivity(TestCase):
         requesting an even coarser model. The loop should perform one solve,
         recognize that no valid model change remains, and return normally.
         """
-        controller = self._make_controller(lambda resolution, *_: 1)
+        mpi = MPIHandler()
+        container = SimulationContainer(mpi)
+        container.initialize(1, 1, [0], [np.array([0.0, 0.0, 0.0])])
+        container[0] = DummySimulation("coarse")
+        controller = self._make_controller(mpi, container, lambda resolution, *_: 1)
         manager = MicroManagerCoupling.__new__(MicroManagerCoupling)
+        manager._mpi = mpi
         manager._model_adaptivity_controller = controller
-        manager._is_adaptivity_on = False
+        manager._adaptivity_controller = NoOpAdaptivity(container)
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
-        manager._global_mesh_vertex_coords = manager._mesh_vertex_coords
-        manager._global_ids_of_local_sims = [0]
         manager._t = 1.0
-        manager._micro_sims = [DummySimulation("coarse")]
+        manager._sim_container = container
+        manager._model_manager = controller._model_manager
 
         solve_calls = []
 

@@ -3,25 +3,30 @@ Class LocalAdaptivityCalculator provides methods to adaptively control of micro 
 in a local way. If the Micro Manager is run in parallel, simulations on one rank are compared to
 each other. A global comparison is not done.
 """
+from typing import Optional, List, Dict, Any
+
 import numpy as np
 from copy import deepcopy
-from mpi4py import MPI
 
 from .adaptivity import AdaptivityCalculator
 from micro_manager.config import Config
 from micro_manager.micro_simulation import MicroSimulationClass
 from micro_manager.tools.logging_wrapper import Logger
+from micro_manager.tools.mpi_handler import MPIHandler, MPI
+from micro_manager.tools.profiling import Profiler
 from micro_manager.model_manager import ModelManager
+from micro_manager.interpolation import Interpolator
+from micro_manager.simulation_container import SimulationContainer
 
 
 class LocalAdaptivityCalculator(AdaptivityCalculator):
     def __init__(
         self,
-        configurator: Config,
-        num_sims: int,
+        config: Config,
+        sim_container: SimulationContainer,
+        profiler: Profiler,
         base_logger: Logger,
-        rank: int,
-        comm: MPI.Comm,
+        mpi: MPIHandler,
         micro_problem_cls: MicroSimulationClass,
         model_manager: ModelManager,
     ) -> None:
@@ -30,36 +35,48 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
 
         Parameters
         ----------
-        configurator : object of class Config
+        config : object of class Config
             Object which has getter functions to get parameters defined in the configuration file.
-        num_sims : int
-            Number of micro simulations.
+        sim_container : SimulationContainer
+            Simulation container object.
+        profiler : Profiler
+            Profiler object.
         base_logger : object of class Logger
             Logger object to log messages.
-        rank : int
-            Rank of the current MPI process.
-        comm : MPI.Comm
-            Communicator for MPI.
+        mpi : MPIHandler
+            MPI handler object.
         micro_problem_cls : callable
             Class of micro problem.
         model_manager : object of class ModelManager
             Handles instantiation of micro simulation.
         """
         super().__init__(
-            configurator, num_sims, micro_problem_cls, model_manager, base_logger, rank
+            config,
+            sim_container.local_num_sims,
+            sim_container,
+            profiler,
+            micro_problem_cls,
+            model_manager,
+            base_logger,
+            mpi,
         )
-        self._comm = comm
 
         # similarity_dists: 2D array having similarity distances between each micro simulation pair
         # This matrix is modified in place via the function update_similarity_dists
-        self._similarity_dists = np.zeros((num_sims, num_sims))
+        self._similarity_dists = np.zeros(
+            (sim_container.local_num_sims, sim_container.local_num_sims)
+        )
+        self._max_similarity_dist_local: float = 0.0
 
-    def compute_adaptivity(
-        self,
-        dt: float,
-        micro_sims: list,
-        data_for_adaptivity: dict,
-    ) -> None:
+        # make sure that the loaded interpolation schemes are local
+        for interp_id in self._interp_ids:
+            interp = Interpolator.get_instance(interp_id)
+            if not interp.is_local():
+                raise RuntimeError(
+                    f"Interpolation Config {interp_id} must be local for Local Adaptivity."
+                )
+
+    def compute(self, dt: float) -> None:
         """
         Compute adaptivity locally (within a rank).
 
@@ -67,107 +84,117 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         ----------
         dt : float
             Current time step
-        micro_sims : list
-            List containing simulation objects
-        data_for_adaptivity : dict
-            A dictionary containing the names of the data to be used in adaptivity as keys and information on whether
-            the data are scalar or vector as values.
         """
-        for name in data_for_adaptivity.keys():
-            if name not in self._adaptivity_data_names:
+        for name in self._data_for_adaptivity.keys():
+            if name not in self._data_names:
                 raise ValueError(
                     "Data for adaptivity must be one of the following: {}".format(
-                        self._adaptivity_data_names.keys()
+                        self._data_names
                     )
                 )
 
-        self._update_similarity_dists(dt, data_for_adaptivity)
-
-        self._local_max_similarity_dist = np.amax(self._similarity_dists)
-
+        self._update_similarity_dists(dt, self._data_for_adaptivity)
+        self._max_similarity_dist_local = np.amax(self._similarity_dists)
         # Gather maximum similarity distance from every rank, and use the global maximum distance
-        self._max_similarity_dist = self._comm.allreduce(
-            self._local_max_similarity_dist, op=MPI.MAX
+        self._max_similarity_dist = self._mpi.comm.allreduce(
+            self._max_similarity_dist_local, op=MPI.MAX
         )
 
         self._update_active_sims()
 
-        self._update_inactive_sims(micro_sims)
+        self._update_inactive_sims()
 
         self._associate_inactive_to_active()
 
-    def get_active_sim_local_ids(self) -> np.ndarray:
+    def get_active_lids(self) -> List[int]:
         """
         Get the local ids of active simulations on this rank.
 
         Returns
         -------
-        numpy array
-            1D array of active simulation ids
+        active_lids : List[int]
+            List of active simulation LIDs
         """
-        return np.where(self._is_sim_active)[0]
+        return np.where(self._is_sim_active)[0].tolist()
 
-    def get_active_sim_global_ids(self) -> np.ndarray:
+    def get_active_gids(self) -> List[int]:
         """
-        Get the global(local) ids of active simulations on this rank.
+        Get the global ids of active simulations on this rank.
 
         For local adaptivity, global ids are same as local ids.
 
         Returns
         -------
-        numpy array
-            1D array of active simulation ids
+        active_gids : List[int]
+            List of active simulation GIDs
         """
-        active_sim_ids = self.get_active_sim_local_ids()
-        return active_sim_ids
+        active_gids: List[int] = []
+        for lid, gid in enumerate(self._sim_container.local_gids):
+            if self._is_sim_active[lid]:
+                active_gids.append(gid)
 
-    def get_inactive_sim_local_ids(self) -> np.ndarray:
+        return active_gids
+
+    def get_inactive_lids(self) -> List[int]:
         """
         Get the local ids of inactive simulations on this rank.
 
         Returns
         -------
-        numpy array
-            1D array of inactive simulation ids
+        inactive_lids : List[int]
+            List of inactive simulation LIDs
         """
-        return np.where(self._is_sim_active == False)[0]
+        return np.where(self._is_sim_active == False)[0].tolist()
 
-    def get_inactive_sim_global_ids(self) -> np.ndarray:
+    def get_inactive_gids(self) -> List[int]:
         """
-        Get the global(local) ids of inactive simulations on this rank.
+        Get the global ids of inactive simulations on this rank.
 
         For local adaptivity, global ids are same as local ids.
 
         Returns
         -------
-        numpy array
-            1D array of inactive simulation ids
+        inactive_gids : List[int]
+            List of inactive simulation GIDs
         """
-        inactive_sim_ids = self.get_inactive_sim_local_ids()
-        return inactive_sim_ids
+        inactive_gids: List[int] = []
+        for lid, gid in enumerate(self._sim_container.local_gids):
+            if not self._is_sim_active[lid]:
+                inactive_gids.append(gid)
 
-    def get_full_field_micro_output(self, micro_output: list) -> list:
+        return inactive_gids
+
+    def get_full_field_micro_output(
+        self,
+        micro_input: List[Dict[str, Any]],
+        micro_output: List[Optional[Dict[str, Any]]],
+    ) -> List[Dict[str, Any]]:
         """
         Get the full field micro output from active simulations to inactive simulations.
 
         Parameters
         ----------
-        micro_output : list
+        micro_input : List[Dict[str, Any]]
+            List of dicts containing the input data for each simulation.
+        micro_output : List[Optional[Dict[str, Any]]]
             List of dicts having individual output of each simulation. Only the active simulation outputs are entered.
 
         Returns
         -------
-        micro_output : list
+        micro_output : List[Dict[str, Any]]
             List of dicts having individual output of each simulation. Active and inactive simulation outputs are entered.
         """
         micro_sims_output = deepcopy(micro_output)
 
-        inactive_sim_ids = self.get_inactive_sim_local_ids()
+        inactive_lids = self.get_inactive_lids()
+        if len(inactive_lids) == 0:
+            return micro_sims_output
 
-        for inactive_id in inactive_sim_ids:
-            micro_sims_output[inactive_id] = deepcopy(
-                micro_sims_output[self._sim_is_associated_to[inactive_id]]
+        for inactive_lid in inactive_lids:
+            micro_sims_output[inactive_lid] = deepcopy(
+                micro_sims_output[self._sim_is_associated_to[inactive_lid]]
             )
+        self._interpolate_output(micro_input, micro_sims_output)
 
         return micro_sims_output
 
@@ -194,6 +221,11 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
         n : int
             Time step count at which the metrics are logged
         """
+        if n % self._output_n != 0:
+            return
+        if self._logger_local_metrics is None and self._logger_global_metrics is None:
+            return
+
         active_sims_on_this_rank = 0
         inactive_sims_on_this_rank = 0
         for local_id in range(self._is_sim_active.size):
@@ -202,11 +234,8 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             else:
                 inactive_sims_on_this_rank += 1
 
-        if (
-            self._adaptivity_output_type == "all"
-            or self._adaptivity_output_type == "local"
-        ):
-            self._metrics_logger.log_info(
+        if self._logger_local_metrics is not None:
+            self._logger_local_metrics.log_info(
                 "{}|{}|{}".format(
                     n,
                     active_sims_on_this_rank,
@@ -214,19 +243,18 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
                 )
             )
 
-        if (
-            self._adaptivity_output_type == "global"
-            or self._adaptivity_output_type == "all"
-        ):
-            active_sims_rankwise = self._comm.gather(active_sims_on_this_rank, root=0)
-            inactive_sims_rankwise = self._comm.gather(
+        if self._logger_global_metrics is not None:
+            active_sims_rankwise = self._mpi.comm.gather(
+                active_sims_on_this_rank, root=0
+            )
+            inactive_sims_rankwise = self._mpi.comm.gather(
                 inactive_sims_on_this_rank, root=0
             )
 
-            if self._rank == 0:
-                size = self._comm.Get_size()
+            if self._mpi.rank == 0:
+                size = self._mpi.size
 
-                self._global_metrics_logger.log_info(
+                self._logger_global_metrics.log_info(
                     "{}|{}|{}|{}|{}|{}|{}|{}|{}".format(
                         n,
                         sum(active_sims_rankwise),
@@ -249,64 +277,59 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             self._coarse_const * self._refine_const * self._max_similarity_dist
         )
 
-        active_gids = self.get_active_sim_local_ids().tolist()
-
-        active_gids_to_check = active_gids.copy()
+        active_lids = self.get_active_lids()
+        active_lids_to_check = active_lids.copy()
 
         # Update the set of active micro sims
-        for gid in active_gids:
-            if self._check_for_deactivation(gid, active_gids_to_check):
-                self._is_sim_active[gid] = False
-                self._just_deactivated.append(gid)
+        for lid in active_lids:
+            if self._check_for_deactivation(lid, active_lids_to_check):
+                self._is_sim_active[lid] = False
+                self._just_deactivated.append(lid)
                 # Remove deactivated gid from further checks
-                active_gids_to_check.remove(gid)
+                active_lids_to_check.remove(lid)
 
-    def _update_inactive_sims(self, micro_sims: list) -> None:
+    def _update_inactive_sims(self) -> None:
         """
         Update set of inactive micro simulations. Each inactive micro simulation is compared to all active ones
         and if it is not similar to any of them, it is activated.
 
         If a micro simulation which has been inactive since the start of the simulation is activated for the
         first time, the simulation object is created and initialized.
-
-        Parameters
-        ----------
-        micro_sims : list
-            List containing micro simulation objects.
         """
         self._ref_tol = self._refine_const * self._max_similarity_dist
 
-        active_lids = self.get_active_sim_local_ids()
-        inactive_lids = self.get_inactive_sim_local_ids()
+        active_lids = self.get_active_lids()
+        inactive_lids = self.get_inactive_lids()
 
-        to_be_activated_ids = []
+        to_be_activated_lids: List[int] = []
         # Update the set of inactive micro sims
         for lid in inactive_lids:
             if self._check_for_activation(lid, active_lids):
                 self._is_sim_active[lid] = True
                 if lid not in self._just_deactivated:
-                    to_be_activated_ids.append(lid)
+                    to_be_activated_lids.append(lid)
                     # Add the newly activated lid to active_lids for further checks
                     active_lids = np.append(active_lids, lid)
 
         self._just_deactivated.clear()  # Clear the list of sims deactivated in this step
 
         # Update the set of inactive micro sims
-        for i in to_be_activated_ids:
-            associated_active_id = self._sim_is_associated_to[i]
-            micro_sims[i] = self._model_manager.get_instance(i, self._micro_problem_cls)
-            micro_sims[i].set_state(micro_sims[associated_active_id].get_state())
-            self._sim_is_associated_to[
-                i
-            ] = -2  # Active sim cannot have an associated sim
+        for lid in to_be_activated_lids:
+            associated_active_id = self._sim_is_associated_to[lid]
+            self._sim_container[lid] = self._model_manager.get_instance(
+                lid, self._micro_problem_cls
+            )
+            state = self._sim_container.get_sim_state(associated_active_id)
+            self._sim_container.set_sim_state(lid, state)
+            # Active sim cannot have an associated sim
+            del self._sim_is_associated_to[lid]
 
         # Delete the inactive micro simulations which have not been activated
-        for i in range(self._is_sim_active.size):
-            if not self._is_sim_active[i]:
+        for lid in range(self._is_sim_active.size):
+            if not self._is_sim_active[lid] and self._sim_container[lid] is not None:
                 # Release resources now, especially for remote simulation instance.
                 # If left to garbage collector this might lead to a race condition.
                 # Releasing with call to sim.destroy(), afterwards reference in sim
                 # sim list can be removed.
-                if type(micro_sims[i]).__name__ == "MicroSimulationWrapper":
-                    micro_sims[i].destroy()
-                micro_sims[i] = None
+                self._sim_container[lid].destroy()
+                self._sim_container[lid] = None

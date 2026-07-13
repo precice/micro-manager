@@ -8,8 +8,8 @@ class Participant:
     def __init__(
         self, solver_name, config_file_name, solver_process_index, solver_process_size
     ):
-        self.read_write_vector_buffer = []
-        self.read_write_scalar_buffer = []
+        self.read_write_vector_buffer = [0] * 4
+        self.read_write_scalar_buffer = [np.zeros(3) for _ in range(4)]
 
     def initialize(self):
         return 0.1  # dt
@@ -49,7 +49,9 @@ class Participant:
         pass
 
     def get_mesh_vertex_ids_and_coordinates(self, mesh_name):
-        return np.array([0, 1, 2, 3]), np.array([[0, 0], [1, 0], [1, 1], [0, 1]])
+        return np.array([0, 1, 2, 3]), np.array(
+            [[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0]]
+        )
 
     def write_data(self, mesh_name, data_name, vertex_ids, data):
         if data_name == "Micro-Scalar-Data":

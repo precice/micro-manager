@@ -5,7 +5,7 @@
 </a>
 
 <a style="text-decoration: none" href="https://pypi.org/project/micro-manager-precice/" target="_blank">
-    <img src="https://github.com/precice/micro-manager/actions/workflows/release.yml/badge.svg" alt="Upload Python Package">
+    <img src="https://img.shields.io/pypi/v/micro-manager-precice.svg" alt="Upload Python Package">
 </a>
 
 A tool to create and manage a large number of (micro) simulations and couple them to a (macro) simulation using the coupling library [preCICE](https://precice.org/).

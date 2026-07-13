@@ -1,21 +1,17 @@
 name: Test adaptivity functionality in parallel
 on:
-  workflow_run:
-    workflows: [Build OpenMPI cache]
-    types:
-      - completed
+  workflow_call:
+
 jobs:
   integration_tests:
-    name: Integration tests
-    if: github.event.workflow_run.conclusion == 'success'
+    name: Integration
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: micro-manager
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Install sudo for MPI
         working-directory: micro-manager
@@ -49,20 +45,18 @@ jobs:
           python3 unit_cube.py 2
 
   unit_tests:
-    name: Unit tests
-    if: github.event.workflow_run.conclusion == 'success'
+    name: Unit
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: micro-manager
-          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Load Cache OpenMPI 5
         id: ompi-cache-load
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: ~/openmpi
           key: openmpi-5.0.5-${{ runner.os }}-build
@@ -113,3 +107,13 @@ jobs:
           . .venv/bin/activate
           cd tests/unit
           mpiexec -n 4 --oversubscribe --allow-run-as-root python3 -m unittest test_load_balancing.py
+
+      - name: Run interpolation unit tests with 2 ranks
+        timeout-minutes: 3
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          pip install .[sklearn]
+          pip uninstall -y pyprecice
+          cd tests/unit
+          mpiexec -n 2 --allow-run-as-root python3 -m unittest test_interpolation.py

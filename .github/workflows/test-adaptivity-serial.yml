@@ -1,20 +1,15 @@
 name: Test adaptivity functionality in serial
 on:
-  push:
-    branches:
-      - main
-      - develop
-  pull_request:
-    branches:
-      - "*"
+  workflow_call:
+
 jobs:
   unit_and_integration_tests:
-    name: Unit and integration tests
+    name: Unit & Integration
     runs-on: ubuntu-latest
     container: precice/precice:nightly
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: micro-manager
 

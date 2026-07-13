@@ -1,5 +1,25 @@
 # Micro Manager changelog
 
+## v0.11.0
+
+- Refactored LoadBalancing into an interface for more clarity [#300](https://github.com/precice/micro-manager/pull/300)
+- Added a general diagnostics interface and refactored memory usage accordingly [#299](https://github.com/precice/micro-manager/pull/299)
+- Refactored interpolation to uniform interface and moved crash handling to dedicated module. [#298](https://github.com/precice/micro-manager/pull/298)
+- Added uniform interface for Adaptivity for all cases [#294](https://github.com/precice/micro-manager/pull/294)
+- Fixed simulation activation issue of calling `get_state` prior to full initialization [#308](https://github.com/precice/micro-manager/pull/308)
+- Skipped double initialization of sim with id 0 when lazy initialization is used [#307](https://github.com/precice/micro-manager/pull/307)
+- Fixed macro data not populating adaptivity buffers and MPI irecv buffer size [#306](https://github.com/precice/micro-manager/pull/306)
+- Added support for workers in snapshot mode [#296](https://github.com/precice/micro-manager/pull/296)
+- Added check for number of workers and renamed method in `coupling.py` [#295](https://github.com/precice/micro-manager/pull/295)
+- Refactored interaction with preCICE and domain decomposition into `CouplingHandler`, `Profiler` and `DomainDecomposition` hierarchy [#289](https://github.com/precice/micro-manager/pull/289)
+- Refactored and generalized the methods in `p2p.py`. Added `MPIHandler` to manage all MPI related aspects. [#287](https://github.com/precice/micro-manager/pull/287)
+- Applied fixes for previously missed test cases due to #290 [#291](https://github.com/precice/micro-manager/pull/291)
+- Fixed non-visible CI test cases on PR interface [#290](https://github.com/precice/micro-manager/pull/290)
+- Moved Simulation Class ownership and loading to Model Manager [#286](https://github.com/precice/micro-manager/pull/286)
+- Added simulation container for more encapsulation [#284](https://github.com/precice/micro-manager/pull/284)
+- Redesigned configuration loading for enhanced clarity and standardization [#264](https://github.com/precice/micro-manager/pull/264)
+- Added RBF interpolation, currently used within adaptivity for output interpolation [#242](https://github.com/precice/micro-manager/pull/242)
+
 ## v0.10.1
 
 - Fixed parameter inspection of the `initialize()` routine when micro simulation is pybind11 wrapped [#281](https://github.com/precice/micro-manager/pull/281)
