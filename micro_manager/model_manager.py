@@ -23,6 +23,15 @@ class ModelWrapper(MicroSimulationInterface):
     def __getattr__(self, name):
         return getattr(self._backend, name)
 
+    def get_state(self):
+        return self._backend.get_state()
+
+    def set_state(self, state):
+        self._backend.set_state(state)
+
+    def solve(self, micro_sim_input: dict, dt: float) -> dict:
+        return self._backend.solve(micro_sim_input, dt)
+
     def set_global_id(self, global_id: int):
         self._global_id = global_id
 
