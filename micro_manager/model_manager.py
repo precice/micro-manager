@@ -46,6 +46,10 @@ class ModelWrapper(MicroSimulationInterface):
     def __class__(self):
         return self._backend.__class__
 
+    @property
+    def name(self):
+        return self._backend.name
+
 
 class ModelManager:
     """
