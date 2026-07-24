@@ -1095,9 +1095,10 @@ class InterleavedDomain:
         r_m_depth = self._tree.find_min_depth_for_n_neighbors(
             self._n_neighbors, self._proj_x_query_local
         )
-        r_m_depth = self._mpi.comm.allreduce(r_m_depth, op=MPI.MAX)
-        r_m_cells = np.power(2, r_m_depth)
-        grid_resolution = self._tree.get_height()
+        height = self._tree.get_height()
+        r_m_height = self._mpi.comm.allreduce(height - r_m_depth, op=MPI.MAX)
+        r_m_cells = np.power(2, r_m_height)
+        grid_resolution = height
         hMap = HilbertDirect(self._proj_x_local.shape[-1], grid_resolution)
 
         # index query points
@@ -1113,7 +1114,6 @@ class InterleavedDomain:
                 np.zeros((0, self._x_query_local.shape[-1])),
                 np.zeros((0, self._f_local.shape[-1])),
             )
-
         # partition based on query points
         target_point_per_rank = max(
             (len(sorted_1d_query_indices) + 1) // self._mpi.size, 16
@@ -1166,7 +1166,6 @@ class InterleavedDomain:
         ):
             partitions[part_idx][0] = part_begin
             partitions[part_idx][1] = len(sorted_1d_query_indices) - 1
-
         # assign surrounding src domain to rank local query points
         src_domains = {r: [None, None] for r in range(self._mpi.size)}
         for rank, p_range in partitions.items():
