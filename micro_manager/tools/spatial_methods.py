@@ -1009,14 +1009,14 @@ class InterleavedDomain:
                     np.alltrue(self._x_query_local < 1.0),
                 ]
             )
-
+        increment = 1e-10 * self._normalization
         glob_cond = self._mpi.comm.allgather(eval_cond())
         while any(glob_cond):
             # undo prev norm
             self._x_local = self._x_local * self._normalization[None, :]
             self._x_query_local = self._x_query_local * self._normalization[None, :]
             # retry with larger norm
-            self._normalization += 1e-10
+            self._normalization += increment
             self._x_local = self._x_local / self._normalization[None, :]
             self._x_query_local = self._x_query_local / self._normalization[None, :]
             glob_cond = self._mpi.comm.allgather(eval_cond())
