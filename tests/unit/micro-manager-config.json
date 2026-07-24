@@ -1,27 +1,27 @@
 {
-    "micro_file_names": ["test_micro_manager"],
-    "coupling_params": {
-        "precice_config_file_name": "dummy-config.xml",
-        "macro_mesh_name": "Macro-Mesh",
-        "read_data_names": ["Macro-Scalar-Data", "Macro-Vector-Data"],
-        "write_data_names": ["Micro-Scalar-Data", "Micro-Vector-Data"]
-    },
-    "simulation_params": {
-        "micro_dt": 0.1,
-        "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
-        "adaptivity": true,
-        "adaptivity_settings": {
-            "type": "local",
-            "data": ["Macro-Scalar-Data", "Macro-Vector-Data"],
-            "history_param": 0.5,
-            "coarsening_constant": 0.3,
-            "refining_constant": 0.4,
-            "every_implicit_iteration": false,
-            "similarity_measure": "L1"
-        }
-    },
-    "diagnostics": {
-        "output_micro_sim_solve_time": true,
-        "micro_output_n": 10
+  "micro_file_names": ["test_micro_manager"],
+  "coupling_params": {
+    "precice_config_file_name": "dummy-config.xml",
+    "macro_mesh_name": "Macro-Mesh",
+    "read_data_names": ["Macro-Scalar-Data", "Macro-Vector-Data"],
+    "write_data_names": ["Micro-Scalar-Data", "Micro-Vector-Data"]
+  },
+  "simulation_params": {
+    "micro_dt": 0.1,
+    "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
+    "adaptivity": true,
+    "adaptivity_settings": {
+      "type": "local",
+      "data": ["Macro-Scalar-Data", "Macro-Vector-Data"],
+      "history_param": 0.5,
+      "coarsening_constant": 0.3,
+      "refining_constant": 0.4,
+      "every_implicit_iteration": false,
+      "similarity_measure": "L1"
     }
+  },
+  "diagnostics": {
+    "output_micro_sim_solve_time": true,
+    "micro_output_n": 10
+  }
 }
