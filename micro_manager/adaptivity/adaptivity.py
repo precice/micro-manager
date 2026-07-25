@@ -458,14 +458,26 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
         active_lids = self.get_active_lids()
         inactive_lids = self.get_inactive_lids()
         arg_sizes = {}
-        for name, value in micro_input[-1].items():
-            arg_sizes[name] = (
-                1 if type(value) != np.ndarray and type(value) != list else len(value)
-            )
-        for name, value in micro_sims_output[-1].items():
-            arg_sizes[name] = (
-                1 if type(value) != np.ndarray and type(value) != list else len(value)
-            )
+        rank_input_counts = self._mpi.comm.allgather(len(micro_input))
+        rank_output_counts = self._mpi.comm.allgather(len(micro_sims_output))
+        input_handler_rank = [r for r, c in enumerate(rank_input_counts) if c > 0][0]
+        output_handler_rank = [r for r, c in enumerate(rank_output_counts) if c > 0][0]
+        if self._mpi.rank == input_handler_rank:
+            for name, value in micro_input[-1].items():
+                arg_sizes[name] = (
+                    1
+                    if type(value) != np.ndarray and type(value) != list
+                    else len(value)
+                )
+        arg_sizes = self._mpi.comm.bcast(arg_sizes, root=input_handler_rank)
+        if self._mpi.rank == output_handler_rank:
+            for name, value in micro_sims_output[-1].items():
+                arg_sizes[name] = (
+                    1
+                    if type(value) != np.ndarray and type(value) != list
+                    else len(value)
+                )
+        arg_sizes = self._mpi.comm.bcast(arg_sizes, root=output_handler_rank)
 
         # create interpolation data structures
         n_points = len(active_lids)
