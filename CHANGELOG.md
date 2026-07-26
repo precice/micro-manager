@@ -2,6 +2,8 @@
 
 ## latest
 
+- Various fixes for interpolation, load balancing and adaptivity. Load balancing now balances every N implicit iterations. [#312](https://github.com/precice/micro-manager/pull/312)
+
 ## v0.11.0
 
 - Refactored LoadBalancing into an interface for more clarity [#300](https://github.com/precice/micro-manager/pull/300)
