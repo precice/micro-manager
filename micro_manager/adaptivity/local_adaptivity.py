@@ -194,6 +194,14 @@ class LocalAdaptivityCalculator(AdaptivityCalculator):
             micro_sims_output[inactive_lid] = deepcopy(
                 micro_sims_output[self._sim_is_associated_to[inactive_lid]]
             )
+
+        # Skip interpolation if there are not enough active simulations to build a
+        # well-posed interpolant (mirrors the check in GlobalAdaptivityCalculator).
+        # Otherwise, e.g. RBF interpolation can produce a singular collocation matrix.
+        num_active = len(self.get_active_lids())
+        if self._interp_min is not None and num_active <= self._interp_min:
+            return micro_sims_output
+
         self._interpolate_output(micro_input, micro_sims_output)
 
         return micro_sims_output

@@ -313,6 +313,7 @@ class TimeBalancer(LoadBalancer):
         self._partition_impl = self.get_partition_impl(
             config.load_balancing_partitioning()
         )
+        self.iter_counter: int = 0
 
     def initialize(self, profiler: Profiler, adaptivity: AdaptivityInterface):
         super().initialize(profiler, adaptivity)
@@ -342,10 +343,10 @@ class TimeBalancer(LoadBalancer):
         performed_lb : bool
             Did the load balancing perform any changes?
         """
+        iter = self.iter_counter
+        self.iter_counter += 1
         # balance in first and second step, then every M steps
-        if n > 0:
-            n -= 1
-        if n % self._load_balancing_n != 0:
+        if iter > 1 and (iter % self._load_balancing_n) != 0:
             return False
 
         if np.allclose(self._balance_metric_global, 0):
