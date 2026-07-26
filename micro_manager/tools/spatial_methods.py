@@ -899,8 +899,14 @@ class InterleavedDomain:
         f : np.ndarray
             Assigned support point function values.
         """
-        # if not parallel, no work to be done
+        # if not parallel, no partitioning across ranks is required, but the
+        # support/query points still need to be normalized to fit within [-1, 1].
+        # This is required since the compactly supported RBF basis functions
+        # (c0, c2, c4, c6) assume a support radius of 1 in the normalized space.
+        # Skipping this step can lead to a singular RBF collocation matrix if the
+        # physical spread of the points is much smaller (or larger) than 1.
         if not self._mpi.is_parallel():
+            self._normalize_x()
             return self._x_local, self._x_query_local, self._f_local
 
         self._generate_trees()
