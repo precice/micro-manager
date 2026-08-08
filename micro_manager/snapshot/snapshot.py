@@ -193,6 +193,7 @@ class MicroManagerSnapshot(MicroManager):
                     self._output_dir,
                     list_of_output_files,
                     self._parameter_space_size,
+                    self._output_file_name + ".hdf5",
                 )
         else:
             self._data_storage.set_status(self._output_file_path, "finished")
