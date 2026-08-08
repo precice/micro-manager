@@ -708,20 +708,20 @@ class RBF(Interpolator):
 
     @staticmethod
     def basis_c2(r):
-        return np.maximum(0.0, np.power(1.0 - r, 4)) * (4.0 * r + 1)
+        return np.maximum(0.0, np.power(1.0 - r, 4) * (4.0 * r + 1))
 
     @staticmethod
     def basis_c4(r):
-        return (
-            np.maximum(0.0, np.power(1.0 - r, 6))
-            * (35.0 * np.power(r, 2) + 18.0 * r + 3.0)
-            / 3.0
+        return np.maximum(
+            0.0, np.power(1.0 - r, 6) * (35.0 * np.power(r, 2) + 18.0 * r + 3.0) / 3.0
         )
 
     @staticmethod
     def basis_c6(r):
-        return np.maximum(0.0, np.power(1.0 - r, 8)) * (
-            32.0 * np.power(r, 3) + 25.0 * np.power(r, 2) + 8.0 * r + 1.0
+        return np.maximum(
+            0.0,
+            np.power(1.0 - r, 8)
+            * (32.0 * np.power(r, 3) + 25.0 * np.power(r, 2) + 8.0 * r + 1.0),
         )
 
     @staticmethod

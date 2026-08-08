@@ -454,18 +454,42 @@ class AdaptivityCalculator(AdaptivityInterface, ABC):
             targets.extend(target_args)
         assert len(targets) == len(set(targets))
 
-        # precompute arg sizes
+        # Precompute arg sizes
         active_lids = self.get_active_lids()
         inactive_lids = self.get_inactive_lids()
         arg_sizes = {}
-        for name, value in micro_input[-1].items():
-            arg_sizes[name] = (
-                1 if type(value) != np.ndarray and type(value) != list else len(value)
-            )
-        for name, value in micro_sims_output[-1].items():
-            arg_sizes[name] = (
-                1 if type(value) != np.ndarray and type(value) != list else len(value)
-            )
+
+        # Some ranks may hold no local simulations at all, so len(micro_input)/
+        # len(micro_sims_output) can be 0 on those ranks. Gather the local counts
+        # from every rank so we can identify one rank that actually has data and
+        # can safely index into micro_input[-1] / micro_sims_output[-1] below.
+        rank_input_counts = self._mpi.comm.allgather(len(micro_input))
+        rank_output_counts = self._mpi.comm.allgather(len(micro_sims_output))
+        input_handler_rank = [r for r, c in enumerate(rank_input_counts) if c > 0][0]
+        output_handler_rank = [r for r, c in enumerate(rank_output_counts) if c > 0][0]
+
+        # Only the chosen "handler" rank computes the arg sizes (by inspecting the
+        # shape/type of one sample entry), since it is guaranteed to have data.
+        if self._mpi.rank == input_handler_rank:
+            for name, value in micro_input[-1].items():
+                arg_sizes[name] = (
+                    1
+                    if type(value) != np.ndarray and type(value) != list
+                    else len(value)
+                )
+        # Broadcast the computed sizes so every rank ends up with the same arg_sizes.
+        arg_sizes = self._mpi.comm.bcast(arg_sizes, root=input_handler_rank)
+
+        # Repeat the same handler-rank-computes/broadcast pattern for the output
+        # fields, merging their sizes into the same arg_sizes dict.
+        if self._mpi.rank == output_handler_rank:
+            for name, value in micro_sims_output[-1].items():
+                arg_sizes[name] = (
+                    1
+                    if type(value) != np.ndarray and type(value) != list
+                    else len(value)
+                )
+        arg_sizes = self._mpi.comm.bcast(arg_sizes, root=output_handler_rank)
 
         # create interpolation data structures
         n_points = len(active_lids)

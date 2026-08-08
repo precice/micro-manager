@@ -899,8 +899,14 @@ class InterleavedDomain:
         f : np.ndarray
             Assigned support point function values.
         """
-        # if not parallel, no work to be done
+        # if not parallel, no partitioning across ranks is required, but the
+        # support/query points still need to be normalized to fit within [-1, 1].
+        # This is required since the compactly supported RBF basis functions
+        # (c0, c2, c4, c6) assume a support radius of 1 in the normalized space.
+        # Skipping this step can lead to a singular RBF collocation matrix if the
+        # physical spread of the points is much smaller (or larger) than 1.
         if not self._mpi.is_parallel():
+            self._normalize_x()
             return self._x_local, self._x_query_local, self._f_local
 
         self._generate_trees()
@@ -1010,13 +1016,14 @@ class InterleavedDomain:
                 ]
             )
 
+        increment = 1e-10 * self._normalization
         glob_cond = self._mpi.comm.allgather(eval_cond())
         while any(glob_cond):
             # undo prev norm
             self._x_local = self._x_local * self._normalization[None, :]
             self._x_query_local = self._x_query_local * self._normalization[None, :]
             # retry with larger norm
-            self._normalization += 1e-10
+            self._normalization += increment
             self._x_local = self._x_local / self._normalization[None, :]
             self._x_query_local = self._x_query_local / self._normalization[None, :]
             glob_cond = self._mpi.comm.allgather(eval_cond())
@@ -1095,9 +1102,10 @@ class InterleavedDomain:
         r_m_depth = self._tree.find_min_depth_for_n_neighbors(
             self._n_neighbors, self._proj_x_query_local
         )
-        r_m_depth = self._mpi.comm.allreduce(r_m_depth, op=MPI.MAX)
-        r_m_cells = np.power(2, r_m_depth)
-        grid_resolution = self._tree.get_height()
+        height = self._tree.get_height()
+        r_m_height = self._mpi.comm.allreduce(height - r_m_depth, op=MPI.MAX)
+        r_m_cells = np.power(2, r_m_height)
+        grid_resolution = height
         hMap = HilbertDirect(self._proj_x_local.shape[-1], grid_resolution)
 
         # index query points
@@ -1113,7 +1121,6 @@ class InterleavedDomain:
                 np.zeros((0, self._x_query_local.shape[-1])),
                 np.zeros((0, self._f_local.shape[-1])),
             )
-
         # partition based on query points
         target_point_per_rank = max(
             (len(sorted_1d_query_indices) + 1) // self._mpi.size, 16
@@ -1166,7 +1173,6 @@ class InterleavedDomain:
         ):
             partitions[part_idx][0] = part_begin
             partitions[part_idx][1] = len(sorted_1d_query_indices) - 1
-
         # assign surrounding src domain to rank local query points
         src_domains = {r: [None, None] for r in range(self._mpi.size)}
         for rank, p_range in partitions.items():

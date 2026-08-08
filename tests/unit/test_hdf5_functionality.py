@@ -64,7 +64,7 @@ class TestHDFFunctionalities(TestCase):
             os.remove(os.path.join(dir_name, "snapshot_data.hdf5"))
         length = 2
         data_manager = ReadWriteHDF(MagicMock())
-        data_manager.collect_output_files(dir_name, files, length)
+        data_manager.collect_output_files(dir_name, files, length, "snapshot_data.hdf5")
         output = h5py.File(os.path.join(dir_name, "snapshot_data.hdf5"), "r")
 
         for i in range(length):

@@ -98,10 +98,11 @@ If the parameter `data_from_micro_sims` is set, the data to be output needs to b
 ## Interpolation
 
 The Micro Manager allows configuring different interpolation profiles that can be reused by other modules such as adaptivity or crash interpolation.
-Each profile contains information on which interpolation method to use, a unique identifier, and the required parameters of the selected interpolation scheme.
+The solutions of inactive or crashed micro simulations are computed by interpolating the solutions of active problems.
+The interpolation is done in the parameter space of the provided source and destination fields.
+Each profile contains information on which interpolation method to use, a unique identifier, and the required parameters of the selected method.
 The profiles are referenced in other modules using the provided identifier.
 Profiles can be specified by providing `"interpolation_configs": []` in the `simulation_params`.
-
 This list provides interpolation configurations. Each configuration must contain a `type` and an `id`.
 Further parameters are `type` dependent. Currently, two types are supported: k-Nearest Neighbors (KNN) and Radial Basis Function (RBF) interpolation.
 The unique `id` is required to load the respective interpolation configuration. Other modules can specify such via the field `interp_id`.
@@ -161,9 +162,10 @@ Description:
 | `type`          | Interpolation Method: Here RBF.                                     | `None`  |
 | `id`            | Unique Identifier, may be a string or int.                          | `None`  |
 | `rbf_config`    | RBF interpolation configuration.                                    | `None`  |
+| `n_neighbors`   | Number of neighboring micro simulations to use in interpolation.    |         |
 | `domain_config` | Interpolation source domain. Either `"local"` or decomposed global. |         |
 
-A selection of basis functions is available: `c0`, `c2`, `c4`, `c6`, `gauss`.
+A selection of basis functions is available, the Wendland functions: `c0`, `c2`, `c4`, `c6`, and the Gaussian function: `gauss`.
 For rank local interpolation, `domain_config` can be set to `"local"`.
 If data should be shared across ranks for interpolation, then the domain must be further configured.
 To this end, spatial discretization techniques are used. For better performance, data can be projected to a lower-dimensional space
@@ -171,8 +173,8 @@ using the fields with the highest standard deviation.
 
 | Parameter           | Description                                                               | Default    |
 |---------------------|---------------------------------------------------------------------------|------------|
-| `basis/type`        | RBF basis function: `c0`, `c2`, `c4`, `c6`, `gauss`                       | `None`     |
-| `basis/eps`         | Parameter if basis type is `gauss`                                        | `None`     |
+| `basis/type`        | RBF basis function: `c0`, `c2`, `c4`, `c6`, `gauss`.                      | `None`     |
+| `basis/eps`         | Variance of the Gaussian function if the basis type is `gauss`.           | `None`     |
 | `max_filling`       | Tunes maximum filling of tree nodes used during decomposition.            | `8`        |
 | `coarsening_factor` | Adjusts the fidelity of the discretized domain. Only integer values >= 1. | `2`        |
 | `projection`        | Either `std` or `identity`.                                               | `identity` |

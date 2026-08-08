@@ -270,7 +270,7 @@ class ModelAdaptivity:
         cur_res : np.ndarray
             Current resolutions, from _gather_current_resolutions.
         locations : List[np.ndarray]
-            Array with gaussian points for all sims. D is the mesh dimension.
+            Coordinates of all macro-scale integration points in a 2D array of shape [N x D] on this rank, where N is the number of local simulations and D is the mesh dimension.
         t : float
             Current time in simulation.
         inputs : List[Dict[str, Any]]

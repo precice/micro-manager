@@ -1,51 +1,51 @@
 {
-    "micro_file_names": ["test_micro_simulation_crash_handling"],
-    "coupling_params": {
-        "precice_config_file_name": "dummy-config.xml",
-        "macro_mesh_name": "Macro-Mesh",
-        "read_data_names": ["Macro-Scalar-Data", "Macro-Vector-Data"],
-        "write_data_names": ["Micro-Scalar-Data", "Micro-Vector-Data"]
+  "micro_file_names": ["test_micro_simulation_crash_handling"],
+  "coupling_params": {
+    "precice_config_file_name": "dummy-config.xml",
+    "macro_mesh_name": "Macro-Mesh",
+    "read_data_names": ["Macro-Scalar-Data", "Macro-Vector-Data"],
+    "write_data_names": ["Micro-Scalar-Data", "Micro-Vector-Data"]
+  },
+  "simulation_params": {
+    "micro_dt": 1.0,
+    "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
+    "interpolate_crash": true,
+    "interpolate_crash_params": {
+      "interp_id": "crash",
+      "threshold": 0.2
     },
-    "simulation_params": {
-        "micro_dt": 1.0,
-        "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
-        "interpolate_crash": true,
-        "interpolate_crash_params": {
-            "interp_id": "crash",
-            "threshold": 0.2
-        },
-        "adaptivity": true,
-        "adaptivity_settings": {
-            "type": "local",
-            "data": ["Macro-Scalar-Data", "Macro-Vector-Data"],
-            "history_param": 0.5,
-            "coarsening_constant": 0.3,
-            "refining_constant": 0.4,
-            "every_implicit_iteration": false,
-            "similarity_measure": "L1"
-        },
-        "interpolation_configs": [
-            {
-                "type": "KNN",
-                "id": "crash",
-                "k": 4
-            },
-            {
-                "type": "RBF",
-                "id": "dummy",
-                "rbf_config": {
-                    "basis": {
-                        "type": "gauss",
-                        "eps": 0.5
-                    },
-                    "n_neighbors": 10
-                },
-                "domain_config": "local"
-            }
-        ]
+    "adaptivity": true,
+    "adaptivity_settings": {
+      "type": "local",
+      "data": ["Macro-Scalar-Data", "Macro-Vector-Data"],
+      "history_param": 0.5,
+      "coarsening_constant": 0.3,
+      "refining_constant": 0.4,
+      "every_implicit_iteration": false,
+      "similarity_measure": "L1"
     },
-    "diagnostics": {
-        "output_micro_sim_solve_time": true,
-        "micro_output_n": 10
-    }
+    "interpolation_configs": [
+      {
+        "type": "KNN",
+        "id": "crash",
+        "k": 4
+      },
+      {
+        "type": "RBF",
+        "id": "dummy",
+        "rbf_config": {
+          "basis": {
+            "type": "gauss",
+            "eps": 0.5
+          },
+          "n_neighbors": 10
+        },
+        "domain_config": "local"
+      }
+    ]
+  },
+  "diagnostics": {
+    "output_micro_sim_solve_time": true,
+    "micro_output_n": 10
+  }
 }
