@@ -143,6 +143,7 @@ class ReadWriteHDF:
                     shape=(length, *current_data.shape),
                     chunks=(1, *current_data.shape),
                     fillvalue=np.nan,
+                    dtype="f4",
                 )
             self._has_datasets = True
 
