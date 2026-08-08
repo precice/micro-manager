@@ -1,6 +1,6 @@
 # Micro Manager changelog
 
-## latest
+## v0.11.2
 
 - Fixed use of provided HDF5 output file name when snapshots are computed in parallel. [#315](https://github.com/precice/micro-manager/pull/315)
 - Added various fixes for interpolation, load balancing and adaptivity. Load balancing now balances every N implicit iterations. [#312](https://github.com/precice/micro-manager/pull/312)
