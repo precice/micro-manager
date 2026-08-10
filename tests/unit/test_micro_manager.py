@@ -163,6 +163,17 @@ class TestFunctionCalls(TestCase):
         self.assertEqual(config.adaptivity_refining_constant(), 0.4)
         self.assertEqual(config.enable_adaptivity_each_implicit_iteration(), False)
 
+    def test_exported_data_names_follow_precice_convention(self):
+        """Test generated load-balancing and model-adaptivity data names."""
+        config = micro_manager.Config("micro-manager-config-data-names.json")
+        config.set_logger(MagicMock())
+        config.read_json_micro_manager()
+
+        self.assertListEqual(
+            config.write_data_names(),
+            ["Micro-Output", "Rank-Of-Sim", "Model-Resolution"],
+        )
+
 
 if __name__ == "__main__":
     import unittest

@@ -838,7 +838,7 @@ class Config:
                     "Disabling load balancing. To use load balancing either disable adaptivity or run with global adaptiviy."
                 )
             else:
-                self.write_data_names().append("rank_of_sim")
+                self.write_data_names().append("Rank-Of-Sim")
 
         with self.show_log_if(self.enable_load_balancing()):
             self.load_balancing_n.set = self.json["simulation_params"][
@@ -909,7 +909,7 @@ class Config:
                 self._logger.log_info_rank_zero("Disabling Model Adaptivity.")
                 self.enable_model_adaptivity.set = False
             else:
-                self.write_data_names().append("model_resolution")
+                self.write_data_names().append("Model-Resolution")
 
             self.model_adaptivity_switching_function.set = self.json[
                 "simulation_params"
