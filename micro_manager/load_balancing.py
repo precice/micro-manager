@@ -136,7 +136,7 @@ class LoadBalancer(ABC):
             Rank local simulation outputs.
         """
         for lid in self._sim_container.range_lid:
-            sim_outputs[lid]["rank_of_sim"] = self._mpi.rank
+            sim_outputs[lid]["Rank-Of-Sim"] = self._mpi.rank
 
     def _gather_send_data(
         self, gid: int, inactive_set: Set[int] = set()
