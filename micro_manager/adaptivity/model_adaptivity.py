@@ -145,7 +145,10 @@ class ModelAdaptivity:
             current_res, locations, t, inputs, prev_output, active_sims
         )
 
-        self._logger.log_info(f"New resolutions for t={t}: {target_res}")
+        res_counts = np.bincount(target_res, minlength=self.get_num_resolutions())
+        self._logger.log_info(
+            f"Number of micro problems per resolution for t={t}: {res_counts.tolist()}"
+        )
 
         for lid in self._sim_container.range_lid:
             if current_res[lid] == target_res[lid]:
