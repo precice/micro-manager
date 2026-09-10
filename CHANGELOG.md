@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## Unreleased
+
+- Renamed the load-balancing output `rank_of_sim` to `Rank-Of-Sim` and the model-adaptivity output `model_resolution` to `Model-Resolution` for consistent preCICE data names. Existing preCICE configurations using either output must be updated. [#317](https://github.com/precice/micro-manager/issues/317) **Breaking change**
+
 ## v0.11.2
 
 - Fixed use of provided HDF5 output file name when snapshots are computed in parallel. [#315](https://github.com/precice/micro-manager/pull/315)

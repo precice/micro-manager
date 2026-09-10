@@ -535,7 +535,7 @@ class MicroManagerCoupling(MicroManager):
             res = -1
             if sim is not None:
                 res = self._model_manager.get_idx_of_sim(sim)
-            output[lid]["model_resolution"] = res
+            output[lid]["Model-Resolution"] = res
         return output
 
     def _get_solve_variant(self) -> Callable[[list, float], list]:
