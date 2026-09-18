@@ -1,5 +1,5 @@
 """
-Class ModelAdaptivity provides methods to change micro simulation resolution on the fly.
+Class ModelSwitching provides methods to change micro simulation resolution on the fly.
 """
 from typing import Union, Optional, List, Dict, Any
 
@@ -20,7 +20,7 @@ import numpy as np
 import importlib
 
 
-class ModelAdaptivity:
+class ModelSwitching:
     def __init__(
         self,
         model_manager: ModelManager,
@@ -50,10 +50,10 @@ class ModelAdaptivity:
         self._mpi = mpi
         self._model_manager = model_manager
         self._sim_container = sim_container
-        self._switching_func_name = config.model_adaptivity_switching_function()
+        self._switching_func_name = config.model_switching_function()
 
         FUNC_NAME = "switching_function"
-        self._switching_func = ModelAdaptivity.switching_interface
+        self._switching_func = ModelSwitching.switching_interface
         try:
             self._switching_func = getattr(
                 importlib.import_module(self._switching_func_name, FUNC_NAME), FUNC_NAME

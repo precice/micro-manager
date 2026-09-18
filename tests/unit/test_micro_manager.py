@@ -164,7 +164,7 @@ class TestFunctionCalls(TestCase):
         self.assertEqual(config.enable_adaptivity_each_implicit_iteration(), False)
 
     def test_exported_data_names_follow_precice_convention(self):
-        """Test generated load-balancing and model-adaptivity data names."""
+        """Test generated load-balancing and model-switching data names."""
         config = micro_manager.Config("micro-manager-config-data-names.json")
         config.set_logger(MagicMock())
         config.read_json_micro_manager()

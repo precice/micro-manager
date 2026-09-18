@@ -24,7 +24,7 @@ class SimulationContainer:
     def __init__(self, mpi_handler: MPIHandler):
         """
         Constructs SimulationContainer.
-        When model adaptivity is active, state storage must capture the states of all models.
+        When model switching is active, state storage must capture the states of all models.
 
         Parameters
         ----------

@@ -24,7 +24,7 @@ from .simulation_container import SimulationContainer
 from .model_manager import ModelManager
 from .micro_manager_base import MicroManager
 
-from .adaptivity.model_adaptivity import ModelAdaptivity
+from .model_switching import ModelSwitching
 from .adaptivity.adaptivity_selection import create_adaptivity_calculator
 from .adaptivity.adaptivity import NoOpAdaptivity
 from .adaptivity.adaptivity_interface import AdaptivityInterface
@@ -89,7 +89,7 @@ class MicroManagerCoupling(MicroManager):
         self._adaptivity_controller: AdaptivityInterface = NoOpAdaptivity(
             self._sim_container
         )
-        self._is_model_adaptivity_on = self._config.enable_model_adaptivity()
+        self._is_model_switching_on = self._config.enable_model_switching()
 
         self._t = 0  # global time
         self._n = 0  # sim-step
@@ -119,7 +119,7 @@ class MicroManagerCoupling(MicroManager):
 
         micro_sim_solve = self._get_solve_variant()
         # call _solve_micro_simulations or _solve_micro_simulations_with_adaptivity internally
-        # should use ModelAdaptivity methods to coordinate
+        # should use ModelSwitching methods to coordinate
 
         first_iteration = True
 
@@ -283,8 +283,8 @@ class MicroManagerCoupling(MicroManager):
         self._model_manager.load_models(self._config, num_ranks, self._conn)
         micro_problem_cls = self._model_manager.get_cls_by_idx(0)
 
-        if self._is_model_adaptivity_on:
-            self._model_adaptivity_controller: ModelAdaptivity = ModelAdaptivity(
+        if self._is_model_switching_on:
+            self._model_switching_controller: ModelSwitching = ModelSwitching(
                 self._model_manager,
                 self._sim_container,
                 self._config,
@@ -498,16 +498,16 @@ class MicroManagerCoupling(MicroManager):
 
         return micro_sims_output
 
-    def _solve_micro_simulations_with_model_adaptivity(
+    def _solve_micro_simulations_with_model_switching(
         self, micro_sims_input: list, dt: float, solve_variant: Callable
     ) -> list:
-        self._model_adaptivity_controller.initialise_solve()
+        self._model_switching_controller.initialise_solve()
 
         active_sim_ids = self._adaptivity_controller.get_active_lids()
         output = None
 
-        while self._model_adaptivity_controller.should_iterate():
-            switched_lids = self._model_adaptivity_controller.switch_models(
+        while self._model_switching_controller.should_iterate():
+            switched_lids = self._model_switching_controller.switch_models(
                 self._t,
                 micro_sims_input,
                 output,
@@ -521,14 +521,14 @@ class MicroManagerCoupling(MicroManager):
                     gid = self._sim_container.local_gids[int(lid)]
                     computed_outputs[gid] = out
             output = solve_variant(micro_sims_input, dt, computed_outputs)
-            self._model_adaptivity_controller.check_convergence(
+            self._model_switching_controller.check_convergence(
                 self._t,
                 micro_sims_input,
                 output,
                 active_sim_ids,
             )
 
-        self._model_adaptivity_controller.finalise_solve()
+        self._model_switching_controller.finalise_solve()
 
         for lid in self._sim_container.range_lid:
             sim = self._sim_container[lid]
@@ -547,9 +547,9 @@ class MicroManagerCoupling(MicroManager):
         solve_variant : Callable
             Solve variant function based on the adaptivity type.
         """
-        if self._is_model_adaptivity_on:
+        if self._is_model_switching_on:
             return partial(
-                self._solve_micro_simulations_with_model_adaptivity,
+                self._solve_micro_simulations_with_model_switching,
                 solve_variant=self._solve_micro_simulations,
             )
         else:
