@@ -2,6 +2,7 @@
 
 ## latest
 
+- Removed redundant diagnostics configuration. [#322](https://github.com/precice/micro-manager/pull/322) **Breaking change**
 - Renamed the load-balancing output `rank_of_sim` to `Rank-Of-Sim` and the model-adaptivity output `model_resolution` to `Model-Resolution` for consistent preCICE data names. Existing preCICE configurations using either output must be updated. [#317](https://github.com/precice/micro-manager/issues/317) **Breaking change**
 
 ## v0.11.2
