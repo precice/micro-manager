@@ -604,6 +604,15 @@ class Config:
 
         self.micro_dt.set = self.json["simulation_params"]["micro_dt"].get_or_raise()
 
+        self.micro_output_n.set = self.json["simulation_params"][
+            "micro_output_n"
+        ].get_with_default(
+            1,
+            "Micro Manager will compute micro output every {data} time windows.",
+            "Output interval of micro simulations not specified, if output is available then it will be called "
+            "in every time window.",
+        )
+
         # ======================================================
         #                        Tasking
         # ======================================================
@@ -859,9 +868,7 @@ class Config:
             if self.load_balancing_type() == "active":
                 self.enable_load_balancing_inactive.set = self.json[
                     "simulation_params"
-                ]["load_balancing_settings"][
-                    "balance_inactive_simulations"
-                ].get_with_default(
+                ]["load_balancing_settings"]["balance_inactive_sims"].get_with_default(
                     False,
                     "Load balancing enable inactive balancing: {data}",
                     "Load balancing will not balance inactive micro simulations.",
@@ -956,24 +963,6 @@ class Config:
                 "Crash Interpolation threshold: {data}.",
             )
 
-        # TODO what? this is not being saved nor used
-        diagnostics_data_names = self.json["diagnostics"][
-            "data_from_micro_sims"
-        ].get_or_none(
-            None,
-            "No diagnostics data is defined. Micro Manager will not output any diagnostics data.",
-            list,
-        )
-
-        self.micro_output_n.set = self.json["diagnostics"][
-            "micro_output_n"
-        ].get_with_default(
-            1,
-            "Micro Manager will compute micro output every {data} time windows.",
-            "Output interval of micro simulations not specified, if output is available then it will be called "
-            "in every time window.",
-        )
-
     def read_json_snapshot(self):
         """
         Reads Snapshot relevant information from JSON configuration file
@@ -1010,15 +999,6 @@ class Config:
                 post_proc_file.replace("/", ".").replace("\\", ".").replace(".py", "")
             )
         self.postprocessing_file_name.set = post_proc_file
-
-        # TODO what? this is not being saved nor used
-        diagnostics_data_names = self.json["diagnostics"][
-            "data_from_micro_sims"
-        ].get_or_none(
-            "Diagnostics data: {data}",
-            "No diagnostics data is defined. Micro Manager will not output any diagnostics data.",
-            list,
-        )
 
         self.enable_single_sim_object.set = self.json["snapshot_params"][
             "initialize_once"

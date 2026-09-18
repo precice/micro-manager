@@ -18,11 +18,7 @@
       "history_param": 1.0,
       "coarsening_constant": 0.3,
       "refining_constant": 0.4,
-      "every_implicit_iteration": false,
-      "output_cpu_time": true
+      "every_implicit_iteration": false
     }
-  },
-  "diagnostics": {
-    "output_micro_sim_solve_time": true
   }
 }

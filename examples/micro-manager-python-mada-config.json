@@ -13,8 +13,5 @@
     "model_adaptivity_settings": {
       "switching_function": "mada_switcher"
     }
-  },
-  "diagnostics": {
-    "output_micro_sim_solve_time": true
   }
 }
