@@ -13,17 +13,17 @@ The Micro Manager is configured with a [JSON](https://en.wikipedia.org/wiki/JSON
 
 ```json
 {
-    "micro_file_names": ["python/micro.py"],
-    "coupling_params": {
-        "precice_config_file_name": "precice-config.xml",
-        "macro_mesh_name": "Macro-Mesh",
-        "read_data_names": ["Macro-Scalar", "Macro-Vector"],
-        "write_data_names": ["Micro-Scalar", "Micro-Vector"]
-    },
-    "simulation_params": {
-        "micro_dt": 1.0,
-        "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
-    }
+  "micro_file_names": ["python/micro.py"],
+  "coupling_params": {
+    "precice_config_file_name": "precice-config.xml",
+    "macro_mesh_name": "Macro-Mesh",
+    "read_data_names": ["Macro-Scalar", "Macro-Vector"],
+    "write_data_names": ["Micro-Scalar", "Micro-Vector"]
+  },
+  "simulation_params": {
+    "micro_dt": 1.0,
+    "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
+  }
 }
 ```
 
@@ -108,19 +108,19 @@ Example configuration:
 
 ```json
 {
-    "type": "KNN",
-    "id": "test",
-    "k": 4
+  "type": "KNN",
+  "id": "test",
+  "k": 4
 }
 ```
 
 Description:
 
-| Parameter | Description                                | Default |
-|-----------|--------------------------------------------|---------|
-| `type`    | Interpolation Method: Here KNN.            | `None`  |
-| `id`      | Unique Identifier, may be a string or int. | `None`  |
-| `k`       | Number of nearest neighbors.               | `1`     |
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `type` | Interpolation Method: Here KNN. | `None` |
+| `id` | Unique Identifier, may be a string or int. | `None` |
+| `k` | Number of nearest neighbors. | `1` |
 
 ### Radial Basis Function (RBF)
 
@@ -128,35 +128,35 @@ Example configuration:
 
 ```json
 {
-    "type": "RBF",
-    "id": "dummy",
-    "rbf_config": {
-        "basis": {
-            "type": "gauss",
-            "eps": 0.5
-        },
-        "n_neighbors": 10
+  "type": "RBF",
+  "id": "dummy",
+  "rbf_config": {
+    "basis": {
+      "type": "gauss",
+      "eps": 0.5
     },
-    "domain_config": {
-        "max_filling": 8,
-        "coarsening_factor": 2,
-        "projection": {
-          "type": "std",
-          "target_dims": 2
-        }
+    "n_neighbors": 10
+  },
+  "domain_config": {
+    "max_filling": 8,
+    "coarsening_factor": 2,
+    "projection": {
+      "type": "std",
+      "target_dims": 2
     }
+  }
 }
 ```
 
 Description:
 
-| Parameter       | Description                                                         | Default |
-|-----------------|---------------------------------------------------------------------|---------|
-| `type`          | Interpolation Method: Here RBF.                                     | `None`  |
-| `id`            | Unique Identifier, may be a string or int.                          | `None`  |
-| `rbf_config`    | RBF interpolation configuration.                                    | `None`  |
-| `n_neighbors`   | Number of neighboring micro simulations to use in interpolation.    |         |
-| `domain_config` | Interpolation source domain. Either `"local"` or decomposed global. |         |
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `type` | Interpolation Method: Here RBF. | `None` |
+| `id` | Unique Identifier, may be a string or int. | `None` |
+| `rbf_config` | RBF interpolation configuration. | `None` |
+| `n_neighbors` | Number of neighboring micro simulations to use in interpolation. | - |
+| `domain_config` | Interpolation source domain. Either `"local"` or decomposed global. | - |
 
 A selection of basis functions is available, the Wendland functions: `c0`, `c2`, `c4`, `c6`, and the Gaussian function: `gauss`.
 For rank local interpolation, `domain_config` can be set to `"local"`.
@@ -164,14 +164,14 @@ If data should be shared across ranks for interpolation, then the domain must be
 To this end, spatial discretization techniques are used. For better performance, data can be projected to a lower-dimensional space
 using the fields with the highest standard deviation.
 
-| Parameter           | Description                                                               | Default    |
-|---------------------|---------------------------------------------------------------------------|------------|
-| `basis/type`        | RBF basis function: `c0`, `c2`, `c4`, `c6`, `gauss`.                      | `None`     |
-| `basis/eps`         | Variance of the Gaussian function if the basis type is `gauss`.           | `None`     |
-| `max_filling`       | Tunes maximum filling of tree nodes used during decomposition.            | `8`        |
-| `coarsening_factor` | Adjusts the fidelity of the discretized domain. Only integer values >= 1. | `2`        |
-| `projection`        | Either `std` or `identity`.                                               | `identity` |
-| `target_dims`       | Only if `std` is used. Denotes the target dimension after projection.     | `None`     |
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `basis/type` | RBF basis function: `c0`, `c2`, `c4`, `c6`, `gauss`. | `None` |
+| `basis/eps` | Variance of the Gaussian function if the basis type is `gauss`. | `None` |
+| `max_filling` | Tunes maximum filling of tree nodes used during decomposition. | `8` |
+| `coarsening_factor` | Adjusts the fidelity of the discretized domain. Only integer values >= 1. | `2` |
+| `projection` | Either `std` or `identity`. | `identity` |
+| `target_dims` | Only if `std` is used. Denotes the target dimension after projection. | `None` |
 
 ## Adaptivity
 
@@ -201,36 +201,36 @@ of `write_data_names` must be mutually disjunct. Mappings can be defined as:
 
 ```json
 "mappings": [
-    {
-        "src_fields": ["input1", "input2"],
-        "dst_fields": ["output1", "output2"],
-        "interp_id": "id_used_in_interpolation_config"
-    },
+  {
+    "src_fields": ["input1", "input2"],
+    "dst_fields": ["output1", "output2"],
+    "interp_id": "id_used_in_interpolation_config"
+  },
 ]
 ```
 
-| Parameter       | Description                                     | Default |
-|-----------------|-------------------------------------------------|---------|
-| `src_fields`    | List of entries from `read_data_names`          | `None`  |
-| `dst_fields`    | List of entries from `write_data_names`         | `None`  |
-| `interp_id`     | ID referencing the interpolation configuration. | `None`  |
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `src_fields` | List of entries from `read_data_names` | `None` |
+| `dst_fields` | List of entries from `write_data_names` | `None` |
+| `interp_id` | ID referencing the interpolation configuration. | `None` |
 
 Example of adaptivity configuration is
 
 ```json
 "simulation_params": {
-    "adaptivity_settings" {
-        "type": "local",
-        "data": ["temperature", "porosity"],
-        "adaptivity_every_n_time_windows": 5,
-        "output_type": "all",
-        "output_n": 5,
-        "history_param": 0.5,
-        "coarsening_constant": 0.3,
-        "refining_constant": 0.4,
-        "every_implicit_iteration": false,
-        "lazy_initialization": true
-    }
+  "adaptivity_settings" {
+    "type": "local",
+    "data": ["temperature", "porosity"],
+    "adaptivity_every_n_time_windows": 5,
+    "output_type": "all",
+    "output_n": 5,
+    "history_param": 0.5,
+    "coarsening_constant": 0.3,
+    "refining_constant": 0.4,
+    "every_implicit_iteration": false,
+    "lazy_initialization": true
+  }
 }
 ```
 
@@ -242,16 +242,16 @@ To turn on model switching, set `"model_switching": true` in `simulation_params`
 
 | Parameter | Description |
 | --- | --- |
-| `model_switching_function` | Path to the file containing the Python importable switching function. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed. |
+| `switching_function` | Path to the file containing the Python importable switching function. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed. |
 
 Example of model switching configuration is
 
 ```json
 "simulation_params": {
-    "model_switching": true,
-    "model_switching_settings": {
-        "model_switching_function": "model_switcher"
-    }
+  "model_switching": true,
+  "model_switching_settings": {
+    "switching_function": "model_switcher"
+  }
 }
 ```
 
@@ -297,24 +297,24 @@ Afterwards balancing is performed `every_n_time_windows`.
 Upon activation, further configuration must be provided in `load_balancing_settings`.
 The following parameters can be set
 
-| Parameter               | Description                                      | Default  |
-|-------------------------|--------------------------------------------------|----------|
-| `every_n_time_windows`  | Frequency of balancing the simulations.          | `1`      |
-| `partitioning`          | Partitioning Algorithm. Options: ["lpt"].        | `"lpt"`  |
-| `type`                  | Load balancing type. Options: ["time", "active"] | `"time"` |
-| `threshold`             | Threshold parameter                              | `0`      |
-| `balance_inactive_sims` | Balance inactive simulations                     | `False`  |
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `every_n_time_windows` | Frequency of balancing the simulations. | `1` |
+| `partitioning` | Partitioning Algorithm. Options: ["lpt"]. | `"lpt"` |
+| `type` | Load balancing type. Options: ["time", "active"] | `"time"` |
+| `threshold` | Threshold parameter. | `0` |
+| `balance_inactive_sims` | Balance inactive simulations. | `false` |
 
 ```json
 "simulation_params": {
-    "load_balancing": true,
-    "load_balancing_settings": {
-        "every_n_time_windows": 5,
-        "partitioning": "lpt",
-        "type": "active",
-        "threshold": 2,
-        "balance_inactive_sims": true
-    }
+  "load_balancing": true,
+  "load_balancing_settings": {
+    "every_n_time_windows": 5,
+    "partitioning": "lpt",
+    "type": "active",
+    "threshold": 2,
+    "balance_inactive_sims": true
+  }
 }
 ```
 
@@ -331,12 +331,12 @@ attempted to be started with `srun` instead of `mpiexec`. In this case, `backend
 local execution is assumed, thus no worker processes are created. Only values greater `0` are accepted.
 `mpi_impl` should be set to the underlying MPI implementation, as this is required for pinning.
 
-| Parameter       | Description                                            | Default    |
-|-----------------|--------------------------------------------------------|------------|
-| `backend`       | Communication backend. Options: ["socket", "mpi"]      | `"socket"` |
-| `is_slurm`      | Launch worker with `srun`?                             | `"False"`  |
-| `"num_workers"` | Number of workers pre Micro Manager rank.              | `1`        |
-| `"mpi_impl"`    | Implementation type of MPI. Options: ["intel", "open"] | `"open"`   |
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `backend` | Communication backend. Options: ["socket", "mpi"] | `"socket"` |
+| `is_slurm` | Launch worker with `srun`? | `false` |
+| `num_workers` | Number of workers pre Micro Manager rank. | `1` |
+| `mpi_impl` | Implementation type of MPI. Options: ["intel", "open"] | `"open"` |
 
 The following configuration block should be provided on the same level as the simulation parameters.
 The given example uses socket based communication, launches with `mpiexec`, uses 4 workers per rank and
@@ -344,11 +344,11 @@ assumes Intel MPI.
 
 ```json
 "tasking": {
-        "backend": "socket",
-        "is_slurm": false,
-        "num_workers": 4,
-        "mpi_impl": "intel"
-    }
+  "backend": "socket",
+  "is_slurm": false,
+  "num_workers": 4,
+  "mpi_impl": "intel"
+}
 ```
 
 ## Interpolate a crashed micro simulation
@@ -358,10 +358,10 @@ The Micro Manager can derive the output of a crashed micro simulation by interpo
 To enable this, set`"interpolate_crash": true` in the `simulation_params` section of the configuration file.
 Further crash handling options can be specified under the `"interpolate_crash_params"` section using `interp_id` and `threshold`.
 
-| Parameter   | Description                                                                    | Default |
-|-------------|--------------------------------------------------------------------------------|---------|
-| `interp_id` | ID referencing the interpolationo configuration.                               | `None`  |
-| `threshold` | Threshold of simulation crashes beyond which the Micro Manager will terminate. | `0.2`   |
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `interp_id` | ID referencing the interpolationo configuration. | `None` |
+| `threshold` | Threshold of simulation crashes beyond which the Micro Manager will terminate. | `0.2` |
 
 For more details on the interpolation see the [crash handling documentation](tooling-micro-manager-running.html#what-happens-when-a-micro-simulation-crashes).
 
