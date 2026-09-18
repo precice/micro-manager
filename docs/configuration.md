@@ -31,13 +31,13 @@ The Micro Manager is configured with a [JSON](https://en.wikipedia.org/wiki/JSON
 
 These parameters are in the outer section.
 
-| Parameter                  | Description                                                                                                                                                                                                  | Default       |
-|----------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
-| `micro_file_names`         | Paths to the files containing the Python importable micro simulation classes. If the files are not in the working directory, give the relative paths from the directory where the Micro Manager is executed. | -             |
-| `micro_stateless_flags`    | List of booleans if micro simulation is stateless allowing model instancing.                                                                                                                                 | False         |
-| `output_directory`         | Path to output directory for logging and performance metrics. Directory is created if not existing already.                                                                                                  | `.`           |
-| `memory_usage_output_type` | Set to either `local`, `global`, or `all`. `local` outputs rank-wise peak memory usage. `global` outputs global averaged peak memory usage. `all` outputs both local and global levels.                      | Empty string. |
-| `memory_usage_output_n`    | Interval of output.                                                                                                                                                                                          | 1             |
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `micro_file_names` | Paths to the files containing the Python importable micro simulation classes. If the files are not in the working directory, give the relative paths from the directory where the Micro Manager is executed. | - |
+| `micro_stateless_flags` | List of booleans if micro simulation is stateless allowing model instancing. | `[False]` |
+| `output_directory` | Path to output directory for logging and performance metrics. Directory is created if not existing already. | `.` |
+| `memory_usage_output_type` | Set to either `local`, `global`, or `all`. `local` outputs rank-wise peak memory usage. `global` outputs global averaged peak memory usage. `all` outputs both local and global levels. | Empty string. |
+| `memory_usage_output_n` | Interval of output. | 1 |
 
 All output is to a CSV file with the peak memory usage (RSS) in every time window, in MBs.
 
@@ -47,12 +47,12 @@ Apart from the base settings, there are three main sections in the configuration
 
 These parameters are in the section `coupling_params`.
 
-| Parameter                  | Description                                                                    |
-|----------------------------|--------------------------------------------------------------------------------|
-| `precice_config_file_name` | Path to the preCICE XML configuration file from the current working directory. |
-| `macro_mesh_name`          | Name of the macro mesh as stated in the preCICE configuration.                 |
-| `read_data_names`          | List with the names of the data to be read from preCICE.                       |
-| `write_data_names`         | List with the names of the data to be written to preCICE.                      |
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `precice_config_file_name` | Path to the preCICE XML configuration file from the current working directory. | Empty string. |
+| `macro_mesh_name` | Name of the macro mesh as stated in the preCICE configuration. | Empty string. |
+| `read_data_names` | List with the names of the data to be read from preCICE. | Empty string. |
+| `write_data_names` | List with the names of the data to be written to preCICE. | Empty string. |
 
 ## Simulation Parameters
 
@@ -68,6 +68,7 @@ These parameters are in the section `simulation_params`.
 | `micro_output_n` | Frequency of calling the optional output functionality of the micro simulation in terms of number of time steps. | 1 |
 | `adaptivity` | Set `true` for simulations with adaptivity. See section on [adaptivity](#adaptivity). | `false` |
 | `load_balancing` | Set `true` for load balancing. See section on [load balancing](#load-balancing). | `false` |
+| `model_switching` | Set `true` for model switching. See section on [model switching](#model-switching). | `false` |
 
 The total number of partitions ranks in the `decomposition` list should be the same as the number of ranks in the `mpirun` or `mpiexec` command.
 
@@ -178,21 +179,21 @@ See the [adaptivity](tooling-micro-manager-adaptivity.html) documentation for a 
 
 To turn on adaptivity, set `"adaptivity": true` in `simulation_params`. Then under `adaptivity_settings` set the following variables:
 
-| Parameter                         | Description                                                                                                                                                                                                                                                                                         | Default       |
-|-----------------------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|
-| `type`                            | Set to either `local` or `global`. The type of adaptivity matters when the Micro Manager is run in parallel. `local` means comparing micro simulations within a local partitioned domain for similarity. `global` means comparing micro simulations from all partitions, so over the entire domain. | None          |
-| `data`                            | List of names of data which are to be used to calculate if micro-simulations are similar or not. For example `["temperature", "porosity"]`.                                                                                                                                                         | -             |
-| `adaptivity_every_n_time_windows` | Interval of adaptivity computation.                                                                                                                                                                                                                                                                 | 1             |
-| `output_type`                     | Set to either `local`, `global`, or `all`. `local` outputs rank-wise adaptivity metrics. `global` outputs global averaged metrics. `all` outputs both local and global metrics.                                                                                                                     | Empty string. |
-| `output_n`                        | Frequency of output of adaptivity metrics.                                                                                                                                                                                                                                                          | 1             |
-| `history_param`                   | History parameter $$ \Lambda $$, set as $$ \Lambda >= 0 $$.                                                                                                                                                                                                                                         | 0.5           |
-| `coarsening_constant`             | Coarsening constant $$ C_c $$, set as $$ 0 =< C_c < 1 $$.                                                                                                                                                                                                                                           | 0.5           |
-| `refining_constant`               | Refining constant $$ C_r $$, set as $$ 0 =< C_r < 1 $$.                                                                                                                                                                                                                                             | 0.5           |
-| `every_implicit_iteration`        | If `true`, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration.                                                                                                     | `false`       |
-| `similarity_measure`              | Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*.                                                                                     | `L2rel`       |
-| `lazy_initialization`             | Set to `true` to lazily create and initialize micro simulations. If selected, micro simulation objects are created only when the micro simulation is activated for the first time.                                                                                                                  | `false`       |
-| `load_balancing`                  | Set to `true` to dynamically balance simulations for parallel runs. See [load balancing settings](#load-balancing) below.                                                                                                                                                                           | `false`       |
-| `mappings`                        | Optional interpolation of results. Set to list of mapping configurations. See below for further details.                                                                                                                                                                                            | `[]`          |
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `type` | Set to either `local` or `global`. The type of adaptivity matters when the Micro Manager is run in parallel. `local` means comparing micro simulations within a local partitioned domain for similarity. `global` means comparing micro simulations from all partitions, so over the entire domain. | None |
+| `data` | List of names of data which are to be used to calculate if micro-simulations are similar or not. For example `["temperature", "porosity"]`. | - |
+| `adaptivity_every_n_time_windows` | Interval of adaptivity computation. | 1 |
+| `output_type` | Set to either `local`, `global`, or `all`. `local` outputs rank-wise adaptivity metrics. `global` outputs global averaged metrics. `all` outputs both local and global metrics. | Empty string. |
+| `output_n` | Frequency of output of adaptivity metrics. | 1 |
+| `history_param` | History parameter $$ \Lambda $$, set as $$ \Lambda >= 0 $$. | 0.5 |
+| `coarsening_constant` | Coarsening constant $$ C_c $$, set as $$ 0 =< C_c < 1 $$. | 0.5 |
+| `refining_constant` | Refining constant $$ C_r $$, set as $$ 0 =< C_r < 1 $$. | 0.5 |
+| `every_implicit_iteration` | If `true`, adaptivity is calculated in every implicit iteration. <br> If False, adaptivity is calculated once at the start of the time window and then reused in every implicit time iteration. | `false` |
+| `similarity_measure` | Similarity measure to be used for adaptivity. Can be either `L1`, `L2`, `L1rel` or `L2rel`. By default, `L1` is used. The `rel` variants calculate the respective relative norms. This parameter is *optional*. | `L2rel` |
+| `lazy_initialization` | Set to `true` to lazily create and initialize micro simulations. If selected, micro simulation objects are created only when the micro simulation is activated for the first time. | `false` |
+| `load_balancing` | Set to `true` to dynamically balance simulations for parallel runs. See [load balancing settings](#load-balancing) below. | `false` |
+| `mappings` | Optional interpolation of results. Set to list of mapping configurations. See below for further details. | `[]` |
 
 Results of inactive simulations can be interpolated from active simulations using radial basis function interpolation. For data in `write_data_names`, a function
 can be defined from `read_data_names` to `write_data_names`. When using multiple functions, their interpolation target, i.e., fields
@@ -239,9 +240,9 @@ See the [model switching](tooling-micro-manager-model-switching.html) documentat
 
 To turn on model switching, set `"model_switching": true` in `simulation_params`. Then under `model_switching_settings` set the following variables:
 
-| Parameter            | Description                                                                                                                                                                                                                                        |
-|----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| `switching_function` | Path to the file containing the Python importable switching function. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.                                                  |
+| Parameter | Description |
+| --- | --- |
+| `model_switching_function` | Path to the file containing the Python importable switching function. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed. |
 
 Example of model switching configuration is
 
@@ -249,7 +250,7 @@ Example of model switching configuration is
 "simulation_params": {
     "model_switching": true,
     "model_switching_settings": {
-        "switching_function": "model_switcher",
+        "model_switching_function": "model_switcher"
     }
 }
 ```
