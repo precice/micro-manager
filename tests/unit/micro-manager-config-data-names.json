@@ -15,6 +15,5 @@
     "model_adaptivity_settings": {
       "switching_function": "mada_switcher"
     }
-  },
-  "diagnostics": {}
+  }
 }

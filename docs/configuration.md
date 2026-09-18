@@ -41,7 +41,7 @@ These parameters are in the outer section.
 
 All output is to a CSV file with the peak memory usage (RSS) in every time window, in MBs.
 
-Apart from the base settings, there are three main sections in the configuration file, [coupling parameters](#coupling-parameters), [simulation parameters](#simulation-parameters), and [diagnostics](#diagnostics).
+Apart from the base settings, there are three main sections in the configuration file, [coupling parameters](#coupling-parameters), and [simulation parameters](#simulation-parameters).
 
 ## Coupling Parameters
 
@@ -65,21 +65,13 @@ These parameters are in the section `simulation_params`.
 | `decomposition_type` | Type of domain decomposition. Either `uniform` or `nonuniform`. | `uniform` |
 | `minimum_access_region_size` | If `nonuniform` decomposition, optionally set a minimum domain width in each axis. Format `[xmin, ymin, zmin]` | - |
 | `micro_dt` | Initial time window size (dt) of the micro simulation. | - |
+| `micro_output_n` | Frequency of calling the optional output functionality of the micro simulation in terms of number of time steps. | 1 |
 | `adaptivity` | Set `true` for simulations with adaptivity. See section on [adaptivity](#adaptivity). | `false` |
 | `load_balancing` | Set `true` for load balancing. See section on [load balancing](#load-balancing). | `false` |
 
 The total number of partitions ranks in the `decomposition` list should be the same as the number of ranks in the `mpirun` or `mpiexec` command.
 
 Non-uniform domain decomposition is based on a geometric progression.
-
-## Diagnostics
-
-These parameters are in the section `diagnostics`.
-
-| Parameter              | Description                                                                                                                                | Default |
-|------------------------|--------------------------------------------------------------------------------------------------------------------------------------------|---------|
-| `data_from_micro_sims` | Dictionary with the names of the data from the micro simulation to be written to VTK files as keys and `"scalar"` or `"vector"` as values. | -       |
-| `micro_output_n`       | Frequency of calling the optional output functionality of the micro simulation in terms of number of time steps.                           | 1       |
 
 ### Adding diagnostics in the preCICE XML configuration
 

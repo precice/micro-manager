@@ -10,8 +10,5 @@
     "micro_dt": 1.0,
     "macro_domain_bounds": [0, 1, 0, 1, 0, 1],
     "decomposition": [1, 1, 2]
-  },
-  "diagnostics": {
-    "output_micro_sim_solve_time": true
   }
 }
