@@ -893,34 +893,34 @@ class Config:
                 )
 
         # ======================================================
-        #                   Model Adaptivity
+        #                   Model Switching
         # ======================================================
 
-        self.enable_model_adaptivity.set = self.json["simulation_params"][
-            "model_adaptivity"
+        self.enable_model_switching.set = self.json["simulation_params"][
+            "model_switching"
         ].get_with_default(False)
         if (
-            self.enable_model_adaptivity()
-            and not self.json["simulation_params"]["model_adaptivity_settings"].exists()
+            self.enable_model_switching()
+            and not self.json["simulation_params"]["model_switching_settings"].exists()
         ):
-            self.enable_model_adaptivity.set = False
+            self.enable_model_switching.set = False
             self._logger.log_info_rank_zero(
-                "Model Adaptivity is turned on but no model adaptivity settings are provided."
+                "Model Switching is turned on but no model switching settings are provided."
             )
 
-        if self.enable_model_adaptivity():
+        if self.enable_model_switching():
             if len(self.micro_file_names()) < 2:
                 self._logger.log_info_rank_zero(
-                    "Not enough Micro Models provided for Model Adaptivity. Need min 2."
+                    "Not enough Micro Models provided for Model Switching. Need min 2."
                 )
-                self._logger.log_info_rank_zero("Disabling Model Adaptivity.")
-                self.enable_model_adaptivity.set = False
+                self._logger.log_info_rank_zero("Disabling Model Switching.")
+                self.enable_model_switching.set = False
             else:
                 self.write_data_names().append("Model-Resolution")
 
-            self.model_adaptivity_switching_function.set = self.json[
-                "simulation_params"
-            ]["model_adaptivity_settings"]["switching_function"].get_or_raise()
+            self.model_switching_function.set = self.json["simulation_params"][
+                "model_switching_settings"
+            ]["switching_function"].get_or_raise()
 
         # ======================================================
         #              Interpolation and Diagnostics
@@ -1526,20 +1526,20 @@ class Config:
         pass
 
     @config_entry
-    def enable_model_adaptivity(self) -> bool:
+    def enable_model_switching(self) -> bool:
         """
-        Boolean stating whether adaptivity is ot or not.
+        Boolean stating whether model switching is on or not.
 
         Returns
         -------
-        adaptivity : bool
-            True is model adaptivity settings are done, False otherwise.
+        model_switching : bool
+            True if model switching settings are done, False otherwise.
 
         """
         pass
 
     @config_entry
-    def model_adaptivity_switching_function(self) -> str:
+    def model_switching_function(self) -> str:
         """
         Get path to switching function file
 

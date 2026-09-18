@@ -11,9 +11,9 @@
     "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0],
     "load_balancing": true,
     "load_balancing_settings": {},
-    "model_adaptivity": true,
-    "model_adaptivity_settings": {
-      "switching_function": "mada_switcher"
+    "model_switching": true,
+    "model_switching_settings": {
+      "switching_function": "model_switcher"
     }
   }
 }

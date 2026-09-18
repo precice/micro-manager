@@ -233,31 +233,31 @@ Example of adaptivity configuration is
 }
 ```
 
-## Model Adaptivity
+## Model Switching
 
-See the [model adaptivity](tooling-micro-manager-model-adaptivity.html) documentation for a detailed explanation about the interface.
+See the [model switching](tooling-micro-manager-model-switching.html) documentation for a detailed explanation about the interface.
 
-To turn on model adaptivity, set `"model_adaptivity": true` in `simulation_params`. Then under `model_adaptivity_settings` set the following variables:
+To turn on model switching, set `"model_switching": true` in `simulation_params`. Then under `model_switching_settings` set the following variables:
 
 | Parameter            | Description                                                                                                                                                                                                                                        |
 |----------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `switching_function` | Path to the file containing the Python importable switching function. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed.                                                  |
 
-Example of model adaptivity configuration is
+Example of model switching configuration is
 
 ```json
 "simulation_params": {
-    "model_adaptivity": true,
-    "model_adaptivity_settings": {
-        "switching_function": "mada_switcher",
+    "model_switching": true,
+    "model_switching_settings": {
+        "switching_function": "model_switcher",
     }
 }
 ```
 
-Model adaptivity also writes the scalar data `Model-Resolution` for every
+Model switching also writes the scalar data `Model-Resolution` for every
 micro simulation. Add this data name to the preCICE XML configuration and to
 the Micro-Manager participant's mesh and write-data entries when model
-adaptivity is enabled.
+switching is enabled.
 
 ### Adding adaptivity in the preCICE XML configuration
 
