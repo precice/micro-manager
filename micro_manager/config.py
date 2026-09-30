@@ -656,6 +656,12 @@ class Config:
 
         validate(self._data)
 
+        if len(self._data["interfaces"]) > 1:
+            raise ValueError(
+                "The Micro Manager currently supports only a single entry in 'interfaces'. "
+                f"Found {len(self._data['interfaces'])} entries in the provided configuration."
+            )
+
         self.participant_name.set = self.json["participant_name"].get_with_default(
             "Micro-Manager",
             "Participant name: {data}",

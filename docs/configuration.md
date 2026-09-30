@@ -9,7 +9,7 @@ summary: Provide a JSON file to configure the Micro Manager.
 
 {% note %} In the preCICE XML configuration the Micro Manager is a participant. Its name is configurable via `participant_name`, and defaults to `Micro-Manager`. {% endnote %}
 
-The Micro Manager is configured with a [JSON](https://en.wikipedia.org/wiki/JSON#Syntax) file. The configuration conforms to the generic [preCICE adapter configuration schema](https://github.com/precice/adapter-schema): the keys `participant_name`, `precice_config_file_path`, and `interfaces` are validated against this schema, while all Micro-Manager-specific settings are nested under the `micro_manager` key. Several parameters can be set, in different sections. For example:
+The Micro Manager is configured with a [JSON](https://en.wikipedia.org/wiki/JSON#Syntax) file. The configuration conforms to the [preCICE adapter configuration schema](https://github.com/precice/adapter-schema): the keys `participant_name`, `precice_config_file_path`, and `interfaces` are validated against this schema, while all Micro-Manager-specific settings are nested under the `micro_manager` key. Several parameters can be set, in different sections. For example:
 
 ```json
 {
@@ -51,6 +51,8 @@ Each entry of `interfaces` has the following fields:
 | `write_data` | List of objects of the form `{"name": "<data-name>"}` describing the data to be written to preCICE. | - |
 
 The adapter schema allows additional optional fields on `interfaces` entries (`patches`, `location`, `is_received`) and on `read_data`/`write_data` entries (`solver_name`, `operation`, `flip-normal`). These are accepted but currently not used by the Micro Manager.
+
+{% warning %} The Micro Manager only works with one interface. Defining more than one interfaces leads to an error. {% endwarning %}
 
 ## Micro Manager Configuration
 
