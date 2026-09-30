@@ -2,6 +2,7 @@
 
 ## latest
 
+- Configuration file now conforms to the generic [preCICE adapter configuration schema](https://github.com/precice/adapter-schema): `participant_name`, `precice_config_file_path`, and `interfaces` (with `mesh_name`, `read_data`, `write_data`) are now top-level keys, and all other Micro Manager settings (`simulation_params`, `tasking`, etc.) are nested under a new top-level `micro_manager` key. The preCICE participant name is now configurable via `participant_name` (default `"Micro-Manager"`). All configuration files must be migrated to the new structure. **Breaking change**
 - Renamed *model adaptivity* to *model switching* to clearly distinguish it from adaptivity. [#323](https://github.com/precice/micro-manager/pull/323) **Breaking change**
 - Removed redundant diagnostics configuration. [#322](https://github.com/precice/micro-manager/pull/322) **Breaking change**
 - Renamed the load-balancing output `rank_of_sim` to `Rank-Of-Sim` and the model-adaptivity output `model_resolution` to `Model-Resolution` for consistent preCICE data names. Existing preCICE configurations using either output must be updated. [#317](https://github.com/precice/micro-manager/issues/317) **Breaking change**

@@ -44,7 +44,7 @@ class CouplingHandler:
 
         # Define the preCICE Participant
         self._participant: p.Participant = p.Participant(
-            "Micro-Manager",
+            config.participant_name(),
             config.precice_config_file_name(),
             mpi.rank,
             mpi.size,
