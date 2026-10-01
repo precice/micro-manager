@@ -1,9 +1,10 @@
 ---
 title: Adaptive switching of simulation models
-permalink: tooling-micro-manager-model-adaptivity.html
+permalink: tooling-micro-manager-model-switching.html
 aliases:
   - /tooling-micro-manager-model-adaptivity.html
-keywords: tooling, macro-micro, two-scale, model-adaptivity
+  - /tooling-micro-manager-model-switching.html
+keywords: tooling, macro-micro, two-scale, model-switching
 summary: Micro Manager can adaptively switch models of micro simulations.
 ---
 
@@ -11,27 +12,27 @@ summary: Micro Manager can adaptively switch models of micro simulations.
 
 For certain multiscale scenarios, having an adaptivity strategy that groups the micro simulations into active and inactive simulations
 may be insufficient. Alternatively, a hierarchy of micro-scale models, for example, reduced order models (ROMs) can be used.
-The model adaptivity functionality allows for the definition of multiple
+The model switching functionality allows for the definition of multiple
 model fidelities and the switching between them at run-time.
 
 ### Iterative Process
 
-**Without** model adaptivity, the Micro Manager calls the `solve(micro_sims_input, dt)` routine of all active simulations
+**Without** model switching, the Micro Manager calls the `solve(micro_sims_input, dt)` routine of all active simulations
 and copies their output to their closest similar inactive counterparts.
 
-**With** model adaptivity, there is an iterative process, because a model may not be sufficiently accurate (given the current input).
+**With** model switching, there is an iterative process, because a model may not be sufficiently accurate (given the current input).
 The call to `solve(micro_sims_input, dt)` leads to the following logic:
 
 ```python
-self._model_adaptivity_controller.initialise_solve()
+self._model_switching_controller.initialise_solve()
 
 active_sim_ids = None
 if self._is_adaptivity_on:
     active_sim_ids = self._adaptivity_controller.get_active_sim_local_ids()
 output = None
 
-while self._model_adaptivity_controller.should_iterate():
-    self._model_adaptivity_controller.switch_models(
+while self._model_switching_controller.should_iterate():
+    self._model_switching_controller.switch_models(
         self._mesh_vertex_coords,
         self._t,
         micro_sims_input,
@@ -40,7 +41,7 @@ while self._model_adaptivity_controller.should_iterate():
         active_sim_ids,
     )
     output = solve_variant(micro_sims_input, dt)
-    self._model_adaptivity_controller.check_convergence(
+    self._model_switching_controller.check_convergence(
         self._mesh_vertex_coords,
         self._t,
         micro_sims_input,
@@ -49,7 +50,7 @@ while self._model_adaptivity_controller.should_iterate():
         active_sim_ids,
     )
 
-self._model_adaptivity_controller.finalise_solve()
+self._model_switching_controller.finalise_solve()
 return output
 ```
 
@@ -172,4 +173,4 @@ The output is expected to be an integer and is interpreted in the following mann
 | -1    | Increase model fidelity by one (go back one in list)  |
 | 1     | Decrease model fidelity by one (go one ahead in list) |
 
-If the switching function requests a change beyond the available resolution range, the request is clamped within the available range. Further requests beyond the range are ignored and do not trigger another model-adaptivity iteration.
+If the switching function requests a change beyond the available resolution range, the request is clamped within the available range. Further requests beyond the range are ignored and do not trigger another model-switching iteration.

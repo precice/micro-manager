@@ -121,6 +121,19 @@ class TestLBTime(TestCase):
     def setUp(self):
         self._mpi = MPIHandler(MPI.COMM_WORLD)
 
+    def test_postprocess_sims_adds_precice_rank_data_name(self):
+        """Test that rank metadata uses the public preCICE data name."""
+        container = SimulationContainer(self._mpi)
+        container.initialize(1, 1, [0], [np.zeros(3)])
+        load_balancer = TimeBalancer.__new__(TimeBalancer)
+        load_balancer._sim_container = container
+        load_balancer._mpi = self._mpi
+        outputs = [{}]
+
+        load_balancer.postprocess_sims(outputs)
+
+        self.assertEqual(outputs, [{"Rank-Of-Sim": self._mpi.rank}])
+
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
     )

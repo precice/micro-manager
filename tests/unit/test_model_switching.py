@@ -5,7 +5,7 @@ import numpy as np
 
 from micro_manager.adaptivity.adaptivity import NoOpAdaptivity
 from micro_manager.simulation_container import SimulationContainer
-from micro_manager.adaptivity.model_adaptivity import ModelAdaptivity
+from micro_manager.model_switching import ModelSwitching
 from micro_manager.micro_manager import MicroManagerCoupling
 from micro_manager.tools.mpi_handler import MPIHandler, MPI
 
@@ -74,9 +74,9 @@ class DummyModelManager:
         return self.models[self.name_to_idx[name]]
 
 
-class TestModelAdaptivity(TestCase):
+class TestModelSwitching(TestCase):
     def _make_controller(self, mpi, container, switching_func):
-        controller = ModelAdaptivity.__new__(ModelAdaptivity)
+        controller = ModelSwitching.__new__(ModelSwitching)
         controller._switching_func = switching_func
         controller._sim_container = container
         controller._model_manager = DummyModelManager()
@@ -169,7 +169,7 @@ class TestModelAdaptivity(TestCase):
         controller = self._make_controller(mpi, container, switching_function)
         manager = MicroManagerCoupling.__new__(MicroManagerCoupling)
         manager._mpi = mpi
-        manager._model_adaptivity_controller = controller
+        manager._model_switching_controller = controller
         manager._adaptivity_controller = NoOpAdaptivity(container)
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
         manager._t = 1.0
@@ -187,7 +187,7 @@ class TestModelAdaptivity(TestCase):
             )
             return [{"result": len(solve_calls)}]
 
-        result = MicroManagerCoupling._solve_micro_simulations_with_model_adaptivity(
+        result = MicroManagerCoupling._solve_micro_simulations_with_model_switching(
             manager,
             [{"input": 1.0}],
             0.1,
@@ -206,7 +206,7 @@ class TestModelAdaptivity(TestCase):
         )
 
         self.assertEqual(manager._sim_container[0].name, "coarse")
-        self.assertEqual(result, [{"result": 2, "model_resolution": 1}])
+        self.assertEqual(result, [{"result": 2, "Model-Resolution": 1}])
         self.assertTrue(controller._converged)
 
     def test_manager_loop_exits_on_invalid_switch_request(self):
@@ -223,7 +223,7 @@ class TestModelAdaptivity(TestCase):
         controller = self._make_controller(mpi, container, lambda resolution, *_: 1)
         manager = MicroManagerCoupling.__new__(MicroManagerCoupling)
         manager._mpi = mpi
-        manager._model_adaptivity_controller = controller
+        manager._model_switching_controller = controller
         manager._adaptivity_controller = NoOpAdaptivity(container)
         manager._mesh_vertex_coords = np.array([[0.0, 0.0, 0.0]])
         manager._t = 1.0
@@ -242,7 +242,7 @@ class TestModelAdaptivity(TestCase):
             )
             return [{"result": 1.0}]
 
-        result = MicroManagerCoupling._solve_micro_simulations_with_model_adaptivity(
+        result = MicroManagerCoupling._solve_micro_simulations_with_model_switching(
             manager,
             [{"input": 1.0}],
             0.1,
@@ -251,4 +251,4 @@ class TestModelAdaptivity(TestCase):
 
         self.assertEqual(len(solve_calls), 1)
         self.assertEqual(solve_calls[0]["computed_outputs"], {})
-        self.assertEqual(result, [{"result": 1.0, "model_resolution": 1}])
+        self.assertEqual(result, [{"result": 1.0, "Model-Resolution": 1}])

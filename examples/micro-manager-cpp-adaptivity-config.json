@@ -1,26 +1,27 @@
 {
-  "micro_file_names": ["cpp-dummy/micro_dummy"],
-  "coupling_params": {
-    "precice_config_file_name": "precice-config-adaptivity.xml",
-    "macro_mesh_name": "Macro-Mesh",
-    "read_data_names": ["Macro-Scalar", "Macro-Vector"],
-    "write_data_names": ["Micro-Scalar", "Micro-Vector"]
-  },
-  "simulation_params": {
-    "micro_dt": 1.0,
-    "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
-    "adaptivity": true,
-    "adaptivity_settings": {
-      "type": "local",
-      "data": ["Macro-Scalar", "Macro-Vector"],
-      "history_param": 0.5,
-      "coarsening_constant": 0.3,
-      "refining_constant": 0.4,
-      "every_implicit_iteration": true,
-      "output_cpu_time": true
+  "participant_name": "Micro-Manager",
+  "precice_config_file_path": "precice-config-adaptivity.xml",
+  "interfaces": [
+    {
+      "mesh_name": "Macro-Mesh",
+      "read_data": [{ "name": "Macro-Scalar" }, { "name": "Macro-Vector" }],
+      "write_data": [{ "name": "Micro-Scalar" }, { "name": "Micro-Vector" }]
     }
-  },
-  "diagnostics": {
-    "output_micro_sim_solve_time": true
+  ],
+  "micro_manager": {
+    "micro_file_names": ["cpp-dummy/micro_dummy"],
+    "simulation_params": {
+      "micro_dt": 1.0,
+      "macro_domain_bounds": [0.0, 25.0, 0.0, 25.0, 0.0, 25.0],
+      "adaptivity": true,
+      "adaptivity_settings": {
+        "type": "local",
+        "data": ["Macro-Scalar", "Macro-Vector"],
+        "history_param": 0.5,
+        "coarsening_constant": 0.3,
+        "refining_constant": 0.4,
+        "every_implicit_iteration": true
+      }
+    }
   }
 }
