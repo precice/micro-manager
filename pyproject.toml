@@ -7,7 +7,7 @@ name="micro-manager-precice"
 dynamic = [ "version" ]
 dependencies = [
     "pyprecice>=3.2", "numpy", "mpi4py", "psutil", "packaging", "scipy",
-    "precice-adapter-schema @ git+https://github.com/precice/adapter-schema.git@extend-adapter-config-schema-solver-specific-options"
+    "precice-adapter-schema @ git+https://github.com/precice/adapter-schema.git@main"
 ]
 requires-python = ">=3.8"
 authors = [
