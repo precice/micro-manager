@@ -7,29 +7,56 @@ keywords: tooling, macro-micro, two-scale
 summary: Provide a JSON file to configure the Micro Manager.
 ---
 
-{% note %} In the preCICE XML configuration the Micro Manager is a participant with the name `Micro-Manager`. {% endnote %}
+{% note %} In the preCICE XML configuration the Micro Manager is a participant. Its name is configurable via `participant_name`, and defaults to `Micro-Manager`. {% endnote %}
 
-The Micro Manager is configured with a [JSON](https://en.wikipedia.org/wiki/JSON#Syntax) file. Several parameters can be set, in different sections. For example:
+The Micro Manager is configured with a [JSON](https://en.wikipedia.org/wiki/JSON#Syntax) file. The configuration conforms to the [preCICE adapter configuration schema](https://github.com/precice/adapter-schema): the keys `participant_name`, `precice_config_file_path`, and `interfaces` are validated against this schema, while all Micro-Manager-specific settings are nested under the `micro_manager` key. Several parameters can be set, in different sections. For example:
 
 ```json
 {
-  "micro_file_names": ["python/micro.py"],
-  "coupling_params": {
-    "precice_config_file_name": "precice-config.xml",
-    "macro_mesh_name": "Macro-Mesh",
-    "read_data_names": ["Macro-Scalar", "Macro-Vector"],
-    "write_data_names": ["Micro-Scalar", "Micro-Vector"]
-  },
-  "simulation_params": {
-    "micro_dt": 1.0,
-    "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
+  "participant_name": "Micro-Manager",
+  "precice_config_file_path": "precice-config.xml",
+  "interfaces": [
+    {
+      "mesh_name": "Macro-Mesh",
+      "read_data": [{ "name": "Macro-Scalar" }, { "name": "Macro-Vector" }],
+      "write_data": [{ "name": "Micro-Scalar" }, { "name": "Micro-Vector" }]
+    }
+  ],
+  "micro_manager": {
+    "micro_file_names": ["python/micro.py"],
+    "simulation_params": {
+      "micro_dt": 1.0,
+      "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0, 0.0, 1.0]
+    }
   }
 }
 ```
 
+## Top-level Configuration
+
+These parameters are validated against the [preCICE adapter configuration schema](https://github.com/precice/adapter-schema) and are set at the outermost level of the configuration file.
+
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `participant_name` | Name of the preCICE participant, as stated in the preCICE configuration. | `"Micro-Manager"` |
+| `precice_config_file_path` | Path to the preCICE XML configuration file from the current working directory. | - |
+| `interfaces` | List of interface definitions. The Micro Manager uses a single entry, described below. | - |
+
+Each entry of `interfaces` has the following fields:
+
+| Parameter | Description | Default |
+| --- | --- | --- |
+| `mesh_name` | Name of the macro mesh as stated in the preCICE configuration. | - |
+| `read_data` | List of objects of the form `{"name": "<data-name>"}` describing the data to be read from preCICE. | - |
+| `write_data` | List of objects of the form `{"name": "<data-name>"}` describing the data to be written to preCICE. | - |
+
+The adapter schema allows additional optional fields on `interfaces` entries (`patches`, `location`, `is_received`) and on `read_data`/`write_data` entries (`solver_name`, `operation`, `flip-normal`). These are accepted but currently not used by the Micro Manager.
+
+{% warning %} The Micro Manager only works with one interface. Defining more than one interfaces leads to an error. {% endwarning %}
+
 ## Micro Manager Configuration
 
-These parameters are in the outer section.
+These parameters are in the section `micro_manager` of the configuration file.
 
 | Parameter | Description | Default |
 | --- | --- | --- |
@@ -41,22 +68,13 @@ These parameters are in the outer section.
 
 All output is to a CSV file with the peak memory usage (RSS) in every time window, in MBs.
 
-Apart from the base settings, there are three main sections in the configuration file, [coupling parameters](#coupling-parameters), and [simulation parameters](#simulation-parameters).
-
-## Coupling Parameters
-
-These parameters are in the section `coupling_params`.
-
-| Parameter | Description | Default |
-| --- | --- | --- |
-| `precice_config_file_name` | Path to the preCICE XML configuration file from the current working directory. | Empty string. |
-| `macro_mesh_name` | Name of the macro mesh as stated in the preCICE configuration. | Empty string. |
-| `read_data_names` | List with the names of the data to be read from preCICE. | Empty string. |
-| `write_data_names` | List with the names of the data to be written to preCICE. | Empty string. |
+Apart from these base settings, the main section in `micro_manager` is [simulation parameters](#simulation-parameters).
 
 ## Simulation Parameters
 
-These parameters are in the section `simulation_params`.
+These parameters are in the section `micro_manager.simulation_params`.
+
+The snippets below show only the relevant `simulation_params` section; in the full configuration file this is nested inside the top-level `micro_manager` key.
 
 | Parameter | Description | Default |
 | --- | --- | --- |

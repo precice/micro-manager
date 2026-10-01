@@ -2,6 +2,7 @@
 
 ## latest
 
+- Changed the configuration to conform it to the [preCICE adapter configuration schema](https://github.com/precice/adapter-schema). [#324](https://github.com/precice/micro-manager/pull/324) **Breaking change**
 - Renamed *model adaptivity* to *model switching* to clearly distinguish it from adaptivity. [#323](https://github.com/precice/micro-manager/pull/323) **Breaking change**
 - Removed redundant diagnostics configuration. [#322](https://github.com/precice/micro-manager/pull/322) **Breaking change**
 - Renamed the load-balancing output `rank_of_sim` to `Rank-Of-Sim` and the model-adaptivity output `model_resolution` to `Model-Resolution` for consistent preCICE data names. Existing preCICE configurations using either output must be updated. [#317](https://github.com/precice/micro-manager/issues/317) **Breaking change**
