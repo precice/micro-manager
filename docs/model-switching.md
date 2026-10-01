@@ -1,11 +1,10 @@
 ---
-title: Adaptive switching of simulation models
+title: On-the-fly switching of simulation models
 permalink: tooling-micro-manager-model-switching.html
 aliases:
-  - /tooling-micro-manager-model-adaptivity.html
   - /tooling-micro-manager-model-switching.html
 keywords: tooling, macro-micro, two-scale, model-switching
-summary: Micro Manager can adaptively switch models of micro simulations.
+summary: Micro Manager can switch models of micro simulations.
 ---
 
 ## Main Concept
