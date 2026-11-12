@@ -1,6 +1,8 @@
 ---
 title: Snapshot Computation
 permalink: tooling-micro-manager-snapshot-configuration.html
+aliases:
+  - /tooling-micro-manager-snapshot-configuration.html
 keywords: tooling, macro-micro, two-scale, snapshot
 summary: Set up the Micro Manager snapshot computation.
 ---
@@ -31,36 +33,40 @@ Configure the snapshot computation functionality with a JSON file. An example co
 
 ```json
 {
-    "micro_file_name": "python-dummy/micro_dummy",
-    "output_directory": "output",
-    "coupling_params": {
-        "parameter_file_name": "parameter.hdf5",
-        "read_data_names": ["macro-scalar-data", "macro-vector-data"],
-        "write_data_names": ["micro-scalar-data", "micro-vector-data"],
-    },
-    "simulation_params": {
-        "micro_dt": 1.0,
-    },
-    "snapshot_params": {
-        "post_processing_file_name": "snapshot_postprocessing",
-        "initialize_once": true,
-        "output_file_name": "snapshot_data"
+    "micro_manager": {
+        "micro_file_names": ["python-dummy/micro_dummy"],
+        "output_directory": "output",
+        "coupling_params": {
+            "parameter_file_name": "parameter.hdf5",
+            "read_data_names": ["macro-scalar-data", "macro-vector-data"],
+            "write_data_names": ["micro-scalar-data", "micro-vector-data"],
+        },
+        "simulation_params": {
+            "micro_dt": 1.0,
+        },
+        "snapshot_params": {
+            "post_processing_file_name": "snapshot_postprocessing",
+            "initialize_once": true,
+            "output_file_name": "snapshot_data"
+        }
     }
 }
 ```
+
+Unlike the coupled Micro Manager, the snapshot computation does not use a preCICE participant, so it does not require `participant_name`, `precice_config_file_path`, or `interfaces` at the top level, and the configuration is not validated against the [preCICE adapter configuration schema](https://github.com/precice/adapter-schema). Instead, everything is nested under the top-level `micro_manager` key.
 
 ## Micro Manager Configuration
 
 Parameter | Description | Default
 --- | --- | ---
-`micro_file_name` | Path to the file containing the Python importable micro simulation class. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed. | -
+`micro_file_names` | Paths to the files containing the Python importable micro simulation classes. If the files are not in the working directory, give the relative paths from the directory where the Micro Manager is executed. | -
 `output_directory` | Path to output directory for logging and performance metrics. Directory is created if not existing already. | `.`
 
-Apart from the base settings, there are three main sections in the configuration file, [coupling parameters](#coupling-parameters), [simulation parameters](#simulation-parameters), [snapshot parameters](#snapshot-parameters), and [diagnostics](#diagnostics).
+Apart from the base settings, there are three main sections in the `micro_manager` section of the configuration file, [coupling parameters](#coupling-parameters), [simulation parameters](#simulation-parameters), [snapshot parameters](#snapshot-parameters), and [diagnostics](#diagnostics).
 
-The path to the file containing the Python importable micro simulation class is specified in the `micro_file_name` parameter. If the file is not in the working directory, give the relative path.
+The paths to the files containing the Python importable micro simulation classes are specified in the `micro_file_names` parameter. If the files are not in the working directory, give the relative paths.
 
-There are four main sections in the configuration file, the `coupling_params`, the `simulations_params`, the `snapshot_params` and the optional `diagnostics`.
+There are four main sections in the `micro_manager` section of the configuration file, the `coupling_params`, the `simulations_params`, the `snapshot_params` and the optional `diagnostics`.
 
 ## Coupling Parameters
 
@@ -80,7 +86,7 @@ Parameter | Description
 
 Parameter | Description
 --- | ---
-`post_processing_file_name`| Path to the post-processing Python script from the current working directory. Providing a post-processing script is optional. The script must contain a class `PostProcessing` with a method `postprocessing(sim_output)` that takes the simulation output as an argument. The method can be used to post-process the simulation output before writing it to the database.
+`post_processing_file_name` | Path to the post-processing Python script from the current working directory. Providing a post-processing script is optional. The script must contain a class `PostProcessing` with a method `postprocessing(sim_output)` that takes the simulation output as an argument. The method can be used to post-process the simulation output before writing it to the database.
 `initialize_once` | If `true`, only one micro simulation is initialized and solved for all macro inputs per rank. If `false` a new micro simulation is initialized and solved for each macro input in the parameter space. Default is `false`. It is recommended to set the parameter to `true` if the micro simulation is not history-dependent and the same setup is shared across all micro simulations.
 `output_file_name` | Name of the HDF5 file which stores the simulation inputs and output data snapshots. Default is `"snapshot_data"`.
 

@@ -34,7 +34,11 @@ class ReadWriteHDF:
         f.close()
 
     def collect_output_files(
-        self, dir_name: str, file_list: list, database_length: int
+        self,
+        dir_name: str,
+        file_list: list,
+        database_length: int,
+        output_file_name: str,
     ) -> None:
         """
         Iterate over a list of HDF5 files in a given directory and copy the content into a single file.
@@ -48,9 +52,11 @@ class ReadWriteHDF:
             List of files to be combined.
         dataset_length : int
             Global number of snapshots.
+        output_file_name : str
+            Name of the merged output HDF5 file.
         """
         # Create a output file
-        main_file = h5py.File(os.path.join(dir_name, "snapshot_data.hdf5"), "w")
+        main_file = h5py.File(os.path.join(dir_name, output_file_name), "w")
         main_file.attrs["status"] = "writing"
         main_file.attrs["MicroManager_version"] = str(
             metadata.version("micro-manager-precice")
@@ -137,6 +143,7 @@ class ReadWriteHDF:
                     shape=(length, *current_data.shape),
                     chunks=(1, *current_data.shape),
                     fillvalue=np.nan,
+                    dtype="f4",
                 )
             self._has_datasets = True
 

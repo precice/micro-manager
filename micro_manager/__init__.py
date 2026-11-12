@@ -8,7 +8,10 @@ def _check_dependencies():
     from packaging.requirements import Requirement
     from packaging.version import Version
 
-    _import_name_map = {"pyprecice": "precice"}
+    _import_name_map = {
+        "pyprecice": "precice",
+        "precice-adapter-schema": "preciceadapterschema",
+    }
     required = {}
     _pkg_requires = importlib.metadata.requires("micro-manager-precice") or []
     for _dep in _pkg_requires:

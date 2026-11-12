@@ -1,10 +1,13 @@
+from typing import Dict, Any
+
 import numpy as np
 import unittest
 from unittest import TestCase
 from unittest.mock import MagicMock
 from micro_manager.interpolation import (
-    Interpolation,
-    RBF_PU,
+    Interpolator,
+    KNN,
+    RBF,
 )
 from micro_manager.tools.spatial_methods import (
     NDtree,
@@ -16,79 +19,82 @@ from micro_manager.tools.projection import (
     STDProjector,
     IdentityProjector,
 )
-from mpi4py import MPI
+from micro_manager.tools.mpi_handler import MPIHandler, MPI, MPIHandlerRankLocal
 
 
-class TestInterpolation(TestCase):
-    def test_local_interpolation(self):
+class TestInterpolator(TestCase):
+    @Interpolator.register_impl
+    class DummyInterpolator(Interpolator):
+        def configure(self, interp_config: Dict[str, Any]) -> None:
+            pass
+
+        def set_local_data(self, x: np.ndarray, x_: np.ndarray, f: np.ndarray) -> None:
+            pass
+
+        def interpolate(self) -> np.ndarray:
+            pass
+
+        def get_min_support_size(self) -> int:
+            return 0
+
+        def is_local(self) -> bool:
+            return True
+
+        @classmethod
+        def load_config(cls, config: Dict[str, Any]) -> Dict[str, Any]:
+            return {"val": config["val"]}
+
+    def test_initialize_valid_configs(self):
         """
-        Test if local interpolation works as expected.
+        Test if interpolation configurations are loaded properly.
         """
-        coords = [[-2, 0, 0], [-1, 0, 0], [2, 0, 0]]
-        inter_point = [1, 0, 0]
-        vector_data = [[-2, -2, -2], [-1, -1, -1], [2, 2, 2]]
-        scalar_data = [[-2], [-1], [2]]
-        expected_vector_interpolation_output = [55 / 49, 55 / 49, 55 / 49]
-        expected_scalar_interpolation_output = 55 / 49
+        interp_configs = [
+            {"type": "DummyInterpolator", "id": "key0", "val": 0},
+            {"type": "DummyInterpolator", "id": "key1", "val": 1},
+        ]
+        config = MagicMock()
+        config.interpolation_configs = MagicMock(return_value=interp_configs)
+        logger = MagicMock()
+        mpi = MagicMock()
+        mpi.rank = 0
+        mpi.size = 1
 
-        interpolation = Interpolation(MagicMock())
-        interpolated_vector_data = interpolation.interpolate(
-            coords, inter_point, vector_data
+        Interpolator.initialize(config, logger, mpi)
+
+        self.assertTrue(Interpolator.is_id_valid("key0"))
+        self.assertTrue(Interpolator.is_id_valid("key1"))
+        self.assertFalse(Interpolator.is_id_valid(0))
+        self.assertDictEqual(Interpolator.get_config("key0"), {"val": 0})
+        self.assertDictEqual(Interpolator.get_config("key1"), {"val": 1})
+        self.assertEqual(
+            "DummyInterpolator", type(Interpolator.get_instance("key0")).__name__
         )
-        interpolated_scalar_data = interpolation.interpolate(
-            coords, inter_point, scalar_data
-        )
-        self.assertTrue(
-            np.allclose(interpolated_vector_data, expected_vector_interpolation_output)
-        )
-        self.assertAlmostEqual(
-            interpolated_scalar_data, expected_scalar_interpolation_output
+        self.assertEqual(
+            "DummyInterpolator", type(Interpolator.get_instance("key1")).__name__
         )
 
-    def test_nearest_neighbor(self):
+    def test_initialize_invalid_config(self):
         """
-        Test if finding nearest neighbor works as expected if interpolation point
-        itself is not part of neighbor coordinates.
-        Note: running this test requires the sci-kit learn package to be installed.
+        Test if errors are raised when config is invalid.
         """
-        neighbors = [[0, 2, 0], [0, 3, 0], [0, 0, 4], [-5, 0, 0], [0, 0, 0]]
-        inter_coord = [0, 0, 0]
-        expected_nearest_neighbor_index = [4, 0, 1]
-        k = 3
+        config = MagicMock()
+        logger = MagicMock()
+        mpi = MagicMock()
+        mpi.rank = 0
+        mpi.size = 1
 
-        interpolation = Interpolation(MagicMock())
-        nearest_neighbor_index = interpolation.get_nearest_neighbor_indices(
-            neighbors, inter_coord, k
-        )
-        self.assertListEqual(
-            nearest_neighbor_index.tolist(), expected_nearest_neighbor_index
-        )
-
-    def test_interpolation_exact_point(self):
-        """
-        Test that if interpolation point exactly matches a neighbor, that value is returned.
-        """
-        coords = [[0, 0, 0], [1, 0, 0], [2, 0, 0]]
-        point = [1, 0, 0]
-        values = [10, 20, 30]
-
-        interpolation = Interpolation(MagicMock())
-        result = interpolation.interpolate(coords, point, values)
-        self.assertEqual(result, 20)
-
-    def test_nearest_neighbor_k_larger_than_coords(self):
-        """
-        Test that k is reset when larger than number of available neighbors.
-        """
-        coords = [[0, 0, 0], [1, 0, 0]]
-        inter_point = [0.5, 0, 0]
-        k = 5  # larger than len(coords)
-
-        mock_logger = MagicMock()
-        interpolation = Interpolation(mock_logger)
-        indices = interpolation.get_nearest_neighbor_indices(coords, inter_point, k)
-        self.assertEqual(len(indices), 2)
-        mock_logger.log_info.assert_called_once()
+        # Missing type
+        interp_configs = [{"id": "key0", "val": 0}]
+        config.interpolation_configs = MagicMock(return_value=interp_configs)
+        self.assertRaises(ValueError, Interpolator.initialize, config, logger, mpi)
+        # Unknown type
+        interp_configs = [{"type": "Dummy", "id": "key0", "val": 0}]
+        config.interpolation_configs = MagicMock(return_value=interp_configs)
+        self.assertRaises(ValueError, Interpolator.initialize, config, logger, mpi)
+        # Missing ID
+        interp_configs = [{"type": "DummyInterpolator", "val": 0}]
+        config.interpolation_configs = MagicMock(return_value=interp_configs)
+        self.assertRaises(ValueError, Interpolator.initialize, config, logger, mpi)
 
 
 class TestNDtree(TestCase):
@@ -486,7 +492,7 @@ class TestHilberDirect(TestCase):
 
 class TestProjector(TestCase):
     def test_std_proj(self):
-        proj: Projector = STDProjector(1, MPI.COMM_SELF)
+        proj: Projector = STDProjector(1, MPIHandlerRankLocal)
         data = np.array(
             [
                 [0.1, 0],
@@ -517,16 +523,19 @@ def f_ana(x):
     return 1 + 2 * x[:, 0] + 1 * x[:, 1] + 0.1 * x[:, 2]
 
 
-rbf_config = {
+rbf_input_config = {
+    "type": "RBF",
+    "id": 0,
     "domain_config": {
         "max_filling": 8,
         "coarsening_factor": 2,
-        "n_neighbors": 10,
-        "projection_type": "std",
-        "projection_std_dims": 2,
+        "projection": {"type": "std", "target_dims": 2},
     },
-    "use_pu": False,
-    "basis": "c6",
+    "rbf_config": {
+        "use_pu": False,
+        "basis": {"type": "c6"},
+        "n_neighbors": 10,
+    },
 }
 # we have 2 clusters, centered around -1/-1/0 and 1/1/0
 ordered_global_x = np.array(
@@ -574,11 +583,9 @@ reordering_q = np.array([0, 2, 4, 6, 1, 3, 5, 7])
 
 class TestInterleavedDomain(TestCase):
     def setUp(self):
-        self._comm = MPI.COMM_WORLD
-        self._rank = self._comm.Get_rank()
-        self._size = self._comm.Get_size()
-        self._domain = InterleavedDomain(self._comm)
-        self._domain.configure(rbf_config["domain_config"])
+        self._mpi = MPIHandler(MPI.COMM_WORLD)
+        self._domain = InterleavedDomain(self._mpi)
+        self._domain.configure(RBF.load_config(rbf_input_config)["domain_config"])
         self._ordered_global_x = ordered_global_x
         self._ordered_global_f = ordered_global_f
         self._reordering = reordering
@@ -588,39 +595,16 @@ class TestInterleavedDomain(TestCase):
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
     )
-    def test_p2p_comm(self):
-        send_map = {0: [], 1: []}
-        if self._rank == 0:
-            send_map[0].extend([0, 1, 2])
-            send_map[1].extend([3, 4, 5])
-        else:
-            send_map[0].extend([6, 7, 8])
-            send_map[1].extend([9, 10, 11])
-
-        local_result, inv_map = self._domain._communicate(send_map, True)
-
-        if self._rank == 0:
-            self.assertListEqual(sorted(local_result), [0, 1, 2, 6, 7, 8])
-            self.assertListEqual(sorted(inv_map[0]), [0, 1, 2])
-            self.assertListEqual(sorted(inv_map[1]), [6, 7, 8])
-        else:
-            self.assertListEqual(sorted(local_result), [3, 4, 5, 9, 10, 11])
-            self.assertListEqual(sorted(inv_map[0]), [3, 4, 5])
-            self.assertListEqual(sorted(inv_map[1]), [9, 10, 11])
-
-    @unittest.skipUnless(
-        MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
-    )
     def test_normalize(self):
         self._domain.set_local_data(
             self._ordered_global_x[self._reordering][
-                10 * self._rank : 10 * self._rank + 10
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
             ],
             self._ordered_global_xq[self._reordering_q][
-                4 * self._rank : 4 * self._rank + 4
+                4 * self._mpi.rank : 4 * self._mpi.rank + 4
             ],
             self._ordered_global_f[self._reordering][
-                10 * self._rank : 10 * self._rank + 10
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
             ],
         )
 
@@ -643,13 +627,13 @@ class TestInterleavedDomain(TestCase):
     def test_gen_trees(self):
         self._domain.set_local_data(
             self._ordered_global_x[self._reordering][
-                10 * self._rank : 10 * self._rank + 10
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
             ],
             self._ordered_global_xq[self._reordering_q][
-                4 * self._rank : 4 * self._rank + 4
+                4 * self._mpi.rank : 4 * self._mpi.rank + 4
             ],
             self._ordered_global_f[self._reordering][
-                10 * self._rank : 10 * self._rank + 10
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
             ],
         )
 
@@ -670,19 +654,19 @@ class TestInterleavedDomain(TestCase):
     def test_create_partitions(self):
         self._domain.set_local_data(
             self._ordered_global_x[self._reordering][
-                10 * self._rank : 10 * self._rank + 10
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
             ],
             self._ordered_global_xq[self._reordering_q][
-                4 * self._rank : 4 * self._rank + 4
+                4 * self._mpi.rank : 4 * self._mpi.rank + 4
             ],
             self._ordered_global_f[self._reordering][
-                10 * self._rank : 10 * self._rank + 10
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
             ],
         )
         self._domain._generate_trees()
         x, xq, f = self._domain._create_partitions()
 
-        if self._rank == 0:
+        if self._mpi.rank == 0:
             expected_xq = self._ordered_global_xq / self._domain._normalization[None, :]
             expected_xq_set = set()
             for i in range(len(expected_xq)):
@@ -691,23 +675,135 @@ class TestInterleavedDomain(TestCase):
                 self.assertTrue(tuple(xq[i].tolist()) in expected_xq_set)
 
 
+class TestKNN(TestCase):
+    def test_with_interface(self):
+        """
+        Test KNN interpolation using Interpolator loading and interface.
+        """
+        logger = MagicMock()
+        mpi = MagicMock()
+        mpi.rank = 0
+        mpi.size = 1
+
+        configs = [{"type": "KNN", "id": 0, "k": 4}]
+        config = MagicMock()
+        config.interpolation_configs = MagicMock(return_value=configs)
+        Interpolator.initialize(config, logger, mpi)
+        interp = Interpolator.get_instance(0)
+
+        coords = [[-2, 0, 0], [-1, 0, 0], [2, 0, 0]]
+        inter_point = [[1, 0, 0]]
+        vector_data = [[-2, -2, -2], [-1, -1, -1], [2, 2, 2]]
+        expected_output = [55 / 49, 55 / 49, 55 / 49]
+
+        interp.set_local_data(
+            x=np.array(coords),
+            x_=np.array(inter_point),
+            f=np.array(vector_data),
+        )
+        interp_result = interp.interpolate()
+        self.assertListEqual(expected_output, interp_result.flatten().tolist())
+
+    def test_local_interpolation(self):
+        """
+        Test if local interpolation works as expected.
+        """
+        coords = [[-2, 0, 0], [-1, 0, 0], [2, 0, 0]]
+        inter_point = [1, 0, 0]
+        vector_data = [[-2, -2, -2], [-1, -1, -1], [2, 2, 2]]
+        scalar_data = [[-2], [-1], [2]]
+        expected_vector_interpolation_output = [55 / 49, 55 / 49, 55 / 49]
+        expected_scalar_interpolation_output = 55 / 49
+
+        interpolated_vector_data = KNN._interpolate_impl(
+            coords, inter_point, vector_data
+        )
+        interpolated_scalar_data = KNN._interpolate_impl(
+            coords, inter_point, scalar_data
+        )
+        self.assertTrue(
+            np.allclose(interpolated_vector_data, expected_vector_interpolation_output)
+        )
+        self.assertAlmostEqual(
+            interpolated_scalar_data, expected_scalar_interpolation_output
+        )
+
+    def test_nearest_neighbor(self):
+        """
+        Test if finding nearest neighbor works as expected if interpolation point
+        itself is not part of neighbor coordinates.
+        Note: running this test requires the sci-kit learn package to be installed.
+        """
+        neighbors = [[0, 2, 0], [0, 3, 0], [0, 0, 4], [-5, 0, 0], [0, 0, 0]]
+        inter_coord = [0, 0, 0]
+        expected_nearest_neighbor_index = [4, 0, 1]
+        k = 3
+
+        logger = MagicMock()
+        mpi = MagicMock()
+        mpi.rank = 0
+        mpi.size = 1
+        knn = KNN(logger, mpi)
+        knn.configure({"k": k})
+        nearest_neighbor_index = knn._get_nearest_neighbor_indices(
+            neighbors, inter_coord
+        )
+        self.assertListEqual(
+            nearest_neighbor_index.tolist(), expected_nearest_neighbor_index
+        )
+
+    def test_interpolation_exact_point(self):
+        """
+        Test that if interpolation point exactly matches a neighbor, that value is returned.
+        """
+        coords = [[0, 0, 0], [1, 0, 0], [2, 0, 0]]
+        point = [1, 0, 0]
+        values = [10, 20, 30]
+
+        result = KNN._interpolate_impl(coords, point, values)
+        self.assertEqual(result, 20)
+
+    def test_nearest_neighbor_k_larger_than_coords(self):
+        """
+        Test that k is reset when larger than number of available neighbors.
+        """
+        coords = [[0, 0, 0], [1, 0, 0]]
+        inter_point = [0.5, 0, 0]
+        k = 5  # larger than len(coords)
+
+        logger = MagicMock()
+        mpi = MagicMock()
+        mpi.rank = 0
+        mpi.size = 1
+        knn = KNN(logger, mpi)
+        knn.configure({"k": k})
+        indices = knn._get_nearest_neighbor_indices(coords, inter_point)
+        self.assertEqual(len(indices), 2)
+        logger.log_info.assert_called_once()
+
+
 class TestRBF(TestCase):
     def setUp(self):
-        self._comm = MPI.COMM_WORLD
-        self._rank = self._comm.Get_rank()
-        self._size = self._comm.Get_size()
-        self._rbf = RBF_PU(MagicMock(), self._comm, self._rank, self._size)
-        self._rbf.configure(rbf_config)
+        self._mpi = MPIHandler(MPI.COMM_WORLD)
+        self._rbf = RBF(MagicMock(), self._mpi)
+        internal_config = RBF.load_config(rbf_input_config)
+        self._rbf.configure(internal_config)
 
     @unittest.skipUnless(
         MPI.COMM_WORLD.Get_size() == 2, "This test only works with 2 ranks."
     )
     def test_interpolation(self):
-        xq = ordered_global_xq[reordering_q][4 * self._rank : 4 * self._rank + 4]
+        xq = ordered_global_xq[reordering_q][
+            4 * self._mpi.rank : 4 * self._mpi.rank + 4
+        ]
         self._rbf.set_local_data(
-            ordered_global_x[reordering][10 * self._rank : 10 * self._rank + 10],
+            ordered_global_x[reordering][
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
+            ],
             xq,
-            ordered_global_f[reordering][10 * self._rank : 10 * self._rank + 10],
+            ordered_global_f[reordering][
+                10 * self._mpi.rank : 10 * self._mpi.rank + 10
+            ],
         )
 
         fq = self._rbf.interpolate()

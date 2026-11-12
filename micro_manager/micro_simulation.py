@@ -7,6 +7,7 @@ created object is uniquely identifiable in a global setting.
 from abc import ABC, abstractmethod
 import inspect
 import importlib as ipl
+from typing import Optional, Dict, Any, Tuple, List
 
 from .tasking.task import (
     ConstructTask,
@@ -183,10 +184,19 @@ class MicroSimulationInterface(ABC):
         """
         pass
 
+    @property
+    def name(self) -> str:
+        """
+        For normal operation, this does not need to be overridden.
+        The method should return a unique name for the model type.
+        """
+        return type(self).__name__
+
 
 class MicroSimulationLocal(MicroSimulationInterface):
-    def __init__(self, gid, late_init, sim_cls):
+    def __init__(self, gid, name, late_init, sim_cls):
         self._gid = gid
+        self._name = name
         self._instance = sim_cls(-1 if late_init else gid)
 
     def solve(self, micro_sim_input, dt):
@@ -222,11 +232,16 @@ class MicroSimulationLocal(MicroSimulationInterface):
     def destroy(self):
         self._instance = None
 
+    @property
+    def name(self):
+        return self._name
+
 
 class MicroSimulationRemote(MicroSimulationInterface):
-    def __init__(self, gid, late_init, num_ranks, conn, cls_path, sim_cls):
+    def __init__(self, gid, name, late_init, num_ranks, conn, cls_path, sim_cls):
         self._cls_path = cls_path
         self._gid = gid
+        self._name = name
         self._num_ranks = num_ranks
         self._conn = conn
         self._sim_cls = sim_cls
@@ -319,67 +334,6 @@ class MicroSimulationRemote(MicroSimulationInterface):
         for worker_id in range(self._num_ranks):
             self._conn.recv(worker_id)
 
-
-class MicroSimulationWrapper(MicroSimulationInterface):
-    """
-    If only a single rank is in use: will contain the micro sim instance.
-    Otherwise, it will delegate method calls to workers and not contain state.
-    """
-
-    def __init__(self, name, sim_cls, cls_path, global_id, late_init, num_ranks, conn):
-        self._impl = None
-
-        if num_ranks > 1 and conn is not None:
-            self._impl = MicroSimulationRemote(
-                global_id, late_init, num_ranks, conn, cls_path, sim_cls
-            )
-        else:
-            self._impl = MicroSimulationLocal(global_id, late_init, sim_cls)
-
-        self._external_data = dict()
-        self._name = name
-
-    def solve(self, micro_sim_input, dt):
-        return self._impl.solve(micro_sim_input, dt)
-
-    def get_state(self):
-        return self._impl.get_state()
-
-    def set_state(self, state):
-        return self._impl.set_state(state)
-
-    def get_global_id(self):
-        return self._impl.get_global_id()
-
-    def set_global_id(self, global_id):
-        return self._impl.set_global_id(global_id)
-
-    def initialize(self, *args, **kwargs):
-        return self._impl.initialize(*args, **kwargs)
-
-    def output(self):
-        return self._impl.output()
-
-    def requires_initialize(self) -> bool:
-        return self._impl.requires_initialize()
-
-    def requires_output(self) -> bool:
-        return self._impl.requires_output()
-
-    def destroy(self):
-        return self._impl.destroy()
-
-    def __getattr__(self, name):
-        return getattr(self._impl, name)
-
-    @property
-    def attachments(self):
-        return self._external_data
-
-    @attachments.setter
-    def attachments(self, value):
-        self._external_data = value
-
     @property
     def name(self):
         return self._name
@@ -399,23 +353,28 @@ class MicroSimulationClass:
         return self._name
 
     def __call__(self, gid, *, late_init=False):
-        return MicroSimulationWrapper(
-            self._name,
-            self._sim_cls,
-            self._cls_path,
-            gid,
-            late_init,
-            self._num_ranks,
-            self._conn,
-        )
+        if self._num_ranks > 1 and self._conn is not None:
+            return MicroSimulationRemote(
+                gid,
+                self._name,
+                late_init,
+                self._num_ranks,
+                self._conn,
+                self._cls_path,
+                self._sim_cls,
+            )
+        else:
+            return MicroSimulationLocal(gid, self._name, late_init, self._sim_cls)
 
     @property
     def backend_cls(self):
         return self._sim_cls
 
     def check_initialize(
-        self, test_instance: MicroSimulationInterface, test_input: dict
-    ) -> tuple[bool, bool]:
+        self,
+        test_instance: MicroSimulationInterface,
+        test_input: Optional[Dict[str, Any]],
+    ) -> Tuple[bool, bool, bool, Optional[Dict[str, Any]]]:
         """
         Check whether the micro simulation class implements ``initialize``.
 
@@ -425,56 +384,53 @@ class MicroSimulationClass:
 
         Parameters
         ----------
-        test_instance : object
+        test_instance : MicroSimulationInterface
             An instance of the micro simulation class used for signature probing.
-        test_input : dict
+        test_input : Optional[Dict[str, Any]]
             Sample input data used to probe whether ``initialize`` accepts arguments.
 
         Returns
         -------
-        check_result : tuple[bool, bool]
-            (has_initialize, requires_initial_data)
+        check_result : Tuple[bool, bool, bool, Optional[Dict[str, Any]]]
+            (has_initialize, requires_initial_data, has_return_value, return_value)
         """
         if not test_instance.requires_initialize():
-            return False, False
+            return False, False, False, None
 
         has_args = False
+        has_return_value = False
+        result = None
 
-        # Try to get the signature of the initialize() method, if it is written in Python
+        # Try to call the initialize() method without initial data
         try:
-            argspec = inspect.getfullargspec(self._sim_cls.initialize)
-            # The first argument in the signature is self
-            if len(argspec.args) == 1:
-                has_args = False
-            elif len(argspec.args) == 2:
+            result = test_instance.initialize()
+            has_args = False
+        except TypeError:
+            self._log.log_info_rank_zero(
+                "The initialize() method of the micro simulation has arguments. "
+                "Attempting to call it with initial data."
+            )
+
+            if test_input is None:
+                raise Exception(
+                    "The initialize() method of the Micro simulation requires initial data, "
+                    "but no initial macro data has been provided."
+                )
+
+            try:
+                result = test_instance.initialize(test_input)
                 has_args = True
-            else:
+            except TypeError:
                 raise Exception(
                     "The initialize() method of the Micro simulation has an incorrect number of arguments."
                 )
-        except TypeError:
-            self._log.log_info_rank_zero(
-                "The signature of initialize() method of the micro simulation cannot be determined. "
-                + "Trying to determine the signature by calling the method."
-            )
-            # Try to call the initialize() method without initial data
-            try:
-                test_instance.initialize()
-                has_args = False
-            except TypeError:
-                self._log.log_info_rank_zero(
-                    "The initialize() method of the micro simulation has arguments. "
-                    + "Attempting to call it again with initial data."
-                )
-                try:
-                    test_instance.initialize(test_input)
-                    has_args = True
-                except TypeError:
-                    raise Exception(
-                        "The initialize() method of the Micro simulation has an incorrect number of arguments."
-                    )
+        has_return_value = result is not None
 
-        return True, has_args
+        if has_return_value:
+            if type(result) != dict:
+                raise Exception("The initialize() method must return a dict.")
+
+        return True, has_args, has_return_value, result
 
     def check_output(self) -> bool:
         """

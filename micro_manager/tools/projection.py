@@ -1,6 +1,7 @@
+from micro_manager.tools.mpi_handler import MPIHandler
+
 from abc import ABC, abstractmethod
 import numpy as np
-from mpi4py import MPI
 
 
 class Projector(ABC):
@@ -43,7 +44,7 @@ class STDProjector(Projector):
     Projects high-dimensional data into low-dimensional space using the fields with the highest standard deviation.
     """
 
-    def __init__(self, target_dims: int, comm: MPI.Comm):
+    def __init__(self, target_dims: int, mpi: MPIHandler):
         """
         Constructs STD projection.
 
@@ -51,12 +52,12 @@ class STDProjector(Projector):
         ----------
         target_dims : int
             Number of target dimensions.
-        comm : MPI.Comm
-            MPI communicator.
+        mpi : MPIHandler
+            MPIHandler object.
         """
         self.num_target_dims = target_dims
         self.target_dims = np.zeros(target_dims, dtype=np.int32)
-        self.comm = comm
+        self.mpi = mpi
 
     def initialize(self, data: np.ndarray) -> None:
         """
@@ -72,7 +73,7 @@ class STDProjector(Projector):
         std = np.zeros(data.shape[-1])
         if data.shape[0] > 0:
             std = np.std(data, axis=0)
-        stds = np.array(self.comm.allgather(std))
+        stds = np.array(self.mpi.comm.allgather(std))
         stds = np.mean(stds, axis=0)
         self.target_dims[:] = np.sort(
             np.argsort(stds)[::-1][0 : self.num_target_dims]

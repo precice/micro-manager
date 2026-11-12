@@ -1,6 +1,6 @@
 repos:
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v2.3.0
+  rev: v6.0.0
   hooks:
     - id: check-xml
     - id: check-merge-conflict
@@ -13,11 +13,13 @@ repos:
   hooks:
     - id: black
 # markdownlint for markdown formatting
-- repo: https://github.com/markdownlint/markdownlint
-  rev: v0.12.0
+- repo: https://github.com/igorshubovych/markdownlint-cli
+  rev: v0.49.0
   hooks:
     - id: markdownlint
-      args: ['-r', '~MD002,~MD013,~MD026,~MD029,~MD033,~MD034']
+      files: "^docs/.*.md"
+    - id: markdownlint-fix
+      files: "^docs/.*.md"
 - repo: https://github.com/precice/precice-pre-commit-hooks
   rev: 'v3.3'
   hooks:

@@ -1,6 +1,8 @@
 ---
 title: Adaptive control of simulations
 permalink: tooling-micro-manager-adaptivity.html
+aliases:
+  - /tooling-micro-manager-adaptivity.html
 keywords: tooling, macro-micro, two-scale, adaptivity
 summary: Micro Manager can solve simulations adaptively.
 ---

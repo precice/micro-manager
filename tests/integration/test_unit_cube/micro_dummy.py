@@ -14,14 +14,17 @@ class MicroSimulation:
         """
         self._sim_id = sim_id
 
-        if sim_id == 0 or sim_id == 4:
-            self._this_sim_type = 1
-        elif sim_id == 1 or sim_id == 5:
-            self._this_sim_type = 3
-        elif sim_id == 2 or sim_id == 6:
-            self._this_sim_type = 6
-        elif sim_id == 3 or sim_id == 7:
-            self._this_sim_type = 9
+        match sim_id:
+            case 0 | 4:
+                self._this_sim_type = 1
+            case 1 | 5:
+                self._this_sim_type = 3
+            case 2 | 6:
+                self._this_sim_type = 6
+            case 3 | 7:
+                self._this_sim_type = 9
+            case _:
+                self._this_sim_type = -1
 
         # Artificial state
         self._state = [x * 0.1 for x in range(1000)]

@@ -1,22 +1,17 @@
 name: Test pip installation and dependency check
 
 on:
-  push:
-    branches:
-      - develop
-      - main
-  pull_request:
-    branches:
-      - "*"
+  workflow_call:
 
 jobs:
   test-pip-install:
+    name: Install
     runs-on: ubuntu-latest
     container: precice/precice:nightly
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           path: micro-manager
 

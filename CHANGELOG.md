@@ -1,7 +1,34 @@
 # Micro Manager changelog
 
-## latest
+## v0.12.0
 
+- Changed the configuration to conform it to the [preCICE adapter configuration schema](https://github.com/precice/adapter-schema). [#324](https://github.com/precice/micro-manager/pull/324) **Breaking change**
+- Renamed *model adaptivity* to *model switching* to clearly distinguish it from adaptivity. [#323](https://github.com/precice/micro-manager/pull/323) **Breaking change**
+- Removed redundant diagnostics configuration. [#322](https://github.com/precice/micro-manager/pull/322) **Breaking change**
+- Renamed the load-balancing output `rank_of_sim` to `Rank-Of-Sim` and the model-adaptivity output `model_resolution` to `Model-Resolution` for consistent preCICE data names. Existing preCICE configurations using either output must be updated. [#317](https://github.com/precice/micro-manager/issues/317) **Breaking change**
+
+## v0.11.2
+
+- Fixed use of provided HDF5 output file name when snapshots are computed in parallel. [#315](https://github.com/precice/micro-manager/pull/315)
+- Added various fixes for interpolation, load balancing and adaptivity. Load balancing now balances every N implicit iterations. [#312](https://github.com/precice/micro-manager/pull/312)
+
+## v0.11.0
+
+- Refactored LoadBalancing into an interface for more clarity [#300](https://github.com/precice/micro-manager/pull/300)
+- Added a general diagnostics interface and refactored memory usage accordingly [#299](https://github.com/precice/micro-manager/pull/299)
+- Refactored interpolation to uniform interface and moved crash handling to dedicated module. [#298](https://github.com/precice/micro-manager/pull/298)
+- Added uniform interface for Adaptivity for all cases [#294](https://github.com/precice/micro-manager/pull/294)
+- Fixed simulation activation issue of calling `get_state` prior to full initialization [#308](https://github.com/precice/micro-manager/pull/308)
+- Skipped double initialization of sim with id 0 when lazy initialization is used [#307](https://github.com/precice/micro-manager/pull/307)
+- Fixed macro data not populating adaptivity buffers and MPI irecv buffer size [#306](https://github.com/precice/micro-manager/pull/306)
+- Added support for workers in snapshot mode [#296](https://github.com/precice/micro-manager/pull/296)
+- Added check for number of workers and renamed method in `coupling.py` [#295](https://github.com/precice/micro-manager/pull/295)
+- Refactored interaction with preCICE and domain decomposition into `CouplingHandler`, `Profiler` and `DomainDecomposition` hierarchy [#289](https://github.com/precice/micro-manager/pull/289)
+- Refactored and generalized the methods in `p2p.py`. Added `MPIHandler` to manage all MPI related aspects. [#287](https://github.com/precice/micro-manager/pull/287)
+- Applied fixes for previously missed test cases due to #290 [#291](https://github.com/precice/micro-manager/pull/291)
+- Fixed non-visible CI test cases on PR interface [#290](https://github.com/precice/micro-manager/pull/290)
+- Moved Simulation Class ownership and loading to Model Manager [#286](https://github.com/precice/micro-manager/pull/286)
+- Added simulation container for more encapsulation [#284](https://github.com/precice/micro-manager/pull/284)
 - Redesigned configuration loading for enhanced clarity and standardization [#264](https://github.com/precice/micro-manager/pull/264)
 - Added RBF interpolation, currently used within adaptivity for output interpolation [#242](https://github.com/precice/micro-manager/pull/242)
 
