@@ -37,13 +37,13 @@ Bastidas, Manuela & Bringedal, Carina & Pop, Iuliu Sorin. (2021). A two-scale it
 
    For each active simulation $$ x_{A} \in N_{A}(t_{n-1}) $$, we check if there exists another active simulation $$ x_{B} \in N_{A}(t_{n-1}) $$ such that
 
-   $$ D(x_{A}, x_{B}; t_{n-1}; \Lambda) \le tol_{c} $$
+   $$ D(x_{A}, x_{B}; t_{n-1}; \Lambda) \le \epsilon_{c} $$
 
    and if it is the case, $$ x_{A} $$ is deactivated.
 
 3. Update the set of inactive simulations $$ N_{I}(t_{n}) $$. For each inactive simulations $$ x_{I} \in N_{I}(t_{n-1}) $$, gather the distance $$ D $$ to all active simulations. If
 
-   $$ \displaystyle\min_{x_{A} \in N_{A}(n)} {D(x_{I}, x_{A}; t_{n-1}; \Lambda)} > tol_{r} $$
+   $$ \displaystyle\min_{x_{A} \in N_{A}(n)} {D(x_{I}, x_{A}; t_{n-1}; \Lambda)} > \epsilon_{r} $$
 
    the simulation $$ x_{I} $$ is activated.
 
@@ -53,13 +53,13 @@ Bastidas, Manuela & Bringedal, Carina & Pop, Iuliu Sorin. (2021). A two-scale it
 
 These steps are repeated every time the adaptivity computation is triggered.
 
-The coarsening tolerance $$ t_c $$ is calculated by
+The coarsening tolerance $$ \epsilon_c $$ is calculated by
 
-$$ t_c = C_c C_r \displaystyle\max_{x_{1},x_{2} \in N(t_{n})} {D(x_{1},x_{2}; t_{n})} $$
+$$ \epsilon_c = C_c C_r \displaystyle\max_{x_{1},x_{2} \in N(t_{n})} {D(x_{1},x_{2}; t_{n})} $$
 
-The refining tolerance $$ t_r $$ is calculated by
+The refining tolerance $$ \epsilon_r $$ is calculated by
 
-$$ t_r = C_r \displaystyle\max_{x_{1},x_{2} \in N(t_{n})} {D(x_{1},x_{2}; t_{n})} $$
+$$ \epsilon_r = C_r \displaystyle\max_{x_{1},x_{2} \in N(t_{n})} {D(x_{1},x_{2}; t_{n})} $$
 
 The primary tuning parameters for adaptivity are the history parameter $$ \Lambda $$, the coarsening constant $$ C_c $$, and the refining constant $$ C_r $$. Their effects can be interpreted as:
 
