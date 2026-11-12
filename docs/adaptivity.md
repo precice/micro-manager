@@ -57,7 +57,7 @@ The coarsening tolerance $$ \epsilon_c $$ is calculated by
 
 $$ \epsilon_c = C_c C_r \displaystyle\max_{x_{1},x_{2} \in N(t_{n})} {D(x_{1},x_{2}; t_{n})} $$
 
-The refining tolerance $$ tol_r $$ is calculated by
+The refining tolerance $$ \epsilon_r $$ is calculated by
 
 $$ \epsilon_r = C_r \displaystyle\max_{x_{1},x_{2} \in N(t_{n})} {D(x_{1},x_{2}; t_{n})} $$
 
