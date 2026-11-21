@@ -939,10 +939,11 @@ class Config:
                 "model_switching_settings"
             ].exists()
         ):
-            self.enable_model_switching.set = False
-            self._logger.log_info_rank_zero(
-                "Model Switching is turned on but no model switching settings are provided."
-            )
+            if not self.enable_adaptivity():
+                self.enable_model_switching.set = False
+                self._logger.log_info_rank_zero(
+                    "Model Switching is turned on but no model switching settings are provided."
+                )
 
         if self.enable_model_switching():
             if len(self.micro_file_names()) < 2:
@@ -954,9 +955,28 @@ class Config:
             else:
                 self.write_data_names().append("Model-Resolution")
 
-            self.model_switching_function.set = self.json["micro_manager"][
-                "simulation_params"
-            ]["model_switching_settings"]["switching_function"].get_or_raise()
+            if self.json["micro_manager"]["simulation_params"][
+                "model_switching_settings"
+            ].exists():
+                if self.enable_adaptivity():
+                    self.model_switching_function.set = self.json["micro_manager"][
+                        "simulation_params"
+                    ]["model_switching_settings"]["switching_function"].get_with_default(
+                        None
+                    )
+                else:
+                    self.model_switching_function.set = self.json["micro_manager"][
+                        "simulation_params"
+                    ]["model_switching_settings"]["switching_function"].get_or_raise()
+
+                self.model_switching_levels_thresholds.set = self.json["micro_manager"][
+                    "simulation_params"
+                ]["model_switching_settings"]["levels_thresholds"].get_with_default(
+                    None
+                )
+            else:
+                self.model_switching_function.set = None
+                self.model_switching_levels_thresholds.set = None
 
         # ======================================================
         #              Interpolation and Diagnostics
@@ -1608,14 +1628,26 @@ class Config:
         pass
 
     @config_entry
-    def model_switching_function(self) -> str:
+    def model_switching_function(self) -> Optional[str]:
         """
         Get path to switching function file
 
         Returns
         -------
-        switching_function : str
-            String containing the path to the switching function file
+        switching_function : Optional[str]
+            String containing the path to the switching function file, or None.
+        """
+        pass
+
+    @config_entry
+    def model_switching_levels_thresholds(self) -> Optional[List[float]]:
+        """
+        Get custom thresholds for multi-level model switching.
+
+        Returns
+        -------
+        levels_thresholds : Optional[List[float]]
+            Thresholds for reduced model levels in (0, 1).
         """
         pass
 

@@ -58,6 +58,18 @@ as long as the `switching_function` contains values other than 0.
 Model evaluation - in the call `solve_variant(micro_sims_input, dt)` - is delegated to the regular
 (non-model-adaptive) `micro_sim_solve(micro_sims_input, dt)` method.
 
+### Combining Model Switching with Adaptivity
+
+When both `model_switching` and `adaptivity` are enabled, adaptive classification is combined with reduced-order modeling:
+
+- **Active problems** are solved using the high-fidelity Full-Order Model (FOM, Resolution 0).
+- **Inactive problems** are not omitted; instead, they are solved using Reduced-Order Models (ROMs, Resolution >= 1).
+- When more than two models are loaded ($M > 2$), the ROM level for each inactive problem is determined automatically by its relative similarity distance $d / \epsilon_r \in [0, 1]$ to its active representative:
+  - Inactive problems close to the activation threshold ($\text{rel\_dist} \approx 1$) receive the finest ROM (Resolution 1).
+  - Inactive problems very similar to their representative ($\text{rel\_dist} \approx 0$) receive coarser ROMs (up to Resolution $M - 1$).
+  - Optional custom level boundaries can be defined via `model_switching_levels_thresholds`.
+- When adaptivity is enabled, specifying a `switching_function` is optional.
+
 ### Interfaces
 
 ```python

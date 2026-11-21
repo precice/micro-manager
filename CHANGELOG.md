@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## Unreleased
+
+- Combined adaptive strategies and model switching so inactive micro-problems are solved using reduced-order models (ROMs) instead of being omitted, with multi-level model selection based on relative similarity distance. [#318](https://github.com/precice/micro-manager/issues/318)
+
 ## v0.12.0
 
 - Changed the configuration to conform it to the [preCICE adapter configuration schema](https://github.com/precice/adapter-schema). [#324](https://github.com/precice/micro-manager/pull/324) **Breaking change**
