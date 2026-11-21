@@ -90,6 +90,7 @@ class MicroManagerCoupling(MicroManager):
             self._sim_container
         )
         self._is_model_switching_on = self._config.enable_model_switching()
+        self._is_adaptivity_on = self._config.enable_adaptivity()
 
         self._t = 0  # global time
         self._n = 0  # sim-step
@@ -456,6 +457,24 @@ class MicroManagerCoupling(MicroManager):
                 )
                 self.load_balancing.post_sim_solve(gid)
 
+        # When model switching is enabled, solve inactive simulations with their reduced models
+        inactive_sim_lids = self._adaptivity_controller.get_inactive_lids()
+        if self._is_model_switching_on:
+            for lid in inactive_sim_lids:
+                gid = self._sim_container.local_gids[lid]
+                if gid in computed_outputs:
+                    micro_sims_output[lid] = computed_outputs[gid]
+                    continue
+                if self._sim_container[lid] is not None and not self._crash_handler.has_sim_crashed(gid):
+                    self.load_balancing.pre_sim_solve(gid)
+                    micro_sims_output[lid] = self._crash_handler.solve_micro_safe(
+                        lid,
+                        self._sim_container[lid],
+                        micro_sims_input[lid],
+                        dt,
+                    )
+                    self.load_balancing.post_sim_solve(gid)
+
         # If interpolate is off, terminates after crash
         unset_sims = set(
             [lid_ for lid_ in active_sim_lids if micro_sims_output[lid_] is None]
@@ -481,12 +500,12 @@ class MicroManagerCoupling(MicroManager):
             micro_sims_input, micro_sims_output
         )
 
-        inactive_sim_lids = self._adaptivity_controller.get_inactive_lids()
         # Resolve micro sim output data for inactive simulations
         for inactive_lid in inactive_sim_lids:
             gid = self._sim_container.local_gids[inactive_lid]
-            self.load_balancing.pre_sim_solve(gid)
-            self.load_balancing.post_sim_solve(gid)
+            if not self._is_model_switching_on:
+                self.load_balancing.pre_sim_solve(gid)
+                self.load_balancing.post_sim_solve(gid)
             self._adaptivity_controller.postprocess_inactive_output(
                 micro_sims_output[inactive_lid], gid
             )
@@ -504,6 +523,10 @@ class MicroManagerCoupling(MicroManager):
         self._model_switching_controller.initialise_solve()
 
         active_sim_ids = self._adaptivity_controller.get_active_lids()
+        inactive_rel_dists = None
+        if hasattr(self._adaptivity_controller, "get_inactive_relative_distances"):
+            inactive_rel_dists = self._adaptivity_controller.get_inactive_relative_distances()
+
         output = None
 
         while self._model_switching_controller.should_iterate():
@@ -512,6 +535,7 @@ class MicroManagerCoupling(MicroManager):
                 micro_sims_input,
                 output,
                 active_sim_ids,
+                inactive_rel_dists,
             )
             computed_outputs = {}
             if output is not None:
@@ -526,6 +550,7 @@ class MicroManagerCoupling(MicroManager):
                 micro_sims_input,
                 output,
                 active_sim_ids,
+                inactive_rel_dists,
             )
 
         self._model_switching_controller.finalise_solve()

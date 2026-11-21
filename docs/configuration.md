@@ -260,7 +260,8 @@ To turn on model switching, set `"model_switching": true` in `simulation_params`
 
 | Parameter | Description |
 | --- | --- |
-| `switching_function` | Path to the file containing the Python importable switching function. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed. |
+| `switching_function` | Path to the file containing the Python importable switching function. If the file is not in the working directory, give the relative path from the directory where the Micro Manager is executed. Optional when `adaptivity` is enabled. |
+| `levels_thresholds` | (Optional) List of float thresholds for partitioning relative similarity distances across reduced model levels when combined with adaptivity and more than two models. |
 
 Example of model switching configuration is
 

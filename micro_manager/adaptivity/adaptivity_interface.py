@@ -253,6 +253,18 @@ class AdaptivityInterface(ABC):
         """
         ...
 
+    def get_inactive_relative_distances(self) -> Dict[int, float]:
+        """
+        Get the relative distance of each local inactive simulation to its
+        associated active simulation, normalized by the refinement tolerance into [0, 1].
+
+        Returns
+        -------
+        rel_dists : Dict[int, float]
+            Mapping from local id (lid) to relative distance in [0, 1].
+        """
+        return {}
+
     def check_micro_simulation_initialize(
         self, logger: Logger, micro_init_return_value: Optional[Dict[str, Any]]
     ) -> None:

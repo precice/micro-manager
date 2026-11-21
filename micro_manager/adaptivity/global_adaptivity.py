@@ -62,6 +62,8 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
             mpi,
         )
 
+        self._is_model_switching_on: bool = config.enable_model_switching()
+
         buffer_size = self._sim_container.global_num_sims**2
         array_buffer, mpi_node = self._mpi.create_node_buffer(MPI.FLOAT, buffer_size)
         self._mpi_node = mpi_node
@@ -198,6 +200,33 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
 
         return inactive_gids
 
+    def get_inactive_relative_distances(self) -> Dict[int, float]:
+        """
+        Get the relative distance of each local inactive simulation
+        to its associated active simulation, normalized by the refinement tolerance into [0, 1].
+
+        Returns
+        -------
+        rel_dists : Dict[int, float]
+            Mapping from local id (lid) to relative distance in [0, 1].
+        """
+        rel_dists: Dict[int, float] = {}
+        inactive_lids = self.get_inactive_lids()
+        if self._ref_tol <= 0.0 or len(self._similarity_dists) == 0:
+            for lid in inactive_lids:
+                rel_dists[lid] = 0.0
+            return rel_dists
+
+        for lid in inactive_lids:
+            gid = self._sim_container.local_gids[lid]
+            assoc_gid = self._sim_is_associated_to.get(gid)
+            if assoc_gid is not None and self._ref_tol > 0:
+                d = float(self._similarity_dists[gid, assoc_gid])
+                rel_dists[lid] = min(max(d / self._ref_tol, 0.0), 1.0)
+            else:
+                rel_dists[lid] = 0.0
+        return rel_dists
+
     def get_full_field_micro_output(
         self,
         micro_input: List[Dict[str, Any]],
@@ -223,7 +252,7 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         ):
             micro_sims_output = deepcopy(micro_output)
             num_active = np.sum(self._is_sim_active)
-            if num_active == self._is_sim_active.shape[0]:
+            if num_active == self._is_sim_active.shape[0] or self._is_model_switching_on:
                 return micro_sims_output
 
             self._communicate_micro_output(micro_sims_output)
@@ -473,26 +502,27 @@ class GlobalAdaptivityCalculator(AdaptivityCalculator):
         recv_data = self._mpi.exchange(send_map)
 
         # Use received micro sims to activate the required simulations
-        for state, gid in recv_data:
-            local_ids = to_be_activated_map[gid]
-            for lid in local_ids:
-                # Create the micro simulation object and set its state
-                self._sim_container[lid] = self._model_manager.get_instance(
-                    self._sim_container.local_gids[lid], self._micro_problem_cls
-                )
-                self._sim_container.set_sim_state(lid, state)
+        if not self._is_model_switching_on:
+            for state, gid in recv_data:
+                local_ids = to_be_activated_map[gid]
+                for lid in local_ids:
+                    # Create the micro simulation object and set its state
+                    self._sim_container[lid] = self._model_manager.get_instance(
+                        self._sim_container.local_gids[lid], self._micro_problem_cls
+                    )
+                    self._sim_container.set_sim_state(lid, state)
 
-        # Delete the micro simulation object if it is inactive
-        for lid, gid in enumerate(self._sim_container.local_gids):
-            if not self._is_sim_active[gid]:
-                if self._sim_container[lid] is None:
-                    continue
-                # Release resources now, especially for remote simulation instance.
-                # If left to garbage collector this might lead to a race condition.
-                # Releasing with call to sim.destroy(), afterwards reference in sim
-                # sim list can be removed.
-                self._sim_container[lid].destroy()
-                self._sim_container[lid] = None
+            # Delete the micro simulation object if it is inactive
+            for lid, gid in enumerate(self._sim_container.local_gids):
+                if not self._is_sim_active[gid]:
+                    if self._sim_container[lid] is None:
+                        continue
+                    # Release resources now, especially for remote simulation instance.
+                    # If left to garbage collector this might lead to a race condition.
+                    # Releasing with call to sim.destroy(), afterwards reference in sim
+                    # sim list can be removed.
+                    self._sim_container[lid].destroy()
+                    self._sim_container[lid] = None
 
         self._profiler.end()
 
