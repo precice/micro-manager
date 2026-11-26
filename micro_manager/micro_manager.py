@@ -373,7 +373,9 @@ class MicroManagerCoupling(MicroManager):
 
             # perform actual simulation initialization
             for i in micro_sims_to_init:
-                init_arg = initial_macro_data[i] if sim_requires_init_data else []
+                # Wrap the dict in a list so that unpacking with * yields a single
+                # positional argument (the dict itself) instead of iterating over its keys.
+                init_arg = [initial_macro_data[i]] if sim_requires_init_data else []
                 initial_micro_output = self._sim_container[i].initialize(*init_arg)
                 for name in initial_micro_data.keys():
                     initial_micro_data[name][i] = initial_micro_output[name]
