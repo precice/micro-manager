@@ -177,7 +177,7 @@ class CouplingHandler:
         dt : Optional[float]
             Time step size.
         """
-        dt = dt or self.dt
+        dt = self.dt if dt is None else dt
         self._participant.advance(dt)
 
     # =========================
@@ -237,7 +237,7 @@ class CouplingHandler:
         read_vertex_ids: List[int] = [
             self._gid_to_vertex_id[gid] for gid in self._sim_container.local_gids
         ]
-        dt = dt or self.dt
+        dt = self.dt if dt is None else dt
 
         for name in self._read_data_names:
             read_data.update(
