@@ -1,10 +1,12 @@
+import json
 import numpy as np
 import os
+import tempfile
 from unittest import TestCase
 from unittest.mock import MagicMock
 from micro_manager.snapshot.snapshot import MicroManagerSnapshot
 from micro_manager.micro_simulation import create_simulation_class
-from micro_manager.config import Config
+from micro_manager.config import Config, ConfigurationError
 
 
 class MicroSimulation:
@@ -155,6 +157,28 @@ class TestFunctionCalls(TestCase):
         self.assertListEqual(config.write_data_names(), self.fake_write_data_names)
         self.assertEqual(config.postprocessing_file_name(), "snapshot_post_processing")
         self.assertTrue(config.enable_single_sim_object())
+
+    def test_invalid_snapshot_config_raises_clear_error(self):
+        """Test that wrong or unknown snapshot config keys raise ConfigurationError."""
+        invalid_snapshot = {
+            "micro_manager": {
+                "micro_file_names": ["test_snapshot_computation"],
+                "coupling_params": {"parameter_file_name": "test.hdf5"},
+                "simulation_params": {"micro_dt": 1.0},
+                "snapshot_param": {},
+            }
+        }
+        with tempfile.TemporaryDirectory() as tmpdir:
+            path = os.path.join(tmpdir, "bad_snapshot.json")
+            with open(path, "w") as handle:
+                json.dump(invalid_snapshot, handle)
+            config = Config(path)
+            logger = MagicMock()
+            config.set_logger(logger)
+            with self.assertRaises(ConfigurationError) as ctx:
+                config.read_json_snapshot()
+            self.assertIn("snapshot_param", str(ctx.exception))
+            logger.log_error.assert_called()
 
 
 if __name__ == "__main__":

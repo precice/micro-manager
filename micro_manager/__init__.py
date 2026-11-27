@@ -64,7 +64,7 @@ import sys
 
 # Delay heavy imports if only running dependency check
 if "--test-dependencies" not in sys.argv:
-    from .config import Config
+    from .config import Config, ConfigurationError
     from .micro_simulation import MicroSimulationInterface
     from .micro_manager import MicroManagerCoupling
 
@@ -113,15 +113,18 @@ def main():
     if not os.path.isabs(config_file_path):
         config_file_path = os.getcwd() + "/" + config_file_path
 
-    if not args.snapshot:
-        manager = MicroManagerCoupling(config_file_path, log_file=args.log_file)
-    else:
-        if is_snapshot_possible:
-            manager = MicroManagerSnapshot(config_file_path, log_file=args.log_file)
+    try:
+        if not args.snapshot:
+            manager = MicroManagerCoupling(config_file_path, log_file=args.log_file)
         else:
-            raise ImportError(
-                "The Micro Manager snapshot computation requires the h5py package."
-            )
+            if is_snapshot_possible:
+                manager = MicroManagerSnapshot(config_file_path, log_file=args.log_file)
+            else:
+                raise ImportError(
+                    "The Micro Manager snapshot computation requires the h5py package."
+                )
+    except ConfigurationError as err:
+        sys.exit(f"Configuration error: {err}")
 
     manager.initialize()
     manager.solve()

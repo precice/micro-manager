@@ -2,6 +2,7 @@
 Class Config provides functionality to read a JSON file and pass the values to the Micro Manager.
 """
 
+import difflib
 import json
 import logging
 import os
@@ -10,8 +11,263 @@ import string
 from collections import defaultdict
 from typing import Optional, Type, List, Dict, Any, Callable, Hashable
 import inspect
+import jsonschema
 from preciceadapterschema import validate  # type: ignore[import-untyped]
 from .tools.logging_wrapper import Logger
+
+
+class ConfigurationError(ValueError):
+    """Raised when the JSON configuration file is missing, malformed, or invalid."""
+
+
+_TASKING_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "backend": {"type": "string", "enum": ["mpi", "socket"]},
+        "is_slurm": {"type": "boolean"},
+        "num_workers": {"type": "integer", "minimum": 1},
+        "mpi_impl": {"type": "string", "enum": ["open", "intel", "mpi"]},
+        "hostfile": {"type": "string"},
+    },
+}
+
+_BASE_MICRO_MANAGER_PROPERTIES: Dict[str, Any] = {
+    "micro_file_names": {
+        "type": "array",
+        "items": {"type": "string", "minLength": 1},
+        "minItems": 1,
+    },
+    "micro_stateless_flags": {
+        "type": "array",
+        "items": {"type": "boolean"},
+    },
+    "output_directory": {"type": "string"},
+    "memory_usage_output_type": {
+        "type": "string",
+        "enum": ["all", "local", "global"],
+    },
+    "memory_usage_output_n": {"type": "integer", "minimum": 1},
+    "tasking": _TASKING_SCHEMA,
+}
+
+_ADAPTIVITY_MAPPING_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["src_fields", "dst_fields", "interp_id"],
+    "properties": {
+        "src_fields": {"type": "array", "items": {"type": "string"}},
+        "dst_fields": {"type": "array", "items": {"type": "string"}},
+        "interp_id": {"type": ["string", "integer"]},
+    },
+}
+
+_ADAPTIVITY_SETTINGS_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "type": {"type": "string", "enum": ["local", "global"]},
+        "mappings": {"type": "array", "items": _ADAPTIVITY_MAPPING_SCHEMA},
+        "lazy_initialization": {"type": "boolean"},
+        "data": {"type": "array", "items": {"type": "string"}},
+        "adaptivity_every_n_time_windows": {"type": "integer"},
+        "output_type": {"type": "string", "enum": ["all", "local", "global"]},
+        "output_n": {"type": "integer"},
+        "history_param": {"type": "number"},
+        "coarsening_constant": {"type": "number"},
+        "refining_constant": {"type": "number"},
+        "similarity_measure": {
+            "type": "string",
+            "enum": ["L1", "L2", "L1rel", "L2rel"],
+        },
+        "every_implicit_iteration": {"type": "boolean"},
+    },
+}
+
+_LOAD_BALANCING_SETTINGS_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "every_n_time_windows": {"type": "integer"},
+        "type": {"type": "string", "enum": ["time", "active"]},
+        "balance_inactive_sims": {"type": "boolean"},
+        "threshold": {"type": "number"},
+        "partitioning": {"type": "string", "enum": ["lpt"]},
+    },
+}
+
+_MODEL_SWITCHING_SETTINGS_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "switching_function": {"type": "string", "minLength": 1},
+    },
+}
+
+_INTERPOLATION_CONFIG_ITEM_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "required": ["type", "id"],
+    "properties": {
+        "type": {"type": "string", "enum": ["KNN", "RBF"]},
+        "id": {"type": ["string", "integer"]},
+    },
+    "if": {"properties": {"type": {"const": "KNN"}}},
+    "then": {
+        "additionalProperties": False,
+        "properties": {
+            "type": {"type": "string"},
+            "id": {"type": ["string", "integer"]},
+            "k": {"type": "integer", "minimum": 1},
+        },
+    },
+    "else": {
+        "additionalProperties": False,
+        "required": ["type", "id", "rbf_config", "domain_config"],
+        "properties": {
+            "type": {"type": "string"},
+            "id": {"type": ["string", "integer"]},
+            "rbf_config": {
+                "type": "object",
+                "additionalProperties": False,
+                "required": ["n_neighbors"],
+                "properties": {
+                    "n_neighbors": {"type": "integer", "minimum": 1},
+                    "use_pu": {"type": "boolean"},
+                    "pu_overlap": {"type": "number"},
+                    "basis": {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "type": {
+                                "type": "string",
+                                "enum": ["c0", "c2", "c4", "c6", "gauss"],
+                            },
+                            "eps": {"type": "number"},
+                        },
+                    },
+                },
+            },
+            "domain_config": {
+                "anyOf": [
+                    {"type": "string", "enum": ["local"]},
+                    {
+                        "type": "object",
+                        "additionalProperties": False,
+                        "properties": {
+                            "max_filling": {"type": "integer", "minimum": 1},
+                            "coarsening_factor": {"type": "integer", "minimum": 1},
+                            "projection": {
+                                "type": "object",
+                                "additionalProperties": False,
+                                "properties": {
+                                    "type": {
+                                        "type": "string",
+                                        "enum": ["std", "identity"],
+                                    },
+                                    "target_dims": {"type": "integer", "minimum": 1},
+                                },
+                            },
+                        },
+                    },
+                ]
+            },
+        },
+    },
+}
+
+_COUPLED_MICRO_MANAGER_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["micro_file_names", "simulation_params"],
+    "properties": {
+        **_BASE_MICRO_MANAGER_PROPERTIES,
+        "simulation_params": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["micro_dt", "macro_domain_bounds"],
+            "properties": {
+                "micro_dt": {"type": "number"},
+                "micro_output_n": {"type": "integer"},
+                "macro_domain_bounds": {
+                    "type": "array",
+                    "items": {"type": "number"},
+                    "minItems": 4,
+                    "maxItems": 6,
+                },
+                "decomposition": {
+                    "type": "array",
+                    "items": {"type": "integer"},
+                    "minItems": 2,
+                    "maxItems": 3,
+                },
+                "decomposition_type": {
+                    "type": "string",
+                    "enum": ["uniform", "nonuniform"],
+                },
+                "minimum_access_region_size": {
+                    "type": "array",
+                    "items": {"type": "number"},
+                },
+                "adaptivity": {"type": "boolean"},
+                "adaptivity_settings": _ADAPTIVITY_SETTINGS_SCHEMA,
+                "load_balancing": {"type": "boolean"},
+                "load_balancing_settings": _LOAD_BALANCING_SETTINGS_SCHEMA,
+                "model_switching": {"type": "boolean"},
+                "model_switching_settings": _MODEL_SWITCHING_SETTINGS_SCHEMA,
+                "interpolation_configs": {
+                    "type": "array",
+                    "items": _INTERPOLATION_CONFIG_ITEM_SCHEMA,
+                },
+                "interpolate_crash": {"type": "boolean"},
+                "interpolate_crash_params": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "interp_id": {"type": ["string", "integer"]},
+                        "threshold": {"type": "number"},
+                    },
+                },
+            },
+        },
+    },
+}
+
+_SNAPSHOT_MICRO_MANAGER_SCHEMA: Dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["micro_file_names", "coupling_params", "simulation_params"],
+    "properties": {
+        **_BASE_MICRO_MANAGER_PROPERTIES,
+        "coupling_params": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["parameter_file_name"],
+            "properties": {
+                "parameter_file_name": {"type": "string", "minLength": 1},
+                "read_data_names": {"type": "array", "items": {"type": "string"}},
+                "write_data_names": {"type": "array", "items": {"type": "string"}},
+            },
+        },
+        "simulation_params": {
+            "type": "object",
+            "additionalProperties": False,
+            "required": ["micro_dt"],
+            "properties": {
+                "micro_dt": {"type": "number"},
+                "micro_output_n": {"type": "integer"},
+            },
+        },
+        "snapshot_params": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "output_file_name": {"type": "string"},
+                "post_processing_file_name": {"type": "string"},
+                "initialize_once": {"type": "boolean"},
+            },
+        },
+    },
+}
 
 
 class ConfigDSL:
@@ -198,9 +454,16 @@ class ConfigDSL:
                 raise RuntimeError("Wrong data type")
             if options is not None and current_element not in options:
                 raise RuntimeError("Wrong option")
+        except KeyError as e:
+            self.handle_fmt_error(fmt_error or "", e, kwargs)
+            path = ".".join(str(k) for k in self._access_queue)
+            raise ConfigurationError(
+                f"Missing required configuration key '{self._access_queue[-1]}' at '{path}'."
+            ) from e
         except BaseException as e:
             self.handle_fmt_error(fmt_error or "", e, kwargs)
-            raise e
+            path = ".".join(str(k) for k in self._access_queue)
+            raise ConfigurationError(f"Invalid configuration at '{path}': {e}") from e
 
         self.handle_fmt_success(fmt_success or "", current_element, kwargs)
         return current_element
@@ -508,6 +771,93 @@ class Config:
         assert self._data is not None
         return ConfigDSL(self._data, self._logger)
 
+    def _fail(self, message: str) -> None:
+        """Logs an error message and raises ConfigurationError."""
+        self._logger.log_error(message)
+        raise ConfigurationError(message)
+
+    def _load_json(self, config_file_name: str) -> None:
+        """Loads and parses the JSON configuration file into self._data."""
+        self._logger.log_info_rank_zero(
+            f"Micro Manager version: {importlib.metadata.version('micro-manager-precice')}"
+        )
+        path = os.path.join(self._base_dir, os.path.basename(config_file_name))
+        try:
+            with open(path, "r") as read_file:
+                data = json.load(read_file)
+        except FileNotFoundError as exc:
+            self._fail(f"Configuration file not found: {path}")
+        except json.JSONDecodeError as exc:
+            self._fail(f"Invalid JSON in configuration file '{path}': {exc}")
+
+        if not isinstance(data, dict):
+            self._fail(
+                f"Invalid configuration in '{path}': top-level JSON value must be an object."
+            )
+
+        self._data = data
+        self._logger.log_info_rank_zero(f"Reading JSON configuration file: {path}")
+
+    @staticmethod
+    def _format_unrecognized_keys(
+        unexpected: List[str], allowed: List[str], location: str
+    ) -> str:
+        """Formats unrecognized configuration keys with close-match suggestions."""
+        suggestions = []
+        for key in unexpected:
+            matches = difflib.get_close_matches(key, allowed, n=1)
+            if matches:
+                suggestions.append(f"'{key}' (did you mean '{matches[0]}'?)")
+            else:
+                suggestions.append(f"'{key}'")
+        return (
+            f"Unrecognized configuration key(s) at '{location}': "
+            f"{', '.join(suggestions)}. Allowed keys: {', '.join(allowed)}."
+        )
+
+    @staticmethod
+    def _format_validation_error(
+        err: jsonschema.ValidationError, path_prefix: str = ""
+    ) -> str:
+        """Formats a jsonschema ValidationError into a readable message."""
+        parts = [path_prefix] if path_prefix else []
+        parts.extend(str(p) for p in err.absolute_path)
+        location = ".".join(parts) if parts else "root"
+
+        if err.validator == "additionalProperties" and isinstance(err.instance, dict):
+            allowed = sorted(err.schema.get("properties", {}).keys())
+            unexpected = sorted(set(err.instance.keys()) - set(allowed))
+            if unexpected:
+                return Config._format_unrecognized_keys(unexpected, allowed, location)
+
+        return f"Invalid configuration at '{location}': {err.message}"
+
+    def _validate_top_level_keys(
+        self, allowed_keys: set[str], required_keys: set[str]
+    ) -> None:
+        """Validates top-level keys before schema validation."""
+        assert self._data is not None
+        extra = sorted(set(self._data.keys()) - allowed_keys)
+        if extra:
+            self._fail(
+                self._format_unrecognized_keys(extra, sorted(allowed_keys), "root")
+            )
+
+        missing = sorted(required_keys - set(self._data.keys()))
+        if missing:
+            self._fail(
+                f"Missing required configuration key(s) at 'root': {', '.join(missing)}."
+            )
+
+    def _validate_schema(
+        self, instance: Dict[str, Any], schema: Dict[str, Any], path_prefix: str = ""
+    ) -> None:
+        """Validates instance against a JSON schema and raises ConfigurationError on failure."""
+        try:
+            jsonschema.validate(instance=instance, schema=schema)
+        except jsonschema.ValidationError as err:
+            self._fail(self._format_validation_error(err, path_prefix))
+
     def _read_json_base(self, config_file_name: str):
         """
         Reads JSON configuration file.
@@ -517,14 +867,8 @@ class Config:
         config_file_name : string
             Path to the JSON configuration file
         """
-        self._logger.log_info_rank_zero(
-            f"Micro Manager version: {importlib.metadata.version('micro-manager-precice')}"
-        )
-        path = os.path.join(self._base_dir, os.path.basename(config_file_name))
-        with open(path, "r") as read_file:
-            self._data = json.load(read_file)
-
-        self._logger.log_info_rank_zero(f"Reading JSON configuration file: {path}")
+        if self._data is None:
+            self._load_json(config_file_name)
 
         # ======================================================
         #                  Micro Manager Base
@@ -533,7 +877,7 @@ class Config:
         # convert paths to python-importable paths
         file_names = self.json["micro_manager"]["micro_file_names"].get_or_raise(
             "Micro simulation file name: {data}",
-            "'micro_file_name' must be specified!",
+            "'micro_file_names' must be specified!",
             list,
         )
         self.micro_file_names.set = [
@@ -541,10 +885,7 @@ class Config:
             for name in file_names
         ]
         if len(self.micro_file_names()) < 1:
-            self._logger.log_info_rank_zero(
-                "Must provide at least one micro simulation file."
-            )
-            raise RuntimeError("Missing Micro Simulation File")
+            self._fail("Must provide at least one micro simulation file.")
 
         self.micro_stateless_flags.set = self.json["micro_manager"][
             "micro_stateless_flags"
@@ -629,7 +970,7 @@ class Config:
                 "No tasking worker count defined. Using 1 worker per rank.",
             )
             if self.tasking_num_workers() < 1:
-                raise RuntimeError("Invalid number of workers. Must be >= 1.")
+                self._fail("Invalid number of workers. Must be >= 1.")
 
             self.mpi_impl.set = self.json["micro_manager"]["tasking"][
                 "mpi_impl"
@@ -652,15 +993,32 @@ class Config:
         Reads Micro Manager relevant information from JSON configuration file
         and saves the data to the respective instance attributes.
         """
-        self._read_json_base(self._config_file_name)
+        self._load_json(self._config_file_name)
 
-        validate(self._data)
+        top_level_keys = {
+            "participant_name",
+            "precice_config_file_path",
+            "interfaces",
+            "micro_manager",
+        }
+        self._validate_top_level_keys(top_level_keys, top_level_keys)
+
+        try:
+            validate(self._data)
+        except jsonschema.ValidationError as err:
+            self._fail(self._format_validation_error(err))
 
         if len(self._data["interfaces"]) > 1:
-            raise ValueError(
+            self._fail(
                 "The Micro Manager currently supports only a single entry in 'interfaces'. "
                 f"Found {len(self._data['interfaces'])} entries in the provided configuration."
             )
+
+        self._validate_schema(
+            self._data["micro_manager"], _COUPLED_MICRO_MANAGER_SCHEMA, "micro_manager"
+        )
+
+        self._read_json_base(self._config_file_name)
 
         self.participant_name.set = self.json["participant_name"].get_with_default(
             "Micro-Manager",
@@ -1005,10 +1363,13 @@ class Config:
         """
         Reads Snapshot relevant information from JSON configuration file
         """
-        self._read_json_base(self._config_file_name)  # Read base information
-        self._logger.log_info_rank_zero(
-            f"Reading JSON configuration file: {self._config_file_name}"
+        self._load_json(self._config_file_name)
+        self._validate_top_level_keys({"micro_manager"}, {"micro_manager"})
+        self._validate_schema(
+            self._data["micro_manager"], _SNAPSHOT_MICRO_MANAGER_SCHEMA, "micro_manager"
         )
+
+        self._read_json_base(self._config_file_name)  # Read base information
         self._logger.log_info_rank_zero("Micro Manager is running in snapshot mode.")
         self.parameter_file_name.set = os.path.join(
             self._base_dir,
