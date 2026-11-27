@@ -45,6 +45,9 @@ def main():
     # Define points on entire domain as coupling mesh
     vertex_ids = participant.set_mesh_vertices(mesh_name, coords)
 
+    if participant.requires_initial_data():
+        participant.write_data(mesh_name, "Macro-1", vertex_ids, np.full(nv, 7.0))
+
     participant.initialize()
 
     read_data = [None, None]

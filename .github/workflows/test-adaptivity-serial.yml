@@ -44,6 +44,24 @@ jobs:
           micro-manager-precice micro-manager-config-global-adaptivity.json &
           python3 unit_cube.py 2
 
+      - name: Run integration test with local adaptivity and lazy initialization
+        timeout-minutes: 3
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          cd tests/integration/test_unit_cube
+          micro-manager-precice micro-manager-config-local-adaptivity-lazy-init.json &
+          python3 unit_cube.py 2
+
+      - name: Run integration test with global adaptivity and lazy initialization
+        timeout-minutes: 3
+        working-directory: micro-manager
+        run: |
+          . .venv/bin/activate
+          cd tests/integration/test_unit_cube
+          micro-manager-precice micro-manager-config-global-adaptivity-lazy-init.json &
+          python3 unit_cube.py 2
+
       - name: Run adaptivity unit tests in serial
         working-directory: micro-manager
         run: |

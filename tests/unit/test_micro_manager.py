@@ -11,8 +11,11 @@ class MicroSimulation:
     def __init__(self, sim_id):
         self.very_important_value = 0
 
-    def initialize(self):
-        pass
+    def initialize(self, macro_data):
+        # Regression check: initialize() must receive the macro data dict as a
+        # single argument, not have its keys unpacked into positional arguments.
+        assert isinstance(macro_data, dict)
+        assert set(macro_data.keys()) == {"Macro-Scalar-Data", "Macro-Vector-Data"}
 
     def solve(self, macro_data, dt):
         assert macro_data["Macro-Scalar-Data"] == 1
