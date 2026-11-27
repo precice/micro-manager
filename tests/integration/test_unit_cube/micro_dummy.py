@@ -29,7 +29,12 @@ class MicroSimulation:
         # Artificial state
         self._state = [x * 0.1 for x in range(1000)]
 
-    def initialize(self):
+    def initialize(self, macro_data):
+        assert set(macro_data.keys()) == {"Macro-1"}
+        # "Macro-1" is a scalar data field, so each simulation receives a single
+        # float value here, not an array.
+        assert macro_data["Macro-1"] == 7.0
+
         return {
             "Micro-1": self._this_sim_type,
             "Micro-2": [

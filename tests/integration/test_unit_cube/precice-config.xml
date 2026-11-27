@@ -41,11 +41,16 @@
   <m2n:sockets acceptor="Micro-Manager" connector="Macro-Cube" />
 
   <coupling-scheme:serial-explicit>
-    <participants first="Micro-Manager" second="Macro-Cube" />
+    <participants first="Macro-Cube" second="Micro-Manager" />
     <max-time value="3" />
     <time-window-size value="1" />
     <exchange data="Micro-1" mesh="Macro-Cube-Mesh" from="Micro-Manager" to="Macro-Cube" />
     <exchange data="Micro-2" mesh="Macro-Cube-Mesh" from="Micro-Manager" to="Macro-Cube" />
-    <exchange data="Macro-1" mesh="Macro-Cube-Mesh" from="Macro-Cube" to="Micro-Manager" />
+    <exchange
+      data="Macro-1"
+      mesh="Macro-Cube-Mesh"
+      from="Macro-Cube"
+      to="Micro-Manager"
+      initialize="yes" />
   </coupling-scheme:serial-explicit>
 </precice-configuration>
