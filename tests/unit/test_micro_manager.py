@@ -1,9 +1,13 @@
+import json
+import os
+import tempfile
 from unittest import TestCase
 from unittest.mock import MagicMock
 
 import numpy as np
 
 import micro_manager
+from micro_manager.config import ConfigurationError
 from micro_manager.simulation_container import SimulationContainer
 
 
@@ -173,6 +177,81 @@ class TestFunctionCalls(TestCase):
             config.write_data_names(),
             ["Micro-Output", "Rank-Of-Sim", "Model-Resolution"],
         )
+
+    def test_invalid_config_raises_clear_errors(self):
+        """Test that wrong, unknown, or missing config keys raise ConfigurationError."""
+        valid_config = {
+            "participant_name": "Micro-Manager",
+            "precice_config_file_path": "dummy-config.xml",
+            "interfaces": [
+                {
+                    "mesh_name": "Macro-Mesh",
+                    "read_data": [{"name": "Macro-Input"}],
+                    "write_data": [{"name": "Micro-Output"}],
+                }
+            ],
+            "micro_manager": {
+                "micro_file_names": ["test_micro_manager"],
+                "simulation_params": {
+                    "micro_dt": 0.1,
+                    "macro_domain_bounds": [0.0, 1.0, 0.0, 1.0],
+                },
+            },
+        }
+
+        cases = [
+            (
+                {"micro_file": "python/micro.py"},
+                "Unrecognized configuration key(s) at 'root'",
+            ),
+            (
+                {
+                    **valid_config,
+                    "micro_manager": {
+                        **valid_config["micro_manager"],
+                        "micro_file": ["test_micro_manager"],
+                    },
+                },
+                "Unrecognized configuration key(s) at 'micro_manager'",
+            ),
+            (
+                {
+                    **valid_config,
+                    "micro_manager": {
+                        **valid_config["micro_manager"],
+                        "simulation_params": {
+                            **valid_config["micro_manager"]["simulation_params"],
+                            "adaptvity": True,
+                        },
+                    },
+                },
+                "Unrecognized configuration key(s) at 'micro_manager.simulation_params'",
+            ),
+            (
+                {
+                    **valid_config,
+                    "micro_manager": {
+                        "simulation_params": valid_config["micro_manager"][
+                            "simulation_params"
+                        ]
+                    },
+                },
+                "micro_file_names",
+            ),
+        ]
+
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for idx, (payload, expected_substr) in enumerate(cases):
+                path = os.path.join(tmpdir, f"bad_{idx}.json")
+                with open(path, "w") as handle:
+                    json.dump(payload, handle)
+                config = micro_manager.Config(path)
+                logger = MagicMock()
+                config.set_logger(logger)
+                with self.assertRaises(ConfigurationError) as ctx:
+                    config.read_json_micro_manager()
+                self.assertIn(expected_substr, str(ctx.exception))
+                logger.log_error.assert_called()
 
 
 if __name__ == "__main__":

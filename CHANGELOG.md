@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## latest
+
+- Validate JSON configurations against strict schemas and report clear error messages for unrecognized or missing configuration keys. [#268](https://github.com/precice/micro-manager/issues/268)
+
 ## v0.12.0
 
 - Changed the configuration to conform it to the [preCICE adapter configuration schema](https://github.com/precice/adapter-schema). [#324](https://github.com/precice/micro-manager/pull/324) **Breaking change**
