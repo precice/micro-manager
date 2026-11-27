@@ -1,5 +1,9 @@
 # Micro Manager changelog
 
+## latest
+
+- Fixed micro sim initialization with dict having more than one key and handling of time window size when reading data. [#327](https://github.com/precice/micro-manager/pull/327)
+
 ## v0.12.0
 
 - Changed the configuration to conform it to the [preCICE adapter configuration schema](https://github.com/precice/adapter-schema). [#324](https://github.com/precice/micro-manager/pull/324) **Breaking change**
